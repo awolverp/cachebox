@@ -1,9 +1,9 @@
 # Cachebox
-**Cachebox** is a Python library (written in Rust) that provides memoization and cache implementions with
+**Cachebox** is a Python library (written in Rust) that provides memoizations and cache implementions with
 different cache replecement policies.
 
 > [!NOTE]\
-> This library is very faster than cachetools and other libraries (between 5x-10x) and use lower memory than, [*you can see benchmarks here*](BENCHMARK.md).
+> This library is faster than cachetools and other libraries (between 5x-10x) and uses lower memory than them, [*you can see benchmarks here*](BENCHMARK.md).
 
 ```python
 from cachebox import cached, TTLCache, LRUCache
@@ -59,7 +59,7 @@ Cons:
 - Does not support *PyPy*
 
 Supported:
-- `Cache`: Simple cache implemention without any policy and alghoritm.
+- `Cache`: Simple cache implemention with no policy and alghoritm.
 - `FIFOCache`: First In First Out cache implemention.
 - `LFUCache`: Least Frequently Used cache implemention.
 - `RRCache`: Random Replacement cache implemention.
@@ -87,11 +87,13 @@ This package is very easy to use. You can use all implementions like a dictionar
 they're supported all `abc.MutableMapping` methods.
 But *there are some new methods* you can see in examples.
 
-For instance, see **LRUCache** example:
-```python
-import cachebox
+At first, think about which alghoritm do you want to use? import and use it like a dictionary; In this examples we used `LRUCache`, `TTLCache` and `TTLCacheNoDefault`. 
 
-cache = cachebox.LRUCache(10)
+**LRUCache** example:
+```python
+from cachebox import LRUCache
+
+cache = LRUCache(10)
 cache.insert("key", "value") # or cache["key"] = "value"
 cache.delete("key") # or `del cache["key"]`
 
@@ -105,9 +107,9 @@ in these examples:
 
 **TTLCache** example:
 ```python
-import cachebox
+from cachebox import TTLCache
 
-cache = cachebox.TTLCache(10, ttl=2)
+cache = TTLCache(10, ttl=2)
 cache.insert(1, "value1") # or cache[1] = "value1"
 cache.insert(2, "value2") # or cache[2] = "value2"
 cache.insert(3, "value3") # or cache[3] = "value3"
@@ -131,10 +133,10 @@ cache.expire(reuse=False)
 
 **TTLCacheNoDefault** example:
 ```python
-import cachebox
+from cachebox import TTLCacheNoDefault
 
 # TTLCacheNoDefault have not ttl parameter here.
-cache = cachebox.TTLCacheNoDefault(10)
+cache = TTLCacheNoDefault(10)
 cache.insert(1, "value1", ttl=10) # this key-pair is available for no longer than 10 seconds
 cache.insert(2, "value2", ttl=2) # this key-pair is available for no longer than 2 seconds
 cache.setdefault(3, "value3", ttl=6) # this key-pair is available for no longer than 6 seconds
@@ -153,7 +155,8 @@ cache.pop_with_expire(4)
 # Output: ('value4', 0.0)
 ```
 
-### What is the difference between TTLCache and TTLCacheNoDefault?
+## Frequently asked questions
+#### What is the difference between TTLCache and TTLCacheNoDefault?
 In `TTLCache`, you set an expiration time for all items, but in `TTLCacheNoDefault`,
 you can set a unique expiration time for each item.
 
@@ -163,7 +166,6 @@ you can set a unique expiration time for each item.
 | TTLCacheNoDefault    | Each item has unique expiration time | TTLCacheNoDefault is very slow in inserting |
 
 
-## Frequently asked questions
 #### Can we set maxsize to zero?
 Yes, if you pass zero to maxsize, means there's no limit for items.
 

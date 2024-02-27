@@ -6,7 +6,7 @@ V = typing.TypeVar("V")
 
 class BaseCacheImpl(typing.Generic[K, V]):
     """
-    This is just baseclass of other caches and not implemented.
+    This is only a base class of other caches and not implemented.
 
     Example::
 

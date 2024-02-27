@@ -3,7 +3,7 @@
 different cache replecement policies.
 
 > [!NOTE]\
-> This library is very faster than cachetools and other libraries (between 5x-10x) and use lower memory than, *you will see benchmarks*.
+> This library is very faster than cachetools and other libraries (between 5x-10x) and use lower memory than, [*you can see benchmarks here*](BENCHMARK.md).
 
 ```python
 from cachebox import cached, TTLCache, LRUCache
@@ -73,6 +73,13 @@ Supported:
 You can install **cachebox** from PyPi:
 ```sh
 pip3 install -U cachebox
+```
+
+Now you can use it:
+```python
+>>> import cachebox
+>>> cachebox.__version__
+'...'
 ```
 
 ## Tutorial

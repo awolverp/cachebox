@@ -118,7 +118,7 @@ git clone https://github.com/awolverp/cachebox
 cd cachebox
 ```
 
-2. Install cachebox and cachetools:
+2. Install requirements:
 ```sh
 pip3 install cachetools cachebox
 ```

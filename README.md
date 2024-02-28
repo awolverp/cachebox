@@ -3,7 +3,7 @@
 different cache replecement policies.
 
 > [!NOTE]\
-> This library is faster than cachetools and other libraries (between 5x-10x) and uses lower memory than them, [*you can see benchmarks here*](BENCHMARK.md).
+> This library is faster than other libraries (between 5x-10x) and uses lower memory than them, [*you can see benchmarks here*](BENCHMARK.md).
 
 ```python
 from cachebox import cached, TTLCache, LRUCache

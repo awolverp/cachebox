@@ -74,13 +74,6 @@ You can install **cachebox** from PyPi:
 pip3 install -U cachebox
 ```
 
-Now you can use it:
-```python
->>> import cachebox
->>> cachebox.__version__
-'...'
-```
-
 ## Tutorial
 This package is very easy to use. You can use all implementions like a dictionary;
 they're supported all `abc.MutableMapping` methods.

@@ -56,7 +56,6 @@ Pros:
 
 Cons:
 - Does not support iterating (for `values`, `keys` and `items` methods)
-- Does not support *PyPy*
 
 Supported:
 - `Cache`: Simple cache implemention with no policy and alghoritm.

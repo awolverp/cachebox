@@ -6,7 +6,7 @@
 If you know other library, tell me to add to this page.
 
 > [!IMPORTANT]\
-> The system on which the benchmarks are done: **6.1.77-2-MANJARO x86_64 GNU/Linux**
+> The system on which the benchmarks are done: **Linux x86_64, 8G, Intel i3-1115G4**
 
 ## Benchmarks:
 We set caches maxsize to 1000.

@@ -7,6 +7,11 @@ name: CI
 
 on:
   push:
+    paths-ignore:
+      - '*.md'
+      - 'Makefile'
+      - 'benchmakrs/*'
+      - 'tests/*'
     branches:
       - main
     tags:

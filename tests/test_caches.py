@@ -346,18 +346,11 @@ class TestLFUCache(unittest.TestCase, CacheTestSuiteMixin):
         for i in range(6):
             self.assertEqual(4, obj[4])
 
-        # 0 used 10 times
-        # 1 used 7 times
-        # 4 used 6 times
-        # 3 used 4 times
-        # 2 used 3 times
-
         self.assertEqual((2, 2), obj.popitem())
         self.assertEqual((3, 3), obj.popitem())
 
         for i in range(10):
             self.assertEqual(4, obj.get(4))
-        # now the 4 used 16 times
 
         self.assertEqual((1, 1), obj.popitem())
 
@@ -379,12 +372,6 @@ class TestLFUCache(unittest.TestCase, CacheTestSuiteMixin):
         for i in range(6):
             obj[4] += 1
 
-        # 0 used 10 times
-        # 1 used 7 times
-        # 4 used 6 times
-        # 3 used 4 times
-        # 2 used 3 times
-
         obj[5] = 4
         self.assertEqual([0, 1, 3, 4, 5], sorted(obj.keys()))
 
@@ -398,20 +385,18 @@ class TestLRUCache(unittest.TestCase, CacheTestSuiteMixin):
         obj[1] = 1
         obj[2] = 2
         obj[3] = 3
-        # [1, 2, 3]
 
         self.assertEqual((1, 1), obj.popitem())
-        # [2, 3]
 
-        obj[1] = 1  # [2, 3, 1]
-        obj[2]  # [3, 1, 2]
+        obj[1] = 1
+        obj[2]
 
-        self.assertEqual((3, 3), obj.popitem())  # [1, 2]
+        self.assertEqual((3, 3), obj.popitem()) 
 
-        obj[4] = 4  # [1, 2, 4]
-        self.assertEqual(1, obj.get(1))  # [2, 4, 1]
+        obj[4] = 4
+        self.assertEqual(1, obj.get(1))
 
-        obj[5] = 5  # [4, 1, 5]
+        obj[5] = 5
         self.assertNotIn(2, obj)
 
 
@@ -436,19 +421,18 @@ class TestMRUCache(unittest.TestCase, CacheTestSuiteMixin):
         obj[1] = 1
         obj[2] = 2
         obj[3] = 3
-        # [3, 2, 1]
 
-        self.assertEqual((3, 3), obj.popitem())  # [2, 1]
+        self.assertEqual((3, 3), obj.popitem())
 
-        obj[3] = 3  # [3, 2, 1]
-        obj[2]  # [2, 3, 1]
+        obj[3] = 3
+        obj[2]
 
-        self.assertEqual((2, 2), obj.popitem())  # [3, 1]
+        self.assertEqual((2, 2), obj.popitem())
 
-        obj[4] = 4  # [4, 3, 1]
-        self.assertEqual(1, obj.get(1))  # [1, 4, 3]
+        obj[4] = 4
+        self.assertEqual(1, obj.get(1))
 
-        obj[5] = 5  # [5, 4, 3]
+        obj[5] = 5
         self.assertNotIn(1, obj)
         self.assertNotIn((5, 5), obj.popitem())
 
@@ -459,7 +443,7 @@ class TestTTLCacheNoDefault(unittest.TestCase, CacheTestSuiteMixin):
     def test_policy(self):
         import time
 
-        obj: cachebox.TTLCacheNoDefault = self.cache(2)
+        obj = self.cache(2)
 
         obj.insert(0, 1, 0.5)
         time.sleep(0.5)
@@ -486,7 +470,7 @@ class TestTTLCacheNoDefault(unittest.TestCase, CacheTestSuiteMixin):
     def test_update_with_ttl(self):
         import time
 
-        obj: cachebox.TTLCacheWithoutDefault = self.cache(2)
+        obj = self.cache(2)
 
         obj.update({1: 1, 2: 2, 3: 3}, 0.5)
         time.sleep(0.5)
@@ -501,7 +485,7 @@ class TestTTLCacheNoDefault(unittest.TestCase, CacheTestSuiteMixin):
             obj[3]
 
     def test_get_with_expire(self):
-        obj: cachebox.TTLCacheWithoutDefault = self.cache(2)
+        obj = self.cache(2)
 
         obj.insert(1, 1, 10)
 
@@ -530,7 +514,7 @@ class TestTTLCache(unittest.TestCase, CacheTestSuiteMixin):
     def test_policy(self):
         import time
 
-        obj: cachebox.TTLCache = self.cache(2, 0.5)
+        obj = self.cache(2, 0.5)
 
         obj.insert(0, 1)
         time.sleep(0.5)
@@ -538,7 +522,7 @@ class TestTTLCache(unittest.TestCase, CacheTestSuiteMixin):
         with self.assertRaises(KeyError):
             obj[0]
 
-        obj: cachebox.TTLCache = self.cache(2, 20)
+        obj = self.cache(2, 20)
 
         obj.insert(0, 0)
         obj.insert(1, 1)
@@ -550,7 +534,7 @@ class TestTTLCache(unittest.TestCase, CacheTestSuiteMixin):
     def test_update_with_ttl(self):
         import time
 
-        obj: cachebox.TTLCache = self.cache(2, 0.5)
+        obj = self.cache(2, 0.5)
 
         obj.update({1: 1, 2: 2, 3: 3})
         time.sleep(0.5)
@@ -565,7 +549,7 @@ class TestTTLCache(unittest.TestCase, CacheTestSuiteMixin):
             obj[3]
 
     def test_get_with_expire(self):
-        obj: cachebox.TTLCache = self.cache(2, 10)
+        obj = self.cache(2, 10)
 
         obj.insert(1, 1)
         value, dur = obj.get_with_expire(1)

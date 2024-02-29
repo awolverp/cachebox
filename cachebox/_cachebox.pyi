@@ -18,24 +18,9 @@ class BaseCacheImpl(typing.Generic[K, V]):
     """
 
     def __init__(self, maxsize: int, *, capacity: int = ...) -> None: ...
-    def __setitem__(self, key: K, value: V) -> None:
-        """
-        See `.insert()`
-        """
-        ...
-
-    def __getitem__(self, key: K) -> V:
-        """
-        Like `.get()` but raise `KeyError` if key not found.
-        """
-        ...
-
-    def __delitem__(self, key: K) -> None:
-        """
-        See `.delete()`
-        """
-        ...
-
+    def __setitem__(self, key: K, value: V) -> None: ...
+    def __getitem__(self, key: K) -> V: ...
+    def __delitem__(self, key: K) -> None: ...
     def __contains__(self, key: K) -> bool: ...
     def __len__(self) -> int: ...
     def __repr__(self) -> str: ...
@@ -43,7 +28,6 @@ class BaseCacheImpl(typing.Generic[K, V]):
     def __richcmp__(self, other: typing.Self) -> None:
         """
         Caches only support `==` and `!=`, and unfortunaly there's no good way to check these.
-
         Performance: O(capacity)~
 
         This method equals to::

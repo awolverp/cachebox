@@ -6,16 +6,16 @@
 name: CI
 
 on:
-  # push:
-  #   paths-ignore:
-  #     - '*.md'
-  #     - 'benchmarks/*'
-  #     - 'tests/*'
-  #   branches:
-  #     - main
-  #   tags:
-  #     - '*'
-  # pull_request:
+  push:
+    paths-ignore:
+      - '*.md'
+      - 'benchmarks/*'
+      - 'tests/*'
+    branches:
+      - main
+    tags:
+      - '*'
+  pull_request:
   workflow_dispatch:
 
 permissions:

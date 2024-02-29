@@ -77,7 +77,7 @@ pip3 install -U cachebox
 
 ## Tutorial
 This package is very easy to use. You can use all implementions like a dictionary;
-they're supported all `abc.MutableMapping` methods.
+they supported all `collections.MutableMapping` methods.
 But *there are some new methods* you can see in examples.
 
 At first, think about which alghoritm do you want to use? import and use it like a dictionary; In this examples we used `LRUCache`, `TTLCache` and `TTLCacheNoDefault`. 

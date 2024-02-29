@@ -40,14 +40,7 @@ impl TTLCacheNoDefault {
     fn cache_expire(&mut self) {
         let mut write = self.inner.write().expect("RwLock is poisoned (write)");
 
-        loop {
-            let key = match self.order.last() {
-                Some(v) => v,
-                None => {
-                    break;
-                }
-            };
-
+        while let Some(key) = self.order.last() {
             if !write[key].is_expired() {
                 break;
             }
@@ -281,7 +274,7 @@ impl TTLCacheNoDefault {
                 items.0.hash()?,
                 items.0.into(),
                 items.1.into(),
-                expire.clone(),
+                expire,
             )?;
         }
         
@@ -318,7 +311,7 @@ impl TTLCacheNoDefault {
                 items.0.hash()?,
                 items.0.into(),
                 items.1.into(),
-                expire.clone(),
+                expire,
             )?;
         }
 
@@ -541,7 +534,7 @@ impl TTLCacheNoDefault {
 
         let read = self.inner.read().expect("RwLock is poisoned (read)");
         if let Some(v) = read.get(&hash) {
-            return Ok(Some(v.value.clone()));
+            Ok(Some(v.value.clone()))
         } else {
             drop(read);
 
@@ -572,7 +565,7 @@ impl TTLCacheNoDefault {
                         Ok(_) => Ok(Some(defaultvalue)),
                         Err(err) => {
                             drop(defaultvalue);
-                            return Err(err);
+                            Err(err)
                         }
                     }
                 }
@@ -580,7 +573,7 @@ impl TTLCacheNoDefault {
                     Ok(_) => Ok(Some(defaultvalue)),
                     Err(err) => {
                         drop(defaultvalue);
-                        return Err(err);
+                        Err(err)
                     }
                 },
             }
@@ -596,8 +589,7 @@ impl TTLCacheNoDefault {
     ) -> PyResult<()> {
         let obj = iterable.as_ref(py);
 
-        let dur: Option<time::Instant>;
-        match ttl {
+        let dur: Option<time::Instant> = match ttl {
             Some(seconds) => {
                 if seconds <= 0.0 {
                     return Err(pyo3::exceptions::PyValueError::new_err(
@@ -606,12 +598,12 @@ impl TTLCacheNoDefault {
                 }
 
                 let duration = time::Duration::from_millis((seconds * 1000.0) as u64);
-                dur = Some(time::Instant::now() + duration);
+                Some(time::Instant::now() + duration)
             }
             None => {
-                dur = None;
+                None
             }
-        }
+        };
 
         if obj.is_instance_of::<pyo3::types::PyDict>() {
             return self.cache_update_from_pydict(obj.extract()?, dur);
@@ -819,14 +811,7 @@ impl TTLCache {
     fn cache_expire(&mut self) {
         let mut write = self.inner.write().expect("RwLock is poisoned (write)");
 
-        loop {
-            let key = match self.order.front() {
-                Some(v) => v,
-                None => {
-                    break;
-                }
-            };
-
+        while let Some(key) = self.order.front() {
             if !write[key].is_expired() {
                 break;
             }
@@ -1196,7 +1181,7 @@ impl TTLCache {
 
         let read = self.inner.read().expect("RwLock is poisoned (read)");
         if let Some(v) = read.get(&hash) {
-            return Ok(Some(v.value.clone()));
+            Ok(Some(v.value.clone()))
         } else {
             drop(read);
 
@@ -1209,11 +1194,11 @@ impl TTLCache {
 
             match self.cache_setitem(hash, key, defaultvalue.clone()) {
                 Ok(_) => {
-                    return Ok(Some(defaultvalue));
+                    Ok(Some(defaultvalue))
                 }
                 Err(err) => {
                     drop(defaultvalue);
-                    return Err(err);
+                    Err(err)
                 }
             }
         }

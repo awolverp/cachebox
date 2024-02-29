@@ -16,9 +16,20 @@ build-prod:
 	maturin develop --release
 
 
-.PHONY: test
-test:
-	python3 -m unittest -v
+.PHONY: test-py
+test-py:
+	python3 -m unittest
+
+
+
+.PHONY: test-rs
+test-rs:
+	cargo clippy
+	cargo check
+
+
+.PHONY: test-all
+test-all: test-rs test-py
 
 
 .PHONY: clean

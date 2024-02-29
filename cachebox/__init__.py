@@ -8,6 +8,8 @@ from ._cachebox import (
     MRUCache as MRUCache,
     TTLCacheNoDefault as TTLCacheNoDefault,
     TTLCache as TTLCache,
+    __version__ as __version__,
+    __author__ as __author__,
 )
 
 from .utils import cached as cached

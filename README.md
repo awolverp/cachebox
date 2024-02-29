@@ -2,8 +2,7 @@
 **Cachebox** is a Python library (written in Rust) that provides memoizations and cache implementions with
 different cache replecement policies.
 
-> [!NOTE]\
-> This library is faster than other libraries (between 5x-10x) and uses lower memory than them, [*you can see benchmarks here*](BENCHMARK.md).
+This library is faster than other libraries and uses lower memory than them, [*you can see benchmarks here*](BENCHMARK.md).
 
 ```python
 from cachebox import cached, TTLCache, LRUCache
@@ -15,23 +14,25 @@ def get_coin_price(coin_name):
 
 # Async functions are supported
 @cached(LRUCache(maxsize=126))
-async def fib(n):
-    return n if n < 2 else fib(n - 1) + fib(n - 2)
+async def get_coin_price(coin_name):
+    return await async_web3_client.get_price(coin_name)
 
 # You can pass `capacity` parameter.
 # If `capacity` specified, the cache will be able to hold at least capacity elements without reallocating.
 @cached(LRUCache(maxsize=126, capacity=100))
-def get_coin_price(coin_name):
-    return web3_client.get_price(coin_name)
+def fib(n):
+    return n if n < 2 else fib(n - 1) + fib(n - 2)
 ```
 
 **Page Content**:
-- [Should i use memoization?](#what-is-caching-and-why-to-use-it)
-- [Features](#features)
-- [Installation](#installation)
-- [Tutorial](#tutorial)
+- ⁉️ [Should i use memoization?](#what-is-caching-and-why-to-use-it)
+- 🎯 [Features](#features)
+- 🛠️ [Installation](#installation)
+- 🎓 [Tutorial](#tutorial)
     - [difference between `TTLCache` and `TTLCacheNoDefault`](#what-is-the-difference-between-ttlcache-and-ttlcachenodefault)
-- [Frequently Asked Questions](#frequently-asked-questions)
+- ⁉️ [Frequently Asked Questions](#frequently-asked-questions)
+- 🆕 [*CHANGELOG*](CHANGELOG.md)
+- ⏱️ [*BENCHMARK*](BENCHMARK.md)
 
 ### What is caching and why to use it?
 Wikipeda:

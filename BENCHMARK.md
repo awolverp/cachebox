@@ -9,10 +9,13 @@ If you know other library, tell me to add to this page.
 > The system on which the benchmarks are done: **Linux x86_64, 8G, Intel i3-1115G4**
 
 ## Benchmarks:
-We set caches maxsize to 1000.
+
+**Versions**:
+- cachebox version: 1.0.0
+- cachetools version: 5.3.2
 
 ### Cache
-| operation\class         | cachetools.Cache   | cachebox.Cache     |
+| operation\class         | cachetools.Cache(1000)  | cachebox.Cache(1000)    |
 | ----------------------- | ------------------ | ------------------ |
 | clear                   | 0.986ms / 0.728KB  | 0.033ms / 0.0KB    |
 | delete                  | 0.488ms / 0.144KB  | 0.252ms / 0.128KB  |
@@ -24,7 +27,7 @@ We set caches maxsize to 1000.
 
 
 ### FIFOCache
-| operation\class         | cachetools.FIFOCache | cachebox.FIFOCache |
+| operation\class         | cachetools.FIFOCache(1000)| cachebox.FIFOCache(1000)|
 | ----------------------- | -------------------- | ------------------ |
 | clear                   | 0.909ms / 0.803KB    | 0.031ms / 0.0KB    |
 | delete                  | 0.602ms / 0.144KB    | 0.248ms / 0.128KB  |
@@ -36,7 +39,7 @@ We set caches maxsize to 1000.
 
 
 ### LFUCache
-| operation\class         | cachetools.LFUCache  | cachebox.LFUCache  |
+| operation\class         | cachetools.LFUCache(1000) | cachebox.LFUCache(1000) |
 | ----------------------- | -------------------- | ------------------ |
 | clear                   | 28.280ms / 0.898KB   | 0.031ms / 0.0KB    |
 | delete                  | 1.180ms / 0.216KB    | 0.273ms / 0.128KB  |
@@ -48,7 +51,7 @@ We set caches maxsize to 1000.
 
 
 ### LRUCache
-| operation\class         | cachetools.LRUCache  | cachebox.LRUCache  |
+| operation\class         | cachetools.LRUCache(1000) | cachebox.LRUCache(1000) |
 | ----------------------- | -------------------- | ------------------ |
 | clear                   | 1.090ms / 0.802KB    | 0.030ms / 0.0KB    |
 | delete                  | 0.609ms / 0.144KB    | 0.268ms / 0.128KB  |
@@ -60,7 +63,7 @@ We set caches maxsize to 1000.
 
 
 ### MRUCache
-| operation\class         | cachetools.MRUCache  | cachebox.MRUCache  |
+| operation\class         | cachetools.MRUCache(1000) | cachebox.MRUCache(1000) |
 | ----------------------- | -------------------- | ------------------ |
 | clear                   | 1.105ms / 0.802KB    | 0.031ms / 0.0KB    |
 | delete                  | 0.630ms / 0.144KB    | 0.488ms / 0.128KB  |
@@ -72,7 +75,7 @@ We set caches maxsize to 1000.
 
 
 ### RRCache
-| operation\class         | cachetools.RRCache  | cachebox.RRCache  |
+| operation\class         | cachetools.RRCache(1000) | cachebox.RRCache(1000) |
 | ----------------------- | -------------------- | ------------------ |
 | clear                   | 4.879ms / 8.216KB    | 0.031ms / 0.0KB    |
 | delete                  | 0.480ms / 0.144KB    | 0.253ms / 0.128KB  |
@@ -84,7 +87,7 @@ We set caches maxsize to 1000.
 
 
 ### TTLCache
-| operation\class         | cachetools.TTLCache  | cachebox.TTLCache  |
+| operation\class         | cachetools.TTLCache(1000) | cachebox.TTLCache(1000) |
 | ----------------------- | -------------------- | ------------------ |
 | clear                   | 4.111ms / 0.882KB    | 0.030ms / 0.0KB    |
 | delete                  | 1.035ms / 0.144KB    | 0.289ms / 0.128KB  |
@@ -118,9 +121,9 @@ git clone https://github.com/awolverp/cachebox
 cd cachebox
 ```
 
-2. Install requirements:
+2. Install/Upgrade requirements:
 ```sh
-pip3 install cachetools cachebox
+pip3 install -U cachetools cachebox
 ```
 
 3. Run

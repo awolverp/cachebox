@@ -1,6 +1,9 @@
 import typing
 from typing import Iterable
 
+__version__: str
+__author__: str
+
 K = typing.TypeVar("K", typing.Hashable)
 V = typing.TypeVar("V")
 

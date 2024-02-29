@@ -177,6 +177,7 @@ cache.maxsize -> cache.getmaxsize()
 ```
 
 ## TODO
+- [ ] Add markdown output to benchmark
 - [ ] Add graph to benchmark
 - [ ] Add benchmark for cacheing library
 

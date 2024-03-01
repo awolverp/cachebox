@@ -2,7 +2,7 @@
 **Cachebox** is a Python library (written in Rust) that provides memoizations and cache implementions with
 different cache replecement policies.
 
-This library is faster than other libraries and uses lower memory than them, [*you can see benchmarks here*](BENCHMARK.md).
+This library is faster than other libraries and uses lower memory than them, [*you can see benchmarks here*](https://github.com/awolverp/cachebox-benchmark).
 
 ```python
 from cachebox import cached, TTLCache, LRUCache

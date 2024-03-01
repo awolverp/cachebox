@@ -144,7 +144,6 @@ impl CacheImplemention for RRCache {
     }
 }
 
-
 #[pymethods]
 impl RRCache {
     pub fn __getitem__(&self, py: Python<'_>, key: Py<PyAny>) -> PyResult<Py<PyAny>> {

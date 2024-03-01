@@ -5,7 +5,7 @@ use std::time;
 
 use crate::base;
 
-#[pyclass(extends=base::BaseCacheImpl, subclass)]
+#[pyclass(extends=base::BaseCacheImpl, module="cachebox._cachebox", subclass)]
 pub struct TTLCacheNoDefault {
     inner: RwLock<HashMap<isize, base::TTLKeyValuePair>>,
 
@@ -143,7 +143,7 @@ impl TTLCacheNoDefault {
             None => self.order.push(hash),
         }
 
-        if length+1 > 1 {
+        if length + 1 > 1 {
             // Sort from less to greater
             self.order.sort_unstable_by(|a, b| {
                 let ap = write.get(a).unwrap();
@@ -277,7 +277,7 @@ impl TTLCacheNoDefault {
                 expire,
             )?;
         }
-        
+
         let write = self.inner.write().expect("RwLock is poisoned (write)");
 
         // Sort from less to greater
@@ -600,9 +600,7 @@ impl TTLCacheNoDefault {
                 let duration = time::Duration::from_millis((seconds * 1000.0) as u64);
                 Some(time::Instant::now() + duration)
             }
-            None => {
-                None
-            }
+            None => None,
         };
 
         if obj.is_instance_of::<pyo3::types::PyDict>() {
@@ -762,7 +760,7 @@ impl TTLCacheNoDefault {
     #[pyo3(signature=(*, reuse=false))]
     pub fn expire(&mut self, reuse: bool) -> PyResult<()> {
         self.cache_expire();
-        
+
         if !reuse {
             let mut write = self.inner.write().expect("RwLock is poisoned (write)");
             write.shrink_to_fit();
@@ -773,7 +771,7 @@ impl TTLCacheNoDefault {
     }
 }
 
-#[pyclass(extends=base::BaseCacheImpl, subclass)]
+#[pyclass(extends=base::BaseCacheImpl, module="cachebox._cachebox", subclass)]
 pub struct TTLCache {
     inner: RwLock<HashMap<isize, base::TTLKeyValuePair>>,
 
@@ -1000,7 +998,11 @@ impl TTLCache {
 impl TTLCache {
     #[new]
     #[pyo3(signature=(maxsize, ttl, *, capacity=0))]
-    pub fn __new__(maxsize: usize, ttl: f32, capacity: usize) -> PyResult<(Self, base::BaseCacheImpl)> {
+    pub fn __new__(
+        maxsize: usize,
+        ttl: f32,
+        capacity: usize,
+    ) -> PyResult<(Self, base::BaseCacheImpl)> {
         if ttl <= 0.0 {
             return Err(pyo3::exceptions::PyValueError::new_err("ttl parameter cannot be zero or negative; if you do not want ttl, try other caches."));
         }
@@ -1193,9 +1195,7 @@ impl TTLCache {
             }
 
             match self.cache_setitem(hash, key, defaultvalue.clone()) {
-                Ok(_) => {
-                    Ok(Some(defaultvalue))
-                }
+                Ok(_) => Ok(Some(defaultvalue)),
                 Err(err) => {
                     drop(defaultvalue);
                     Err(err)
@@ -1205,11 +1205,7 @@ impl TTLCache {
     }
 
     #[pyo3(signature=(iterable))]
-    pub fn update(
-        &mut self,
-        py: Python<'_>,
-        iterable: Py<PyAny>,
-    ) -> PyResult<()> {
+    pub fn update(&mut self, py: Python<'_>, iterable: Py<PyAny>) -> PyResult<()> {
         let obj = iterable.as_ref(py);
 
         if obj.is_instance_of::<pyo3::types::PyDict>() {
@@ -1369,7 +1365,7 @@ impl TTLCache {
     #[pyo3(signature=(*, reuse=false))]
     pub fn expire(&mut self, reuse: bool) -> PyResult<()> {
         self.cache_expire();
-        
+
         if !reuse {
             let mut write = self.inner.write().expect("RwLock is poisoned (write)");
             write.shrink_to_fit();

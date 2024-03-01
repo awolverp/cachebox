@@ -35,7 +35,7 @@ def cached(
 ):
     if isinstance(cache, dict):
         cache = _cachebox.Cache(0)
-    
+
     if type(cache) is type or not isinstance(cache, _cachebox.BaseCacheImpl):
         raise TypeError("we expected cachebox caches, got %r" % (type(cache).__name__,))
 
@@ -49,6 +49,7 @@ def cached(
                 return _CacheInfo(hits, misses, cache.getmaxsize(), len(cache), cache.__sizeof__())
 
             if inspect.iscoroutinefunction(func):
+
                 async def wrapper(*args, **kwargs):
                     nonlocal hits, misses
                     key = key_maker(args, kwargs)
@@ -65,8 +66,9 @@ def cached(
                         return cache.setdefault(key, result)
                     except OverflowError:
                         return result
-            
+
             else:
+
                 def wrapper(*args, **kwargs):
                     nonlocal hits, misses
                     key = key_maker(args, kwargs)
@@ -91,8 +93,8 @@ def cached(
                 misses = 0
 
         else:
-            
             if inspect.iscoroutinefunction(func):
+
                 async def wrapper(*args, **kwargs):
                     key = key_maker(args, kwargs)
                     try:
@@ -106,8 +108,9 @@ def cached(
                         return cache.setdefault(key, result)
                     except OverflowError:
                         return result
-            
+
             else:
+
                 def wrapper(*args, **kwargs):
                     key = key_maker(args, kwargs)
                     try:

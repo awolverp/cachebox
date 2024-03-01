@@ -47,7 +47,10 @@ impl CacheImplemention for MRUCache {
 
     fn cache_popitem(&mut self) -> Option<Self::Pair> {
         let mut write = self.inner.write().expect("RwLock is poisoned (write)");
-        let mut order = self.order.write().expect("RwLock is poisoned (write/order)");
+        let mut order = self
+            .order
+            .write()
+            .expect("RwLock is poisoned (write/order)");
 
         match order.pop_front() {
             Some(key) => write.remove(&key),
@@ -72,7 +75,10 @@ impl CacheImplemention for MRUCache {
         }
 
         let mut write = self.inner.write().expect("RwLock is poisoned (write)");
-        let mut order = self.order.write().expect("RwLock is poisoned (write/order)");
+        let mut order = self
+            .order
+            .write()
+            .expect("RwLock is poisoned (write/order)");
         let length = write.len();
         let time_to_shrink = ((length + 1) == self.maxsize) && length == write.capacity();
 
@@ -90,7 +96,10 @@ impl CacheImplemention for MRUCache {
 
     fn cache_remove(&mut self, hash: &isize) -> Option<Self::Pair> {
         let mut write = self.inner.write().expect("RwLock is poisoned (write)");
-        let mut order = self.order.write().expect("RwLock is poisoned (write/order)");
+        let mut order = self
+            .order
+            .write()
+            .expect("RwLock is poisoned (write/order)");
 
         match write.remove(hash) {
             Some(v) => {
@@ -114,7 +123,10 @@ impl CacheImplemention for MRUCache {
 
     fn cache_clear(&mut self, reuse: bool) {
         let mut write = self.inner.write().expect("RwLock is poisoned (write)");
-        let mut order = self.order.write().expect("RwLock is poisoned (write/order)");
+        let mut order = self
+            .order
+            .write()
+            .expect("RwLock is poisoned (write/order)");
         write.clear();
         order.clear();
 
@@ -136,7 +148,7 @@ impl CacheImplemention for MRUCache {
     fn cache_keys(&self) -> Vec<Py<PyAny>> {
         let read = self.inner.read().expect("RwLock is poisoned (read)");
         let order = self.order.read().expect("RwLock is poisoned (read/order)");
-        
+
         order
             .iter()
             .map(|x| read.get(x).unwrap().0.clone())
@@ -192,7 +204,6 @@ impl CacheImplemention for MRUCache {
     }
 }
 
-
 #[pymethods]
 impl MRUCache {
     pub fn __getitem__(&self, py: Python<'_>, key: Py<PyAny>) -> PyResult<Py<PyAny>> {
@@ -208,7 +219,10 @@ impl MRUCache {
 
         match read.get(&hash) {
             Some(v) => {
-                let mut order = self.order.write().expect("RwLock is poisoned (write/order)");
+                let mut order = self
+                    .order
+                    .write()
+                    .expect("RwLock is poisoned (write/order)");
 
                 lru_move_to_front!(order, hash);
                 Ok(v.1.clone())
@@ -236,11 +250,14 @@ impl MRUCache {
 
         match read.get(&hash) {
             Some(v) => {
-                let mut order = self.order.write().expect("RwLock is poisoned (write/order)");
+                let mut order = self
+                    .order
+                    .write()
+                    .expect("RwLock is poisoned (write/order)");
 
                 lru_move_to_front!(order, hash);
                 Ok(Some(v.1.clone()))
-            },
+            }
             None => Ok(default),
         }
     }

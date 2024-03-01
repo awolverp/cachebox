@@ -4,9 +4,9 @@ mod base;
 mod cache;
 mod fifo;
 mod lfu;
-mod rr;
 mod lru;
 mod mru;
+mod rr;
 mod ttl;
 
 /// A Python module implemented in Rust.
@@ -15,7 +15,6 @@ mod ttl;
 fn _cachebox(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.add("__author__", "aWolverP")?;
-    m.add("__doc__", "The fastest caching library written in Rust")?;
     m.add_class::<base::BaseCacheImpl>()?;
     m.add_class::<cache::Cache>()?;
     m.add_class::<fifo::FIFOCache>()?;

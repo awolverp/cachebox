@@ -1,4 +1,4 @@
-.DEFAULT_GOAL := all
+.DEFAULT_GOAL := build-prod
 
 
 export CARGO_TERM_COLOR=$(shell (test -t 0 && echo "always") || echo "auto")
@@ -32,8 +32,15 @@ test-rs:
 test-all: test-rs test-py
 
 
+.PHONY: format
+format:
+	-ruff format --line-length=100 cachebox/
+	cargo fmt
+
+
 .PHONY: clean
 clean:
+	-ruff clean
 	rm -rf `find . -name __pycache__`
 	rm -f `find . -type f -name '*.py[co]' `
 	rm -f `find . -type f -name '*~' `

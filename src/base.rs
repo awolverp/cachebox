@@ -39,7 +39,7 @@ impl TTLKeyValuePair {
     pub fn is_expired(&self) -> bool {
         match self.expire {
             Some(v) => time::Instant::now() >= v,
-            None => false
+            None => false,
         }
     }
 }

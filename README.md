@@ -29,10 +29,9 @@ def fib(n):
 - 🎯 [Features](#features)
 - 🛠️ [Installation](#installation)
 - 🎓 [Tutorial](#tutorial)
-    - [difference between `TTLCache` and `TTLCacheNoDefault`](#what-is-the-difference-between-ttlcache-and-ttlcachenodefault)
 - ⁉️ [Frequently Asked Questions](#frequently-asked-questions)
 - 🆕 [*CHANGELOG*](CHANGELOG.md)
-- ⏱️ [*BENCHMARK*](BENCHMARK.md)
+- ⏱️ [*BENCHMARK*](https://github.com/awolverp/cachebox-benchmark)
 
 ### What is caching and why to use it?
 Wikipeda:

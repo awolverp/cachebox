@@ -176,10 +176,5 @@ isinstance(cache, cachetools.Cache) -> isinstance(cache, cachebox.BaseCacheImpl)
 cache.maxsize -> cache.getmaxsize()
 ```
 
-## TODO
-- [ ] Add markdown output to benchmark
-- [ ] Add graph to benchmark
-- [ ] Add benchmark for cacheing library
-
 ## License
 Copyright (c) 2024 aWolverP - **MIT License**

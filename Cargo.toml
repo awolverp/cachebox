@@ -1,6 +1,6 @@
 [package]
 name = "cachebox"
-version = "1.0.21"
+version = "2.0.21"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -9,5 +9,5 @@ name = "cachebox"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = {version = "0.19.0", features = ["multiple-pymethods"]}
-rand = "0.8.5"
+pyo3 = {version = "0.19.0"}
+# rand = "0.8.5"

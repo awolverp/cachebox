@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "cachebox"
-version = "1.0.21"
+version = "2.0.21"
 description = "The fastest memoizing and caching Python library written in Rust"
 readme = "README.md"
 requires-python = ">=3.8"

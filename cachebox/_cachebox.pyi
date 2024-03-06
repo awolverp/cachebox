@@ -4,8 +4,9 @@ from typing import Iterable
 __version__: str
 __author__: str
 
-K = typing.TypeVar("K", typing.Hashable)
+K = typing.TypeVar("K", bound=typing.Hashable)
 V = typing.TypeVar("V")
+D = typing.TypeVar("D")
 
 class BaseCacheImpl(typing.Generic[K, V]):
     """
@@ -48,10 +49,10 @@ class BaseCacheImpl(typing.Generic[K, V]):
     def keys(self) -> typing.List[V]: ...
     def values(self) -> typing.List[V]: ...
     def items(self) -> typing.List[typing.Tuple[K, V]]: ...
-    def get(self, key: K, default: typing.Optional[V] = None) -> typing.Optional[V]: ...
-    def pop(self, key: K, default: typing.Optional[V] = None) -> typing.Optional[V]: ...
+    def get(self, key: K, default: typing.Optional[D] = None) -> typing.Union[V, D, None]: ...
+    def pop(self, key: K, default: typing.Optional[D] = None) -> typing.Union[V, D, None]: ...
     def popitem(self) -> typing.Tuple[K, V]: ...
-    def setdefault(self, key: K, value: typing.Optional[V] = None) -> typing.Optional[V]: ...
+    def setdefault(self, key: K, value: typing.Optional[D] = None) -> typing.Union[V, D, None]: ...
     def update(self, iterable: typing.Union[typing.Dict[K, V], typing.Iterable[tuple]]) -> None: ...
     def clear(self, *, reuse: bool = True) -> None: ...
 
@@ -75,6 +76,10 @@ class Cache(BaseCacheImpl, typing.Generic[K, V]):
         Raise OverflowError if the `maxsize` or the `capacity` be negative number.
         """
         ...
+    
+    def __setitem__(self, key: K, value: V) -> None: ...
+    def __getitem__(self, key: K) -> V: ...
+    def __delitem__(self, key: K) -> None: ...
 
     def __contains__(self, key: K) -> bool:
         """
@@ -127,7 +132,7 @@ class Cache(BaseCacheImpl, typing.Generic[K, V]):
         """
         ...
 
-    def get(self, key: K, default: typing.Optional[V] = None) -> typing.Optional[V]:
+    def get(self, key: K, default: typing.Optional[D] = None) -> typing.Union[V, D, None]:
         """
         Returns value of specified key; returns `default` if key not found.
 
@@ -135,7 +140,7 @@ class Cache(BaseCacheImpl, typing.Generic[K, V]):
         """
         ...
 
-    def pop(self, key: K, default: typing.Optional[V] = None) -> typing.Optional[V]:
+    def pop(self, key: K, default: typing.Optional[D] = None) -> typing.Union[V, D, None]:
         """
         Deletes and returns the stored key-value from cache; returns `default` if key not found.
 
@@ -149,7 +154,7 @@ class Cache(BaseCacheImpl, typing.Generic[K, V]):
         """
         ...
 
-    def setdefault(self, key: K, value: typing.Optional[V] = None) -> typing.Optional[V]:
+    def setdefault(self, key: K, value: typing.Optional[D] = None) -> typing.Union[V, D, None]:
         """
         Returns the value of the specified key.
 
@@ -195,6 +200,10 @@ class FIFOCache(BaseCacheImpl, typing.Generic[K, V]):
         This cache is thread-safe.
         """
         ...
+
+    def __setitem__(self, key: K, value: V) -> None: ...
+    def __getitem__(self, key: K) -> V: ...
+    def __delitem__(self, key: K) -> None: ...
 
     def __contains__(self, key: K) -> bool:
         """
@@ -244,7 +253,7 @@ class FIFOCache(BaseCacheImpl, typing.Generic[K, V]):
         """
         ...
 
-    def get(self, key: K, default: typing.Optional[V] = None) -> typing.Optional[V]:
+    def get(self, key: K, default: typing.Optional[D] = None) -> typing.Union[V, D, None]:
         """
         Returns value of specified key; returns `default` if key not found.
 
@@ -252,7 +261,7 @@ class FIFOCache(BaseCacheImpl, typing.Generic[K, V]):
         """
         ...
 
-    def pop(self, key: K, default: typing.Optional[V] = None) -> typing.Optional[V]:
+    def pop(self, key: K, default: typing.Optional[D] = None) -> typing.Union[V, D, None]:
         """
         Deletes and returns the stored key-value from cache; returns `default` if key not found.
 
@@ -314,6 +323,10 @@ class LFUCache(BaseCacheImpl, typing.Generic[K, V]):
         This cache is thread-safe.
         """
         ...
+    
+    def __setitem__(self, key: K, value: V) -> None: ...
+    def __getitem__(self, key: K) -> V: ...
+    def __delitem__(self, key: K) -> None: ...
 
     def __contains__(self, key: K) -> bool:
         """
@@ -363,7 +376,7 @@ class LFUCache(BaseCacheImpl, typing.Generic[K, V]):
         """
         ...
 
-    def get(self, key: K, default: typing.Optional[V] = None) -> typing.Optional[V]:
+    def get(self, key: K, default: typing.Optional[D] = None) -> typing.Union[V, D, None]:
         """
         Returns value of specified key; returns `default` if key not found.
 
@@ -371,7 +384,7 @@ class LFUCache(BaseCacheImpl, typing.Generic[K, V]):
         """
         ...
 
-    def pop(self, key: K, default: typing.Optional[V] = None) -> typing.Optional[V]:
+    def pop(self, key: K, default: typing.Optional[D] = None) -> typing.Union[V, D, None]:
         """
         Deletes and returns the stored key-value from cache; returns `default` if key not found.
 
@@ -415,7 +428,7 @@ class LFUCache(BaseCacheImpl, typing.Generic[K, V]):
         """
         ...
 
-class RRCache(BaseCacheImpl):
+class RRCache(BaseCacheImpl, typing.Generic[K, V]):
     def __init__(self, maxsize: int, *, capacity: int = ...) -> None:
         """
         Random Replacement Cache Implemention. ( details: https://en.wikipedia.org/wiki/Least_frequently_used )
@@ -433,6 +446,10 @@ class RRCache(BaseCacheImpl):
         This cache is thread-safe.
         """
         ...
+
+    def __setitem__(self, key: K, value: V) -> None: ...
+    def __getitem__(self, key: K) -> V: ...
+    def __delitem__(self, key: K) -> None: ...
 
     def __contains__(self, key: K) -> bool:
         """
@@ -482,7 +499,7 @@ class RRCache(BaseCacheImpl):
         """
         ...
 
-    def get(self, key: K, default: typing.Optional[V] = None) -> typing.Optional[V]:
+    def get(self, key: K, default: typing.Optional[D] = None) -> typing.Union[V, D, None]:
         """
         Returns value of specified key; returns `default` if key not found.
 
@@ -490,7 +507,7 @@ class RRCache(BaseCacheImpl):
         """
         ...
 
-    def pop(self, key: K, default: typing.Optional[V] = None) -> typing.Optional[V]:
+    def pop(self, key: K, default: typing.Optional[D] = None) -> typing.Union[V, D, None]:
         """
         Deletes and returns the stored key-value from cache; returns `default` if key not found.
 
@@ -534,7 +551,7 @@ class RRCache(BaseCacheImpl):
         """
         ...
 
-class LRUCache(BaseCacheImpl):
+class LRUCache(BaseCacheImpl, typing.Generic[K, V]):
     def __init__(self, maxsize: int, *, capacity: int = ...) -> None:
         """
         Least Recently Used Cache Implemention. ( details: https://www.interviewcake.com/concept/java/lru-cache )
@@ -552,6 +569,10 @@ class LRUCache(BaseCacheImpl):
         This cache is thread-safe.
         """
         ...
+    
+    def __setitem__(self, key: K, value: V) -> None: ...
+    def __getitem__(self, key: K) -> V: ...
+    def __delitem__(self, key: K) -> None: ...
 
     def __contains__(self, key: K) -> bool:
         """
@@ -601,7 +622,7 @@ class LRUCache(BaseCacheImpl):
         """
         ...
 
-    def get(self, key: K, default: typing.Optional[V] = None) -> typing.Optional[V]:
+    def get(self, key: K, default: typing.Optional[D] = None) -> typing.Union[V, D, None]:
         """
         Returns value of specified key; returns `default` if key not found.
 
@@ -609,7 +630,7 @@ class LRUCache(BaseCacheImpl):
         """
         ...
 
-    def pop(self, key: K, default: typing.Optional[V] = None) -> typing.Optional[V]:
+    def pop(self, key: K, default: typing.Optional[D] = None) -> typing.Union[V, D, None]:
         """
         Deletes and returns the stored key-value from cache; returns `default` if key not found.
 
@@ -653,7 +674,7 @@ class LRUCache(BaseCacheImpl):
         """
         ...
 
-class MRUCache(BaseCacheImpl):
+class MRUCache(BaseCacheImpl, typing.Generic[K, V]):
     def __init__(self, maxsize: int, *, capacity: int = ...) -> None:
         """
         Most Recently Used Cache Implemention. ( details: https://en.wikipedia.org/wiki/Most_Recently_Used )
@@ -671,6 +692,10 @@ class MRUCache(BaseCacheImpl):
         This cache is thread-safe.
         """
         ...
+    
+    def __setitem__(self, key: K, value: V) -> None: ...
+    def __getitem__(self, key: K) -> V: ...
+    def __delitem__(self, key: K) -> None: ...
 
     def __contains__(self, key: K) -> bool:
         """
@@ -720,7 +745,7 @@ class MRUCache(BaseCacheImpl):
         """
         ...
 
-    def get(self, key: K, default: typing.Optional[V] = None) -> typing.Optional[V]:
+    def get(self, key: K, default: typing.Optional[D] = None) -> typing.Union[V, D, None]:
         """
         Returns value of specified key; returns `default` if key not found.
 
@@ -728,7 +753,7 @@ class MRUCache(BaseCacheImpl):
         """
         ...
 
-    def pop(self, key: K, default: typing.Optional[V] = None) -> typing.Optional[V]:
+    def pop(self, key: K, default: typing.Optional[D] = None) -> typing.Union[V, D, None]:
         """
         Deletes and returns the stored key-value from cache; returns `default` if key not found.
 
@@ -772,7 +797,7 @@ class MRUCache(BaseCacheImpl):
         """
         ...
 
-class TTLCache(BaseCacheImpl):
+class TTLCache(BaseCacheImpl, typing.Generic[K, V]):
     def __init__(self, maxsize: int, ttl: float, *, capacity: int = ...) -> None:
         """
         LRU Cache Implementation With Per-Item TTL Value.
@@ -791,6 +816,10 @@ class TTLCache(BaseCacheImpl):
         This cache is thread-safe.
         """
         ...
+    
+    def __setitem__(self, key: K, value: V) -> None: ...
+    def __getitem__(self, key: K) -> V: ...
+    def __delitem__(self, key: K) -> None: ...
 
     def __contains__(self, key: K) -> bool:
         """
@@ -840,7 +869,7 @@ class TTLCache(BaseCacheImpl):
         """
         ...
 
-    def get(self, key: K, default: typing.Optional[V] = None) -> typing.Optional[V]:
+    def get(self, key: K, default: typing.Optional[D] = None) -> typing.Union[V, D, None]:
         """
         Returns value of specified key; returns `default` if key not found.
 
@@ -848,7 +877,7 @@ class TTLCache(BaseCacheImpl):
         """
         ...
 
-    def pop(self, key: K, default: typing.Optional[V] = None) -> typing.Optional[V]:
+    def pop(self, key: K, default: typing.Optional[D] = None) -> typing.Union[V, D, None]:
         """
         Deletes and returns the stored key-value from cache; returns `default` if key not found.
 
@@ -939,7 +968,7 @@ class TTLCache(BaseCacheImpl):
 
     def getttl(self) -> float: ...
 
-class TTLCacheNoDefault(BaseCacheImpl):
+class TTLCacheNoDefault(BaseCacheImpl, typing.Generic[K, V]):
     def __init__(self, maxsize: int, *, capacity: int = ...) -> None:
         """
         Time-aware Cache Implemention; With this cache, you can set its own expiration time for each key-value pair.
@@ -961,6 +990,10 @@ class TTLCacheNoDefault(BaseCacheImpl):
         so if speed is very important to you, we recommend use `TTLCache` instead of this.
         """
         ...
+
+    def __setitem__(self, key: K, value: V) -> None: ...
+    def __getitem__(self, key: K) -> V: ...
+    def __delitem__(self, key: K) -> None: ...
 
     def __contains__(self, key: K) -> bool:
         """
@@ -1012,7 +1045,7 @@ class TTLCacheNoDefault(BaseCacheImpl):
         """
         ...
 
-    def get(self, key: K, default: typing.Optional[V] = None) -> typing.Optional[V]:
+    def get(self, key: K, default: typing.Optional[D] = None) -> typing.Union[V, D, None]:
         """
         Returns value of specified key; returns `default` if key not found.
 
@@ -1020,7 +1053,7 @@ class TTLCacheNoDefault(BaseCacheImpl):
         """
         ...
 
-    def pop(self, key: K, default: typing.Optional[V] = None) -> typing.Optional[V]:
+    def pop(self, key: K, default: typing.Optional[D] = None) -> typing.Union[V, D, None]:
         """
         Deletes and returns the stored key-value from cache; returns `default` if key not found.
 

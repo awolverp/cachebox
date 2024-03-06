@@ -12,8 +12,8 @@ fn _cachebox(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add("__author__", "aWolverP")?;
 
     // Classes
-    m.add_class::<classes::base::BaseCacheImpl>()?;
-    m.add_class::<classes::cache::Cache>()?;
+    m.add_class::<classes::BaseCacheImpl>()?;
+    m.add_class::<classes::Cache>()?;
 
     Ok(())
 }

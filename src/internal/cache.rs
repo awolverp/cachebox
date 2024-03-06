@@ -10,10 +10,14 @@ impl<K, V> Cache<K, V> {
     #[must_use]
     pub fn new(maxsize: usize, capacity: usize) -> Self {
         if capacity > 0 {
+            let cap = if maxsize > 0 && capacity <= maxsize {
+                capacity
+            } else {
+                maxsize
+            };
+
             return Cache {
-                inner: HashMap::with_capacity(
-                    if capacity <= maxsize { capacity } else { maxsize }
-                ),
+                inner: HashMap::with_capacity(cap),
                 maxsize,
             };
         }
@@ -42,15 +46,18 @@ impl<K, V> Cache<K, V> {
 
 impl<K: std::hash::Hash + Eq, V> Cache<K, V> {
     #[inline]
-    #[must_use]
-    pub fn insert(&mut self, key: K, value: V) -> Result<(), String> {
-        if self.maxsize > 0 {
-            if self.inner.len() >= self.maxsize && self.inner.get(&key).is_none() {
-                return Err(String::from("The cache reached maximum size"));
-            }
+    pub fn shrink_to_fit(&mut self) {
+        self.inner.shrink_to_fit();
+    }
+
+    #[inline]
+    pub fn insert(&mut self, key: K, value: V) -> pyo3::PyResult<()> {
+        if self.maxsize > 0 && self.inner.len() >= self.maxsize && self.inner.get(&key).is_none() {
+            return Err(pyo3::exceptions::PyOverflowError::new_err("The cache reached maximum size"));
         }
 
         self.inner.insert(key, value);
+
         Ok(())
     }
 
@@ -87,46 +94,62 @@ impl<K: std::hash::Hash + Eq, V> Cache<K, V> {
     pub fn iter(&self) -> std::collections::hash_map::Iter<'_, K, V> {
         self.inner.iter()
     }
-
+    
     #[inline]
     pub fn drain(&mut self) -> std::collections::hash_map::Drain<'_, K, V> {
         self.inner.drain()
     }
 
-    #[inline]
-    pub fn reserve(&mut self, additional: usize) -> Result<(), std::collections::TryReserveError> {
-        self.inner.try_reserve(additional)
-    }
 
     #[inline]
     pub fn get(&self, key: &K) -> Option<&V> {
         self.inner.get(key)
     }
+    
+    #[inline]
+    pub fn reserve(&mut self, additional: usize) -> Result<(), std::collections::TryReserveError> {
+        self.inner.try_reserve(additional)
+    }
+}
 
-    pub fn update<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) -> Result<(), String> {
-        for (key, val) in iter {
-            self.insert(key, val)?;
+impl<K: std::hash::Hash + Eq, V: Clone> Cache<K, V> {
+    #[inline]
+    pub fn setdefault(&mut self, key: K, default: V) -> pyo3::PyResult<V> {
+        let exists = self.inner.get(&key);
+        if exists.is_some() {
+            return Ok(exists.cloned().unwrap());
+        }
+
+        if self.maxsize > 0 && self.inner.len() >= self.maxsize {
+            return Err(pyo3::exceptions::PyOverflowError::new_err("The cache reached maximum size"));
+        }
+
+        self.inner.insert(key, default.clone());
+        Ok(default)
+    }
+}
+
+impl<K: std::hash::Hash + Eq, V> Cache<K, V> {
+    #[inline]
+    pub fn update<T: IntoIterator<Item = pyo3::PyResult<(K, V)>>>(
+        &mut self,
+        iterable: T,
+    ) -> pyo3::PyResult<()> {
+        for result in iterable {
+            let (key, val) = result?;
+            if self.maxsize > 0 && self.inner.len() >= self.maxsize && self.inner.get(&key).is_none() {
+                return Err(pyo3::exceptions::PyOverflowError::new_err("The cache reached maximum size"));
+            }
+
+            self.inner.insert(key, val);
         }
 
         Ok(())
     }
 }
 
-impl<K: std::hash::Hash + Eq + Copy, V> Cache<K, V> {
-    #[inline]
-    pub fn popitem(&mut self) -> Option<(K, V)> {
-        if let Some(key) = self.inner.keys().next().cloned() {
-            let value = self.inner.remove(&key).unwrap();
-            return Some((key, value));
-        }
-
-        None
+impl<K: Clone, V:Clone> Clone for Cache<K, V> {
+    fn clone(&self) -> Self {
+        Cache { inner: self.inner.clone(), maxsize: self.maxsize }
     }
 }
-
-impl<K: Eq + std::hash::Hash, V: PartialEq> PartialEq for Cache<K, V> {
-    fn eq(&self, other: &Self) -> bool {
-        self.maxsize == other.maxsize && self.inner == other.inner
-    }
-}
-impl<K: Eq + std::hash::Hash, V: PartialEq> Eq for Cache<K, V> {}

@@ -1,5 +1,5 @@
 # Cachebox
-**Cachebox** is a Python library (written in Rust) that provides memoizations and cache implementions with
+**Cachebox** is a Python library (written in Rust) that provides memoizations and cache implementations with
 different cache replecement policies.
 
 This library is faster than other libraries and uses lower memory than them, [*you can see benchmarks here*](https://github.com/awolverp/cachebox-benchmark).
@@ -49,8 +49,8 @@ Researchgate:
 ### Features
 Pros:
 - Thread-safe (uses Rusts `RwLock`)
-- You can use it `async` and `sync`
-- Varius cache alghoritms (supports *8* cache alghoritms)
+- `sync` and `async` compatible
+- Various cache algorithms (supports *8* cache algorithms)
 - Super fast (is written in Rust language)
 - High performance
 
@@ -58,14 +58,14 @@ Cons:
 - Does not support iterating (for `values`, `keys` and `items` methods)
 
 Supported:
-- `Cache`: Simple cache implemention with no policy and alghoritm.
-- `FIFOCache`: First In First Out cache implemention.
-- `LFUCache`: Least Frequently Used cache implemention.
-- `RRCache`: Random Replacement cache implemention.
-- `LRUCache`: Least Recently Used cache implemention.
-- `MRUCache`: Most Recently Used cache implemention.
+- `Cache`: Simple cache implementation with no policy and algorithm.
+- `FIFOCache`: First In First Out cache implementation.
+- `LFUCache`: Least Frequently Used cache implementation.
+- `RRCache`: Random Replacement cache implementation.
+- `LRUCache`: Least Recently Used cache implementation.
+- `MRUCache`: Most Recently Used cache implementation.
 - `TTLCache`: LRU Cache Implementation With Per-Item TTL Value.
-- `TTLCacheNoDefault`: Time-aware Cache Implemention; With this cache, you can set its own expiration time for each key-value pair.
+- `TTLCacheNoDefault`: Time-aware Cache Implmenetation; With this cache, you can set its own expiration time for each key-value pair.
 
 
 ## Installation
@@ -75,11 +75,11 @@ pip3 install -U cachebox
 ```
 
 ## Tutorial
-This package is very easy to use. You can use all implementions like a dictionary;
+This package is very easy to use. You can use all implementations like a dictionary;
 they supported all `collections.MutableMapping` methods.
 But *there are some new methods* you can see in examples.
 
-At first, think about which alghoritm do you want to use? import and use it like a dictionary; In this examples we used `LRUCache`, `TTLCache` and `TTLCacheNoDefault`. 
+At first, think about which algorithm do you want to use? import and use it like a dictionary; In this examples we used `LRUCache`, `TTLCache` and `TTLCacheNoDefault`. 
 
 **LRUCache** example:
 ```python

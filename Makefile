@@ -51,7 +51,3 @@ clean:
 	rm -rf build
 	rm -rf perf.data*
 	rm -rf cachebox/*.so
-
-.PHONY: bench
-bench:
-	python3 benchmarks

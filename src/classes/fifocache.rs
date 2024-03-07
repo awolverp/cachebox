@@ -4,6 +4,8 @@ use pyo3::prelude::*;
 use crate::classes::base;
 use crate::internal;
 
+use std::hash::Hasher;
+
 #[pyclass(extends=base::BaseCacheImpl, subclass, module = "cachebox._cachebox")]
 pub struct FIFOCache {
     pub inner: RwLock<internal::FIFOCache<isize, base::KeyValuePair>>,
@@ -177,14 +179,10 @@ impl FIFOCache {
         Py::new(slf.py(), iter)
     }
 
-    fn __repr__(&self) -> String {
-        let read = self.inner.read();
-        format!(
-            "<cachebox._cachebox.FIFOCache len={} maxsize={} capacity={}>",
-            read.len(),
-            read.maxsize,
-            read.capacity()
-        )
+    fn __repr__(slf: &PyCell<Self>) -> PyResult<String> {
+        let class_name: &str = slf.get_type().name()?;
+        let borrowed = slf.borrow();
+        Ok(format!("{}({} / {}, capacity={})", class_name, borrowed.__len__(), borrowed.maxsize(), borrowed.capacity()))
     }
 
     fn capacity(&self) -> usize {
@@ -298,5 +296,19 @@ impl FIFOCache {
 
     fn __clear__(&mut self) {
         self.inner.write().clear(false);
+    }
+
+    fn __hash__(&self, py: Python<'_>) -> u64 {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        
+        let read = self.inner.read();
+        hasher.write_usize(read.maxsize);
+
+        for (key, val) in read.iter() {
+            hasher.write_isize(*key);
+            hasher.write_isize(pyany_to_hash!(val.1, py).unwrap())
+        }
+
+        hasher.finish()
     }
 }

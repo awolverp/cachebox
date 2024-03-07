@@ -132,6 +132,10 @@ impl<K: std::hash::Hash + Eq, V> FIFOCache<K, V> {
         self.inner.values()
     }
 
+    pub fn iter(&self) -> std::collections::hash_map::Iter<'_, K, V> {
+        self.inner.iter()
+    }
+
     pub fn get(&self, key: &K) -> Option<&V> {
         self.inner.get(key)
     }

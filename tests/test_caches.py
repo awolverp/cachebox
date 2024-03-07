@@ -326,54 +326,54 @@ class TestFIFOCache(unittest.TestCase, CacheTestSuiteMixin):
         self.assertNotIn("age", obj)
 
 
-# class TestLFUCache(unittest.TestCase, CacheTestSuiteMixin):
-#     cache = cachebox.LFUCache
+class TestLFUCache(unittest.TestCase, CacheTestSuiteMixin):
+    cache = cachebox.LFUCache
 
-#     def test_policy(self):
-#         obj = self.cache(5)
+    def test_policy(self):
+        obj = self.cache(5)
 
-#         for i in range(5):
-#             obj[i] = i
+        for i in range(5):
+            obj[i] = i
 
-#         for i in range(10):
-#             self.assertEqual(0, obj[0])
-#         for i in range(7):
-#             self.assertEqual(1, obj[1])
-#         for i in range(3):
-#             self.assertEqual(2, obj[2])
-#         for i in range(4):
-#             self.assertEqual(3, obj[3])
-#         for i in range(6):
-#             self.assertEqual(4, obj[4])
+        for i in range(10):
+            self.assertEqual(0, obj[0])
+        for i in range(7):
+            self.assertEqual(1, obj[1])
+        for i in range(3):
+            self.assertEqual(2, obj[2])
+        for i in range(4):
+            self.assertEqual(3, obj[3])
+        for i in range(6):
+            self.assertEqual(4, obj[4])
 
-#         self.assertEqual((2, 2), obj.popitem())
-#         self.assertEqual((3, 3), obj.popitem())
+        self.assertEqual((2, 2), obj.popitem())
+        self.assertEqual((3, 3), obj.popitem())
 
-#         for i in range(10):
-#             self.assertEqual(4, obj.get(4))
+        for i in range(10):
+            self.assertEqual(4, obj.get(4))
 
-#         self.assertEqual((1, 1), obj.popitem())
+        self.assertEqual((1, 1), obj.popitem())
 
-#         self.assertEqual(2, len(obj))
-#         obj.clear()
+        self.assertEqual(2, len(obj))
+        obj.clear()
 
-#         for i in range(5):
-#             obj[i] = i
-#         self.assertEqual([0, 1, 2, 3, 4], sorted(obj.keys()))
+        for i in range(5):
+            obj[i] = i
+        self.assertEqual([0, 1, 2, 3, 4], sorted(obj.keys()))
 
-#         for i in range(10):
-#             obj[0] += 1
-#         for i in range(7):
-#             obj[1] += 1
-#         for i in range(3):
-#             obj[2] += 1
-#         for i in range(4):
-#             obj[3] += 1
-#         for i in range(6):
-#             obj[4] += 1
+        for i in range(10):
+            obj[0] += 1
+        for i in range(7):
+            obj[1] += 1
+        for i in range(3):
+            obj[2] += 1
+        for i in range(4):
+            obj[3] += 1
+        for i in range(6):
+            obj[4] += 1
 
-#         obj[5] = 4
-#         self.assertEqual([0, 1, 3, 4, 5], sorted(obj.keys()))
+        obj[5] = 4
+        self.assertEqual([0, 1, 3, 4, 5], sorted(obj.keys()))
 
 
 # class TestLRUCache(unittest.TestCase, CacheTestSuiteMixin):

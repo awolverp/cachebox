@@ -70,10 +70,7 @@ impl FIFOCache {
     }
 
     fn insert(&mut self, py: Python<'_>, key: Py<PyAny>, value: Py<PyAny>) -> PyResult<()> {
-        let hash = pyany_to_hash!(key, py)?;
-        self.inner
-            .write()
-            .insert(hash, base::KeyValuePair(key, value))
+        self.__setitem__(py, key, value)
     }
 
     fn __getitem__(&self, py: Python<'_>, key: Py<PyAny>) -> PyResult<Py<PyAny>> {
@@ -82,6 +79,19 @@ impl FIFOCache {
         match self.inner.read().get(&hash) {
             Some(x) => Ok(x.1.clone()),
             None => Err(pyo3::exceptions::PyKeyError::new_err(key)),
+        }
+    }
+
+    #[pyo3(signature=(key, default=None))]
+    fn get(
+        &self,
+        py: Python<'_>,
+        key: Py<PyAny>,
+        default: Option<Py<PyAny>>,
+    ) -> Py<PyAny> {
+        match self.__getitem__(py, key) {
+            Ok(val) => val,
+            Err(_) => default.unwrap_or_else(|| py.None())
         }
     }
 
@@ -95,12 +105,7 @@ impl FIFOCache {
     }
 
     fn delete(&mut self, py: Python<'_>, key: Py<PyAny>) -> PyResult<()> {
-        let hash = pyany_to_hash!(key, py)?;
-
-        match self.inner.write().remove(&hash) {
-            Some(_) => Ok(()),
-            None => Err(pyo3::exceptions::PyKeyError::new_err(key)),
-        }
+        self.__delitem__(py, key)
     }
 
     fn __contains__(&self, py: Python<'_>, key: Py<PyAny>) -> PyResult<bool> {
@@ -182,7 +187,13 @@ impl FIFOCache {
     fn __repr__(slf: &PyCell<Self>) -> PyResult<String> {
         let class_name: &str = slf.get_type().name()?;
         let borrowed = slf.borrow();
-        Ok(format!("{}({} / {}, capacity={})", class_name, borrowed.__len__(), borrowed.maxsize(), borrowed.capacity()))
+        Ok(format!(
+            "{}({} / {}, capacity={})",
+            class_name,
+            borrowed.__len__(),
+            borrowed.maxsize(),
+            borrowed.capacity()
+        ))
     }
 
     fn capacity(&self) -> usize {
@@ -229,27 +240,10 @@ impl FIFOCache {
         }
     }
 
-    #[pyo3(signature=(key, default=None))]
-    fn get(
-        &self,
-        py: Python<'_>,
-        key: Py<PyAny>,
-        default: Option<Py<PyAny>>,
-    ) -> PyResult<Py<PyAny>> {
-        let hash = pyany_to_hash!(key, py)?;
-
-        match self.inner.read().get(&hash) {
-            Some(v) => Ok(v.1.clone()),
-            None => Ok(default.unwrap_or_else(|| py.None())),
-        }
-    }
-
     fn popitem(&self) -> PyResult<(Py<PyAny>, Py<PyAny>)> {
         match self.inner.write().popitem() {
-            Some(val) => {
-                Ok((val.0, val.1))
-            }
-            None => Err(pyo3::exceptions::PyKeyError::new_err(()))
+            Some(val) => Ok((val.0, val.1)),
+            None => Err(pyo3::exceptions::PyKeyError::new_err(())),
         }
     }
 
@@ -300,12 +294,24 @@ impl FIFOCache {
 
     fn __hash__(&self) -> u64 {
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        
+
         let read = self.inner.read();
         hasher.write_usize(read.maxsize);
 
-        for key in read.keys() { hasher.write_isize(*key); }
+        for key in read.keys() {
+            hasher.write_isize(*key);
+        }
 
         hasher.finish()
+    }
+
+    fn first(&self) -> Option<Py<PyAny>> {
+        let read = self.inner.read();
+        Some(read.get(read.first()?)?.0.clone())
+    }
+
+    fn last(&self) -> Option<Py<PyAny>> {
+        let read = self.inner.read();
+        Some(read.get(read.last()?)?.0.clone())
     }
 }

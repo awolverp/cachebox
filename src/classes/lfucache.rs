@@ -7,12 +7,12 @@ use crate::internal;
 use std::hash::Hasher;
 
 #[pyclass(extends=base::BaseCacheImpl, subclass, module = "cachebox._cachebox")]
-pub struct Cache {
-    pub inner: RwLock<internal::Cache<isize, base::KeyValuePair>>,
+pub struct LFUCache {
+    pub inner: RwLock<internal::LFUCache<isize, base::KeyValuePair>>,
 }
 
 #[pymethods]
-impl Cache {
+impl LFUCache {
     #[new]
     #[pyo3(signature=(maxsize, iterable=None, *, capacity=0))]
     fn __new__(
@@ -22,8 +22,8 @@ impl Cache {
         capacity: usize,
     ) -> PyResult<(Self, base::BaseCacheImpl)> {
         let (mut slf, base) = (
-            Cache {
-                inner: RwLock::new(internal::Cache::new(maxsize, capacity)),
+            LFUCache {
+                inner: RwLock::new(internal::LFUCache::new(maxsize, capacity)),
             },
             base::BaseCacheImpl {},
         );
@@ -49,9 +49,13 @@ impl Cache {
     }
 
     fn __sizeof__(&self) -> usize {
-        let cap = self.inner.read().capacity();
+        let read = self.inner.read();
+        let cap = read.capacity();
 
-        cap * base::ISIZE_MEMORY_SIZE + cap * base::PYOBJECT_MEMORY_SIZE + base::ISIZE_MEMORY_SIZE
+        (cap * base::ISIZE_MEMORY_SIZE)
+            + (cap * base::PYOBJECT_MEMORY_SIZE)
+            + (read.counter_capacity() * base::ISIZE_MEMORY_SIZE * 2)
+            + base::ISIZE_MEMORY_SIZE
     }
 
     fn __bool__(&self) -> bool {
@@ -69,10 +73,10 @@ impl Cache {
         self.__setitem__(py, key, value)
     }
 
-    fn __getitem__(&self, py: Python<'_>, key: Py<PyAny>) -> PyResult<Py<PyAny>> {
+    fn __getitem__(&mut self, py: Python<'_>, key: Py<PyAny>) -> PyResult<Py<PyAny>> {
         let hash = pyany_to_hash!(key, py)?;
 
-        match self.inner.read().get(&hash) {
+        match self.inner.write().get(&hash) {
             Some(x) => Ok(x.1.clone()),
             None => Err(pyo3::exceptions::PyKeyError::new_err(key)),
         }
@@ -80,7 +84,7 @@ impl Cache {
 
     #[pyo3(signature=(key, default=None))]
     fn get(
-        &self,
+        &mut self,
         py: Python<'_>,
         key: Py<PyAny>,
         default: Option<Py<PyAny>>,
@@ -112,15 +116,13 @@ impl Cache {
     fn __eq__(&self, other: &Self) -> bool {
         let map1 = self.inner.read();
         let map2 = other.inner.read();
-
-        map1.maxsize == map2.maxsize && map1.keys().all(|x| map2.contains_key(x))
+        map1.eq(&map2)
     }
 
     fn __ne__(&self, other: &Self) -> bool {
         let map1 = self.inner.read();
         let map2 = other.inner.read();
-
-        map1.maxsize != map2.maxsize || map1.keys().all(|x| !map2.contains_key(x))
+        map1.ne(&map2)
     }
 
     fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<base::VecOneValueIterator>> {
@@ -224,8 +226,11 @@ impl Cache {
         }
     }
 
-    fn popitem(&self) -> PyResult<()> {
-        Err(pyo3::exceptions::PyNotImplementedError::new_err(()))
+    fn popitem(&self) -> PyResult<(Py<PyAny>, Py<PyAny>)> {
+        match self.inner.write().popitem() {
+            Some(val) => Ok((val.0, val.1)),
+            None => Err(pyo3::exceptions::PyKeyError::new_err(())),
+        }
     }
 
     fn update(&mut self, py: Python<'_>, iterable: Py<PyAny>) -> PyResult<()> {
@@ -284,5 +289,11 @@ impl Cache {
         }
 
         hasher.finish()
+    }
+
+    fn least_frequently_used(&mut self) -> Option<Py<PyAny>> {
+        let mut write = self.inner.write();
+        let f = write.least_frequently_used()?;
+        Some(write.get(&f)?.0.clone())
     }
 }

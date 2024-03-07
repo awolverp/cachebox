@@ -30,7 +30,7 @@ _CacheInfo = collections.namedtuple(
 def cached(
     cache: _cachebox.BaseCacheImpl,
     key_maker: typing.Callable[[tuple, dict], typing.Any] = make_key,
-    clear_reuse: bool = True,
+    clear_reuse: bool = False,
     info: bool = False,
 ):
     if isinstance(cache, dict):

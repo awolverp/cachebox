@@ -1,13 +1,12 @@
-use std::collections::HashMap;
-use std::collections::VecDeque;
+use std::collections::{HashMap, BinaryHeap};
 
-pub struct FIFOCache<K: Sized, V> {
-    inner: HashMap<K, V>,
-    order: VecDeque<K>,
+pub struct LFUCache<K, V> {
+    inner: std::collections::HashMap<K, V>,
+    counter: std::collections::HashMap<K, usize>,
     pub maxsize: usize,
 }
 
-impl<K, V> FIFOCache<K, V> {
+impl<K, V> LFUCache<K, V> {
     #[must_use]
     pub fn new(maxsize: usize, capacity: usize) -> Self {
         if capacity > 0 {
@@ -17,16 +16,16 @@ impl<K, V> FIFOCache<K, V> {
                 maxsize
             };
 
-            return FIFOCache {
+            return LFUCache {
                 inner: HashMap::with_capacity(cap),
-                order: VecDeque::with_capacity(cap),
+                counter: HashMap::with_capacity(cap),
                 maxsize,
             };
         }
 
-        FIFOCache {
+        LFUCache {
             inner: HashMap::new(),
-            order: VecDeque::new(),
+            counter: HashMap::new(),
             maxsize,
         }
     }
@@ -39,8 +38,8 @@ impl<K, V> FIFOCache<K, V> {
         self.inner.capacity()
     }
 
-    pub fn order_capacity(&self) -> usize {
-        self.order.capacity()
+    pub fn counter_capacity(&self) -> usize {
+        self.counter.capacity()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -48,7 +47,31 @@ impl<K, V> FIFOCache<K, V> {
     }
 }
 
-impl<K: std::hash::Hash + Eq + Clone, V> FIFOCache<K, V> {
+
+impl<K: std::hash::Hash + Eq + std::cmp::Ord + Copy, V> LFUCache<K, V> {
+    pub fn popitem(&mut self) -> Option<V> {
+        if self.inner.is_empty() {
+            None
+        } else {
+            let heap: BinaryHeap<_> = self.counter.iter().map(|(t, n)| (std::cmp::Reverse(*n), *t)).collect();
+            let (std::cmp::Reverse(_), least_frequently_used_key) = heap.peek().unwrap();
+
+            self.counter.remove(least_frequently_used_key);
+            self.inner.remove(least_frequently_used_key)
+        }
+    }
+
+    pub fn least_frequently_used(&self) -> Option<K> {
+        if self.inner.is_empty() {
+            None
+        } else {
+            let heap: BinaryHeap<_> = self.counter.iter().map(|(t, n)| (std::cmp::Reverse(*n), *t)).collect();
+            let (std::cmp::Reverse(_), least_frequently_used_key) = heap.peek().unwrap();
+
+            Some(*least_frequently_used_key)
+        }
+    }
+
     pub fn insert(&mut self, key: K, value: V) -> pyo3::PyResult<()> {
         if self.maxsize > 0 && self.inner.len() >= self.maxsize && self.inner.get(&key).is_none() {
             self.popitem();
@@ -58,8 +81,12 @@ impl<K: std::hash::Hash + Eq + Clone, V> FIFOCache<K, V> {
         let time_to_shrink = ((length + 1) == self.maxsize) && length == self.inner.capacity();
 
         match self.inner.insert(key.clone(), value) {
-            Some(_) => (),
-            None => self.order.push_back(key),
+            Some(_) => {
+                *self.counter.get_mut(&key).unwrap() += 1;
+            },
+            None => {
+                self.counter.insert(key, 0);
+            }
         }
 
         if time_to_shrink {
@@ -82,32 +109,16 @@ impl<K: std::hash::Hash + Eq + Clone, V> FIFOCache<K, V> {
     }
 }
 
-impl<K: std::hash::Hash + Eq, V> FIFOCache<K, V> {
+impl<K: std::hash::Hash + Eq, V> LFUCache<K, V> {
     pub fn shrink_to_fit(&mut self) {
         self.inner.shrink_to_fit();
-        self.order.shrink_to_fit();
-    }
-
-    pub fn popitem(&mut self) -> Option<V> {
-        match self.order.pop_front() {
-            Some(x) => self.inner.remove(&x),
-            None => None,
-        }
-    }
-
-    pub fn first(&self) -> Option<&K> {
-        self.order.front()
-    }
-
-    pub fn last(&self) -> Option<&K> {
-        self.order.back()
+        self.counter.shrink_to_fit();
     }
 
     pub fn remove(&mut self, key: &K) -> Option<V> {
         match self.inner.remove(key) {
             Some(val) => {
-                let index = self.order.iter().position(|x| x == key).unwrap();
-                self.order.remove(index);
+                self.counter.remove(key);
                 Some(val)
             }
             None => None,
@@ -120,20 +131,16 @@ impl<K: std::hash::Hash + Eq, V> FIFOCache<K, V> {
 
     pub fn clear(&mut self, reuse: bool) {
         self.inner.clear();
-        self.order.clear();
+        self.counter.clear();
 
         if !reuse {
             self.inner.shrink_to_fit();
-            self.order.shrink_to_fit();
+            self.counter.shrink_to_fit();
         }
     }
 
     pub fn keys(&self) -> std::collections::hash_map::Keys<'_, K, V> {
         self.inner.keys()
-    }
-
-    pub fn sorted_keys(&self) -> std::collections::vec_deque::Iter<'_, K> {
-        self.order.iter()
     }
 
     pub fn values(&self) -> std::collections::hash_map::Values<'_, K, V> {
@@ -144,12 +151,20 @@ impl<K: std::hash::Hash + Eq, V> FIFOCache<K, V> {
         self.inner.iter()
     }
 
-    pub fn get(&self, key: &K) -> Option<&V> {
-        self.inner.get(key)
+    pub fn get(&mut self, key: &K) -> Option<&V> {
+        match self.inner.get(key) {
+            Some(val) => {
+                *self.counter.get_mut(key).unwrap() += 1;
+                Some(val)
+            }
+            None => {
+                None
+            }
+        }
     }
 }
 
-impl<K: std::hash::Hash + Eq + Clone, V: Clone> FIFOCache<K, V> {
+impl<K: std::hash::Hash + Eq + std::cmp::Ord + Copy, V: Clone> LFUCache<K, V> {
     pub fn setdefault(&mut self, key: K, default: V) -> pyo3::PyResult<V> {
         let exists = self.inner.get(&key);
         if exists.is_some() {
@@ -164,7 +179,7 @@ impl<K: std::hash::Hash + Eq + Clone, V: Clone> FIFOCache<K, V> {
         let time_to_shrink = ((length + 1) == self.maxsize) && length == self.inner.capacity();
 
         self.inner.insert(key.clone(), default.clone());
-        self.order.push_back(key);
+        self.counter.insert(key, 0);
 
         if time_to_shrink {
             self.inner.shrink_to_fit();
@@ -174,19 +189,20 @@ impl<K: std::hash::Hash + Eq + Clone, V: Clone> FIFOCache<K, V> {
     }
 }
 
-impl<K: Clone, V: Clone> Clone for FIFOCache<K, V> {
+impl<K: Clone, V: Clone> Clone for LFUCache<K, V> {
     fn clone(&self) -> Self {
-        FIFOCache {
+        LFUCache {
             inner: self.inner.clone(),
-            order: self.order.clone(),
+            counter: self.counter.clone(),
             maxsize: self.maxsize,
         }
     }
 }
 
-impl<K: PartialEq, V> PartialEq for FIFOCache<K, V> {
+impl<K: PartialEq + std::cmp::Eq + std::hash::Hash, V> PartialEq for LFUCache<K, V> {
     fn eq(&self, other: &Self) -> bool {
-        self.maxsize == other.maxsize && self.order == other.order
+        self.maxsize == other.maxsize && self.counter == other.counter
     }
 }
-impl<K: PartialEq, V> Eq for FIFOCache<K, V> {}
+impl<K: PartialEq + std::cmp::Eq + std::hash::Hash, V> Eq for LFUCache<K, V> {}
+

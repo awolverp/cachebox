@@ -277,16 +277,13 @@ impl Cache {
         self.inner.write().clear(false);
     }
 
-    fn __hash__(&self, py: Python<'_>) -> u64 {
+    fn __hash__(&self) -> u64 {
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         
         let read = self.inner.read();
         hasher.write_usize(read.maxsize);
 
-        for (key, val) in read.iter() {
-            hasher.write_isize(*key);
-            hasher.write_isize(pyany_to_hash!(val.1, py).unwrap())
-        }
+        for key in read.keys() { hasher.write_isize(*key); }
 
         hasher.finish()
     }

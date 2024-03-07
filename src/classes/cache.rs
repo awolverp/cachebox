@@ -1,13 +1,12 @@
 use parking_lot::RwLock;
 use pyo3::prelude::*;
-use std::sync::Arc;
 
 use crate::classes::base;
 use crate::internal;
 
 #[pyclass(extends=base::BaseCacheImpl, subclass, module = "cachebox._cachebox")]
 pub struct Cache {
-    pub inner: Arc<RwLock<internal::Cache<isize, base::KeyValuePair>>>,
+    pub inner: RwLock<internal::Cache<isize, base::KeyValuePair>>,
 }
 
 #[pymethods]
@@ -22,7 +21,7 @@ impl Cache {
     ) -> PyResult<(Self, base::BaseCacheImpl)> {
         let (mut slf, base) = (
             Cache {
-                inner: Arc::new(RwLock::new(internal::Cache::new(maxsize, capacity))),
+                inner: RwLock::new(internal::Cache::new(maxsize, capacity)),
             },
             base::BaseCacheImpl {},
         );

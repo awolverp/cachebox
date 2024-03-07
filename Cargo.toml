@@ -8,6 +8,9 @@ edition = "2021"
 name = "cachebox"
 crate-type = ["cdylib"]
 
+[profile.release]
+lto = "fat"
+
 [dependencies]
 parking_lot = "0.12.1"
 pyo3 = "0.19.0"

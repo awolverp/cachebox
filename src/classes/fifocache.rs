@@ -5,12 +5,12 @@ use crate::classes::base;
 use crate::internal;
 
 #[pyclass(extends=base::BaseCacheImpl, subclass, module = "cachebox._cachebox")]
-pub struct Cache {
-    pub inner: RwLock<internal::Cache<isize, base::KeyValuePair>>,
+pub struct FIFOCache {
+    pub inner: RwLock<internal::FIFOCache<isize, base::KeyValuePair>>,
 }
 
 #[pymethods]
-impl Cache {
+impl FIFOCache {
     #[new]
     #[pyo3(signature=(maxsize, iterable=None, *, capacity=0))]
     fn __new__(
@@ -20,8 +20,8 @@ impl Cache {
         capacity: usize,
     ) -> PyResult<(Self, base::BaseCacheImpl)> {
         let (mut slf, base) = (
-            Cache {
-                inner: RwLock::new(internal::Cache::new(maxsize, capacity)),
+            FIFOCache {
+                inner: RwLock::new(internal::FIFOCache::new(maxsize, capacity)),
             },
             base::BaseCacheImpl {},
         );
@@ -47,9 +47,13 @@ impl Cache {
     }
 
     fn __sizeof__(&self) -> usize {
-        let cap = self.inner.read().capacity();
+        let read = self.inner.read();
+        let cap = read.capacity();
 
-        cap * base::ISIZE_MEMORY_SIZE + cap * base::PYOBJECT_MEMORY_SIZE + base::ISIZE_MEMORY_SIZE
+        (cap * base::ISIZE_MEMORY_SIZE)
+            + (cap * base::PYOBJECT_MEMORY_SIZE)
+            + (read.order_capacity() * base::ISIZE_MEMORY_SIZE)
+            + base::ISIZE_MEMORY_SIZE
     }
 
     fn __bool__(&self) -> bool {
@@ -105,19 +109,21 @@ impl Cache {
     fn __eq__(&self, other: &Self) -> bool {
         let map1 = self.inner.read();
         let map2 = other.inner.read();
-
-        map1.maxsize == map2.maxsize && map1.keys().all(|x| map2.contains_key(x))
+        map1.eq(&map2)
     }
 
     fn __ne__(&self, other: &Self) -> bool {
         let map1 = self.inner.read();
         let map2 = other.inner.read();
-
-        map1.maxsize != map2.maxsize || map1.keys().all(|x| !map2.contains_key(x))
+        map1.ne(&map2)
     }
 
     fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<base::VecOneValueIterator>> {
-        let view: Vec<Py<PyAny>> = slf.inner.read().values().map(|x| x.0.clone()).collect();
+        let read = slf.inner.read();
+        let view: Vec<Py<PyAny>> = read
+            .sorted_keys()
+            .map(|x| read.get(x).unwrap().0.clone())
+            .collect();
 
         let iter = base::VecOneValueIterator {
             view: view.into_iter(),
@@ -127,7 +133,11 @@ impl Cache {
     }
 
     fn keys(slf: PyRef<'_, Self>) -> PyResult<Py<base::VecOneValueIterator>> {
-        let view: Vec<Py<PyAny>> = slf.inner.read().values().map(|x| x.0.clone()).collect();
+        let read = slf.inner.read();
+        let view: Vec<Py<PyAny>> = read
+            .sorted_keys()
+            .map(|x| read.get(x).unwrap().0.clone())
+            .collect();
 
         let iter = base::VecOneValueIterator {
             view: view.into_iter(),
@@ -137,7 +147,11 @@ impl Cache {
     }
 
     fn values(slf: PyRef<'_, Self>) -> PyResult<Py<base::VecOneValueIterator>> {
-        let view: Vec<Py<PyAny>> = slf.inner.read().values().map(|x| x.1.clone()).collect();
+        let read = slf.inner.read();
+        let view: Vec<Py<PyAny>> = read
+            .sorted_keys()
+            .map(|x| read.get(x).unwrap().1.clone())
+            .collect();
 
         let iter = base::VecOneValueIterator {
             view: view.into_iter(),
@@ -147,11 +161,13 @@ impl Cache {
     }
 
     fn items(slf: PyRef<'_, Self>) -> PyResult<Py<base::VecItemsIterator>> {
-        let view: Vec<(Py<PyAny>, Py<PyAny>)> = slf
-            .inner
-            .read()
-            .values()
-            .map(|x| (x.0.clone(), x.1.clone()))
+        let read = slf.inner.read();
+        let view: Vec<(Py<PyAny>, Py<PyAny>)> = read
+            .sorted_keys()
+            .map(|x| {
+                let val = read.get(x).unwrap();
+                (val.0.clone(), val.1.clone())
+            })
             .collect();
 
         let iter = base::VecItemsIterator {
@@ -164,7 +180,7 @@ impl Cache {
     fn __repr__(&self) -> String {
         let read = self.inner.read();
         format!(
-            "<cachebox._cachebox.Cache len={} maxsize={} capacity={}>",
+            "<cachebox._cachebox.FIFOCache len={} maxsize={} capacity={}>",
             read.len(),
             read.maxsize,
             read.capacity()
@@ -230,8 +246,13 @@ impl Cache {
         }
     }
 
-    fn popitem(&self) -> PyResult<()> {
-        Err(pyo3::exceptions::PyNotImplementedError::new_err(()))
+    fn popitem(&self) -> PyResult<(Py<PyAny>, Py<PyAny>)> {
+        match self.inner.write().popitem() {
+            Some(val) => {
+                Ok((val.0, val.1))
+            }
+            None => Err(pyo3::exceptions::PyKeyError::new_err(()))
+        }
     }
 
     fn update(&mut self, py: Python<'_>, iterable: Py<PyAny>) -> PyResult<()> {

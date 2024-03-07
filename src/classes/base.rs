@@ -22,9 +22,9 @@ impl BaseCacheImpl {
     }
 }
 
-#[pyclass(name="_vec_one_value_iterator", module = "cachebox._cachebox")]
+#[pyclass(name = "_vec_one_value_iterator", module = "cachebox._cachebox")]
 pub struct VecOneValueIterator {
-    pub view: std::vec::IntoIter<Py<PyAny>>
+    pub view: std::vec::IntoIter<Py<PyAny>>,
 }
 
 #[pymethods]
@@ -38,9 +38,9 @@ impl VecOneValueIterator {
     }
 }
 
-#[pyclass(name="_vec_items_iterator", module = "cachebox._cachebox")]
+#[pyclass(name = "_vec_items_iterator", module = "cachebox._cachebox")]
 pub struct VecItemsIterator {
-    pub view: std::vec::IntoIter<(Py<PyAny>, Py<PyAny>)>
+    pub view: std::vec::IntoIter<(Py<PyAny>, Py<PyAny>)>,
 }
 
 #[pymethods]

@@ -1,8 +1,8 @@
 use pyo3::prelude::*;
 
 // Internal implementions
-mod internal;
 mod classes;
+mod internal;
 
 #[pymodule]
 #[pyo3(name = "_cachebox")]

@@ -53,7 +53,9 @@ impl<K: std::hash::Hash + Eq, V> Cache<K, V> {
     #[inline]
     pub fn insert(&mut self, key: K, value: V) -> pyo3::PyResult<()> {
         if self.maxsize > 0 && self.inner.len() >= self.maxsize && self.inner.get(&key).is_none() {
-            return Err(pyo3::exceptions::PyOverflowError::new_err("The cache reached maximum size"));
+            return Err(pyo3::exceptions::PyOverflowError::new_err(
+                "The cache reached maximum size",
+            ));
         }
 
         self.inner.insert(key, value);
@@ -94,18 +96,17 @@ impl<K: std::hash::Hash + Eq, V> Cache<K, V> {
     pub fn iter(&self) -> std::collections::hash_map::Iter<'_, K, V> {
         self.inner.iter()
     }
-    
+
     #[inline]
     pub fn drain(&mut self) -> std::collections::hash_map::Drain<'_, K, V> {
         self.inner.drain()
     }
 
-
     #[inline]
     pub fn get(&self, key: &K) -> Option<&V> {
         self.inner.get(key)
     }
-    
+
     #[inline]
     pub fn reserve(&mut self, additional: usize) -> Result<(), std::collections::TryReserveError> {
         self.inner.try_reserve(additional)
@@ -121,7 +122,9 @@ impl<K: std::hash::Hash + Eq, V: Clone> Cache<K, V> {
         }
 
         if self.maxsize > 0 && self.inner.len() >= self.maxsize {
-            return Err(pyo3::exceptions::PyOverflowError::new_err("The cache reached maximum size"));
+            return Err(pyo3::exceptions::PyOverflowError::new_err(
+                "The cache reached maximum size",
+            ));
         }
 
         self.inner.insert(key, default.clone());
@@ -137,8 +140,13 @@ impl<K: std::hash::Hash + Eq, V> Cache<K, V> {
     ) -> pyo3::PyResult<()> {
         for result in iterable {
             let (key, val) = result?;
-            if self.maxsize > 0 && self.inner.len() >= self.maxsize && self.inner.get(&key).is_none() {
-                return Err(pyo3::exceptions::PyOverflowError::new_err("The cache reached maximum size"));
+            if self.maxsize > 0
+                && self.inner.len() >= self.maxsize
+                && self.inner.get(&key).is_none()
+            {
+                return Err(pyo3::exceptions::PyOverflowError::new_err(
+                    "The cache reached maximum size",
+                ));
             }
 
             self.inner.insert(key, val);
@@ -148,8 +156,11 @@ impl<K: std::hash::Hash + Eq, V> Cache<K, V> {
     }
 }
 
-impl<K: Clone, V:Clone> Clone for Cache<K, V> {
+impl<K: Clone, V: Clone> Clone for Cache<K, V> {
     fn clone(&self) -> Self {
-        Cache { inner: self.inner.clone(), maxsize: self.maxsize }
+        Cache {
+            inner: self.inner.clone(),
+            maxsize: self.maxsize,
+        }
     }
 }

@@ -48,7 +48,7 @@ impl Cache {
 
     fn __sizeof__(&self) -> usize {
         let cap = self.inner.read().capacity();
-         
+
         cap * base::ISIZE_MEMORY_SIZE + cap * base::PYOBJECT_MEMORY_SIZE + base::ISIZE_MEMORY_SIZE
     }
 

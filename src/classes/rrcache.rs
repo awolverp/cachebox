@@ -5,12 +5,12 @@ use crate::classes::base;
 use crate::internal;
 
 #[pyclass(extends=base::BaseCacheImpl, subclass, module = "cachebox._cachebox")]
-pub struct FIFOCache {
-    pub inner: RwLock<internal::FIFOCache<isize, base::KeyValuePair>>,
+pub struct RRCache {
+    pub inner: RwLock<internal::RRCache<isize, base::KeyValuePair>>,
 }
 
 #[pymethods]
-impl FIFOCache {
+impl RRCache {
     #[new]
     #[pyo3(signature=(maxsize, iterable=None, *, capacity=0))]
     fn __new__(
@@ -20,8 +20,8 @@ impl FIFOCache {
         capacity: usize,
     ) -> PyResult<(Self, base::BaseCacheImpl)> {
         let (mut slf, base) = (
-            FIFOCache {
-                inner: RwLock::new(internal::FIFOCache::new(maxsize, capacity)),
+            RRCache {
+                inner: RwLock::new(internal::RRCache::new(maxsize, capacity)),
             },
             base::BaseCacheImpl {},
         );
@@ -35,29 +35,25 @@ impl FIFOCache {
 
     #[getter]
     fn maxsize(&self) -> usize {
-        self.inner.read().maxsize
+        self.inner.read().parent.maxsize
     }
 
     fn getmaxsize(&self) -> usize {
-        self.inner.read().maxsize
+        self.inner.read().parent.maxsize
     }
 
     fn __len__(&self) -> usize {
-        self.inner.read().len()
+        self.inner.read().parent.len()
     }
 
     fn __sizeof__(&self) -> usize {
-        let read = self.inner.read();
-        let cap = read.capacity();
+        let cap = self.inner.read().parent.capacity();
 
-        (cap * base::ISIZE_MEMORY_SIZE)
-            + (cap * base::PYOBJECT_MEMORY_SIZE)
-            + (read.order_capacity() * base::ISIZE_MEMORY_SIZE)
-            + base::ISIZE_MEMORY_SIZE
+        cap * base::ISIZE_MEMORY_SIZE + cap * base::PYOBJECT_MEMORY_SIZE + base::ISIZE_MEMORY_SIZE
     }
 
     fn __bool__(&self) -> bool {
-        !self.inner.read().is_empty()
+        !self.inner.read().parent.is_empty()
     }
 
     fn __setitem__(&mut self, py: Python<'_>, key: Py<PyAny>, value: Py<PyAny>) -> PyResult<()> {
@@ -74,7 +70,7 @@ impl FIFOCache {
     fn __getitem__(&self, py: Python<'_>, key: Py<PyAny>) -> PyResult<Py<PyAny>> {
         let hash = pyany_to_hash!(key, py)?;
 
-        match self.inner.read().get(&hash) {
+        match self.inner.read().parent.get(&hash) {
             Some(x) => Ok(x.1.clone()),
             None => Err(pyo3::exceptions::PyKeyError::new_err(key)),
         }
@@ -96,7 +92,7 @@ impl FIFOCache {
     fn __delitem__(&mut self, py: Python<'_>, key: Py<PyAny>) -> PyResult<()> {
         let hash = pyany_to_hash!(key, py)?;
 
-        match self.inner.write().remove(&hash) {
+        match self.inner.write().parent.remove(&hash) {
             Some(_) => Ok(()),
             None => Err(pyo3::exceptions::PyKeyError::new_err(key)),
         }
@@ -108,27 +104,25 @@ impl FIFOCache {
 
     fn __contains__(&self, py: Python<'_>, key: Py<PyAny>) -> PyResult<bool> {
         let hash = pyany_to_hash!(key, py)?;
-        Ok(self.inner.read().contains_key(&hash))
+        Ok(self.inner.read().parent.contains_key(&hash))
     }
 
     fn __eq__(&self, other: &Self) -> bool {
         let map1 = self.inner.read();
         let map2 = other.inner.read();
-        map1.eq(&map2)
+
+        map1.parent.maxsize == map2.parent.maxsize && map1.parent.keys().all(|x| map2.parent.contains_key(x))
     }
 
     fn __ne__(&self, other: &Self) -> bool {
         let map1 = self.inner.read();
         let map2 = other.inner.read();
-        map1.ne(&map2)
+
+        map1.parent.maxsize != map2.parent.maxsize || map1.parent.keys().all(|x| !map2.parent.contains_key(x))
     }
 
     fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<base::VecOneValueIterator>> {
-        let read = slf.inner.read();
-        let view: Vec<Py<PyAny>> = read
-            .sorted_keys()
-            .map(|x| read.get(x).unwrap().0.clone())
-            .collect();
+        let view: Vec<Py<PyAny>> = slf.inner.read().parent.values().map(|x| x.0.clone()).collect();
 
         let iter = base::VecOneValueIterator {
             view: view.into_iter(),
@@ -138,11 +132,7 @@ impl FIFOCache {
     }
 
     fn keys(slf: PyRef<'_, Self>) -> PyResult<Py<base::VecOneValueIterator>> {
-        let read = slf.inner.read();
-        let view: Vec<Py<PyAny>> = read
-            .sorted_keys()
-            .map(|x| read.get(x).unwrap().0.clone())
-            .collect();
+        let view: Vec<Py<PyAny>> = slf.inner.read().parent.values().map(|x| x.0.clone()).collect();
 
         let iter = base::VecOneValueIterator {
             view: view.into_iter(),
@@ -152,11 +142,7 @@ impl FIFOCache {
     }
 
     fn values(slf: PyRef<'_, Self>) -> PyResult<Py<base::VecOneValueIterator>> {
-        let read = slf.inner.read();
-        let view: Vec<Py<PyAny>> = read
-            .sorted_keys()
-            .map(|x| read.get(x).unwrap().1.clone())
-            .collect();
+        let view: Vec<Py<PyAny>> = slf.inner.read().parent.values().map(|x| x.1.clone()).collect();
 
         let iter = base::VecOneValueIterator {
             view: view.into_iter(),
@@ -166,13 +152,12 @@ impl FIFOCache {
     }
 
     fn items(slf: PyRef<'_, Self>) -> PyResult<Py<base::VecItemsIterator>> {
-        let read = slf.inner.read();
-        let view: Vec<(Py<PyAny>, Py<PyAny>)> = read
-            .sorted_keys()
-            .map(|x| {
-                let val = read.get(x).unwrap();
-                (val.0.clone(), val.1.clone())
-            })
+        let view: Vec<(Py<PyAny>, Py<PyAny>)> = slf
+            .inner
+            .read()
+            .parent
+            .values()
+            .map(|x| (x.0.clone(), x.1.clone()))
             .collect();
 
         let iter = base::VecItemsIterator {
@@ -195,12 +180,12 @@ impl FIFOCache {
     }
 
     fn capacity(&self) -> usize {
-        self.inner.read().capacity()
+        self.inner.read().parent.capacity()
     }
 
     #[pyo3(signature=(*, reuse=false))]
     fn clear(&mut self, reuse: bool) {
-        self.inner.write().clear(reuse);
+        self.inner.write().parent.clear(reuse);
     }
 
     #[pyo3(signature=(key, default=None))]
@@ -212,7 +197,7 @@ impl FIFOCache {
     ) -> PyResult<Option<Py<PyAny>>> {
         let hash = pyany_to_hash!(key, py)?;
 
-        match self.inner.write().remove(&hash) {
+        match self.inner.write().parent.remove(&hash) {
             Some(x) => Ok(Some(x.1)),
             None => Ok(default),
         }
@@ -275,11 +260,11 @@ impl FIFOCache {
     }
 
     fn shrink_to_fit(&mut self) {
-        self.inner.write().shrink_to_fit();
+        self.inner.write().parent.shrink_to_fit();
     }
 
     fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
-        for value in self.inner.read().values() {
+        for value in self.inner.read().parent.values() {
             visit.call(&value.0)?;
             visit.call(&value.1)?;
         }
@@ -287,16 +272,6 @@ impl FIFOCache {
     }
 
     fn __clear__(&mut self) {
-        self.inner.write().clear(false);
-    }
-
-    fn first(&self) -> Option<Py<PyAny>> {
-        let read = self.inner.read();
-        Some(read.get(read.first()?)?.0.clone())
-    }
-
-    fn last(&self) -> Option<Py<PyAny>> {
-        let read = self.inner.read();
-        Some(read.get(read.last()?)?.0.clone())
+        self.inner.write().parent.clear(false);
     }
 }

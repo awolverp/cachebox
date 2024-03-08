@@ -400,16 +400,16 @@ class TestLRUCache(unittest.TestCase, CacheTestSuiteMixin):
         self.assertNotIn(2, obj)
 
 
-# class TestRRCache(unittest.TestCase, CacheTestSuiteMixin):
-#     cache = cachebox.RRCache
+class TestRRCache(unittest.TestCase, CacheTestSuiteMixin):
+    cache = cachebox.RRCache
 
-#     def test_policy(self):
-#         obj = self.cache(2)
+    def test_policy(self):
+        obj = self.cache(2)
 
-#         obj["name"] = 1
-#         obj["age"] = 2
+        obj["name"] = 1
+        obj["age"] = 2
 
-#         self.assertIn(obj.popitem(), [("name", 1), ("age", 2)])
+        self.assertIn(obj.popitem(), [("name", 1), ("age", 2)])
 
 
 # class TestMRUCache(unittest.TestCase, CacheTestSuiteMixin):

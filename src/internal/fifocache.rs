@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::collections::VecDeque;
 
-pub struct FIFOCache<K: Sized, V> {
+pub struct FIFOCache<K, V> {
     inner: HashMap<K, V>,
     order: VecDeque<K>,
     pub maxsize: usize,
@@ -17,14 +17,14 @@ impl<K, V> FIFOCache<K, V> {
                 maxsize
             };
 
-            return FIFOCache {
+            return Self {
                 inner: HashMap::with_capacity(cap),
                 order: VecDeque::with_capacity(cap),
                 maxsize,
             };
         }
 
-        FIFOCache {
+        Self {
             inner: HashMap::new(),
             order: VecDeque::new(),
             maxsize,

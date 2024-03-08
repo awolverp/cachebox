@@ -17,6 +17,7 @@ fn _cachebox(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<classes::FIFOCache>()?;
     m.add_class::<classes::LFUCache>()?;
     m.add_class::<classes::LRUCache>()?;
+    m.add_class::<classes::RRCache>()?;
 
     Ok(())
 }

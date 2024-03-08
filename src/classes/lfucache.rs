@@ -4,8 +4,6 @@ use pyo3::prelude::*;
 use crate::classes::base;
 use crate::internal;
 
-use std::hash::Hasher;
-
 #[pyclass(extends=base::BaseCacheImpl, subclass, module = "cachebox._cachebox")]
 pub struct LFUCache {
     pub inner: RwLock<internal::LFUCache<isize, base::KeyValuePair>>,
@@ -276,19 +274,6 @@ impl LFUCache {
 
     fn __clear__(&mut self) {
         self.inner.write().clear(false);
-    }
-
-    fn __hash__(&self) -> u64 {
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
-
-        let read = self.inner.read();
-        hasher.write_usize(read.maxsize);
-
-        for key in read.keys() {
-            hasher.write_isize(*key);
-        }
-
-        hasher.finish()
     }
 
     fn least_frequently_used(&mut self) -> Option<Py<PyAny>> {

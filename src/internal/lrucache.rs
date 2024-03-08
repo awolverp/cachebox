@@ -24,14 +24,14 @@ impl<K, V> LRUCache<K, V> {
                 maxsize
             };
 
-            return LRUCache {
+            return Self {
                 inner: HashMap::with_capacity(cap),
                 order: VecDeque::with_capacity(cap),
                 maxsize,
             };
         }
 
-        LRUCache {
+        Self {
             inner: HashMap::new(),
             order: VecDeque::new(),
             maxsize,

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-pub struct Cache<K: Sized, V> {
-    inner: HashMap<K, V>,
+pub struct Cache<K, V> {
+    pub(in crate::internal) inner: HashMap<K, V>,
     pub maxsize: usize,
 }
 
@@ -15,13 +15,13 @@ impl<K, V> Cache<K, V> {
                 maxsize
             };
 
-            return Cache {
+            return Self {
                 inner: HashMap::with_capacity(cap),
                 maxsize,
             };
         }
 
-        Cache {
+        Self {
             inner: HashMap::new(),
             maxsize,
         }

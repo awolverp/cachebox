@@ -4,8 +4,6 @@ use pyo3::prelude::*;
 use crate::classes::base;
 use crate::internal;
 
-use std::hash::Hasher;
-
 #[pyclass(extends=base::BaseCacheImpl, subclass, module = "cachebox._cachebox")]
 pub struct LRUCache {
     pub inner: RwLock<internal::LRUCache<isize, base::KeyValuePair>>,
@@ -291,19 +289,6 @@ impl LRUCache {
 
     fn __clear__(&mut self) {
         self.inner.write().clear(false);
-    }
-
-    fn __hash__(&self) -> u64 {
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
-
-        let read = self.inner.read();
-        hasher.write_usize(read.maxsize);
-
-        for key in read.keys() {
-            hasher.write_isize(*key);
-        }
-
-        hasher.finish()
     }
 
     fn least_recently_used(&self) -> Option<Py<PyAny>> {

@@ -14,3 +14,4 @@ lto = "fat"
 [dependencies]
 parking_lot = "0.12.1"
 pyo3 = "0.19.0"
+rand = "0.8.5"

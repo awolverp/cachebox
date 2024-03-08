@@ -16,14 +16,14 @@ impl<K, V> LFUCache<K, V> {
                 maxsize
             };
 
-            return LFUCache {
+            return Self {
                 inner: HashMap::with_capacity(cap),
                 counter: HashMap::with_capacity(cap),
                 maxsize,
             };
         }
 
-        LFUCache {
+        Self {
             inner: HashMap::new(),
             counter: HashMap::new(),
             maxsize,

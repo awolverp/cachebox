@@ -54,7 +54,7 @@ impl<K: std::hash::Hash + Eq + Copy, V: Clone> RRCache<K, V> {
     pub fn setdefault(&mut self, key: K, default: V) -> pyo3::PyResult<V> {
         let exists = self.parent.inner.get(&key);
         if exists.is_some() {
-            return Ok(exists.cloned().unwrap());
+            return Ok(unsafe { exists.cloned().unwrap_unchecked() });
         }
 
         if self.parent.maxsize > 0 && self.parent.inner.len() >= self.parent.maxsize {

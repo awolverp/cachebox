@@ -57,7 +57,8 @@ impl<K: std::hash::Hash + Eq + std::cmp::Ord + Copy, V> LFUCache<K, V> {
                 .iter()
                 .map(|(t, n)| (std::cmp::Reverse(*n), *t))
                 .collect();
-            let (std::cmp::Reverse(_), least_frequently_used_key) = heap.peek().unwrap();
+            let (std::cmp::Reverse(_), least_frequently_used_key) =
+                unsafe { heap.peek().unwrap_unchecked() };
 
             self.counter.remove(least_frequently_used_key);
             self.inner.remove(least_frequently_used_key)
@@ -73,7 +74,8 @@ impl<K: std::hash::Hash + Eq + std::cmp::Ord + Copy, V> LFUCache<K, V> {
                 .iter()
                 .map(|(t, n)| (std::cmp::Reverse(*n), *t))
                 .collect();
-            let (std::cmp::Reverse(_), least_frequently_used_key) = heap.peek().unwrap();
+            let (std::cmp::Reverse(_), least_frequently_used_key) =
+                unsafe { heap.peek().unwrap_unchecked() };
 
             Some(*least_frequently_used_key)
         }
@@ -87,7 +89,7 @@ impl<K: std::hash::Hash + Eq + std::cmp::Ord + Copy, V> LFUCache<K, V> {
         let length = self.inner.len();
         let time_to_shrink = ((length + 1) == self.maxsize) && length == self.inner.capacity();
 
-        match self.inner.insert(key.clone(), value) {
+        match self.inner.insert(key, value) {
             Some(_) => {
                 *self.counter.get_mut(&key).unwrap() += 1;
             }
@@ -173,7 +175,7 @@ impl<K: std::hash::Hash + Eq + std::cmp::Ord + Copy, V: Clone> LFUCache<K, V> {
     pub fn setdefault(&mut self, key: K, default: V) -> pyo3::PyResult<V> {
         let exists = self.inner.get(&key);
         if exists.is_some() {
-            return Ok(exists.cloned().unwrap());
+            return Ok(unsafe { exists.cloned().unwrap_unchecked() });
         }
 
         if self.maxsize > 0 && self.inner.len() >= self.maxsize {
@@ -183,7 +185,7 @@ impl<K: std::hash::Hash + Eq + std::cmp::Ord + Copy, V: Clone> LFUCache<K, V> {
         let length = self.inner.len();
         let time_to_shrink = ((length + 1) == self.maxsize) && length == self.inner.capacity();
 
-        self.inner.insert(key.clone(), default.clone());
+        self.inner.insert(key, default.clone());
         self.counter.insert(key, 0);
 
         if time_to_shrink {

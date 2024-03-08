@@ -9,7 +9,7 @@ pub struct LRUCache<K, V> {
 macro_rules! vecdeque_move_to_end {
     ($order:expr, $key:expr) => {{
         let index = $order.iter().position(|x| *x == $key).unwrap();
-        let item = $order.remove(index).unwrap();
+        let item = unsafe { $order.remove(index).unwrap_unchecked() };
         $order.push_back(item);
     }};
 }
@@ -113,7 +113,7 @@ impl<K: std::hash::Hash + Eq, V> LRUCache<K, V> {
     pub fn remove(&mut self, key: &K) -> Option<V> {
         match self.inner.remove(key) {
             Some(val) => {
-                let index = self.order.iter().position(|x| x == key).unwrap();
+                let index = unsafe { self.order.iter().position(|x| x == key).unwrap_unchecked() };
                 self.order.remove(index);
                 Some(val)
             }
@@ -170,7 +170,7 @@ impl<K: std::hash::Hash + Eq + Clone, V: Clone> LRUCache<K, V> {
     pub fn setdefault(&mut self, key: K, default: V) -> pyo3::PyResult<V> {
         let exists = self.inner.get(&key);
         if exists.is_some() {
-            return Ok(exists.cloned().unwrap());
+            return Ok(unsafe { exists.cloned().unwrap_unchecked() });
         }
 
         if self.maxsize > 0 && self.inner.len() >= self.maxsize {

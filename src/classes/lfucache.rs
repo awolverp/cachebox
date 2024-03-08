@@ -6,7 +6,7 @@ use crate::internal;
 
 #[pyclass(extends=base::BaseCacheImpl, subclass, module = "cachebox._cachebox")]
 pub struct LFUCache {
-    pub inner: RwLock<internal::LFUCache<isize, base::KeyValuePair>>,
+    pub inner: RwLock<internal::lfucache::LFUCache<isize, base::KeyValuePair>>,
 }
 
 #[pymethods]
@@ -21,7 +21,7 @@ impl LFUCache {
     ) -> PyResult<(Self, base::BaseCacheImpl)> {
         let (mut slf, base) = (
             LFUCache {
-                inner: RwLock::new(internal::LFUCache::new(maxsize, capacity)),
+                inner: RwLock::new(internal::lfucache::LFUCache::new(maxsize, capacity)),
             },
             base::BaseCacheImpl {},
         );
@@ -81,10 +81,17 @@ impl LFUCache {
     }
 
     #[pyo3(signature=(key, default=None))]
-    fn get(&mut self, py: Python<'_>, key: Py<PyAny>, default: Option<Py<PyAny>>) -> Py<PyAny> {
-        match self.__getitem__(py, key) {
-            Ok(val) => val,
-            Err(_) => default.unwrap_or_else(|| py.None()),
+    fn get(
+        &self,
+        py: Python<'_>,
+        key: Py<PyAny>,
+        default: Option<Py<PyAny>>,
+    ) -> PyResult<Py<PyAny>> {
+        let hash = pyany_to_hash!(key, py)?;
+
+        match self.inner.write().get(&hash) {
+            Some(val) => Ok(val.1.clone()),
+            None => Ok(default.unwrap_or_else(|| py.None())),
         }
     }
 
@@ -190,12 +197,12 @@ impl LFUCache {
         py: Python<'_>,
         key: Py<PyAny>,
         default: Option<Py<PyAny>>,
-    ) -> PyResult<Option<Py<PyAny>>> {
+    ) -> PyResult<Py<PyAny>> {
         let hash = pyany_to_hash!(key, py)?;
 
         match self.inner.write().remove(&hash) {
-            Some(x) => Ok(Some(x.1)),
-            None => Ok(default),
+            Some(x) => Ok(x.1),
+            None => Ok(default.unwrap_or_else(|| py.None())),
         }
     }
 
@@ -234,7 +241,7 @@ impl LFUCache {
 
             self.inner.write().update(dict.iter().map(|(key, val)| {
                 Ok::<(isize, base::KeyValuePair), PyErr>((
-                    key.hash().unwrap(),
+                    unsafe { key.hash().unwrap_unchecked() },
                     base::KeyValuePair(key.into(), val.into()),
                 ))
             }))?;

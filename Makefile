@@ -29,7 +29,7 @@ test-rs:
 
 
 .PHONY: test-all
-test-all: test-rs test-py
+test-all: test-rs build-dev test-py
 
 
 .PHONY: format

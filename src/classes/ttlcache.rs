@@ -5,23 +5,30 @@ use crate::classes::base;
 use crate::internal;
 
 #[pyclass(extends=base::BaseCacheImpl, subclass, module = "cachebox._cachebox")]
-pub struct LRUCache {
-    pub inner: RwLock<internal::lrucache::LRUCache<isize, base::KeyValuePair>>,
+pub struct TTLCache {
+    pub inner: RwLock<internal::ttlcache::TTLCache<isize, base::KeyValuePair>>,
 }
 
 #[pymethods]
-impl LRUCache {
+impl TTLCache {
     #[new]
-    #[pyo3(signature=(maxsize, iterable=None, *, capacity=0))]
+    #[pyo3(signature=(maxsize, ttl, iterable=None, *, capacity=0))]
     fn __new__(
         py: Python<'_>,
         maxsize: usize,
+        ttl: f32,
         iterable: Option<Py<PyAny>>,
         capacity: usize,
     ) -> PyResult<(Self, base::BaseCacheImpl)> {
+        if ttl <= 0.0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "ttl cannot be zero or negative",
+            ));
+        }
+
         let (mut slf, base) = (
-            LRUCache {
-                inner: RwLock::new(internal::lrucache::LRUCache::new(maxsize, capacity)),
+            TTLCache {
+                inner: RwLock::new(internal::ttlcache::TTLCache::new(maxsize, ttl, capacity)),
             },
             base::BaseCacheImpl {},
         );
@@ -42,8 +49,19 @@ impl LRUCache {
         self.inner.read().maxsize
     }
 
-    fn __len__(&self) -> usize {
-        self.inner.read().len()
+    #[getter]
+    fn ttl(&self) -> f32 {
+        self.inner.read().ttl.as_secs_f32()
+    }
+
+    fn getttl(&self) -> f32 {
+        self.inner.read().ttl.as_secs_f32()
+    }
+
+    fn __len__(&mut self) -> usize {
+        let mut write = self.inner.write();
+        write.expire();
+        write.len()
     }
 
     fn __sizeof__(&self) -> usize {
@@ -56,26 +74,28 @@ impl LRUCache {
             + base::ISIZE_MEMORY_SIZE
     }
 
-    fn __bool__(&self) -> bool {
-        !self.inner.read().is_empty()
+    fn __bool__(&mut self) -> bool {
+        let mut write = self.inner.write();
+        write.expire();
+        !write.is_empty()
     }
 
     fn __setitem__(&mut self, py: Python<'_>, key: Py<PyAny>, value: Py<PyAny>) -> PyResult<()> {
         let hash = pyany_to_hash!(key, py)?;
-        self.inner
-            .write()
-            .insert(hash, base::KeyValuePair(key, value))
+        let mut write = self.inner.write();
+        write.expire();
+        write.insert(hash, base::KeyValuePair(key, value))
     }
 
     fn insert(&mut self, py: Python<'_>, key: Py<PyAny>, value: Py<PyAny>) -> PyResult<()> {
         self.__setitem__(py, key, value)
     }
 
-    fn __getitem__(&mut self, py: Python<'_>, key: Py<PyAny>) -> PyResult<Py<PyAny>> {
+    fn __getitem__(&self, py: Python<'_>, key: Py<PyAny>) -> PyResult<Py<PyAny>> {
         let hash = pyany_to_hash!(key, py)?;
 
-        match self.inner.write().get(&hash) {
-            Some(x) => Ok(x.1.clone()),
+        match self.inner.read().get(&hash) {
+            Some(val) => Ok(val.value.1.clone()),
             None => Err(pyo3::exceptions::PyKeyError::new_err(key)),
         }
     }
@@ -89,8 +109,8 @@ impl LRUCache {
     ) -> PyResult<Py<PyAny>> {
         let hash = pyany_to_hash!(key, py)?;
 
-        match self.inner.write().get(&hash) {
-            Some(val) => Ok(val.1.clone()),
+        match self.inner.read().get(&hash) {
+            Some(val) => Ok(val.value.1.clone()),
             None => Ok(default.unwrap_or_else(|| py.None())),
         }
     }
@@ -126,10 +146,12 @@ impl LRUCache {
     }
 
     fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<base::VecOneValueIterator>> {
-        let read = slf.inner.read();
-        let view: Vec<Py<PyAny>> = read
+        let mut write = slf.inner.write();
+        write.expire();
+
+        let view: Vec<Py<PyAny>> = write
             .sorted_keys()
-            .map(|x| read.fast_get(x).unwrap().0.clone())
+            .map(|x| write.get(x).unwrap().value.0.clone())
             .collect();
 
         let iter = base::VecOneValueIterator {
@@ -140,10 +162,12 @@ impl LRUCache {
     }
 
     fn keys(slf: PyRef<'_, Self>) -> PyResult<Py<base::VecOneValueIterator>> {
-        let read = slf.inner.read();
-        let view: Vec<Py<PyAny>> = read
+        let mut write = slf.inner.write();
+        write.expire();
+
+        let view: Vec<Py<PyAny>> = write
             .sorted_keys()
-            .map(|x| read.fast_get(x).unwrap().0.clone())
+            .map(|x| write.get(x).unwrap().value.0.clone())
             .collect();
 
         let iter = base::VecOneValueIterator {
@@ -154,10 +178,12 @@ impl LRUCache {
     }
 
     fn values(slf: PyRef<'_, Self>) -> PyResult<Py<base::VecOneValueIterator>> {
-        let read = slf.inner.read();
-        let view: Vec<Py<PyAny>> = read
+        let mut write = slf.inner.write();
+        write.expire();
+
+        let view: Vec<Py<PyAny>> = write
             .sorted_keys()
-            .map(|x| read.fast_get(x).unwrap().1.clone())
+            .map(|x| write.get(x).unwrap().value.1.clone())
             .collect();
 
         let iter = base::VecOneValueIterator {
@@ -168,12 +194,14 @@ impl LRUCache {
     }
 
     fn items(slf: PyRef<'_, Self>) -> PyResult<Py<base::VecItemsIterator>> {
-        let read = slf.inner.read();
-        let view: Vec<(Py<PyAny>, Py<PyAny>)> = read
+        let mut write = slf.inner.write();
+        write.expire();
+
+        let view: Vec<(Py<PyAny>, Py<PyAny>)> = write
             .sorted_keys()
             .map(|x| {
-                let val = read.fast_get(x).unwrap();
-                (val.0.clone(), val.1.clone())
+                let val = write.get(x).unwrap();
+                (val.value.0.clone(), val.value.1.clone())
             })
             .collect();
 
@@ -186,7 +214,7 @@ impl LRUCache {
 
     fn __repr__(slf: &PyCell<Self>) -> PyResult<String> {
         let class_name: &str = slf.get_type().name()?;
-        let borrowed = slf.borrow();
+        let mut borrowed = slf.borrow_mut();
         Ok(format!(
             "{}({} / {}, capacity={})",
             class_name,
@@ -215,7 +243,7 @@ impl LRUCache {
         let hash = pyany_to_hash!(key, py)?;
 
         match self.inner.write().remove(&hash) {
-            Some(x) => Ok(x.1),
+            Some(x) => Ok(x.value.1),
             None => Ok(default.unwrap_or_else(|| py.None())),
         }
     }
@@ -240,9 +268,9 @@ impl LRUCache {
         }
     }
 
-    fn popitem(&self) -> PyResult<(Py<PyAny>, Py<PyAny>)> {
+    fn popitem(&mut self) -> PyResult<(Py<PyAny>, Py<PyAny>)> {
         match self.inner.write().popitem() {
-            Some(val) => Ok((val.0, val.1)),
+            Some(val) => Ok((val.value.0, val.value.1)),
             None => Err(pyo3::exceptions::PyKeyError::new_err(())),
         }
     }
@@ -253,7 +281,10 @@ impl LRUCache {
         if obj.is_instance_of::<pyo3::types::PyDict>() {
             let dict = obj.downcast::<pyo3::types::PyDict>()?;
 
-            self.inner.write().update(dict.iter().map(|(key, val)| {
+            let mut write = self.inner.write();
+            write.expire();
+
+            write.update(dict.iter().map(|(key, val)| {
                 Ok::<(isize, base::KeyValuePair), PyErr>((
                     unsafe { key.hash().unwrap_unchecked() },
                     base::KeyValuePair(key.into(), val.into()),
@@ -262,7 +293,10 @@ impl LRUCache {
         } else {
             let iter = obj.iter()?;
 
-            self.inner.write().update(iter.map(|key| {
+            let mut write = self.inner.write();
+            write.expire();
+
+            write.update(iter.map(|key| {
                 let items: (&PyAny, &PyAny) = key?.extract()?;
                 let hash = items.0.hash()?;
 
@@ -282,8 +316,8 @@ impl LRUCache {
 
     fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
         for value in self.inner.read().values() {
-            visit.call(&value.0)?;
-            visit.call(&value.1)?;
+            visit.call(&value.value.0)?;
+            visit.call(&value.value.1)?;
         }
         Ok(())
     }
@@ -292,13 +326,49 @@ impl LRUCache {
         self.inner.write().clear(false);
     }
 
-    fn least_recently_used(&self) -> Option<Py<PyAny>> {
-        let read = self.inner.read();
-        Some(read.fast_get(read.least_recently_used()?)?.0.clone())
+    #[pyo3(signature=(key, default=None))]
+    fn get_with_expire(
+        &self,
+        py: Python<'_>,
+        key: Py<PyAny>,
+        default: Option<Py<PyAny>>,
+    ) -> PyResult<(Py<PyAny>, f32)> {
+        let hash = pyany_to_hash!(key, py)?;
+
+        match self.inner.read().get(&hash) {
+            Some(val) => {
+                let ex = val.expiration - std::time::Instant::now();
+                Ok((val.value.1.clone(), ex.as_secs_f32()))
+            }
+            None => Ok((default.unwrap_or_else(|| py.None()), 0.0)),
+        }
     }
 
-    fn more_recently_used(&self) -> Option<Py<PyAny>> {
-        let read = self.inner.read();
-        Some(read.fast_get(read.more_recently_used()?)?.0.clone())
+    #[pyo3(signature=(key, default=None))]
+    fn pop_with_expire(
+        &mut self,
+        py: Python<'_>,
+        key: Py<PyAny>,
+        default: Option<Py<PyAny>>,
+    ) -> PyResult<(Py<PyAny>, f32)> {
+        let hash = pyany_to_hash!(key, py)?;
+
+        match self.inner.write().remove(&hash) {
+            Some(val) => {
+                let ex = val.expiration - std::time::Instant::now();
+                Ok((val.value.1.clone(), ex.as_secs_f32()))
+            }
+            None => Ok((default.unwrap_or_else(|| py.None()), 0.0)),
+        }
+    }
+
+    fn popitem_with_expire(&mut self) -> PyResult<(Py<PyAny>, Py<PyAny>, f32)> {
+        match self.inner.write().popitem() {
+            Some(val) => {
+                let ex = val.expiration - std::time::Instant::now();
+                Ok((val.value.0, val.value.1, ex.as_secs_f32()))
+            }
+            None => Err(pyo3::exceptions::PyKeyError::new_err(())),
+        }
     }
 }

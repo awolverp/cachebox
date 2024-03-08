@@ -106,7 +106,7 @@ impl<K: std::hash::Hash + Eq, V: Clone> Cache<K, V> {
     pub fn setdefault(&mut self, key: K, default: V) -> pyo3::PyResult<V> {
         let exists = self.inner.get(&key);
         if exists.is_some() {
-            return Ok(exists.cloned().unwrap());
+            return Ok(unsafe { exists.cloned().unwrap_unchecked() });
         }
 
         if self.maxsize > 0 && self.inner.len() >= self.maxsize {

@@ -1,6 +1,7 @@
 mod cache;
 mod fifocache;
 mod lfucache;
+mod lrucache;
 
 #[allow(unused_imports)]
 pub use self::cache::Cache;
@@ -8,3 +9,5 @@ pub use self::cache::Cache;
 pub use self::fifocache::FIFOCache;
 #[allow(unused_imports)]
 pub use self::lfucache::LFUCache;
+#[allow(unused_imports)]
+pub use self::lrucache::LRUCache;

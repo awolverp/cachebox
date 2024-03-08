@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 
-// Internal implementions
+// Internal implementations
 mod classes;
 mod internal;
 
@@ -16,6 +16,7 @@ fn _cachebox(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<classes::Cache>()?;
     m.add_class::<classes::FIFOCache>()?;
     m.add_class::<classes::LFUCache>()?;
+    m.add_class::<classes::LRUCache>()?;
 
     Ok(())
 }

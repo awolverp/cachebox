@@ -189,16 +189,6 @@ impl<K: std::hash::Hash + Eq + std::cmp::Ord + Copy, V: Clone> LFUCache<K, V> {
     }
 }
 
-impl<K: Clone, V: Clone> Clone for LFUCache<K, V> {
-    fn clone(&self) -> Self {
-        LFUCache {
-            inner: self.inner.clone(),
-            counter: self.counter.clone(),
-            maxsize: self.maxsize,
-        }
-    }
-}
-
 impl<K: PartialEq + std::cmp::Eq + std::hash::Hash, V> PartialEq for LFUCache<K, V> {
     fn eq(&self, other: &Self) -> bool {
         self.maxsize == other.maxsize && self.counter == other.counter

@@ -18,7 +18,7 @@ from ._cachebox import (
     FIFOCache as FIFOCache,
     LFUCache as LFUCache,
     # RRCache as RRCache,
-    # LRUCache as LRUCache,
+    LRUCache as LRUCache,
     # MRUCache as MRUCache,
     # TTLCacheNoDefault as TTLCacheNoDefault,
     # TTLCache as TTLCache,

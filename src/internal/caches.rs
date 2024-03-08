@@ -1,5 +1,4 @@
 use rand::seq::IteratorRandom;
-use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::time;
@@ -365,16 +364,17 @@ impl<K: std::hash::Hash + Eq + std::cmp::Ord + Copy, V> LFUCache<K, V> {
         if self.inner.is_empty() {
             None
         } else {
-            let heap: BinaryHeap<_> = self
+            let mut vector: Vec<_> = self
                 .counter
                 .iter()
-                .map(|(t, n)| (std::cmp::Reverse(*n), *t))
+                .map(|(t, n)| (*n, *t))
                 .collect();
-            let (std::cmp::Reverse(_), least_frequently_used_key) =
-                unsafe { heap.peek().unwrap_unchecked() };
+            vector.sort_unstable_by_key(|(n, _)| *n);
 
-            self.counter.remove(least_frequently_used_key);
-            self.inner.remove(least_frequently_used_key)
+            let (_, least_frequently_used_key) = vector[0];
+
+            self.counter.remove(&least_frequently_used_key);
+            self.inner.remove(&least_frequently_used_key)
         }
     }
 
@@ -382,15 +382,15 @@ impl<K: std::hash::Hash + Eq + std::cmp::Ord + Copy, V> LFUCache<K, V> {
         if self.inner.is_empty() {
             None
         } else {
-            let heap: BinaryHeap<_> = self
+            let mut vector: Vec<_> = self
                 .counter
                 .iter()
-                .map(|(t, n)| (std::cmp::Reverse(*n), *t))
+                .map(|(t, n)| (*n, *t))
                 .collect();
-            let (std::cmp::Reverse(_), least_frequently_used_key) =
-                unsafe { heap.peek().unwrap_unchecked() };
+            vector.sort_unstable_by_key(|(n, _)| *n);
 
-            Some(*least_frequently_used_key)
+            let (_, least_frequently_used_key) = vector[0];
+            Some(least_frequently_used_key)
         }
     }
 
@@ -516,6 +516,9 @@ impl<K: PartialEq + std::cmp::Eq + std::hash::Hash, V> PartialEq for LFUCache<K,
 }
 impl<K: PartialEq + std::cmp::Eq + std::hash::Hash, V> Eq for LFUCache<K, V> {}
 
+/// RRCache implementation (Random Replacement policy)
+///
+/// In simple terms, the RR cache will choice randomly element to remove it to make space when necessary.
 pub struct RRCache<K, V> {
     pub parent: Cache<K, V>,
 }
@@ -580,6 +583,9 @@ impl<K: std::hash::Hash + Eq + Copy, V: Clone> RRCache<K, V> {
     }
 }
 
+/// LRU Cache implementation (Least recently used policy)
+///
+/// In simple terms, the LRU cache will remove the element in the cache that has not been accessed in the longest time.
 pub struct LRUCache<K, V> {
     inner: HashMap<K, V>,
     order: VecDeque<K>,
@@ -778,13 +784,14 @@ impl<K: PartialEq, V> PartialEq for LRUCache<K, V> {
 }
 impl<K: PartialEq, V> Eq for LRUCache<K, V> {}
 
+/// This structure is used for keeping elements in TTLCache
 #[derive(Clone)]
-pub struct TTLCacheValue<T: Clone> {
+pub struct TTLValue<T: Clone> {
     pub value: T,
     pub expiration: time::Instant,
 }
 
-impl<T: Clone> TTLCacheValue<T> {
+impl<T: Clone> TTLValue<T> {
     #[must_use]
     fn new(value: T, ttl: time::Duration) -> Self {
         Self {
@@ -798,8 +805,11 @@ impl<T: Clone> TTLCacheValue<T> {
     }
 }
 
+/// TTL Cache implementation (Time-to-live policy)
+///
+/// In simple terms, The TTL cache is one that evicts items that are older than a time-to-live.
 pub struct TTLCache<K, V: Clone> {
-    inner: HashMap<K, TTLCacheValue<V>>,
+    inner: HashMap<K, TTLValue<V>>,
     order: VecDeque<K>,
     pub ttl: time::Duration,
     pub maxsize: usize,
@@ -859,7 +869,7 @@ impl<K: std::hash::Hash + Eq + Clone, V: Clone> TTLCache<K, V> {
 
         match self
             .inner
-            .insert(key.clone(), TTLCacheValue::new(value, self.ttl))
+            .insert(key.clone(), TTLValue::new(value, self.ttl))
         {
             Some(_) => (),
             None => self.order.push_back(key),
@@ -901,7 +911,7 @@ impl<K: std::hash::Hash + Eq + Clone, V: Clone> TTLCache<K, V> {
         let time_to_shrink = ((length + 1) == self.maxsize) && length == self.inner.capacity();
 
         self.inner
-            .insert(key.clone(), TTLCacheValue::new(default.clone(), self.ttl));
+            .insert(key.clone(), TTLValue::new(default.clone(), self.ttl));
         self.order.push_back(key);
 
         if time_to_shrink {
@@ -929,14 +939,14 @@ impl<K: std::hash::Hash + Eq, V: Clone> TTLCache<K, V> {
         self.order.shrink_to_fit();
     }
 
-    pub fn popitem(&mut self) -> Option<TTLCacheValue<V>> {
+    pub fn popitem(&mut self) -> Option<TTLValue<V>> {
         match self.order.pop_front() {
             Some(x) => self.inner.remove(&x),
             None => None,
         }
     }
 
-    pub fn remove(&mut self, key: &K) -> Option<TTLCacheValue<V>> {
+    pub fn remove(&mut self, key: &K) -> Option<TTLValue<V>> {
         match self.inner.remove(key) {
             Some(val) => {
                 let index = unsafe { self.order.iter().position(|x| x == key).unwrap_unchecked() };
@@ -969,7 +979,7 @@ impl<K: std::hash::Hash + Eq, V: Clone> TTLCache<K, V> {
         }
     }
 
-    pub fn keys(&self) -> std::collections::hash_map::Keys<'_, K, TTLCacheValue<V>> {
+    pub fn keys(&self) -> std::collections::hash_map::Keys<'_, K, TTLValue<V>> {
         self.inner.keys()
     }
 
@@ -977,15 +987,15 @@ impl<K: std::hash::Hash + Eq, V: Clone> TTLCache<K, V> {
         self.order.iter()
     }
 
-    pub fn values(&self) -> std::collections::hash_map::Values<'_, K, TTLCacheValue<V>> {
+    pub fn values(&self) -> std::collections::hash_map::Values<'_, K, TTLValue<V>> {
         self.inner.values()
     }
 
-    pub fn iter(&self) -> std::collections::hash_map::Iter<'_, K, TTLCacheValue<V>> {
+    pub fn iter(&self) -> std::collections::hash_map::Iter<'_, K, TTLValue<V>> {
         self.inner.iter()
     }
 
-    pub fn get(&self, key: &K) -> Option<&TTLCacheValue<V>> {
+    pub fn get(&self, key: &K) -> Option<&TTLValue<V>> {
         self.inner.get(key).filter(|&val| !val.expired())
     }
 }
@@ -996,3 +1006,311 @@ impl<K: PartialEq + std::hash::Hash + Eq, V: Clone> PartialEq for TTLCache<K, V>
     }
 }
 impl<K: PartialEq + std::hash::Hash + Eq, V: Clone> Eq for TTLCache<K, V> {}
+
+/// This structure is used for keeping elements in VTTLCache
+#[derive(Clone)]
+pub struct TTLValueOption<T: Clone> {
+    pub value: T,
+    pub expiration: Option<time::Instant>,
+}
+
+impl<T: Clone> TTLValueOption<T> {
+    #[must_use]
+    fn new(value: T, ttl: Option<f32>) -> Self {
+        match ttl {
+            Some(x) => Self {
+                value,
+                expiration: Some(time::Instant::now() + time::Duration::from_secs_f32(x)),
+            },
+            None => Self {
+                value,
+                expiration: None,
+            },
+        }
+    }
+
+    pub fn expired(&self) -> bool {
+        self.expiration
+            .is_some_and(|val| time::Instant::now() > val)
+    }
+}
+
+/// VTTL Cache implementation (Time-to-live per-key policy)
+///
+/// Works like TTLCache, with this different that each key has own time-to-live value.
+pub struct VTTLCache<K, V: Clone> {
+    inner: HashMap<K, TTLValueOption<V>>,
+    order: Vec<K>,
+    pub maxsize: usize,
+}
+
+impl<K, V: Clone> VTTLCache<K, V> {
+    #[must_use]
+    pub fn new(maxsize: usize, capacity: usize) -> Self {
+        if capacity > 0 {
+            let cap = if maxsize > 0 && capacity <= maxsize {
+                capacity
+            } else {
+                maxsize
+            };
+
+            return Self {
+                inner: HashMap::with_capacity(cap),
+                order: Vec::with_capacity(cap),
+                maxsize,
+            };
+        }
+
+        Self {
+            inner: HashMap::new(),
+            order: Vec::new(),
+            maxsize,
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
+
+    pub fn capacity(&self) -> usize {
+        self.inner.capacity()
+    }
+
+    pub fn order_capacity(&self) -> usize {
+        self.order.capacity()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+}
+
+impl<K: std::hash::Hash + Eq + Clone + Ord, V: Clone> VTTLCache<K, V> {
+    pub fn fast_insert(&mut self, key: K, value: V, ttl: Option<f32>) -> pyo3::PyResult<()> {
+        if self.maxsize > 0 && self.inner.len() >= self.maxsize && self.inner.get(&key).is_none() {
+            self.popitem();
+        }
+
+        let length = self.inner.len();
+        let time_to_shrink = ((length + 1) == self.maxsize) && length == self.inner.capacity();
+
+        match self
+            .inner
+            .insert(key.clone(), TTLValueOption::new(value, ttl))
+        {
+            Some(_) => (),
+            None => self.order.push(key),
+        }
+
+        if time_to_shrink {
+            self.inner.shrink_to_fit();
+        }
+
+        Ok(())
+    }
+
+    pub fn insert(&mut self, key: K, value: V, ttl: Option<f32>) -> pyo3::PyResult<()> {
+        if self.maxsize > 0 && self.inner.len() >= self.maxsize && self.inner.get(&key).is_none() {
+            self.popitem();
+        }
+
+        let length = self.inner.len();
+        let time_to_shrink = ((length + 1) == self.maxsize) && length == self.inner.capacity();
+
+        match self
+            .inner
+            .insert(key.clone(), TTLValueOption::new(value, ttl))
+        {
+            Some(_) => (),
+            None => self.order.push(key),
+        }
+
+        if length + 1 > 1 {
+            // Sort from less to greater
+            self.order.sort_unstable_by(|a, b| {
+                let ap = self.inner.get(a).unwrap();
+                let bp = self.inner.get(b).unwrap();
+
+                if ap.expiration.is_none() && bp.expiration.is_none() {
+                    return std::cmp::Ordering::Equal;
+                }
+                if bp.expiration.is_none() {
+                    return std::cmp::Ordering::Greater;
+                }
+                if ap.expiration.is_none() {
+                    return std::cmp::Ordering::Less;
+                }
+                bp.expiration.cmp(&ap.expiration)
+            });
+        }
+
+        if time_to_shrink {
+            self.inner.shrink_to_fit();
+        }
+
+        Ok(())
+    }
+
+    pub fn update<T: IntoIterator<Item = pyo3::PyResult<(K, V)>>>(
+        &mut self,
+        iterable: T,
+        ttl: Option<f32>,
+    ) -> pyo3::PyResult<()> {
+        for result in iterable {
+            let (key, val) = result?;
+            self.fast_insert(key, val, ttl)?;
+        }
+
+        if self.inner.len() > 1 {
+            // Sort from less to greater
+            self.order.sort_unstable_by(|a, b| {
+                let ap = self.inner.get(a).unwrap();
+                let bp = self.inner.get(b).unwrap();
+
+                if ap.expiration.is_none() && bp.expiration.is_none() {
+                    return std::cmp::Ordering::Equal;
+                }
+                if bp.expiration.is_none() {
+                    return std::cmp::Ordering::Greater;
+                }
+                if ap.expiration.is_none() {
+                    return std::cmp::Ordering::Less;
+                }
+                bp.expiration.cmp(&ap.expiration)
+            });
+        }
+
+        Ok(())
+    }
+
+    pub fn setdefault(&mut self, key: K, default: V, ttl: Option<f32>) -> pyo3::PyResult<V> {
+        let exists = self.inner.get(&key);
+        if exists.is_some() {
+            let val = unsafe { exists.unwrap_unchecked() };
+            if !val.expired() {
+                return Ok(val.clone().value);
+            }
+        }
+
+        if self.maxsize > 0 && self.inner.len() >= self.maxsize {
+            self.popitem();
+        }
+
+        let length = self.inner.len();
+        let time_to_shrink = ((length + 1) == self.maxsize) && length == self.inner.capacity();
+
+        self.inner
+            .insert(key.clone(), TTLValueOption::new(default.clone(), ttl));
+        self.order.push(key);
+
+        if length + 1 > 1 {
+            // Sort from less to greater
+            self.order.sort_unstable_by(|a, b| {
+                let ap = self.inner.get(a).unwrap();
+                let bp = self.inner.get(b).unwrap();
+
+                if ap.expiration.is_none() && bp.expiration.is_none() {
+                    return std::cmp::Ordering::Equal;
+                }
+                if bp.expiration.is_none() {
+                    return std::cmp::Ordering::Greater;
+                }
+                if ap.expiration.is_none() {
+                    return std::cmp::Ordering::Less;
+                }
+                bp.expiration.cmp(&ap.expiration)
+            });
+        }
+
+        if time_to_shrink {
+            self.inner.shrink_to_fit();
+        }
+
+        Ok(default)
+    }
+}
+
+impl<K: std::hash::Hash + Eq + Ord, V: Clone> VTTLCache<K, V> {
+    pub fn expire(&mut self) {
+        while let Some(key) = self.order.last() {
+            if !self.inner[key].expired() {
+                break;
+            }
+
+            self.inner.remove(key);
+            self.order.pop();
+        }
+    }
+
+    pub fn shrink_to_fit(&mut self) {
+        self.inner.shrink_to_fit();
+        self.order.shrink_to_fit();
+    }
+
+    pub fn popitem(&mut self) -> Option<TTLValueOption<V>> {
+        match self.order.pop() {
+            Some(key) => self.inner.remove(&key),
+            None => None,
+        }
+    }
+
+    pub fn remove(&mut self, key: &K) -> Option<TTLValueOption<V>> {
+        match self.inner.remove(key) {
+            Some(val) => {
+                let index = unsafe { self.order.iter().position(|x| x == key).unwrap_unchecked() };
+                self.order.remove(index);
+
+                if val.expired() {
+                    None
+                } else {
+                    Some(val)
+                }
+            }
+            None => None,
+        }
+    }
+
+    pub fn contains_key(&self, key: &K) -> bool {
+        match self.inner.get(key) {
+            Some(val) => !val.expired(),
+            None => false,
+        }
+    }
+
+    pub fn clear(&mut self, reuse: bool) {
+        self.inner.clear();
+        self.order.clear();
+
+        if !reuse {
+            self.inner.shrink_to_fit();
+            self.order.shrink_to_fit();
+        }
+    }
+
+    pub fn keys(&self) -> std::collections::hash_map::Keys<'_, K, TTLValueOption<V>> {
+        self.inner.keys()
+    }
+
+    pub fn sorted_keys(&self) -> std::slice::Iter<'_, K> {
+        self.order.iter()
+    }
+
+    pub fn values(&self) -> std::collections::hash_map::Values<'_, K, TTLValueOption<V>> {
+        self.inner.values()
+    }
+
+    pub fn iter(&self) -> std::collections::hash_map::Iter<'_, K, TTLValueOption<V>> {
+        self.inner.iter()
+    }
+
+    pub fn get(&self, key: &K) -> Option<&TTLValueOption<V>> {
+        self.inner.get(key).filter(|&val| !val.expired())
+    }
+}
+
+impl<K: PartialEq + std::hash::Hash + Eq, V: Clone> PartialEq for VTTLCache<K, V> {
+    fn eq(&self, other: &Self) -> bool {
+        self.maxsize == other.maxsize && self.order == other.order
+    }
+}
+impl<K: PartialEq + std::hash::Hash + Eq, V: Clone> Eq for VTTLCache<K, V> {}

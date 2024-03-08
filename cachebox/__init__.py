@@ -19,7 +19,7 @@ from ._cachebox import (
     LFUCache as LFUCache,
     RRCache as RRCache,
     LRUCache as LRUCache,
-    # TTLCacheNoDefault as TTLCacheNoDefault,
+    VTTLCache as VTTLCache,
     TTLCache as TTLCache,
     __version__ as __version__,
     __author__ as __author__,

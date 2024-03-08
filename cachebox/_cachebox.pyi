@@ -961,7 +961,7 @@ class TTLCache(BaseCacheImpl, typing.Generic[K, V]):
 
     def getttl(self) -> float: ...
 
-class TTLCacheNoDefault(BaseCacheImpl, typing.Generic[K, V]):
+class VTTLCache(BaseCacheImpl, typing.Generic[K, V]):
     def __init__(self, maxsize: int, *, capacity: int = ...) -> None:
         """
         Time-aware Cache Implemention; With this cache, you can set its own expiration time for each key-value pair.

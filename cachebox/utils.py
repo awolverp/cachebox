@@ -15,9 +15,9 @@ def make_hash_key(args: tuple, kwds: dict):
 
 def make_typed_key(args: tuple, kwds: dict):
     args = tuple(sorted(args))
-    args += tuple(type(i) for i in args)
+    args += tuple(type(i).__name__ for i in args)
     if kwds:
-        args += (object(),) + tuple(type(v) for v in kwds.values())
+        args += ("|",) + tuple(type(v).__name__ for v in kwds.values())
 
     return (args, frozenset(sorted(kwds.items())))
 

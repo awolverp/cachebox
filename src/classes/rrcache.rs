@@ -77,15 +77,10 @@ impl RRCache {
     }
 
     #[pyo3(signature=(key, default=None))]
-    fn get(
-        &self,
-        py: Python<'_>,
-        key: Py<PyAny>,
-        default: Option<Py<PyAny>>,
-    ) -> Py<PyAny> {
+    fn get(&self, py: Python<'_>, key: Py<PyAny>, default: Option<Py<PyAny>>) -> Py<PyAny> {
         match self.__getitem__(py, key) {
             Ok(val) => val,
-            Err(_) => default.unwrap_or_else(|| py.None())
+            Err(_) => default.unwrap_or_else(|| py.None()),
         }
     }
 
@@ -111,18 +106,26 @@ impl RRCache {
         let map1 = self.inner.read();
         let map2 = other.inner.read();
 
-        map1.parent.maxsize == map2.parent.maxsize && map1.parent.keys().all(|x| map2.parent.contains_key(x))
+        map1.parent.maxsize == map2.parent.maxsize
+            && map1.parent.keys().all(|x| map2.parent.contains_key(x))
     }
 
     fn __ne__(&self, other: &Self) -> bool {
         let map1 = self.inner.read();
         let map2 = other.inner.read();
 
-        map1.parent.maxsize != map2.parent.maxsize || map1.parent.keys().all(|x| !map2.parent.contains_key(x))
+        map1.parent.maxsize != map2.parent.maxsize
+            || map1.parent.keys().all(|x| !map2.parent.contains_key(x))
     }
 
     fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<base::VecOneValueIterator>> {
-        let view: Vec<Py<PyAny>> = slf.inner.read().parent.values().map(|x| x.0.clone()).collect();
+        let view: Vec<Py<PyAny>> = slf
+            .inner
+            .read()
+            .parent
+            .values()
+            .map(|x| x.0.clone())
+            .collect();
 
         let iter = base::VecOneValueIterator {
             view: view.into_iter(),
@@ -132,7 +135,13 @@ impl RRCache {
     }
 
     fn keys(slf: PyRef<'_, Self>) -> PyResult<Py<base::VecOneValueIterator>> {
-        let view: Vec<Py<PyAny>> = slf.inner.read().parent.values().map(|x| x.0.clone()).collect();
+        let view: Vec<Py<PyAny>> = slf
+            .inner
+            .read()
+            .parent
+            .values()
+            .map(|x| x.0.clone())
+            .collect();
 
         let iter = base::VecOneValueIterator {
             view: view.into_iter(),
@@ -142,7 +151,13 @@ impl RRCache {
     }
 
     fn values(slf: PyRef<'_, Self>) -> PyResult<Py<base::VecOneValueIterator>> {
-        let view: Vec<Py<PyAny>> = slf.inner.read().parent.values().map(|x| x.1.clone()).collect();
+        let view: Vec<Py<PyAny>> = slf
+            .inner
+            .read()
+            .parent
+            .values()
+            .map(|x| x.1.clone())
+            .collect();
 
         let iter = base::VecOneValueIterator {
             view: view.into_iter(),

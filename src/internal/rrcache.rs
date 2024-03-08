@@ -8,13 +8,18 @@ pub struct RRCache<K, V> {
 
 impl<K, V> RRCache<K, V> {
     pub fn new(maxsize: usize, capacity: usize) -> Self {
-        Self { parent: Cache::new(maxsize, capacity) }
+        Self {
+            parent: Cache::new(maxsize, capacity),
+        }
     }
 }
 
 impl<K: std::hash::Hash + Eq + Copy, V> RRCache<K, V> {
     pub fn insert(&mut self, key: K, value: V) -> pyo3::PyResult<()> {
-        if self.parent.maxsize > 0 && self.parent.inner.len() >= self.parent.maxsize && self.parent.inner.get(&key).is_none() {
+        if self.parent.maxsize > 0
+            && self.parent.inner.len() >= self.parent.maxsize
+            && self.parent.inner.get(&key).is_none()
+        {
             self.popitem();
         }
 

@@ -3,7 +3,7 @@ use std::collections::{HashMap, VecDeque};
 pub struct LRUCache<K, V> {
     inner: HashMap<K, V>,
     order: VecDeque<K>,
-    pub maxsize: usize
+    pub maxsize: usize,
 }
 
 macro_rules! vecdeque_move_to_end {
@@ -157,9 +157,7 @@ impl<K: std::hash::Hash + Eq, V> LRUCache<K, V> {
                 vecdeque_move_to_end!(self.order, *key);
                 Some(val)
             }
-            None => {
-                None
-            }
+            None => None,
         }
     }
 
@@ -199,4 +197,3 @@ impl<K: PartialEq, V> PartialEq for LRUCache<K, V> {
     }
 }
 impl<K: PartialEq, V> Eq for LRUCache<K, V> {}
-

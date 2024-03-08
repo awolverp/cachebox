@@ -81,15 +81,10 @@ impl LFUCache {
     }
 
     #[pyo3(signature=(key, default=None))]
-    fn get(
-        &mut self,
-        py: Python<'_>,
-        key: Py<PyAny>,
-        default: Option<Py<PyAny>>,
-    ) -> Py<PyAny> {
+    fn get(&mut self, py: Python<'_>, key: Py<PyAny>, default: Option<Py<PyAny>>) -> Py<PyAny> {
         match self.__getitem__(py, key) {
             Ok(val) => val,
-            Err(_) => default.unwrap_or_else(|| py.None())
+            Err(_) => default.unwrap_or_else(|| py.None()),
         }
     }
 

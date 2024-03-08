@@ -1,4 +1,4 @@
-use std::collections::{HashMap, BinaryHeap};
+use std::collections::{BinaryHeap, HashMap};
 
 pub struct LFUCache<K, V> {
     inner: std::collections::HashMap<K, V>,
@@ -47,13 +47,16 @@ impl<K, V> LFUCache<K, V> {
     }
 }
 
-
 impl<K: std::hash::Hash + Eq + std::cmp::Ord + Copy, V> LFUCache<K, V> {
     pub fn popitem(&mut self) -> Option<V> {
         if self.inner.is_empty() {
             None
         } else {
-            let heap: BinaryHeap<_> = self.counter.iter().map(|(t, n)| (std::cmp::Reverse(*n), *t)).collect();
+            let heap: BinaryHeap<_> = self
+                .counter
+                .iter()
+                .map(|(t, n)| (std::cmp::Reverse(*n), *t))
+                .collect();
             let (std::cmp::Reverse(_), least_frequently_used_key) = heap.peek().unwrap();
 
             self.counter.remove(least_frequently_used_key);
@@ -65,7 +68,11 @@ impl<K: std::hash::Hash + Eq + std::cmp::Ord + Copy, V> LFUCache<K, V> {
         if self.inner.is_empty() {
             None
         } else {
-            let heap: BinaryHeap<_> = self.counter.iter().map(|(t, n)| (std::cmp::Reverse(*n), *t)).collect();
+            let heap: BinaryHeap<_> = self
+                .counter
+                .iter()
+                .map(|(t, n)| (std::cmp::Reverse(*n), *t))
+                .collect();
             let (std::cmp::Reverse(_), least_frequently_used_key) = heap.peek().unwrap();
 
             Some(*least_frequently_used_key)
@@ -83,7 +90,7 @@ impl<K: std::hash::Hash + Eq + std::cmp::Ord + Copy, V> LFUCache<K, V> {
         match self.inner.insert(key.clone(), value) {
             Some(_) => {
                 *self.counter.get_mut(&key).unwrap() += 1;
-            },
+            }
             None => {
                 self.counter.insert(key, 0);
             }
@@ -157,9 +164,7 @@ impl<K: std::hash::Hash + Eq, V> LFUCache<K, V> {
                 *self.counter.get_mut(key).unwrap() += 1;
                 Some(val)
             }
-            None => {
-                None
-            }
+            None => None,
         }
     }
 }
@@ -195,4 +200,3 @@ impl<K: PartialEq + std::cmp::Eq + std::hash::Hash, V> PartialEq for LFUCache<K,
     }
 }
 impl<K: PartialEq + std::cmp::Eq + std::hash::Hash, V> Eq for LFUCache<K, V> {}
-

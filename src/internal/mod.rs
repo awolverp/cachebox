@@ -1,7 +1,8 @@
-pub mod cache;
-pub mod fifocache;
-pub mod lfucache;
-pub mod lrucache;
-pub mod rrcache;
-pub mod ttlcache;
-pub mod vttlcache;
+mod caches;
+
+pub use self::caches::Cache;
+pub use self::caches::FIFOCache;
+pub use self::caches::LFUCache;
+pub use self::caches::LRUCache;
+pub use self::caches::RRCache;
+pub use self::caches::TTLCache;

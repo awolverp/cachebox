@@ -6,7 +6,7 @@ use crate::internal;
 
 #[pyclass(extends=base::BaseCacheImpl, subclass, module = "cachebox._cachebox")]
 pub struct TTLCache {
-    pub inner: RwLock<internal::ttlcache::TTLCache<isize, base::KeyValuePair>>,
+    pub inner: RwLock<internal::TTLCache<isize, base::KeyValuePair>>,
 }
 
 #[pymethods]
@@ -28,7 +28,7 @@ impl TTLCache {
 
         let (mut slf, base) = (
             TTLCache {
-                inner: RwLock::new(internal::ttlcache::TTLCache::new(maxsize, ttl, capacity)),
+                inner: RwLock::new(internal::TTLCache::new(maxsize, ttl, capacity)),
             },
             base::BaseCacheImpl {},
         );

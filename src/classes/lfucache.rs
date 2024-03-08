@@ -6,7 +6,7 @@ use crate::internal;
 
 #[pyclass(extends=base::BaseCacheImpl, subclass, module = "cachebox._cachebox")]
 pub struct LFUCache {
-    pub inner: RwLock<internal::lfucache::LFUCache<isize, base::KeyValuePair>>,
+    pub inner: RwLock<internal::LFUCache<isize, base::KeyValuePair>>,
 }
 
 #[pymethods]
@@ -21,7 +21,7 @@ impl LFUCache {
     ) -> PyResult<(Self, base::BaseCacheImpl)> {
         let (mut slf, base) = (
             LFUCache {
-                inner: RwLock::new(internal::lfucache::LFUCache::new(maxsize, capacity)),
+                inner: RwLock::new(internal::LFUCache::new(maxsize, capacity)),
             },
             base::BaseCacheImpl {},
         );

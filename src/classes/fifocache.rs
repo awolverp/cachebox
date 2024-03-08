@@ -6,7 +6,7 @@ use crate::internal;
 
 #[pyclass(extends=base::BaseCacheImpl, subclass, module = "cachebox._cachebox")]
 pub struct FIFOCache {
-    pub inner: RwLock<internal::fifocache::FIFOCache<isize, base::KeyValuePair>>,
+    pub inner: RwLock<internal::FIFOCache<isize, base::KeyValuePair>>,
 }
 
 #[pymethods]
@@ -21,7 +21,7 @@ impl FIFOCache {
     ) -> PyResult<(Self, base::BaseCacheImpl)> {
         let (mut slf, base) = (
             FIFOCache {
-                inner: RwLock::new(internal::fifocache::FIFOCache::new(maxsize, capacity)),
+                inner: RwLock::new(internal::FIFOCache::new(maxsize, capacity)),
             },
             base::BaseCacheImpl {},
         );

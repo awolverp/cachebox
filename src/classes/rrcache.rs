@@ -6,7 +6,7 @@ use crate::internal;
 
 #[pyclass(extends=base::BaseCacheImpl, subclass, module = "cachebox._cachebox")]
 pub struct RRCache {
-    pub inner: RwLock<internal::rrcache::RRCache<isize, base::KeyValuePair>>,
+    pub inner: RwLock<internal::RRCache<isize, base::KeyValuePair>>,
 }
 
 #[pymethods]
@@ -21,7 +21,7 @@ impl RRCache {
     ) -> PyResult<(Self, base::BaseCacheImpl)> {
         let (mut slf, base) = (
             RRCache {
-                inner: RwLock::new(internal::rrcache::RRCache::new(maxsize, capacity)),
+                inner: RwLock::new(internal::RRCache::new(maxsize, capacity)),
             },
             base::BaseCacheImpl {},
         );

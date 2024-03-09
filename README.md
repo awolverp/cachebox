@@ -98,7 +98,7 @@ These methods are available for all classes:
 - `insert(key, value)`: an aliases for `__setitem__`
 
 ```python
->>> cache.insert(1, 1) # is equals to cache[1] = 1
+>>> cache.insert(1, 1) # it equals to cache[1] = 1
 ```
 
 - `capacity()`: Returns the number of elements the cache can hold without reallocating.

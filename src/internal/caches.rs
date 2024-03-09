@@ -229,7 +229,7 @@ impl<K: std::hash::Hash + Eq, V> FIFOCache<K, V> {
             if self.popitem().is_none() {
                 break;
             }
-            c+=1;
+            c += 1;
         }
         c
     }
@@ -391,7 +391,7 @@ impl<K: std::hash::Hash + Eq + std::cmp::Ord + Copy, V> LFUCache<K, V> {
             if self.popitem().is_none() {
                 break;
             }
-            c+=1;
+            c += 1;
         }
         c
     }
@@ -574,7 +574,7 @@ impl<K: std::hash::Hash + Eq + Copy, V> RRCache<K, V> {
             if self.popitem().is_none() {
                 break;
             }
-            c+=1;
+            c += 1;
         }
         c
     }
@@ -719,7 +719,7 @@ impl<K: std::hash::Hash + Eq, V> LRUCache<K, V> {
             if self.popitem().is_none() {
                 break;
             }
-            c+=1;
+            c += 1;
         }
         c
     }
@@ -988,7 +988,7 @@ impl<K: std::hash::Hash + Eq, V: Clone> TTLCache<K, V> {
             if self.popitem().is_none() {
                 break;
             }
-            c+=1;
+            c += 1;
         }
         c
     }
@@ -1309,7 +1309,7 @@ impl<K: std::hash::Hash + Eq + Ord, V: Clone> VTTLCache<K, V> {
             if self.popitem().is_none() {
                 break;
             }
-            c+=1;
+            c += 1;
         }
         c
     }

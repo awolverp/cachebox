@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2024-03-09
+In this release, I rewritten all implemetations, documentation, and stub-file.
+
+### Added
+- New `.drain(n)` method: According to cache algorithm, deletes and returns `n` items from cache.
+- New `.shrink_to_fit()` method: Shrinks the capacity of the cache as much as possible.
+
+### Removed
+- The `MRUCache` removed.
+
+### Changed
+- `__new__` methods changed; Now you can insert items to caches when creating those.
+- `TTLCacheNoDefault` name changed to `VTTLCache`.
+- `__iter__`, `keys`, `values` and `items` methods now are iterable.
+- `LFUCache` sorting algorithm changed to improve speed.
+- `__eq__` and `__ne__` methods changed.
+- `cached` decorator parameter `clear_reuse` default value from `True` changed to `False`.
+
+### Deprecated
+- `.delete()` methods are deprecated; use `del cache[key]` instead.
+- `.getmaxsize()` methods are deprecated; use `.maxsize` property instead.
+- `TTLCache.getttl()` method is deprecated; use `.ttl` property instead.
+
+### Fixed
+- `make_typed_key` function bug fixed.
+
+### Internal
+- Link-time optimization value changed.
+- `codegen-units` value changed.
+- `strip` value changed to reduce binary file size.
+- New dependency: `typing_extensions`
+
 ## [1.0.21] - 2024-03-01
 
 ### Fixed

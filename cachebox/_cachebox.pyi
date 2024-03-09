@@ -29,7 +29,6 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
         *,
         capacity: int = ...,
     ) -> None: ...
-    
     @property
     def maxsize(self) -> int:
         """
@@ -42,7 +41,7 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
             10
         """
         ...
-    
+
     @typing_extensions.deprecated("This method is deprecated; use `.maxsize` property instead.")
     def getmaxsize(self) -> int: ...
     def __len__(self) -> int: ...
@@ -51,26 +50,25 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
     def __setitem__(self, key: KT, value: VT) -> None: ...
     def __getitem__(self, key: KT) -> VT: ...
     def __delitem__(self, key: KT) -> None: ...
-    
     def insert(self, key: KT, value: VT) -> None:
         """
         Works like `cache[key] = value`
         """
         ...
-    
+
     def get(self, key: KT, default: DT = None) -> typing.Union[VT, DT]:
         """
         Returns value of specified key; returns `default` if key not found.
         """
         ...
-    
+
     @typing_extensions.deprecated("This method is deprecated; go `del cache[key]` way instead.")
     def delete(self, key: KT) -> None:
         """
         Works like `del cache[key]`
         """
         ...
-    
+
     def __contains__(self, key: KT) -> bool: ...
     def __eq__(self, other: typing.Self) -> bool: ...
     def __ne__(self, other: typing.Self) -> bool: ...
@@ -79,7 +77,6 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
     def values(self) -> typing.Iterator[VT]: ...
     def items(self) -> typing.Iterator[typing.Tuple[KT, VT]]: ...
     def __repr__(self) -> str: ...
-    
     def capacity(self) -> int:
         """
         Returns the number of elements the map can hold without reallocating.
@@ -97,7 +94,7 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
             3
         """
         ...
-    
+
     def clear(self, *, reuse: bool = False) -> None:
         """
         Clears the cache, removing all key-value pairs.
@@ -116,13 +113,13 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
             0, 0
         """
         ...
-    
+
     def pop(self, key: KT, default: DT = None) -> typing.Union[VT, DT]:
         """
         Deletes and returns the stored key-value from cache; returns `default` if key not found.
         """
         ...
-    
+
     def setdefault(self, key: KT, default: DT = None) -> typing.Union[VT, DT]:
         """
         Returns the value of the specified key.
@@ -130,7 +127,7 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
         If the key does not exist, insert the key, with the specified value.
         """
         ...
-    
+
     def popitem(self) -> typing.Tuple[KT, VT]:
         """
         According to cache algorithm, deletes and returns an item from cache.
@@ -154,7 +151,7 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
             0
         """
         ...
-    
+
     def update(self, iterable: typing.Iterable) -> None:
         """
         inserts the specified items to the cache. The `iterable` can be a dictionary,
@@ -168,7 +165,7 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
             10
         """
         ...
-    
+
     def shrink_to_fit(self) -> None:
         """
         Shrinks the capacity of the cache as much as possible.
@@ -183,7 +180,6 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
             >>> cache.shrink_to_fit()
         """
         ...
-
 
 class Cache(BaseCacheImpl[KT, VT]):
     def __init__(
@@ -213,13 +209,12 @@ class Cache(BaseCacheImpl[KT, VT]):
         It is not implemented for this cache;
         """
         ...
-    
+
     def drain(self, n: int) -> typing.NoReturn:
         """
         It is not implemented for this cache;
         """
         ...
-
 
 class FIFOCache(BaseCacheImpl[KT, VT]):
     def __init__(
@@ -246,7 +241,6 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
     def first(self) -> typing.Optional[KT]: ...
     def last(self) -> typing.Optional[KT]: ...
 
-
 class LFUCache(BaseCacheImpl[KT, VT]):
     def __init__(
         self,
@@ -268,9 +262,8 @@ class LFUCache(BaseCacheImpl[KT, VT]):
             >>> cache = LFUCache(100, {"key1": "value1", "key2": "value2"}) # initialize from dict or any iterable object
         """
         ...
-    
-    def least_frequently_used(self) -> typing.Optional[KT]: ...
 
+    def least_frequently_used(self) -> typing.Optional[KT]: ...
 
 class RRCache(BaseCacheImpl[KT, VT]):
     def __init__(
@@ -292,7 +285,6 @@ class RRCache(BaseCacheImpl[KT, VT]):
             >>> cache = RRCache(100, {"key1": "value1", "key2": "value2"}) # initialize from dict or any iterable object
         """
         ...
-
 
 class LRUCache(BaseCacheImpl[KT, VT]):
     def __init__(
@@ -318,7 +310,6 @@ class LRUCache(BaseCacheImpl[KT, VT]):
     def least_recently_used(self) -> typing.Optional[KT]: ...
     def most_recently_used(self) -> typing.Optional[KT]: ...
 
-
 class TTLCache(BaseCacheImpl[KT, VT]):
     def __init__(
         self,
@@ -343,11 +334,11 @@ class TTLCache(BaseCacheImpl[KT, VT]):
 
     @property
     def ttl(self) -> float: ...
-
     @typing_extensions.deprecated("This method is deprecated; use `.ttl` instead.")
     def getttl(self) -> float: ...
-
-    def get_with_expire(self, key: KT, default: DT = None) -> typing.Tuple[typing.Union[VT, DT], float]:
+    def get_with_expire(
+        self, key: KT, default: DT = None
+    ) -> typing.Tuple[typing.Union[VT, DT], float]:
         """
         Works like `.get()`, but also returns the remaining expiration.
 
@@ -360,8 +351,10 @@ class TTLCache(BaseCacheImpl[KT, VT]):
             (None, 0.0)
         """
         ...
-    
-    def pop_with_expire(self, key: KT, default: DT = None) -> typing.Tuple[typing.Union[VT, DT], float]:
+
+    def pop_with_expire(
+        self, key: KT, default: DT = None
+    ) -> typing.Tuple[typing.Union[VT, DT], float]:
         """
         Works like `.pop()`, but also returns the remaining expiration.
 
@@ -374,7 +367,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
             (None, 0.0)
         """
         ...
-    
+
     def popitem_with_expire(self) -> typing.Tuple[VT, DT, float]:
         """
         Works like `.popitem()`, but also returns the remaining expiration.
@@ -391,7 +384,6 @@ class TTLCache(BaseCacheImpl[KT, VT]):
             KeyError
         """
         ...
-
 
 class VTTLCache(BaseCacheImpl[KT, VT]):
     def __init__(
@@ -433,8 +425,10 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
             >>> cache.insert("key", "value", None) # but this item never expire.
         """
         ...
-    
-    def setdefault(self, key: KT, default: DT = None, ttl: typing.Optional[float] = None) -> typing.Union[VT, DT]:
+
+    def setdefault(
+        self, key: KT, default: DT = None, ttl: typing.Optional[float] = None
+    ) -> typing.Union[VT, DT]:
         """
         Returns the value of the specified key.
 
@@ -460,7 +454,9 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def get_with_expire(self, key: KT, default: DT = None) -> typing.Tuple[typing.Union[VT, DT], float]:
+    def get_with_expire(
+        self, key: KT, default: DT = None
+    ) -> typing.Tuple[typing.Union[VT, DT], float]:
         """
         Works like `.get()`, but also returns the remaining expiration.
 
@@ -473,8 +469,10 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
             (None, 0.0)
         """
         ...
-    
-    def pop_with_expire(self, key: KT, default: DT = None) -> typing.Tuple[typing.Union[VT, DT], float]:
+
+    def pop_with_expire(
+        self, key: KT, default: DT = None
+    ) -> typing.Tuple[typing.Union[VT, DT], float]:
         """
         Works like `.pop()`, but also returns the remaining expiration.
 
@@ -487,7 +485,7 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
             (None, 0.0)
         """
         ...
-    
+
     def popitem_with_expire(self) -> typing.Tuple[VT, DT, float]:
         """
         Works like `.popitem()`, but also returns the remaining expiration.

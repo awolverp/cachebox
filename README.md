@@ -1,5 +1,5 @@
 # Cachebox
-[**v2 Changelog**]() | [**Releases**]()
+[**v2 Changelog**](CHANGELOG.md) | [**Releases**](https://github.com/awolverp/cachebox/releases)
 
 The fastest caching library with different implementations, written in Rust.
 

@@ -4,12 +4,12 @@
 The fastest caching library with different implementations, written in Rust.
 
 
-<p align="center">
+<!-- <p align="center">
 </p>
 
 <p align="center">
   <i>Inserting 1 million items (LRU policy for example)</i>
-</p>
+</p> -->
 
 
 - 🚀 5-20x faster than other libraries (like cachetools and cacheout) 

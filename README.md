@@ -1,9 +1,27 @@
 # Cachebox
-**Cachebox** is a Python library (written in Rust) that provides memoizations and cache implementations with
-different cache replecement policies.
+[**v2 Changelog**]() | [**Releases**]()
 
-This library is faster than other libraries and uses lower memory than them, [*you can see benchmarks here*](https://github.com/awolverp/cachebox-benchmark).
+The fastest caching library with different implementations, written in Rust.
 
+
+<p align="center">
+</p>
+
+<p align="center">
+  <i>Inserting 1 million items (LRU policy for example)</i>
+</p>
+
+
+- 🚀 5-20x faster than other libraries (like cachetools and cacheout) 
+- 🛠️ `pyproject.toml` support
+- **(R)** written in Rust
+- 🤝 Python 3.8 to 3.13-dev compatibility
+- 📦 Over 7 cache algorithms are supported
+- 🧶 Completely thread-safe
+
+> 🚀 you can see benchmarks [**here**](https://github.com/awolverp/cachebox-benchmark).
+
+**@** decorator example:
 ```python
 from cachebox import cached, TTLCache, LRUCache
 
@@ -24,49 +42,51 @@ def fib(n):
     return n if n < 2 else fib(n - 1) + fib(n - 2)
 ```
 
-**Page Content**:
-- ⁉️ [Should i use memoization?](#what-is-caching-and-why-to-use-it)
+## Page Contents
+- ⁉️ [What is caching?](#what-is-caching)
+- ⁉️ [When i need caching?](#when-i-need-caching)
 - 🎯 [Features](#features)
 - 🛠️ [Installation](#installation)
-- 🎓 [Tutorial](#tutorial)
+- 🎓 [Usage](#caches)
+- 🚀 [Performance table](#performance-table)
 - ⁉️ [Frequently Asked Questions](#frequently-asked-questions)
 - 🆕 [*CHANGELOG*](CHANGELOG.md)
 - ⏱️ [*BENCHMARK*](https://github.com/awolverp/cachebox-benchmark)
 
-### What is caching and why to use it?
-Wikipeda:
-> In computing, caching improves performance by keeping recent or often-used data
- items in memory locations which are faster, or computationally cheaper to access,
- than normal memory stores. When the cache is full, the algorithm must choose which
- items to discard to make room for new data. 
+## What is caching?
+In computing, caching improves performance by keeping recent or often-used data items in memory locations which are faster,
+or computationally cheaper to access than normal memory stores. When the cache is full,
+the algorithm must choose which items to discard to make room for new data. (*Wikipedia*)
 
-Researchgate:
-> Cache replacement policies play important roles in efficiently processing the current
- big data applications. The performance of any high performance computing system is highly
- depending on the performance of its cache memory. 
+## When i need caching?
+1. Sometimes you have **functions that take a long time to execute**, and you need to call them each time.
 
+```python
+@cached(LRUCache(260))
+def function(np_array):
+    # big operations
+    ...
+```
 
-### Features
-Pros:
-- Thread-safe (uses Rusts `RwLock`)
-- `sync` and `async` compatible
-- Various cache algorithms (supports *8* cache algorithms)
-- Super fast (is written in Rust language)
-- High performance
+2. Sometimes you need to **temporarily store data** in memory for a short period.
 
-Cons:
-- Does not support iterating (for `values`, `keys` and `items` methods)
+3. When dealing with **remote APIs**, Instead of making frequent API calls, store the responses in a cache.
 
-Supported:
-- `Cache`: Simple cache implementation with no policy and algorithm.
-- `FIFOCache`: First In First Out cache implementation.
-- `LFUCache`: Least Frequently Used cache implementation.
-- `RRCache`: Random Replacement cache implementation.
-- `LRUCache`: Least Recently Used cache implementation.
-- `MRUCache`: Most Recently Used cache implementation.
-- `TTLCache`: LRU Cache Implementation With Per-Item TTL Value.
-- `TTLCacheNoDefault`: Time-aware Cache Implmenetation; With this cache, you can set its own expiration time for each key-value pair.
+```python
+@cached(TTLCache(0, ttl=10))
+def api_call(key):
+    return api.call(key)
+```
 
+4. **Caching query results** from databases can enhance performance.
+
+```python
+@cached(TTLCache(0, ttl=1))
+def select_user(id):
+    return db.execute("SELECT * FROM users WHERE id=?", (id,))
+```
+
+and ...
 
 ## Installation
 You can install **cachebox** from PyPi:
@@ -74,88 +94,249 @@ You can install **cachebox** from PyPi:
 pip3 install -U cachebox
 ```
 
-## Tutorial
-This package is very easy to use. You can use all implementations like a dictionary;
-they supported all `collections.MutableMapping` methods.
-But *there are some new methods* you can see in examples.
-
-At first, think about which algorithm do you want to use? import and use it like a dictionary; In this examples we used `LRUCache`, `TTLCache` and `TTLCacheNoDefault`. 
-
-**LRUCache** example:
-```python
-from cachebox import LRUCache
-
-cache = LRUCache(10)
-cache.insert("key", "value") # or cache["key"] = "value"
-cache.delete("key") # or `del cache["key"]`
-
-# `.clear()` method has new parameter `reuse`
-# pass True to keeps the allocated memory for reuse (default False).
-cache.clear(reuse=True)
+To verify that the library is installed correctly, run the following command:
+```sh
+python -c "import cachebox; print(cachebox.__version__)"
 ```
 
-And there are new methods for `TTLCache` and `TTLCacheNoDefault`. You can see those methods
-in these examples:
+## Caches
+All the implementations are support **mutable-mapping** methods (e.g `__setitem__`, `get`, `popitem`),
+and there are some new methods for each implemetation.
 
-**TTLCache** example:
+These methods are available for all classes:
+- `insert(key, value)`: an aliases for `__setitem__`
+- `capacity()`: Returns the number of elements the map can hold without reallocating.
+- `drain(n)`: According to cache algorithm, deletes and returns `n` items from cache.
+- `shrink_to_fit()`: Shrinks the capacity of the cache as much as possible.
+
+### Cache
+Fixed-size (or can be not) cache implementation without any policy,
+So only can be fixed-size, or unlimited size cache.
+
 ```python
-from cachebox import TTLCache
-
-cache = TTLCache(10, ttl=2)
-cache.insert(1, "value1") # or cache[1] = "value1"
-cache.insert(2, "value2") # or cache[2] = "value2"
-cache.insert(3, "value3") # or cache[3] = "value3"
-
-# It works like `.get()` with the difference that it returns the expiration of item in seconds.
-cache.get_with_expire(1)
-# Output: ('value1', 1.971873426437378)
-
-# It works like `.popitem()` with the difference that it returns the expiration of item in seconds.
-cache.popitem_with_expire()
-# Output: (1, 'value1', 1.961873426437378)
-
-# It works like `.pop()` with the difference that it returns the expiration of item in seconds.
-cache.pop_with_expire(2)
-# Output: ('value2', 1.951873426437378)
-
-# Calling this method removes all items whose time-to-live would have expired by time,
-# and if `reuse` be True, keeps the allocated memory for reuse (default False).
-cache.expire(reuse=False)
+>>> from cachebox import Cache
+>>> cache = Cache(100) # fixed-size cache
+>>> cache = Cache(0) # unlimited-size cache
+>>> cache = Cache(100, {"key1": "value1", "key2": "value2"}) # initialize from dict or any iterable object
+>>> cache = Cache(2, {i:i for i in range(10)})
+...
+OverflowError: maximum size limit reached
 ```
 
-**TTLCacheNoDefault** example:
+**There're no new methods for this class.**
+
+### FIFOCache
+FIFO Cache implementation (First-In First-Out policy, very useful).
+
+In simple terms, the FIFO cache will remove the element that has been in the cache the longest;
+It behaves like a Python dictionary.
+
 ```python
-from cachebox import TTLCacheNoDefault
-
-# TTLCacheNoDefault have not ttl parameter here.
-cache = TTLCacheNoDefault(10)
-cache.insert(1, "value1", ttl=10) # this key-pair is available for no longer than 10 seconds
-cache.insert(2, "value2", ttl=2) # this key-pair is available for no longer than 2 seconds
-cache.setdefault(3, "value3", ttl=6) # this key-pair is available for no longer than 6 seconds
-cache.insert(4, "value4", ttl=None) # this key-pair never expire
-
-# It works like `.get()` with the difference that it returns the expiration of item in seconds.
-cache.get_with_expire(1)
-# Output: ('value1', 9.971873426437378)
-
-# It works like `.popitem()` with the difference that it returns the expiration of item in seconds.
-cache.popitem_with_expire()
-# Output: (2, 'value2', 1.961873426437378)
-
-# It works like `.pop()` with the difference that it returns the expiration of item in seconds.
-cache.pop_with_expire(4) 
-# Output: ('value4', 0.0)
+>>> from cachebox import FIFOCache
+>>> cache = FIFOCache(100) # fixed-size cache
+>>> cache = FIFOCache(0) # unlimited-size cache
+>>> cache = FIFOCache(100, {"key1": "value1", "key2": "value2"}) # initialize from dict or any iterable object
 ```
+
+**There're new methods:**
+- `first`: returns the first inserted key (the oldest)
+- `last`: returns the last inserted key (the newest)
+
+
+### LFUCache
+LFU Cache implementation (Least frequantly used policy).
+
+In simple terms, the LFU cache will remove the element in the cache that has been accessed the least,
+regardless of time.
+
+```python
+>>> from cachebox import LFUCache
+>>> cache = LFUCache(100) # fixed-size cache
+>>> cache = LFUCache(0) # unlimited-size cache
+>>> cache = LFUCache(100, {"key1": "value1", "key2": "value2"}) # initialize from dict or any iterable object
+```
+
+**There's a new method:**
+- `least_frequently_used`: returns the key that has been accessed the least.
+
+
+### RRCache
+RRCache implementation (Random Replacement policy).
+
+In simple terms, the RR cache will choice randomly element to remove it to make space when necessary.
+
+```python
+>>> from cachebox import RRCache
+>>> cache = RRCache(100) # fixed-size cache
+>>> cache = RRCache(0) # unlimited-size cache
+>>> cache = RRCache(100, {"key1": "value1", "key2": "value2"}) # initialize from dict or any iterable object
+```
+
+**There're no new methods for this class.**
+
+
+### LRUCache
+LRU Cache implementation (Least recently used policy).
+
+In simple terms, the LRU cache will remove the element in the cache that has not been accessed in the longest time.
+
+```python
+>>> from cachebox import LRUCache
+>>> cache = LRUCache(100) # fixed-size cache
+>>> cache = LRUCache(0) # unlimited-size cache
+>>> cache = LRUCache(100, {"key1": "value1", "key2": "value2"}) # initialize from dict or any iterable object
+```
+
+**There're new methods:**
+- `least_recently_used`: returns the key that has not been accessed in the longest time.
+- `most_recently_used`: returns the key that has been accessed in the longest time.
+
+
+### TTLCache
+TTL Cache implementation (Time-to-live policy).
+
+In simple terms, The TTL cache is one that evicts items that are older than a time-to-live.
+
+```python
+>>> from cachebox import TTLCache
+>>> cache = TTLCache(100, 2) # fixed-size cache, 2 ttl value
+>>> cache = TTLCache(0, 10) # unlimited-size cache, 10 ttl value
+>>> cache = TTLCache(100, 5, {"key1": "value1", "key2": "value2"}) # initialize from dict or any iterable object
+```
+**There're new methods:**
+- `get_with_expire`: Works like `.get()`, but also returns the remaining expiration.
+
+```python
+>>> cache.update({1: 1, 2: 2})
+>>> cache.get_with_expire(1)
+(1, 1.23445675)
+>>> cache.get_with_expire("no-exists")
+(None, 0.0)
+```
+
+- `pop_with_expire`: Works like `.pop()`, but also returns the remaining expiration.
+
+```python
+>>> cache.update({1: 1, 2: 2})
+>>> cache.pop_with_expire(1)
+(1, 1.23445675)
+>>> cache.pop_with_expire(1)
+(None, 0.0)
+```
+
+- `popitem_with_expire`: Works like `.popitem()`, but also returns the remaining expiration.
+
+```python
+>>> cache.update({1: 1, 2: 2})
+>>> cache.popitem_with_expire()
+(1, 1, 1.23445675)
+>>> cache.popitem_with_expire()
+(2, 2, 1.94389545)
+>>> cache.popitem_with_expire()
+...
+KeyError
+```
+
+### VTTLCache
+VTTL Cache implementation (Time-to-live per-key policy)
+
+Works like TTLCache, with this different that each key has own time-to-live value.
+
+```python
+>>> cache = VTTLCache(100) # fixed-size cache
+>>> cache = VTTLCache(0) # unlimited-size cache
+
+# initialize from dict or any iterable object;
+# also these items will expire after 5 seconds
+>>> cache = VTTLCache(100, {"key1": "value1", "key2": "value2"}, 5)
+
+# initialize from dict or any iterable object;
+# but these items never expire, because we pass None as them ttl value
+>>> cache = VTTLCache(100, {"key1": "value1", "key2": "value2"}, None)
+```
+
+**There're new methods:**
+- `insert(key, value, ttl)`: is different here. if you use `cache[key] = value` way, you cannot set ttl value for those item, but here you can.
+
+```python
+>>> cache.insert("key", "value", 10) # this item will expire after 10 seconds
+>>> cache.insert("key", "value", None) # but this item never expire.
+```
+
+- `setdefault(key, default, ttl)`: Returns the value of the specified key.
+If the key does not exist, insert the key, with the specified value.
+
+- `update(iterable, ttl)`: inserts the specified items to the cache. The `iterable` can be a dictionary,
+or an iterable object with key-value pairs.
+
+```python
+>>> cache = VTTLCache(20)
+>>> cache.insert("key", "value", 10)
+>>> cache.update({i:i for i in range(12)}, 2)
+>>> len(cache)
+13
+>>> time.sleep(2)
+>>> len(cache)
+1
+```
+
+- `get_with_expire`: Works like `.get()`, but also returns the remaining expiration.
+
+```python
+>>> cache.update({1: 1, 2: 2}, 2)
+>>> cache.get_with_expire(1)
+(1, 1.9934)
+>>> cache.get_with_expire("no-exists")
+(None, 0.0)
+```
+
+- `pop_with_expire`: Works like `.pop()`, but also returns the remaining expiration.
+
+```python
+>>> cache.update({1: 1, 2: 2}, 2)
+>>> cache.pop_with_expire(1)
+(1, 1.99954)
+>>> cache.pop_with_expire(1)
+(None, 0.0)
+```
+
+- `popitem_with_expire`: Works like `.popitem()`, but also returns the remaining expiration.
+
+```python
+>>> cache.update({1: 1, 2: 2}, 2)
+>>> cache.popitem_with_expire()
+(1, 1, 1.9786564)
+>>> cache.popitem_with_expire()
+(2, 2, 1.97389545)
+>>> cache.popitem_with_expire()
+...
+KeyError
+```
+
+## Performance table
+
+> ![NOTE]\
+> Operations which have an amortized cost are suffixed with a `*`. Operations with an expected cost are suffixed with a `~`.
+
+|              | get(i) | insert(i)       | delete(i)      | update(m)        | popitem |
+| ------------ | ------ | --------------- | -------------- | ---------------- | ------- |
+| Cache        | O(1)~  | O(1)~*          | O(1)~          | O(m)~            | N/A     |
+| FIFOCache    | O(1)~  | O(min(i, n-i))* | O(min(i, n-i)) | O(m*min(i, n-i)) | O(1)    |
+| LFUCache     | O(1)~  | O(n)~*          | O(1)~          | O(m*n)~          | O(n)~*  |
+| RRCache      | O(1)~  | O(1)~*          | O(1)~          | O(m)~            | O(1)~   |
+| LRUCache     | O(1)~  | ?               | O(1)~          | ?                | O(1)    |
+| TTLCache     | O(1)~  | O(min(i, n-i))* | O(min(i, n-i)) | O(m*min(i, n-i)) | O(1)    |
+| VTTLCache    | O(1)~  | ?               | O(n-i)         | ?                | O(1)~   |
 
 ## Frequently asked questions
-#### What is the difference between TTLCache and TTLCacheNoDefault?
-In `TTLCache`, you set an expiration time for all items, but in `TTLCacheNoDefault`,
+#### What is the difference between TTLCache and VTTLCache?
+In `TTLCache`, you set an expiration time for all items, but in `VTTLCache`,
 you can set a unique expiration time for each item.
 
 |              | TTL         | Speed   |
 | ------------ | ----------- | ------- |
-| TTLCache     | One ttl for all items       | TTLCache is very faster than TTLCacheNoDefault |
-| TTLCacheNoDefault    | Each item has unique expiration time | TTLCacheNoDefault is very slow in inserting |
+| TTLCache     | One ttl for all items       | TTLCache is very faster than VTTLCache |
+| VTTLCache    | Each item has unique expiration time | VTTLCache is slow in inserting |
 
 
 #### Can we set maxsize to zero?
@@ -170,9 +351,6 @@ isinstance(cache, cachetools.Cache) -> isinstance(cache, cachebox.BaseCacheImpl)
 
 # If you pass `None` to `cached()`, change it to `dict`.
 @cachetools.cached(None) -> @cachebox.cached({})
-
-# If you use `cache.maxsize`, change it to `cache.getmaxsize()`
-cache.maxsize -> cache.getmaxsize()
 ```
 
 ## License

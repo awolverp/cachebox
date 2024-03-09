@@ -43,7 +43,7 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
         """
         ...
     
-    @typing_extensions.deprecated("This function is deprecated; use `.maxsize` property instead.")
+    @typing_extensions.deprecated("This method is deprecated; use `.maxsize` property instead.")
     def getmaxsize(self) -> int: ...
     def __len__(self) -> int: ...
     def __sizeof__(self) -> int: ...
@@ -64,7 +64,7 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
         """
         ...
     
-    @typing_extensions.deprecated("This function is deprecated; go `del cache[key]` way instead.")
+    @typing_extensions.deprecated("This method is deprecated; go `del cache[key]` way instead.")
     def delete(self, key: KT) -> None:
         """
         Works like `del cache[key]`
@@ -171,7 +171,7 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
     
     def shrink_to_fit(self) -> None:
         """
-        Shrinks the capacity of the map as much as possible.
+        Shrinks the capacity of the cache as much as possible.
         It will drop down as much as possible while maintaining the internal rules and possibly
         leaving some space in accordance with the resize policy.
 
@@ -183,6 +183,7 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
             >>> cache.shrink_to_fit()
         """
         ...
+
 
 class Cache(BaseCacheImpl[KT, VT]):
     def __init__(
@@ -236,9 +237,9 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
 
         Example::
 
-            cache = FIFOCache(100) # fixed-size cache
-            cache = FIFOCache(0) # unlimited-size cache
-            cache = FIFOCache(100, {"key1": "value1", "key2": "value2"}) # initialize from dict or any iterable object
+            >>> cache = FIFOCache(100) # fixed-size cache
+            >>> cache = FIFOCache(0) # unlimited-size cache
+            >>> cache = FIFOCache(100, {"key1": "value1", "key2": "value2"}) # initialize from dict or any iterable object
         """
         ...
 
@@ -262,9 +263,9 @@ class LFUCache(BaseCacheImpl[KT, VT]):
 
         Example::
 
-            cache = LFUCache(100) # fixed-size cache
-            cache = LFUCache(0) # unlimited-size cache
-            cache = LFUCache(100, {"key1": "value1", "key2": "value2"}) # initialize from dict or any iterable object
+            >>> cache = LFUCache(100) # fixed-size cache
+            >>> cache = LFUCache(0) # unlimited-size cache
+            >>> cache = LFUCache(100, {"key1": "value1", "key2": "value2"}) # initialize from dict or any iterable object
         """
         ...
     
@@ -286,9 +287,9 @@ class RRCache(BaseCacheImpl[KT, VT]):
 
         Example::
 
-            cache = RRCache(100) # fixed-size cache
-            cache = RRCache(0) # unlimited-size cache
-            cache = RRCache(100, {"key1": "value1", "key2": "value2"}) # initialize from dict or any iterable object
+            >>> cache = RRCache(100) # fixed-size cache
+            >>> cache = RRCache(0) # unlimited-size cache
+            >>> cache = RRCache(100, {"key1": "value1", "key2": "value2"}) # initialize from dict or any iterable object
         """
         ...
 
@@ -308,9 +309,9 @@ class LRUCache(BaseCacheImpl[KT, VT]):
 
         Example::
 
-            cache = LRUCache(100) # fixed-size cache
-            cache = LRUCache(0) # unlimited-size cache
-            cache = LRUCache(100, {"key1": "value1", "key2": "value2"}) # initialize from dict or any iterable object
+            >>> cache = LRUCache(100) # fixed-size cache
+            >>> cache = LRUCache(0) # unlimited-size cache
+            >>> cache = LRUCache(100, {"key1": "value1", "key2": "value2"}) # initialize from dict or any iterable object
         """
         ...
 
@@ -334,11 +335,17 @@ class TTLCache(BaseCacheImpl[KT, VT]):
 
         Example::
 
-            cache = TTLCache(100, 2) # fixed-size cache, 2 ttl value
-            cache = TTLCache(0, 10) # unlimited-size cache, 10 ttl value
-            cache = TTLCache(100, 5, {"key1": "value1", "key2": "value2"}) # initialize from dict or any iterable object
+            >>> cache = TTLCache(100, 2) # fixed-size cache, 2 ttl value
+            >>> cache = TTLCache(0, 10) # unlimited-size cache, 10 ttl value
+            >>> cache = TTLCache(100, 5, {"key1": "value1", "key2": "value2"}) # initialize from dict or any iterable object
         """
         ...
+
+    @property
+    def ttl(self) -> float: ...
+
+    @typing_extensions.deprecated("This method is deprecated; use `.ttl` instead.")
+    def getttl(self) -> float: ...
 
     def get_with_expire(self, key: KT, default: DT = None) -> typing.Tuple[typing.Union[VT, DT], float]:
         """
@@ -402,16 +409,16 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
 
         Example::
 
-            cache = VTTLCache(100) # fixed-size cache
-            cache = VTTLCache(0) # unlimited-size cache
+            >>> cache = VTTLCache(100) # fixed-size cache
+            >>> cache = VTTLCache(0) # unlimited-size cache
 
             # initialize from dict or any iterable object;
             # also these items will expire after 5 seconds
-            cache = VTTLCache(100, {"key1": "value1", "key2": "value2"}, 5)
+            >>> cache = VTTLCache(100, {"key1": "value1", "key2": "value2"}, 5)
 
             # initialize from dict or any iterable object;
             # but these items never expire, because we pass None as them ttl value
-            cache = VTTLCache(100, {"key1": "value1", "key2": "value2"}, None)
+            >>> cache = VTTLCache(100, {"key1": "value1", "key2": "value2"}, None)
         """
         ...
 
@@ -450,5 +457,50 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
             >>> time.sleep(2)
             >>> len(cache)
             1
+        """
+        ...
+
+    def get_with_expire(self, key: KT, default: DT = None) -> typing.Tuple[typing.Union[VT, DT], float]:
+        """
+        Works like `.get()`, but also returns the remaining expiration.
+
+        Example::
+
+            >>> cache.update({1: 1, 2: 2}, 2)
+            >>> cache.get_with_expire(1)
+            (1, 1.9934)
+            >>> cache.get_with_expire("no-exists")
+            (None, 0.0)
+        """
+        ...
+    
+    def pop_with_expire(self, key: KT, default: DT = None) -> typing.Tuple[typing.Union[VT, DT], float]:
+        """
+        Works like `.pop()`, but also returns the remaining expiration.
+
+        Example::
+
+            >>> cache.update({1: 1, 2: 2}, 2)
+            >>> cache.pop_with_expire(1)
+            (1, 1.99954)
+            >>> cache.pop_with_expire(1)
+            (None, 0.0)
+        """
+        ...
+    
+    def popitem_with_expire(self) -> typing.Tuple[VT, DT, float]:
+        """
+        Works like `.popitem()`, but also returns the remaining expiration.
+
+        Example::
+
+            >>> cache.update({1: 1, 2: 2}, 2)
+            >>> cache.popitem_with_expire()
+            (1, 1, 1.9786564)
+            >>> cache.popitem_with_expire()
+            (2, 2, 1.97389545)
+            >>> cache.popitem_with_expire()
+            ...
+            KeyError
         """
         ...

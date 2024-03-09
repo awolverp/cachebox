@@ -3,15 +3,6 @@
 
 The fastest caching library with different implementations, written in Rust.
 
-
-<!-- <p align="center">
-</p>
-
-<p align="center">
-  <i>Inserting 1 million items (LRU policy for example)</i>
-</p> -->
-
-
 - 🚀 5-20x faster than other libraries (like cachetools and cacheout) 
 - 🛠️ `pyproject.toml` support
 - **(R)** written in Rust
@@ -105,9 +96,43 @@ and there are some new methods for each implemetation.
 
 These methods are available for all classes:
 - `insert(key, value)`: an aliases for `__setitem__`
-- `capacity()`: Returns the number of elements the map can hold without reallocating.
-- `drain(n)`: According to cache algorithm, deletes and returns `n` items from cache.
+
+```python
+>>> cache.insert(1, 1) # is equals to cache[1] = 1
+```
+
+- `capacity()`: Returns the number of elements the cache can hold without reallocating.
+
+```python
+>>> cache.update((i, i) for i in range(1000))
+>>> cache.capacity()
+1432
+```
+
+- `drain(n)`: According to cache algorithm, deletes and returns how many items removed from cache.
+
+```python
+>>> cache = LFUCache(10, {i:i for i in range(10)})
+>>> cache.drain(8)
+8
+>>> len(cache)
+2
+>>> cache.drain(10)
+2
+>>> len(cache)
+0
+```
+
 - `shrink_to_fit()`: Shrinks the capacity of the cache as much as possible.
+
+```python
+>>> cache = LRUCache(0, {i:i for i in range(10)})
+>>> cache.capacity()
+27
+>>> cache.shrink_to_fit()
+>>> cache.capacity()
+11
+```
 
 ### Cache
 Fixed-size (or can be not) cache implementation without any policy,
@@ -315,7 +340,7 @@ KeyError
 
 ## Performance table
 
-> ![NOTE]\
+> [!NOTE]\
 > Operations which have an amortized cost are suffixed with a `*`. Operations with an expected cost are suffixed with a `~`.
 
 |              | get(i) | insert(i)       | delete(i)      | update(m)        | popitem |

@@ -136,7 +136,7 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
 
     def drain(self, n: int) -> int:
         """
-        According to cache algorithm, deletes and returns `n` items from cache.
+        According to cache algorithm, deletes and returns how many items removed from cache.
 
         Example::
 
@@ -176,8 +176,10 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
 
             >>> cache = LRUCache(0, {i:i for i in range(10)})
             >>> cache.capacity()
-            3
+            27
             >>> cache.shrink_to_fit()
+            >>> cache.capacity()
+            11
         """
         ...
 

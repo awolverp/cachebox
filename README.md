@@ -3,7 +3,8 @@
 
 The fastest caching library with different implementations, written in Rust.
 
-- 🚀 5-20x faster than other libraries (like cachetools and cacheout) 
+- 🚀 5-20x faster than other libraries (like cachetools and cacheout)
+- 🤯 It's sometimes works **as fast as dictionary**
 - 🛠️ `pyproject.toml` support
 - **(R)** written in Rust
 - 🤝 Python 3.8 to 3.13-dev compatibility
@@ -12,7 +13,7 @@ The fastest caching library with different implementations, written in Rust.
 
 > 🚀 you can see benchmarks [**here**](https://github.com/awolverp/cachebox-benchmark).
 
-**@** decorator example:
+**(@)** decorator example:
 ```python
 from cachebox import cached, TTLCache, LRUCache
 

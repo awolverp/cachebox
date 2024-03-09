@@ -1,12 +1,13 @@
 use rand::seq::IteratorRandom;
-use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::time;
+
+use ahash::AHashMap;
 
 /// Fixed-size (or can be not) cache implementation without any policy,
 /// So only can be fixed-size, or unlimited size cache
 pub struct Cache<K, V> {
-    pub(in crate::internal) inner: HashMap<K, V>,
+    pub(in crate::internal) inner: AHashMap<K, V>,
     pub maxsize: usize,
 }
 
@@ -21,13 +22,13 @@ impl<K, V> Cache<K, V> {
             };
 
             return Self {
-                inner: HashMap::with_capacity(cap),
+                inner: AHashMap::with_capacity(cap),
                 maxsize,
             };
         }
 
         Self {
-            inner: HashMap::new(),
+            inner: AHashMap::new(),
             maxsize,
         }
     }
@@ -90,6 +91,7 @@ impl<K: std::hash::Hash + Eq, V> Cache<K, V> {
         self.inner.iter()
     }
 
+    #[inline(always)]
     pub fn get(&self, key: &K) -> Option<&V> {
         self.inner.get(key)
     }
@@ -130,7 +132,7 @@ impl<K: std::hash::Hash + Eq, V: Clone> Cache<K, V> {
 /// In simple terms, the FIFO cache will remove the element that has been in the cache the longest;
 /// It behaves like a Python dictionary.
 pub struct FIFOCache<K, V> {
-    inner: HashMap<K, V>,
+    inner: AHashMap<K, V>,
     order: VecDeque<K>,
     pub maxsize: usize,
 }
@@ -146,14 +148,14 @@ impl<K, V> FIFOCache<K, V> {
             };
 
             return Self {
-                inner: HashMap::with_capacity(cap),
+                inner: AHashMap::with_capacity(cap),
                 order: VecDeque::with_capacity(cap),
                 maxsize,
             };
         }
 
         Self {
-            inner: HashMap::new(),
+            inner: AHashMap::new(),
             order: VecDeque::new(),
             maxsize,
         }
@@ -324,8 +326,8 @@ impl<K: PartialEq, V> Eq for FIFOCache<K, V> {}
 ///
 /// In simple terms, the LFU cache will remove the element in the cache that has been accessed the least, regardless of time.
 pub struct LFUCache<K, V> {
-    inner: std::collections::HashMap<K, V>,
-    counter: std::collections::HashMap<K, usize>,
+    inner: AHashMap<K, V>,
+    counter: AHashMap<K, usize>,
     pub maxsize: usize,
 }
 
@@ -340,15 +342,15 @@ impl<K, V> LFUCache<K, V> {
             };
 
             return Self {
-                inner: HashMap::with_capacity(cap),
-                counter: HashMap::with_capacity(cap),
+                inner: AHashMap::with_capacity(cap),
+                counter: AHashMap::with_capacity(cap),
                 maxsize,
             };
         }
 
         Self {
-            inner: HashMap::new(),
-            counter: HashMap::new(),
+            inner: AHashMap::new(),
+            counter: AHashMap::new(),
             maxsize,
         }
     }
@@ -612,7 +614,7 @@ impl<K: std::hash::Hash + Eq + Copy, V: Clone> RRCache<K, V> {
 ///
 /// In simple terms, the LRU cache will remove the element in the cache that has not been accessed in the longest time.
 pub struct LRUCache<K, V> {
-    inner: HashMap<K, V>,
+    inner: AHashMap<K, V>,
     order: VecDeque<K>,
     pub maxsize: usize,
 }
@@ -636,14 +638,14 @@ impl<K, V> LRUCache<K, V> {
             };
 
             return Self {
-                inner: HashMap::with_capacity(cap),
+                inner: AHashMap::with_capacity(cap),
                 order: VecDeque::with_capacity(cap),
                 maxsize,
             };
         }
 
         Self {
-            inner: HashMap::new(),
+            inner: AHashMap::new(),
             order: VecDeque::new(),
             maxsize,
         }
@@ -845,7 +847,7 @@ impl<T: Clone> TTLValue<T> {
 ///
 /// In simple terms, The TTL cache is one that evicts items that are older than a time-to-live.
 pub struct TTLCache<K, V: Clone> {
-    inner: HashMap<K, TTLValue<V>>,
+    inner: AHashMap<K, TTLValue<V>>,
     order: VecDeque<K>,
     pub ttl: time::Duration,
     pub maxsize: usize,
@@ -862,7 +864,7 @@ impl<K, V: Clone> TTLCache<K, V> {
             };
 
             return Self {
-                inner: HashMap::with_capacity(cap),
+                inner: AHashMap::with_capacity(cap),
                 order: VecDeque::with_capacity(cap),
                 ttl: time::Duration::from_secs_f32(ttl),
                 maxsize,
@@ -870,7 +872,7 @@ impl<K, V: Clone> TTLCache<K, V> {
         }
 
         Self {
-            inner: HashMap::new(),
+            inner: AHashMap::new(),
             order: VecDeque::new(),
             ttl: time::Duration::from_secs_f32(ttl),
             maxsize,
@@ -1086,7 +1088,7 @@ impl<T: Clone> TTLValueOption<T> {
 ///
 /// Works like TTLCache, with this different that each key has own time-to-live value.
 pub struct VTTLCache<K, V: Clone> {
-    inner: HashMap<K, TTLValueOption<V>>,
+    inner: AHashMap<K, TTLValueOption<V>>,
     order: Vec<K>,
     pub maxsize: usize,
 }
@@ -1102,14 +1104,14 @@ impl<K, V: Clone> VTTLCache<K, V> {
             };
 
             return Self {
-                inner: HashMap::with_capacity(cap),
+                inner: AHashMap::with_capacity(cap),
                 order: Vec::with_capacity(cap),
                 maxsize,
             };
         }
 
         Self {
-            inner: HashMap::new(),
+            inner: AHashMap::new(),
             order: Vec::new(),
             maxsize,
         }

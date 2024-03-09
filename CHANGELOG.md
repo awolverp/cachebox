@@ -15,7 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README.md mistakes fixed
 
 ### Internal
-- `codegen-units` value changed again.
+- `strip` value changed.
+- Use `AHashMap` instead of standard `HashMap`; that's very faster.
 
 ## [2.0.0] - 2024-03-09
 In this release, I rewritten all implemetations, documentation, and stub-file.

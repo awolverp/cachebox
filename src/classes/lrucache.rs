@@ -247,6 +247,10 @@ impl LRUCache {
         }
     }
 
+    fn drain(&mut self, n: usize) -> usize {
+        self.inner.write().drain(n)
+    }
+
     fn update(&mut self, py: Python<'_>, iterable: Py<PyAny>) -> PyResult<()> {
         let obj = iterable.as_ref(py);
 
@@ -297,8 +301,8 @@ impl LRUCache {
         Some(read.fast_get(read.least_recently_used()?)?.0.clone())
     }
 
-    fn more_recently_used(&self) -> Option<Py<PyAny>> {
+    fn most_recently_used(&self) -> Option<Py<PyAny>> {
         let read = self.inner.read();
-        Some(read.fast_get(read.more_recently_used()?)?.0.clone())
+        Some(read.fast_get(read.most_recently_used()?)?.0.clone())
     }
 }

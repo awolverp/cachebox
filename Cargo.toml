@@ -10,8 +10,14 @@ crate-type = ["cdylib"]
 
 [profile.release]
 lto = "fat"
+codegen-units = 1
+strip = true
 
 [dependencies]
 parking_lot = "0.12.1"
 pyo3 = "0.19.0"
 rand = "0.8.5"
+
+[lints.clippy]
+dbg_macro = "warn"
+print_stdout = "warn"

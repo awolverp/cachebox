@@ -125,7 +125,7 @@ impl<K: std::hash::Hash + Eq, V: Clone> Cache<K, V> {
     }
 }
 
-/// LFU Cache implementation (First-In First-Out policy, very useful cache policy).
+/// FIFO Cache implementation (First-In First-Out policy, very useful cache policy).
 ///
 /// In simple terms, the FIFO cache will remove the element that has been in the cache the longest;
 /// It behaves like a Python dictionary.
@@ -221,6 +221,17 @@ impl<K: std::hash::Hash + Eq, V> FIFOCache<K, V> {
             Some(x) => self.inner.remove(&x),
             None => None,
         }
+    }
+
+    pub fn drain(&mut self, n: usize) -> usize {
+        let mut c = 0usize;
+        for _ in 0..n {
+            if self.popitem().is_none() {
+                break;
+            }
+            c+=1;
+        }
+        c
     }
 
     pub fn first(&self) -> Option<&K> {
@@ -364,11 +375,7 @@ impl<K: std::hash::Hash + Eq + std::cmp::Ord + Copy, V> LFUCache<K, V> {
         if self.inner.is_empty() {
             None
         } else {
-            let mut vector: Vec<_> = self
-                .counter
-                .iter()
-                .map(|(t, n)| (*n, *t))
-                .collect();
+            let mut vector: Vec<_> = self.counter.iter().map(|(t, n)| (*n, *t)).collect();
             vector.sort_unstable_by_key(|(n, _)| *n);
 
             let (_, least_frequently_used_key) = vector[0];
@@ -378,15 +385,22 @@ impl<K: std::hash::Hash + Eq + std::cmp::Ord + Copy, V> LFUCache<K, V> {
         }
     }
 
+    pub fn drain(&mut self, n: usize) -> usize {
+        let mut c = 0usize;
+        for _ in 0..n {
+            if self.popitem().is_none() {
+                break;
+            }
+            c+=1;
+        }
+        c
+    }
+
     pub fn least_frequently_used(&self) -> Option<K> {
         if self.inner.is_empty() {
             None
         } else {
-            let mut vector: Vec<_> = self
-                .counter
-                .iter()
-                .map(|(t, n)| (*n, *t))
-                .collect();
+            let mut vector: Vec<_> = self.counter.iter().map(|(t, n)| (*n, *t)).collect();
             vector.sort_unstable_by_key(|(n, _)| *n);
 
             let (_, least_frequently_used_key) = vector[0];
@@ -554,6 +568,17 @@ impl<K: std::hash::Hash + Eq + Copy, V> RRCache<K, V> {
         }
     }
 
+    pub fn drain(&mut self, n: usize) -> usize {
+        let mut c = 0usize;
+        for _ in 0..n {
+            if self.popitem().is_none() {
+                break;
+            }
+            c+=1;
+        }
+        c
+    }
+
     pub fn update<T: IntoIterator<Item = pyo3::PyResult<(K, V)>>>(
         &mut self,
         iterable: T,
@@ -688,11 +713,22 @@ impl<K: std::hash::Hash + Eq, V> LRUCache<K, V> {
         }
     }
 
+    pub fn drain(&mut self, n: usize) -> usize {
+        let mut c = 0usize;
+        for _ in 0..n {
+            if self.popitem().is_none() {
+                break;
+            }
+            c+=1;
+        }
+        c
+    }
+
     pub fn least_recently_used(&self) -> Option<&K> {
         self.order.front()
     }
 
-    pub fn more_recently_used(&self) -> Option<&K> {
+    pub fn most_recently_used(&self) -> Option<&K> {
         self.order.back()
     }
 
@@ -946,6 +982,17 @@ impl<K: std::hash::Hash + Eq, V: Clone> TTLCache<K, V> {
         }
     }
 
+    pub fn drain(&mut self, n: usize) -> usize {
+        let mut c = 0usize;
+        for _ in 0..n {
+            if self.popitem().is_none() {
+                break;
+            }
+            c+=1;
+        }
+        c
+    }
+
     pub fn remove(&mut self, key: &K) -> Option<TTLValue<V>> {
         match self.inner.remove(key) {
             Some(val) => {
@@ -1096,7 +1143,7 @@ impl<K: std::hash::Hash + Eq + Clone + Ord, V: Clone> VTTLCache<K, V> {
 
         match self
             .inner
-            .insert(key.clone(), TTLValueOption::new(value, ttl))
+            .insert(key.clone(), TTLValueOption::new(value, ttl.or(None)))
         {
             Some(_) => (),
             None => self.order.push(key),
@@ -1119,7 +1166,7 @@ impl<K: std::hash::Hash + Eq + Clone + Ord, V: Clone> VTTLCache<K, V> {
 
         match self
             .inner
-            .insert(key.clone(), TTLValueOption::new(value, ttl))
+            .insert(key.clone(), TTLValueOption::new(value, ttl.or(None)))
         {
             Some(_) => (),
             None => self.order.push(key),
@@ -1199,8 +1246,10 @@ impl<K: std::hash::Hash + Eq + Clone + Ord, V: Clone> VTTLCache<K, V> {
         let length = self.inner.len();
         let time_to_shrink = ((length + 1) == self.maxsize) && length == self.inner.capacity();
 
-        self.inner
-            .insert(key.clone(), TTLValueOption::new(default.clone(), ttl));
+        self.inner.insert(
+            key.clone(),
+            TTLValueOption::new(default.clone(), ttl.or(None)),
+        );
         self.order.push(key);
 
         if length + 1 > 1 {
@@ -1252,6 +1301,17 @@ impl<K: std::hash::Hash + Eq + Ord, V: Clone> VTTLCache<K, V> {
             Some(key) => self.inner.remove(&key),
             None => None,
         }
+    }
+
+    pub fn drain(&mut self, n: usize) -> usize {
+        let mut c = 0usize;
+        for _ in 0..n {
+            if self.popitem().is_none() {
+                break;
+            }
+            c+=1;
+        }
+        c
     }
 
     pub fn remove(&mut self, key: &K) -> Option<TTLValueOption<V>> {

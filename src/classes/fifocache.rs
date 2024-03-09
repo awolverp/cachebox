@@ -240,11 +240,15 @@ impl FIFOCache {
         }
     }
 
-    fn popitem(&self) -> PyResult<(Py<PyAny>, Py<PyAny>)> {
+    fn popitem(&mut self) -> PyResult<(Py<PyAny>, Py<PyAny>)> {
         match self.inner.write().popitem() {
             Some(val) => Ok((val.0, val.1)),
             None => Err(pyo3::exceptions::PyKeyError::new_err(())),
         }
+    }
+
+    fn drain(&mut self, n: usize) -> usize {
+        self.inner.write().drain(n)
     }
 
     fn update(&mut self, py: Python<'_>, iterable: Py<PyAny>) -> PyResult<()> {

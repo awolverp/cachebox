@@ -228,6 +228,11 @@ impl Cache {
         Err(pyo3::exceptions::PyNotImplementedError::new_err(()))
     }
 
+    fn drain(&mut self, n: usize) -> PyResult<()> {
+        let _ = n;
+        Err(pyo3::exceptions::PyNotImplementedError::new_err(()))
+    }
+
     fn update(&mut self, py: Python<'_>, iterable: Py<PyAny>) -> PyResult<()> {
         let obj = iterable.as_ref(py);
 

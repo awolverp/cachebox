@@ -252,6 +252,10 @@ impl RRCache {
         }
     }
 
+    fn drain(&mut self, n: usize) -> usize {
+        self.inner.write().drain(n)
+    }
+
     fn update(&mut self, py: Python<'_>, iterable: Py<PyAny>) -> PyResult<()> {
         let obj = iterable.as_ref(py);
 

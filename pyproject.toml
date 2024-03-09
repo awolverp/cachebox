@@ -26,6 +26,10 @@ classifiers = [
     'Typing :: Typed',
 ]
 
+dependencies = [
+    'typing-extensions >=4.6.0'
+]
+
 [project.urls]
 Homepage = 'https://github.com/awolverp/cachebox'
 

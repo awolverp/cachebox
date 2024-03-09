@@ -270,6 +270,10 @@ impl VTTLCache {
         }
     }
 
+    fn drain(&mut self, n: usize) -> usize {
+        self.inner.write().drain(n)
+    }
+
     #[pyo3(signature=(iterable, ttl=None))]
     fn update(&mut self, py: Python<'_>, iterable: Py<PyAny>, ttl: Option<f32>) -> PyResult<()> {
         let obj = iterable.as_ref(py);
@@ -341,7 +345,7 @@ impl VTTLCache {
             Some(val) => {
                 let ex = match val.expiration {
                     Some(ex) => ex - std::time::Instant::now(),
-                    None => std::time::Duration::new(0, 0)
+                    None => std::time::Duration::new(0, 0),
                 };
                 Ok((val.value.1.clone(), ex.as_secs_f32()))
             }
@@ -362,7 +366,7 @@ impl VTTLCache {
             Some(val) => {
                 let ex = match val.expiration {
                     Some(ex) => ex - std::time::Instant::now(),
-                    None => std::time::Duration::new(0, 0)
+                    None => std::time::Duration::new(0, 0),
                 };
                 Ok((val.value.1.clone(), ex.as_secs_f32()))
             }
@@ -375,7 +379,7 @@ impl VTTLCache {
             Some(val) => {
                 let ex = match val.expiration {
                     Some(ex) => ex - std::time::Instant::now(),
-                    None => std::time::Duration::new(0, 0)
+                    None => std::time::Duration::new(0, 0),
                 };
                 Ok((val.value.0, val.value.1, ex.as_secs_f32()))
             }

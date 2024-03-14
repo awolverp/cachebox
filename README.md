@@ -370,13 +370,10 @@ Yes, if you pass zero to maxsize, means there's no limit for items.
 
 #### I use cachetools, how to change it to cachebox?
 *cachebox* syntax is very similar to *cachetools*.
-Just change these items:
+Just change this:
 ```python
 # If you use `isinstance` for cachetools classes, change those.
 isinstance(cache, cachetools.Cache) -> isinstance(cache, cachebox.BaseCacheImpl)
-
-# If you pass `None` to `cached()`, change it to `dict`.
-@cachetools.cached(None) -> @cachebox.cached({})
 ```
 
 ## License

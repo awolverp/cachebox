@@ -27,4 +27,5 @@ from ._cachebox import (
 
 from .utils import (
     cached as cached,
+    cachedmethod as cachedmethod,
 )

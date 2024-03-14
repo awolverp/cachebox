@@ -4,7 +4,7 @@
 The fastest caching library with different implementations, written in Rust.
 
 - 🚀 5-20x faster than other libraries (like cachetools and cacheout)
-- 🤯 It's sometimes works **as fast as dictionary**
+- 🤯 Sometimes It works **as fast as dictionary**
 - 🛠️ `pyproject.toml` support
 - **(R)** written in Rust
 - 🤝 Python 3.8 to 3.13-dev compatibility

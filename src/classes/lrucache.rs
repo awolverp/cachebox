@@ -38,10 +38,6 @@ impl LRUCache {
         self.inner.read().maxsize
     }
 
-    fn getmaxsize(&self) -> usize {
-        self.inner.read().maxsize
-    }
-
     fn __len__(&self) -> usize {
         self.inner.read().len()
     }
@@ -98,11 +94,7 @@ impl LRUCache {
             None => Err(pyo3::exceptions::PyKeyError::new_err(key)),
         }
     }
-
-    fn delete(&mut self, py: Python<'_>, key: PyObject) -> PyResult<()> {
-        self.__delitem__(py, key)
-    }
-
+    
     fn __contains__(&self, py: Python<'_>, key: PyObject) -> PyResult<bool> {
         let hash = pyany_to_hash!(key, py)?;
         Ok(self.inner.read().contains_key(&hash))

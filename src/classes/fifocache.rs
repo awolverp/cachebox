@@ -38,10 +38,6 @@ impl FIFOCache {
         self.inner.read().maxsize
     }
 
-    fn getmaxsize(&self) -> usize {
-        self.inner.read().maxsize
-    }
-
     fn __len__(&self) -> usize {
         self.inner.read().len()
     }
@@ -97,10 +93,6 @@ impl FIFOCache {
             Some(_) => Ok(()),
             None => Err(pyo3::exceptions::PyKeyError::new_err(key)),
         }
-    }
-
-    fn delete(&mut self, py: Python<'_>, key: PyObject) -> PyResult<()> {
-        self.__delitem__(py, key)
     }
 
     fn __contains__(&self, py: Python<'_>, key: PyObject) -> PyResult<bool> {

@@ -45,16 +45,8 @@ impl TTLCache {
         self.inner.read().maxsize
     }
 
-    fn getmaxsize(&self) -> usize {
-        self.inner.read().maxsize
-    }
-
     #[getter]
     fn ttl(&self) -> f32 {
-        self.inner.read().ttl.as_secs_f32()
-    }
-
-    fn getttl(&self) -> f32 {
         self.inner.read().ttl.as_secs_f32()
     }
 
@@ -117,10 +109,6 @@ impl TTLCache {
             Some(_) => Ok(()),
             None => Err(pyo3::exceptions::PyKeyError::new_err(key)),
         }
-    }
-
-    fn delete(&mut self, py: Python<'_>, key: PyObject) -> PyResult<()> {
-        self.__delitem__(py, key)
     }
 
     fn __contains__(&self, py: Python<'_>, key: PyObject) -> PyResult<bool> {

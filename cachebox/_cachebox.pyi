@@ -1,5 +1,4 @@
 import typing
-import typing_extensions
 
 __version_: str
 __author__: str
@@ -42,8 +41,6 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
         """
         ...
 
-    @typing_extensions.deprecated("This method is deprecated; use `.maxsize` property instead.")
-    def getmaxsize(self) -> int: ...
     def __len__(self) -> int: ...
     def __sizeof__(self) -> int: ...
     def __bool__(self) -> bool: ...
@@ -59,13 +56,6 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
     def get(self, key: KT, default: DT = None) -> typing.Union[VT, DT]:
         """
         Returns value of specified key; returns `default` if key not found.
-        """
-        ...
-
-    @typing_extensions.deprecated("This method is deprecated; go `del cache[key]` way instead.")
-    def delete(self, key: KT) -> None:
-        """
-        Works like `del cache[key]`
         """
         ...
 
@@ -336,8 +326,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
 
     @property
     def ttl(self) -> float: ...
-    @typing_extensions.deprecated("This method is deprecated; use `.ttl` instead.")
-    def getttl(self) -> float: ...
+    
     def get_with_expire(
         self, key: KT, default: DT = None
     ) -> typing.Tuple[typing.Union[VT, DT], float]:

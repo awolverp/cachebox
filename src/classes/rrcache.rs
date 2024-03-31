@@ -38,10 +38,6 @@ impl RRCache {
         self.inner.read().parent.maxsize
     }
 
-    fn getmaxsize(&self) -> usize {
-        self.inner.read().parent.maxsize
-    }
-
     fn __len__(&self) -> usize {
         self.inner.read().parent.len()
     }
@@ -93,10 +89,6 @@ impl RRCache {
             Some(_) => Ok(()),
             None => Err(pyo3::exceptions::PyKeyError::new_err(key)),
         }
-    }
-
-    fn delete(&mut self, py: Python<'_>, key: PyObject) -> PyResult<()> {
-        self.__delitem__(py, key)
     }
 
     fn __contains__(&self, py: Python<'_>, key: PyObject) -> PyResult<bool> {

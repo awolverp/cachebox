@@ -77,12 +77,7 @@ impl RRCache {
     }
 
     #[pyo3(signature=(key, default=None))]
-    fn get(
-        &self,
-        py: Python<'_>,
-        key: PyObject,
-        default: Option<PyObject>,
-    ) -> PyResult<PyObject> {
+    fn get(&self, py: Python<'_>, key: PyObject, default: Option<PyObject>) -> PyResult<PyObject> {
         let hash = pyany_to_hash!(key, py)?;
 
         match self.inner.read().parent.get(&hash) {

@@ -16,7 +16,7 @@ impl LFUCache {
     fn __new__(
         py: Python<'_>,
         maxsize: usize,
-        iterable: Option<Py<PyAny>>,
+        iterable: Option<PyObject>,
         capacity: usize,
     ) -> PyResult<(Self, base::BaseCacheImpl)> {
         let (mut slf, base) = (
@@ -60,18 +60,18 @@ impl LFUCache {
         !self.inner.read().is_empty()
     }
 
-    fn __setitem__(&mut self, py: Python<'_>, key: Py<PyAny>, value: Py<PyAny>) -> PyResult<()> {
+    fn __setitem__(&mut self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
         let hash = pyany_to_hash!(key, py)?;
         self.inner
             .write()
             .insert(hash, base::KeyValuePair(key, value))
     }
 
-    fn insert(&mut self, py: Python<'_>, key: Py<PyAny>, value: Py<PyAny>) -> PyResult<()> {
+    fn insert(&mut self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
         self.__setitem__(py, key, value)
     }
 
-    fn __getitem__(&mut self, py: Python<'_>, key: Py<PyAny>) -> PyResult<Py<PyAny>> {
+    fn __getitem__(&mut self, py: Python<'_>, key: PyObject) -> PyResult<PyObject> {
         let hash = pyany_to_hash!(key, py)?;
 
         match self.inner.write().get(&hash) {
@@ -84,9 +84,9 @@ impl LFUCache {
     fn get(
         &self,
         py: Python<'_>,
-        key: Py<PyAny>,
-        default: Option<Py<PyAny>>,
-    ) -> PyResult<Py<PyAny>> {
+        key: PyObject,
+        default: Option<PyObject>,
+    ) -> PyResult<PyObject> {
         let hash = pyany_to_hash!(key, py)?;
 
         match self.inner.write().get(&hash) {
@@ -95,7 +95,7 @@ impl LFUCache {
         }
     }
 
-    fn __delitem__(&mut self, py: Python<'_>, key: Py<PyAny>) -> PyResult<()> {
+    fn __delitem__(&mut self, py: Python<'_>, key: PyObject) -> PyResult<()> {
         let hash = pyany_to_hash!(key, py)?;
 
         match self.inner.write().remove(&hash) {
@@ -104,11 +104,11 @@ impl LFUCache {
         }
     }
 
-    fn delete(&mut self, py: Python<'_>, key: Py<PyAny>) -> PyResult<()> {
+    fn delete(&mut self, py: Python<'_>, key: PyObject) -> PyResult<()> {
         self.__delitem__(py, key)
     }
 
-    fn __contains__(&self, py: Python<'_>, key: Py<PyAny>) -> PyResult<bool> {
+    fn __contains__(&self, py: Python<'_>, key: PyObject) -> PyResult<bool> {
         let hash = pyany_to_hash!(key, py)?;
         Ok(self.inner.read().contains_key(&hash))
     }
@@ -126,7 +126,7 @@ impl LFUCache {
     }
 
     fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<base::VecOneValueIterator>> {
-        let view: Vec<Py<PyAny>> = slf.inner.read().values().map(|x| x.0.clone()).collect();
+        let view: Vec<PyObject> = slf.inner.read().values().map(|x| x.0.clone()).collect();
 
         let iter = base::VecOneValueIterator {
             view: view.into_iter(),
@@ -136,7 +136,7 @@ impl LFUCache {
     }
 
     fn keys(slf: PyRef<'_, Self>) -> PyResult<Py<base::VecOneValueIterator>> {
-        let view: Vec<Py<PyAny>> = slf.inner.read().values().map(|x| x.0.clone()).collect();
+        let view: Vec<PyObject> = slf.inner.read().values().map(|x| x.0.clone()).collect();
 
         let iter = base::VecOneValueIterator {
             view: view.into_iter(),
@@ -146,7 +146,7 @@ impl LFUCache {
     }
 
     fn values(slf: PyRef<'_, Self>) -> PyResult<Py<base::VecOneValueIterator>> {
-        let view: Vec<Py<PyAny>> = slf.inner.read().values().map(|x| x.1.clone()).collect();
+        let view: Vec<PyObject> = slf.inner.read().values().map(|x| x.1.clone()).collect();
 
         let iter = base::VecOneValueIterator {
             view: view.into_iter(),
@@ -156,7 +156,7 @@ impl LFUCache {
     }
 
     fn items(slf: PyRef<'_, Self>) -> PyResult<Py<base::VecItemsIterator>> {
-        let view: Vec<(Py<PyAny>, Py<PyAny>)> = slf
+        let view: Vec<(PyObject, PyObject)> = slf
             .inner
             .read()
             .values()
@@ -195,9 +195,9 @@ impl LFUCache {
     fn pop(
         &mut self,
         py: Python<'_>,
-        key: Py<PyAny>,
-        default: Option<Py<PyAny>>,
-    ) -> PyResult<Py<PyAny>> {
+        key: PyObject,
+        default: Option<PyObject>,
+    ) -> PyResult<PyObject> {
         let hash = pyany_to_hash!(key, py)?;
 
         match self.inner.write().remove(&hash) {
@@ -210,9 +210,9 @@ impl LFUCache {
     fn setdefault(
         &mut self,
         py: Python<'_>,
-        key: Py<PyAny>,
-        default: Option<Py<PyAny>>,
-    ) -> PyResult<Py<PyAny>> {
+        key: PyObject,
+        default: Option<PyObject>,
+    ) -> PyResult<PyObject> {
         let hash = pyany_to_hash!(key, py)?;
         let default_val = default.unwrap_or_else(|| py.None());
 
@@ -226,7 +226,7 @@ impl LFUCache {
         }
     }
 
-    fn popitem(&self) -> PyResult<(Py<PyAny>, Py<PyAny>)> {
+    fn popitem(&self) -> PyResult<(PyObject, PyObject)> {
         match self.inner.write().popitem() {
             Some(val) => Ok((val.0, val.1)),
             None => Err(pyo3::exceptions::PyKeyError::new_err(())),
@@ -237,7 +237,7 @@ impl LFUCache {
         self.inner.write().drain(n)
     }
 
-    fn update(&mut self, py: Python<'_>, iterable: Py<PyAny>) -> PyResult<()> {
+    fn update(&mut self, py: Python<'_>, iterable: PyObject) -> PyResult<()> {
         let obj = iterable.as_ref(py);
 
         if obj.is_instance_of::<pyo3::types::PyDict>() {
@@ -282,7 +282,7 @@ impl LFUCache {
         self.inner.write().clear(false);
     }
 
-    fn least_frequently_used(&mut self) -> Option<Py<PyAny>> {
+    fn least_frequently_used(&mut self) -> Option<PyObject> {
         let mut write = self.inner.write();
         let f = write.least_frequently_used()?;
         Some(write.get(&f)?.0.clone())

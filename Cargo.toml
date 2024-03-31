@@ -1,6 +1,6 @@
 [package]
 name = "cachebox"
-version = "2.1.1"
+version = "2.2.1"
 edition = "2021"
 
 [lib]

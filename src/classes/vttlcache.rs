@@ -16,7 +16,7 @@ impl VTTLCache {
     fn __new__(
         py: Python<'_>,
         maxsize: usize,
-        iterable: Option<Py<PyAny>>,
+        iterable: Option<PyObject>,
         ttl: Option<f32>,
         capacity: usize,
     ) -> PyResult<(Self, base::BaseCacheImpl)> {
@@ -36,10 +36,6 @@ impl VTTLCache {
 
     #[getter]
     fn maxsize(&self) -> usize {
-        self.inner.read().maxsize
-    }
-
-    fn getmaxsize(&self) -> usize {
         self.inner.read().maxsize
     }
 
@@ -65,7 +61,7 @@ impl VTTLCache {
         !write.is_empty()
     }
 
-    fn __setitem__(&mut self, py: Python<'_>, key: Py<PyAny>, value: Py<PyAny>) -> PyResult<()> {
+    fn __setitem__(&mut self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
         let hash = pyany_to_hash!(key, py)?;
         let mut write = self.inner.write();
         write.expire();
@@ -75,8 +71,8 @@ impl VTTLCache {
     fn insert(
         &mut self,
         py: Python<'_>,
-        key: Py<PyAny>,
-        value: Py<PyAny>,
+        key: PyObject,
+        value: PyObject,
         ttl: Option<f32>,
     ) -> PyResult<()> {
         let hash = pyany_to_hash!(key, py)?;
@@ -85,7 +81,7 @@ impl VTTLCache {
         write.insert(hash, base::KeyValuePair(key, value), ttl)
     }
 
-    fn __getitem__(&self, py: Python<'_>, key: Py<PyAny>) -> PyResult<Py<PyAny>> {
+    fn __getitem__(&self, py: Python<'_>, key: PyObject) -> PyResult<PyObject> {
         let hash = pyany_to_hash!(key, py)?;
 
         match self.inner.read().get(&hash) {
@@ -95,12 +91,7 @@ impl VTTLCache {
     }
 
     #[pyo3(signature=(key, default=None))]
-    fn get(
-        &self,
-        py: Python<'_>,
-        key: Py<PyAny>,
-        default: Option<Py<PyAny>>,
-    ) -> PyResult<Py<PyAny>> {
+    fn get(&self, py: Python<'_>, key: PyObject, default: Option<PyObject>) -> PyResult<PyObject> {
         let hash = pyany_to_hash!(key, py)?;
 
         match self.inner.read().get(&hash) {
@@ -109,7 +100,7 @@ impl VTTLCache {
         }
     }
 
-    fn __delitem__(&mut self, py: Python<'_>, key: Py<PyAny>) -> PyResult<()> {
+    fn __delitem__(&mut self, py: Python<'_>, key: PyObject) -> PyResult<()> {
         let hash = pyany_to_hash!(key, py)?;
 
         match self.inner.write().remove(&hash) {
@@ -118,11 +109,7 @@ impl VTTLCache {
         }
     }
 
-    fn delete(&mut self, py: Python<'_>, key: Py<PyAny>) -> PyResult<()> {
-        self.__delitem__(py, key)
-    }
-
-    fn __contains__(&self, py: Python<'_>, key: Py<PyAny>) -> PyResult<bool> {
+    fn __contains__(&self, py: Python<'_>, key: PyObject) -> PyResult<bool> {
         let hash = pyany_to_hash!(key, py)?;
         Ok(self.inner.read().contains_key(&hash))
     }
@@ -143,7 +130,7 @@ impl VTTLCache {
         let mut write = slf.inner.write();
         write.expire();
 
-        let view: Vec<Py<PyAny>> = write
+        let view: Vec<PyObject> = write
             .sorted_keys()
             .map(|x| write.get(x).unwrap().value.0.clone())
             .collect();
@@ -159,7 +146,7 @@ impl VTTLCache {
         let mut write = slf.inner.write();
         write.expire();
 
-        let view: Vec<Py<PyAny>> = write
+        let view: Vec<PyObject> = write
             .sorted_keys()
             .map(|x| write.get(x).unwrap().value.0.clone())
             .collect();
@@ -175,7 +162,7 @@ impl VTTLCache {
         let mut write = slf.inner.write();
         write.expire();
 
-        let view: Vec<Py<PyAny>> = write
+        let view: Vec<PyObject> = write
             .sorted_keys()
             .map(|x| write.get(x).unwrap().value.1.clone())
             .collect();
@@ -191,7 +178,7 @@ impl VTTLCache {
         let mut write = slf.inner.write();
         write.expire();
 
-        let view: Vec<(Py<PyAny>, Py<PyAny>)> = write
+        let view: Vec<(PyObject, PyObject)> = write
             .sorted_keys()
             .map(|x| {
                 let val = write.get(x).unwrap();
@@ -231,9 +218,9 @@ impl VTTLCache {
     fn pop(
         &mut self,
         py: Python<'_>,
-        key: Py<PyAny>,
-        default: Option<Py<PyAny>>,
-    ) -> PyResult<Py<PyAny>> {
+        key: PyObject,
+        default: Option<PyObject>,
+    ) -> PyResult<PyObject> {
         let hash = pyany_to_hash!(key, py)?;
 
         match self.inner.write().remove(&hash) {
@@ -246,10 +233,10 @@ impl VTTLCache {
     fn setdefault(
         &mut self,
         py: Python<'_>,
-        key: Py<PyAny>,
-        default: Option<Py<PyAny>>,
+        key: PyObject,
+        default: Option<PyObject>,
         ttl: Option<f32>,
-    ) -> PyResult<Py<PyAny>> {
+    ) -> PyResult<PyObject> {
         let hash = pyany_to_hash!(key, py)?;
         let default_val = default.unwrap_or_else(|| py.None());
 
@@ -263,7 +250,7 @@ impl VTTLCache {
         }
     }
 
-    fn popitem(&mut self) -> PyResult<(Py<PyAny>, Py<PyAny>)> {
+    fn popitem(&mut self) -> PyResult<(PyObject, PyObject)> {
         match self.inner.write().popitem() {
             Some(val) => Ok((val.value.0, val.value.1)),
             None => Err(pyo3::exceptions::PyKeyError::new_err(())),
@@ -275,7 +262,7 @@ impl VTTLCache {
     }
 
     #[pyo3(signature=(iterable, ttl=None))]
-    fn update(&mut self, py: Python<'_>, iterable: Py<PyAny>, ttl: Option<f32>) -> PyResult<()> {
+    fn update(&mut self, py: Python<'_>, iterable: PyObject, ttl: Option<f32>) -> PyResult<()> {
         let obj = iterable.as_ref(py);
 
         if obj.is_instance_of::<pyo3::types::PyDict>() {
@@ -336,9 +323,9 @@ impl VTTLCache {
     fn get_with_expire(
         &self,
         py: Python<'_>,
-        key: Py<PyAny>,
-        default: Option<Py<PyAny>>,
-    ) -> PyResult<(Py<PyAny>, f32)> {
+        key: PyObject,
+        default: Option<PyObject>,
+    ) -> PyResult<(PyObject, f32)> {
         let hash = pyany_to_hash!(key, py)?;
 
         match self.inner.read().get(&hash) {
@@ -357,9 +344,9 @@ impl VTTLCache {
     fn pop_with_expire(
         &mut self,
         py: Python<'_>,
-        key: Py<PyAny>,
-        default: Option<Py<PyAny>>,
-    ) -> PyResult<(Py<PyAny>, f32)> {
+        key: PyObject,
+        default: Option<PyObject>,
+    ) -> PyResult<(PyObject, f32)> {
         let hash = pyany_to_hash!(key, py)?;
 
         match self.inner.write().remove(&hash) {
@@ -374,7 +361,7 @@ impl VTTLCache {
         }
     }
 
-    fn popitem_with_expire(&mut self) -> PyResult<(Py<PyAny>, Py<PyAny>, f32)> {
+    fn popitem_with_expire(&mut self) -> PyResult<(PyObject, PyObject, f32)> {
         match self.inner.write().popitem() {
             Some(val) => {
                 let ex = match val.expiration {

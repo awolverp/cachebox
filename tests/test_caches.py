@@ -12,17 +12,17 @@ class CacheTestSuiteMixin:
     def test_creation(self):
         obj = self.cache(1, **self.kwargs)
         self.assertEqual(0, len(obj))
-        self.assertEqual(1, obj.getmaxsize())
+        self.assertEqual(1, obj.maxsize)
         cap1 = obj.__sizeof__()
 
         obj = self.cache(maxsize=10, capacity=20, **self.kwargs)
         self.assertEqual(0, len(obj))
-        self.assertEqual(10, obj.getmaxsize())
+        self.assertEqual(10, obj.maxsize)
         cap2 = obj.__sizeof__()
 
         obj = self.cache(maxsize=20, capacity=20, **self.kwargs)
         self.assertEqual(0, len(obj))
-        self.assertEqual(20, obj.getmaxsize())
+        self.assertEqual(20, obj.maxsize)
         cap3 = obj.__sizeof__()
 
         self.assertGreater(cap2, cap1)
@@ -131,18 +131,18 @@ class CacheTestSuiteMixin:
         self.assertEqual(1, obj[0])
         self.assertEqual("nick", obj["name"])
 
-        obj.delete(0)
+        del obj[0]
         self.assertEqual(1, len(obj))
         self.assertEqual("nick", obj["name"])
         self.assertNotIn(0, obj)
 
-        obj.delete("name")
+        del obj["name"]
         self.assertEqual(0, len(obj))
         self.assertNotIn(0, obj)
         self.assertNotIn("name", obj)
 
         with self.assertRaises(KeyError):
-            obj.delete("name")
+            del obj["name"]
 
     def test_pop(self):
         obj = self.cache(2, **self.kwargs)
@@ -490,6 +490,7 @@ class TestTTLCache(unittest.TestCase, CacheTestSuiteMixin):
         import time
 
         obj = self.cache(2, 0.5)
+        self.assertEqual(obj.ttl, 0.5)
 
         obj.insert(0, 1)
         time.sleep(0.5)

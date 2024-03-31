@@ -378,7 +378,8 @@ impl<K: std::hash::Hash + Eq + std::cmp::Ord + Copy, V> LFUCache<K, V> {
             None
         } else {
             let mut vector: Vec<_> = self.counter.iter().map(|(t, n)| (*n, *t)).collect();
-            vector.sort_unstable_by_key(|(n, _)| *n);
+            // vector.sort_unstable_by_key(|(n, _)| *n);
+            vector.sort_unstable_by(|(n, _), (m, _)| n.cmp(m));
 
             let (_, least_frequently_used_key) = vector[0];
 
@@ -403,8 +404,9 @@ impl<K: std::hash::Hash + Eq + std::cmp::Ord + Copy, V> LFUCache<K, V> {
             None
         } else {
             let mut vector: Vec<_> = self.counter.iter().map(|(t, n)| (*n, *t)).collect();
-            vector.sort_unstable_by_key(|(n, _)| *n);
-
+            // vector.sort_unstable_by_key(|(n, _)| *n);
+            vector.sort_unstable_by(|(n, _), (m, _)| n.cmp(m));
+            
             let (_, least_frequently_used_key) = vector[0];
             Some(least_frequently_used_key)
         }
@@ -1176,7 +1178,7 @@ impl<K: std::hash::Hash + Eq + Clone + Ord, V: Clone> VTTLCache<K, V> {
 
         if length + 1 > 1 {
             // Sort from less to greater
-            self.order.sort_unstable_by(|a, b| {
+            self.order.sort_by(|a, b| {
                 let ap = self.inner.get(a).unwrap();
                 let bp = self.inner.get(b).unwrap();
 
@@ -1212,7 +1214,7 @@ impl<K: std::hash::Hash + Eq + Clone + Ord, V: Clone> VTTLCache<K, V> {
 
         if self.inner.len() > 1 {
             // Sort from less to greater
-            self.order.sort_unstable_by(|a, b| {
+            self.order.sort_by(|a, b| {
                 let ap = self.inner.get(a).unwrap();
                 let bp = self.inner.get(b).unwrap();
 
@@ -1256,7 +1258,7 @@ impl<K: std::hash::Hash + Eq + Clone + Ord, V: Clone> VTTLCache<K, V> {
 
         if length + 1 > 1 {
             // Sort from less to greater
-            self.order.sort_unstable_by(|a, b| {
+            self.order.sort_by(|a, b| {
                 let ap = self.inner.get(a).unwrap();
                 let bp = self.inner.get(b).unwrap();
 

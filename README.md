@@ -383,7 +383,7 @@ Yes, if you pass zero to maxsize, means there's no limit for items.
 Just change these:
 ```python
 # If you pass infinity to a cache implementation, change it to zero.
-Cache(math.inf) -> Cache(0)
+cachetools.Cache(math.inf) -> cachebox.Cache(0)
 # If you use `isinstance` for cachetools classes, change those.
 isinstance(cache, cachetools.Cache) -> isinstance(cache, cachebox.BaseCacheImpl)
 ```

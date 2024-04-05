@@ -3,11 +3,10 @@
 
 The fastest caching library with different implementations, written in Rust.
 
-- 🚀 5-20x faster than other libraries (like cachetools and cacheout)
+- 🚀 3-21x faster than other libraries (like cachetools and cacheout)
 - 🤯 Sometimes It works **as fast as dictionary**
-- 🛠️ `pyproject.toml` support
 - **(R)** written in Rust
-- 🤝 Python 3.8 to 3.13-dev compatibility
+- 🤝 Support Python 3.8 and above
 - 📦 Over 7 cache algorithms are supported
 - 🧶 Completely thread-safe
 
@@ -15,7 +14,7 @@ The fastest caching library with different implementations, written in Rust.
 
 **(@)** decorator example:
 ```python
-from cachebox import cached, TTLCache, LRUCache
+from cachebox import cached, cachedmethod, TTLCache, LRUCache
 
 # Keep coin price for no longer than a minute
 @cached(TTLCache(maxsize=126, ttl=60))
@@ -28,10 +27,21 @@ async def get_coin_price(coin_name):
     return await async_web3_client.get_price(coin_name)
 
 # You can pass `capacity` parameter.
-# If `capacity` specified, the cache will be able to hold at least capacity elements without reallocating.
+# If `capacity` specified, the cache will be able to hold at
+# least capacity elements without reallocating.
 @cached(LRUCache(maxsize=126, capacity=100))
 def fib(n):
     return n if n < 2 else fib(n - 1) + fib(n - 2)
+
+# methods are supported
+class APIResource:
+    @cachedmethod(
+        TTLCache(126, ttl=10),
+        # You can detemine how caching is done using `key_maker` parameter.
+        key_maker=lambda args, kwds: args[0].client_ip
+    )
+    def get_information(self, request):
+        ...
 ```
 
 ## Page Contents
@@ -39,7 +49,7 @@ def fib(n):
 - ⁉️ [When i need caching?](#when-i-need-caching)
 - 🎯 [Features](#features)
 - 🛠️ [Installation](#installation)
-- 🎓 [Usage](#caches)
+- 🎓 [Usage](#API)
 - 🚀 [Performance table](#performance-table)
 - ⁉️ [Frequently Asked Questions](#frequently-asked-questions)
 - 🆕 [*CHANGELOG*](CHANGELOG.md)
@@ -91,7 +101,7 @@ To verify that the library is installed correctly, run the following command:
 python -c "import cachebox; print(cachebox.__version__)"
 ```
 
-## Caches
+## API
 All the implementations are support **mutable-mapping** methods (e.g `__setitem__`, `get`, `popitem`),
 and there are some new methods for each implemetation.
 
@@ -368,10 +378,12 @@ you can set a unique expiration time for each item.
 #### Can we set maxsize to zero?
 Yes, if you pass zero to maxsize, means there's no limit for items.
 
-#### I use cachetools, how to change it to cachebox?
+#### Migrate from cachetools to cachebox
 *cachebox* syntax is very similar to *cachetools*.
-Just change this:
+Just change these:
 ```python
+# If you pass infinity to a cache implementation, change it to zero.
+Cache(math.inf) -> Cache(0)
 # If you use `isinstance` for cachetools classes, change those.
 isinstance(cache, cachetools.Cache) -> isinstance(cache, cachebox.BaseCacheImpl)
 ```

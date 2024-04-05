@@ -26,7 +26,7 @@ impl TTLCache {
             ));
         }
 
-        let (mut slf, base) = (
+        let (slf, base) = (
             TTLCache {
                 inner: RwLock::new(internal::TTLCache::new(maxsize, ttl, capacity)),
             },
@@ -50,7 +50,7 @@ impl TTLCache {
         self.inner.read().ttl.as_secs_f32()
     }
 
-    fn __len__(&mut self) -> usize {
+    fn __len__(&self) -> usize {
         let mut write = self.inner.write();
         write.expire();
         write.len()
@@ -66,20 +66,20 @@ impl TTLCache {
             + base::ISIZE_MEMORY_SIZE
     }
 
-    fn __bool__(&mut self) -> bool {
+    fn __bool__(&self) -> bool {
         let mut write = self.inner.write();
         write.expire();
         !write.is_empty()
     }
 
-    fn __setitem__(&mut self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
+    fn __setitem__(&self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
         let hash = pyany_to_hash!(key, py)?;
         let mut write = self.inner.write();
         write.expire();
         write.insert(hash, base::KeyValuePair(key, value))
     }
 
-    fn insert(&mut self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
+    fn insert(&self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
         self.__setitem__(py, key, value)
     }
 
@@ -102,7 +102,7 @@ impl TTLCache {
         }
     }
 
-    fn __delitem__(&mut self, py: Python<'_>, key: PyObject) -> PyResult<()> {
+    fn __delitem__(&self, py: Python<'_>, key: PyObject) -> PyResult<()> {
         let hash = pyany_to_hash!(key, py)?;
 
         match self.inner.write().remove(&hash) {
@@ -197,7 +197,7 @@ impl TTLCache {
 
     fn __repr__(slf: &PyCell<Self>) -> PyResult<String> {
         let class_name: &str = slf.get_type().name()?;
-        let mut borrowed = slf.borrow_mut();
+        let borrowed = slf.borrow_mut();
         Ok(format!(
             "{}({} / {}, capacity={})",
             class_name,
@@ -212,13 +212,13 @@ impl TTLCache {
     }
 
     #[pyo3(signature=(*, reuse=false))]
-    fn clear(&mut self, reuse: bool) {
+    fn clear(&self, reuse: bool) {
         self.inner.write().clear(reuse);
     }
 
     #[pyo3(signature=(key, default=None))]
     fn pop(
-        &mut self,
+        &self,
         py: Python<'_>,
         key: PyObject,
         default: Option<PyObject>,
@@ -233,7 +233,7 @@ impl TTLCache {
 
     #[pyo3(signature=(key, default=None))]
     fn setdefault(
-        &mut self,
+        &self,
         py: Python<'_>,
         key: PyObject,
         default: Option<PyObject>,
@@ -251,18 +251,18 @@ impl TTLCache {
         }
     }
 
-    fn popitem(&mut self) -> PyResult<(PyObject, PyObject)> {
+    fn popitem(&self) -> PyResult<(PyObject, PyObject)> {
         match self.inner.write().popitem() {
             Some(val) => Ok((val.value.0, val.value.1)),
             None => Err(pyo3::exceptions::PyKeyError::new_err(())),
         }
     }
 
-    fn drain(&mut self, n: usize) -> usize {
+    fn drain(&self, n: usize) -> usize {
         self.inner.write().drain(n)
     }
 
-    fn update(&mut self, py: Python<'_>, iterable: PyObject) -> PyResult<()> {
+    fn update(&self, py: Python<'_>, iterable: PyObject) -> PyResult<()> {
         let obj = iterable.as_ref(py);
 
         if obj.is_instance_of::<pyo3::types::PyDict>() {
@@ -297,7 +297,7 @@ impl TTLCache {
         Ok(())
     }
 
-    fn shrink_to_fit(&mut self) {
+    fn shrink_to_fit(&self) {
         self.inner.write().shrink_to_fit();
     }
 
@@ -309,7 +309,7 @@ impl TTLCache {
         Ok(())
     }
 
-    fn __clear__(&mut self) {
+    fn __clear__(&self) {
         self.inner.write().clear(false);
     }
 
@@ -333,7 +333,7 @@ impl TTLCache {
 
     #[pyo3(signature=(key, default=None))]
     fn pop_with_expire(
-        &mut self,
+        &self,
         py: Python<'_>,
         key: PyObject,
         default: Option<PyObject>,
@@ -349,7 +349,7 @@ impl TTLCache {
         }
     }
 
-    fn popitem_with_expire(&mut self) -> PyResult<(PyObject, PyObject, f32)> {
+    fn popitem_with_expire(&self) -> PyResult<(PyObject, PyObject, f32)> {
         match self.inner.write().popitem() {
             Some(val) => {
                 let ex = val.expiration - std::time::Instant::now();

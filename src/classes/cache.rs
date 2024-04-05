@@ -19,7 +19,7 @@ impl Cache {
         iterable: Option<PyObject>,
         capacity: usize,
     ) -> PyResult<(Self, base::BaseCacheImpl)> {
-        let (mut slf, base) = (
+        let (slf, base) = (
             Cache {
                 inner: RwLock::new(internal::Cache::new(maxsize, capacity)),
             },
@@ -52,14 +52,15 @@ impl Cache {
         !self.inner.read().is_empty()
     }
 
-    fn __setitem__(&mut self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
+    fn __setitem__(&self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
         let hash = pyany_to_hash!(key, py)?;
+
         self.inner
             .write()
             .insert(hash, base::KeyValuePair(key, value))
     }
 
-    fn insert(&mut self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
+    fn insert(&self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
         self.__setitem__(py, key, value)
     }
 
@@ -82,7 +83,7 @@ impl Cache {
         }
     }
 
-    fn __delitem__(&mut self, py: Python<'_>, key: PyObject) -> PyResult<()> {
+    fn __delitem__(&self, py: Python<'_>, key: PyObject) -> PyResult<()> {
         let hash = pyany_to_hash!(key, py)?;
 
         match self.inner.write().remove(&hash) {
@@ -172,17 +173,12 @@ impl Cache {
     }
 
     #[pyo3(signature=(*, reuse=false))]
-    fn clear(&mut self, reuse: bool) {
+    fn clear(&self, reuse: bool) {
         self.inner.write().clear(reuse);
     }
 
     #[pyo3(signature=(key, default=None))]
-    fn pop(
-        &mut self,
-        py: Python<'_>,
-        key: PyObject,
-        default: Option<PyObject>,
-    ) -> PyResult<PyObject> {
+    fn pop(&self, py: Python<'_>, key: PyObject, default: Option<PyObject>) -> PyResult<PyObject> {
         let hash = pyany_to_hash!(key, py)?;
 
         match self.inner.write().remove(&hash) {
@@ -193,7 +189,7 @@ impl Cache {
 
     #[pyo3(signature=(key, default=None))]
     fn setdefault(
-        &mut self,
+        &self,
         py: Python<'_>,
         key: PyObject,
         default: Option<PyObject>,
@@ -215,12 +211,12 @@ impl Cache {
         Err(pyo3::exceptions::PyNotImplementedError::new_err(()))
     }
 
-    fn drain(&mut self, n: usize) -> PyResult<()> {
+    fn drain(&self, n: usize) -> PyResult<()> {
         let _ = n;
         Err(pyo3::exceptions::PyNotImplementedError::new_err(()))
     }
 
-    fn update(&mut self, py: Python<'_>, iterable: PyObject) -> PyResult<()> {
+    fn update(&self, py: Python<'_>, iterable: PyObject) -> PyResult<()> {
         let obj = iterable.as_ref(py);
 
         if obj.is_instance_of::<pyo3::types::PyDict>() {
@@ -249,7 +245,7 @@ impl Cache {
         Ok(())
     }
 
-    fn shrink_to_fit(&mut self) {
+    fn shrink_to_fit(&self) {
         self.inner.write().shrink_to_fit();
     }
 
@@ -261,7 +257,7 @@ impl Cache {
         Ok(())
     }
 
-    fn __clear__(&mut self) {
+    fn __clear__(&self) {
         self.inner.write().clear(false);
     }
 }

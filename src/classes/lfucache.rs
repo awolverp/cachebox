@@ -19,7 +19,7 @@ impl LFUCache {
         iterable: Option<PyObject>,
         capacity: usize,
     ) -> PyResult<(Self, base::BaseCacheImpl)> {
-        let (mut slf, base) = (
+        let (slf, base) = (
             LFUCache {
                 inner: RwLock::new(internal::LFUCache::new(maxsize, capacity)),
             },
@@ -56,18 +56,18 @@ impl LFUCache {
         !self.inner.read().is_empty()
     }
 
-    fn __setitem__(&mut self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
+    fn __setitem__(&self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
         let hash = pyany_to_hash!(key, py)?;
         self.inner
             .write()
             .insert(hash, base::KeyValuePair(key, value))
     }
 
-    fn insert(&mut self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
+    fn insert(&self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
         self.__setitem__(py, key, value)
     }
 
-    fn __getitem__(&mut self, py: Python<'_>, key: PyObject) -> PyResult<PyObject> {
+    fn __getitem__(&self, py: Python<'_>, key: PyObject) -> PyResult<PyObject> {
         let hash = pyany_to_hash!(key, py)?;
 
         match self.inner.write().get(&hash) {
@@ -86,7 +86,7 @@ impl LFUCache {
         }
     }
 
-    fn __delitem__(&mut self, py: Python<'_>, key: PyObject) -> PyResult<()> {
+    fn __delitem__(&self, py: Python<'_>, key: PyObject) -> PyResult<()> {
         let hash = pyany_to_hash!(key, py)?;
 
         match self.inner.write().remove(&hash) {
@@ -174,13 +174,13 @@ impl LFUCache {
     }
 
     #[pyo3(signature=(*, reuse=false))]
-    fn clear(&mut self, reuse: bool) {
+    fn clear(&self, reuse: bool) {
         self.inner.write().clear(reuse);
     }
 
     #[pyo3(signature=(key, default=None))]
     fn pop(
-        &mut self,
+        &self,
         py: Python<'_>,
         key: PyObject,
         default: Option<PyObject>,
@@ -195,7 +195,7 @@ impl LFUCache {
 
     #[pyo3(signature=(key, default=None))]
     fn setdefault(
-        &mut self,
+        &self,
         py: Python<'_>,
         key: PyObject,
         default: Option<PyObject>,
@@ -220,11 +220,11 @@ impl LFUCache {
         }
     }
 
-    fn drain(&mut self, n: usize) -> usize {
+    fn drain(&self, n: usize) -> usize {
         self.inner.write().drain(n)
     }
 
-    fn update(&mut self, py: Python<'_>, iterable: PyObject) -> PyResult<()> {
+    fn update(&self, py: Python<'_>, iterable: PyObject) -> PyResult<()> {
         let obj = iterable.as_ref(py);
 
         if obj.is_instance_of::<pyo3::types::PyDict>() {
@@ -253,7 +253,7 @@ impl LFUCache {
         Ok(())
     }
 
-    fn shrink_to_fit(&mut self) {
+    fn shrink_to_fit(&self) {
         self.inner.write().shrink_to_fit();
     }
 
@@ -265,11 +265,11 @@ impl LFUCache {
         Ok(())
     }
 
-    fn __clear__(&mut self) {
+    fn __clear__(&self) {
         self.inner.write().clear(false);
     }
 
-    fn least_frequently_used(&mut self) -> Option<PyObject> {
+    fn least_frequently_used(&self) -> Option<PyObject> {
         let mut write = self.inner.write();
         let f = write.least_frequently_used()?;
         Some(write.get(&f)?.0.clone())

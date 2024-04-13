@@ -1,6 +1,6 @@
 [package]
 name = "cachebox"
-version = "2.2.1"
+version = "2.2.2"
 edition = "2021"
 
 [lib]
@@ -14,9 +14,9 @@ strip = "symbols"
 
 [dependencies]
 ahash = "0.8.11"
+fastrand = "2.0.2"
 parking_lot = "0.12.1"
-pyo3 = "0.19.0"
-rand = "0.8.5"
+pyo3 = {version = "0.21.1", features = ["nightly"]}
 
 [lints.clippy]
 dbg_macro = "warn"

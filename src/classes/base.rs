@@ -59,7 +59,7 @@ mod macros {
     #[macro_export]
     macro_rules! pyany_to_hash {
         ($key:expr, $py:expr) => {{
-            let _ref = $key.as_ref($py);
+            let _ref = $key.bind($py);
             _ref.hash()
         }};
     }

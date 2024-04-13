@@ -195,16 +195,25 @@ impl TTLCache {
         Py::new(slf.py(), iter)
     }
 
-    fn __repr__(slf: &PyCell<Self>) -> PyResult<String> {
-        let class_name: &str = slf.get_type().name()?;
-        let borrowed = slf.borrow_mut();
-        Ok(format!(
-            "{}({} / {}, capacity={})",
-            class_name,
-            borrowed.__len__(),
-            borrowed.maxsize(),
-            borrowed.capacity()
-        ))
+    fn __repr__(&self) -> String {
+        let mut write = self.inner.write();
+        write.expire();
+        if write.maxsize == 0 {
+            format!(
+                "TTLCache({}, ttl={:?}, capacity={})",
+                write.len(),
+                write.ttl,
+                write.capacity()
+            )
+        } else {
+            format!(
+                "TTLCache({} / {}, ttl={:?}, capacity={})",
+                write.len(),
+                write.maxsize,
+                write.ttl,
+                write.capacity()
+            )
+        }
     }
 
     fn capacity(&self) -> usize {
@@ -217,12 +226,7 @@ impl TTLCache {
     }
 
     #[pyo3(signature=(key, default=None))]
-    fn pop(
-        &self,
-        py: Python<'_>,
-        key: PyObject,
-        default: Option<PyObject>,
-    ) -> PyResult<PyObject> {
+    fn pop(&self, py: Python<'_>, key: PyObject, default: Option<PyObject>) -> PyResult<PyObject> {
         let hash = pyany_to_hash!(key, py)?;
 
         match self.inner.write().remove(&hash) {
@@ -263,7 +267,7 @@ impl TTLCache {
     }
 
     fn update(&self, py: Python<'_>, iterable: PyObject) -> PyResult<()> {
-        let obj = iterable.as_ref(py);
+        let obj = iterable.bind(py);
 
         if obj.is_instance_of::<pyo3::types::PyDict>() {
             let dict = obj.downcast::<pyo3::types::PyDict>()?;

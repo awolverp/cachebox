@@ -326,7 +326,6 @@ class TTLCache(BaseCacheImpl[KT, VT]):
 
     @property
     def ttl(self) -> float: ...
-    
     def get_with_expire(
         self, key: KT, default: DT = None
     ) -> typing.Tuple[typing.Union[VT, DT], float]:

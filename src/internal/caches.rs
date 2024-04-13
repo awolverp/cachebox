@@ -1,4 +1,3 @@
-use rand::seq::IteratorRandom;
 use std::collections::VecDeque;
 use std::time;
 
@@ -406,7 +405,7 @@ impl<K: std::hash::Hash + Eq + std::cmp::Ord + Copy, V> LFUCache<K, V> {
             let mut vector: Vec<_> = self.counter.iter().map(|(t, n)| (*n, *t)).collect();
             // vector.sort_unstable_by_key(|(n, _)| *n);
             vector.sort_unstable_by(|(n, _), (m, _)| n.cmp(m));
-            
+
             let (_, least_frequently_used_key) = vector[0];
             Some(least_frequently_used_key)
         }
@@ -567,7 +566,7 @@ impl<K: std::hash::Hash + Eq + Copy, V> RRCache<K, V> {
         if self.parent.is_empty() {
             None
         } else {
-            let key = *self.parent.keys().choose(&mut rand::thread_rng()).unwrap();
+            let key = *fastrand::choice(self.parent.keys()).unwrap();
             self.parent.remove(&key)
         }
     }

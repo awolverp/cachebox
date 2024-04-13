@@ -156,16 +156,18 @@ impl Cache {
         Py::new(slf.py(), iter)
     }
 
-    fn __repr__(slf: &PyCell<Self>) -> PyResult<String> {
-        let class_name: &str = slf.get_type().name()?;
-        let borrowed = slf.borrow();
-        Ok(format!(
-            "{}({} / {}, capacity={})",
-            class_name,
-            borrowed.__len__(),
-            borrowed.maxsize(),
-            borrowed.capacity()
-        ))
+    fn __repr__(&self) -> String {
+        let read = self.inner.read();
+        if read.maxsize == 0 {
+            format!("Cache({}, capacity={})", read.len(), read.capacity())
+        } else {
+            format!(
+                "Cache({} / {}, capacity={})",
+                read.len(),
+                read.maxsize,
+                read.capacity()
+            )
+        }
     }
 
     fn capacity(&self) -> usize {
@@ -217,7 +219,7 @@ impl Cache {
     }
 
     fn update(&self, py: Python<'_>, iterable: PyObject) -> PyResult<()> {
-        let obj = iterable.as_ref(py);
+        let obj = iterable.bind(py);
 
         if obj.is_instance_of::<pyo3::types::PyDict>() {
             let dict = obj.downcast::<pyo3::types::PyDict>()?;

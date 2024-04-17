@@ -1,4 +1,6 @@
 # Cachebox
+![Downloads](https://static.pepy.tech/badge/cachebox) ![Downloads](https://static.pepy.tech/badge/cachebox/week)
+
 [**v2 Changelog**](https://github.com/awolverp/cachebox/blob/main/CHANGELOG.md#200---2024-03-09) | [**Releases**](https://github.com/awolverp/cachebox/releases)
 
 The fastest caching library with different implementations, written in Rust.

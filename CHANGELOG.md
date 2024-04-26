@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Improve code stablity
 - Reduce memory usages and allocations.
-- Optimize `VTTLCache.remove` method for more speed.
+- Optimize `VTTLCache.__delitem__` method for more speed.
 - Improve performance of all caches.
 
 ### Internal

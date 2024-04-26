@@ -1,12 +1,12 @@
 use std::collections::VecDeque;
 use std::time;
 
-use ahash::AHashMap;
+use hashbrown::HashMap;
 
 /// Fixed-size (or can be not) cache implementation without any policy,
 /// So only can be fixed-size, or unlimited size cache
 pub struct Cache<K, V> {
-    pub(in crate::internal) inner: AHashMap<K, V>,
+    pub(in crate::internal) inner: HashMap<K, V>,
     pub maxsize: usize,
 }
 
@@ -21,31 +21,35 @@ impl<K, V> Cache<K, V> {
             };
 
             return Self {
-                inner: AHashMap::with_capacity(cap),
+                inner: HashMap::with_capacity(cap),
                 maxsize,
             };
         }
 
         Self {
-            inner: AHashMap::new(),
+            inner: HashMap::new(),
             maxsize,
         }
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         self.inner.len()
     }
 
+    #[inline]
     pub fn capacity(&self) -> usize {
         self.inner.capacity()
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
 }
 
 impl<K: std::hash::Hash + Eq, V> Cache<K, V> {
+    #[inline]
     pub fn shrink_to_fit(&mut self) {
         self.inner.shrink_to_fit();
     }
@@ -62,14 +66,17 @@ impl<K: std::hash::Hash + Eq, V> Cache<K, V> {
         Ok(())
     }
 
+    #[inline]
     pub fn remove(&mut self, key: &K) -> Option<V> {
         self.inner.remove(key)
     }
 
+    #[inline]
     pub fn contains_key(&self, key: &K) -> bool {
         self.inner.contains_key(key)
     }
 
+    #[inline]
     pub fn clear(&mut self, reuse: bool) {
         self.inner.clear();
 
@@ -78,19 +85,22 @@ impl<K: std::hash::Hash + Eq, V> Cache<K, V> {
         }
     }
 
-    pub fn keys(&self) -> std::collections::hash_map::Keys<'_, K, V> {
+    #[inline]
+    pub fn keys(&self) -> hashbrown::hash_map::Keys<'_, K, V> {
         self.inner.keys()
     }
 
-    pub fn values(&self) -> std::collections::hash_map::Values<'_, K, V> {
+    #[inline]
+    pub fn values(&self) -> hashbrown::hash_map::Values<'_, K, V> {
         self.inner.values()
     }
 
-    pub fn iter(&self) -> std::collections::hash_map::Iter<'_, K, V> {
+    #[inline]
+    pub fn iter(&self) -> hashbrown::hash_map::Iter<'_, K, V> {
         self.inner.iter()
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn get(&self, key: &K) -> Option<&V> {
         self.inner.get(key)
     }
@@ -131,7 +141,7 @@ impl<K: std::hash::Hash + Eq, V: Clone> Cache<K, V> {
 /// In simple terms, the FIFO cache will remove the element that has been in the cache the longest;
 /// It behaves like a Python dictionary.
 pub struct FIFOCache<K, V> {
-    inner: AHashMap<K, V>,
+    inner: HashMap<K, V>,
     order: VecDeque<K>,
     pub maxsize: usize,
 }
@@ -147,31 +157,35 @@ impl<K, V> FIFOCache<K, V> {
             };
 
             return Self {
-                inner: AHashMap::with_capacity(cap),
+                inner: HashMap::with_capacity(cap),
                 order: VecDeque::with_capacity(cap),
                 maxsize,
             };
         }
 
         Self {
-            inner: AHashMap::new(),
+            inner: HashMap::new(),
             order: VecDeque::new(),
             maxsize,
         }
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         self.inner.len()
     }
 
+    #[inline]
     pub fn capacity(&self) -> usize {
         self.inner.capacity()
     }
 
+    #[inline]
     pub fn order_capacity(&self) -> usize {
         self.order.capacity()
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
@@ -235,10 +249,12 @@ impl<K: std::hash::Hash + Eq, V> FIFOCache<K, V> {
         c
     }
 
+    #[inline]
     pub fn first(&self) -> Option<&K> {
         self.order.front()
     }
 
+    #[inline]
     pub fn last(&self) -> Option<&K> {
         self.order.back()
     }
@@ -254,10 +270,12 @@ impl<K: std::hash::Hash + Eq, V> FIFOCache<K, V> {
         }
     }
 
+    #[inline]
     pub fn contains_key(&self, key: &K) -> bool {
         self.inner.contains_key(key)
     }
 
+    #[inline]
     pub fn clear(&mut self, reuse: bool) {
         self.inner.clear();
         self.order.clear();
@@ -268,22 +286,27 @@ impl<K: std::hash::Hash + Eq, V> FIFOCache<K, V> {
         }
     }
 
-    pub fn keys(&self) -> std::collections::hash_map::Keys<'_, K, V> {
+    #[inline]
+    pub fn keys(&self) -> hashbrown::hash_map::Keys<'_, K, V> {
         self.inner.keys()
     }
 
+    #[inline]
     pub fn sorted_keys(&self) -> std::collections::vec_deque::Iter<'_, K> {
         self.order.iter()
     }
 
-    pub fn values(&self) -> std::collections::hash_map::Values<'_, K, V> {
+    #[inline]
+    pub fn values(&self) -> hashbrown::hash_map::Values<'_, K, V> {
         self.inner.values()
     }
 
-    pub fn iter(&self) -> std::collections::hash_map::Iter<'_, K, V> {
+    #[inline]
+    pub fn iter(&self) -> hashbrown::hash_map::Iter<'_, K, V> {
         self.inner.iter()
     }
 
+    #[inline]
     pub fn get(&self, key: &K) -> Option<&V> {
         self.inner.get(key)
     }
@@ -325,8 +348,8 @@ impl<K: PartialEq, V> Eq for FIFOCache<K, V> {}
 ///
 /// In simple terms, the LFU cache will remove the element in the cache that has been accessed the least, regardless of time.
 pub struct LFUCache<K, V> {
-    inner: AHashMap<K, V>,
-    counter: AHashMap<K, usize>,
+    inner: HashMap<K, V>,
+    counter: HashMap<K, usize>,
     pub maxsize: usize,
 }
 
@@ -341,31 +364,35 @@ impl<K, V> LFUCache<K, V> {
             };
 
             return Self {
-                inner: AHashMap::with_capacity(cap),
-                counter: AHashMap::with_capacity(cap),
+                inner: HashMap::with_capacity(cap),
+                counter: HashMap::with_capacity(cap),
                 maxsize,
             };
         }
 
         Self {
-            inner: AHashMap::new(),
-            counter: AHashMap::new(),
+            inner: HashMap::new(),
+            counter: HashMap::new(),
             maxsize,
         }
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         self.inner.len()
     }
 
+    #[inline]
     pub fn capacity(&self) -> usize {
         self.inner.capacity()
     }
 
+    #[inline]
     pub fn counter_capacity(&self) -> usize {
         self.counter.capacity()
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
@@ -377,7 +404,6 @@ impl<K: std::hash::Hash + Eq + std::cmp::Ord + Copy, V> LFUCache<K, V> {
             None
         } else {
             let mut vector: Vec<_> = self.counter.iter().map(|(t, n)| (*n, *t)).collect();
-            // vector.sort_unstable_by_key(|(n, _)| *n);
             vector.sort_unstable_by(|(n, _), (m, _)| n.cmp(m));
 
             let (_, least_frequently_used_key) = vector[0];
@@ -421,7 +447,7 @@ impl<K: std::hash::Hash + Eq + std::cmp::Ord + Copy, V> LFUCache<K, V> {
 
         match self.inner.insert(key, value) {
             Some(_) => {
-                *self.counter.get_mut(&key).unwrap() += 1;
+                unsafe { *self.counter.get_mut(&key).unwrap_unchecked() += 1 };
             }
             None => {
                 self.counter.insert(key, 0);
@@ -449,6 +475,7 @@ impl<K: std::hash::Hash + Eq + std::cmp::Ord + Copy, V> LFUCache<K, V> {
 }
 
 impl<K: std::hash::Hash + Eq, V> LFUCache<K, V> {
+    #[inline]
     pub fn shrink_to_fit(&mut self) {
         self.inner.shrink_to_fit();
         self.counter.shrink_to_fit();
@@ -464,10 +491,12 @@ impl<K: std::hash::Hash + Eq, V> LFUCache<K, V> {
         }
     }
 
+    #[inline]
     pub fn contains_key(&self, key: &K) -> bool {
         self.inner.contains_key(key)
     }
 
+    #[inline]
     pub fn clear(&mut self, reuse: bool) {
         self.inner.clear();
         self.counter.clear();
@@ -478,22 +507,26 @@ impl<K: std::hash::Hash + Eq, V> LFUCache<K, V> {
         }
     }
 
-    pub fn keys(&self) -> std::collections::hash_map::Keys<'_, K, V> {
+    #[inline]
+    pub fn keys(&self) -> hashbrown::hash_map::Keys<'_, K, V> {
         self.inner.keys()
     }
 
-    pub fn values(&self) -> std::collections::hash_map::Values<'_, K, V> {
+    #[inline]
+    pub fn values(&self) -> hashbrown::hash_map::Values<'_, K, V> {
         self.inner.values()
     }
 
-    pub fn iter(&self) -> std::collections::hash_map::Iter<'_, K, V> {
+    #[inline]
+    pub fn iter(&self) -> hashbrown::hash_map::Iter<'_, K, V> {
         self.inner.iter()
     }
 
+    #[inline]
     pub fn get(&mut self, key: &K) -> Option<&V> {
         match self.inner.get(key) {
             Some(val) => {
-                *self.counter.get_mut(key).unwrap() += 1;
+                unsafe { *self.counter.get_mut(key).unwrap_unchecked() += 1 };
                 Some(val)
             }
             None => None,
@@ -541,6 +574,7 @@ pub struct RRCache<K, V> {
 }
 
 impl<K, V> RRCache<K, V> {
+    #[inline]
     pub fn new(maxsize: usize, capacity: usize) -> Self {
         Self {
             parent: Cache::new(maxsize, capacity),
@@ -615,14 +649,14 @@ impl<K: std::hash::Hash + Eq + Copy, V: Clone> RRCache<K, V> {
 ///
 /// In simple terms, the LRU cache will remove the element in the cache that has not been accessed in the longest time.
 pub struct LRUCache<K, V> {
-    inner: AHashMap<K, V>,
+    inner: HashMap<K, V>,
     order: VecDeque<K>,
     pub maxsize: usize,
 }
 
 macro_rules! vecdeque_move_to_end {
     ($order:expr, $key:expr) => {{
-        let index = $order.iter().position(|x| *x == $key).unwrap();
+        let index = unsafe { $order.iter().position(|x| *x == $key).unwrap_unchecked() };
         let item = unsafe { $order.remove(index).unwrap_unchecked() };
         $order.push_back(item);
     }};
@@ -639,31 +673,35 @@ impl<K, V> LRUCache<K, V> {
             };
 
             return Self {
-                inner: AHashMap::with_capacity(cap),
+                inner: HashMap::with_capacity(cap),
                 order: VecDeque::with_capacity(cap),
                 maxsize,
             };
         }
 
         Self {
-            inner: AHashMap::new(),
+            inner: HashMap::new(),
             order: VecDeque::new(),
             maxsize,
         }
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         self.inner.len()
     }
 
+    #[inline]
     pub fn capacity(&self) -> usize {
         self.inner.capacity()
     }
 
+    #[inline]
     pub fn order_capacity(&self) -> usize {
         self.order.capacity()
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
@@ -727,10 +765,12 @@ impl<K: std::hash::Hash + Eq, V> LRUCache<K, V> {
         c
     }
 
+    #[inline]
     pub fn least_recently_used(&self) -> Option<&K> {
         self.order.front()
     }
 
+    #[inline]
     pub fn most_recently_used(&self) -> Option<&K> {
         self.order.back()
     }
@@ -746,10 +786,12 @@ impl<K: std::hash::Hash + Eq, V> LRUCache<K, V> {
         }
     }
 
+    #[inline]
     pub fn contains_key(&self, key: &K) -> bool {
         self.inner.contains_key(key)
     }
 
+    #[inline]
     pub fn clear(&mut self, reuse: bool) {
         self.inner.clear();
         self.order.clear();
@@ -760,19 +802,23 @@ impl<K: std::hash::Hash + Eq, V> LRUCache<K, V> {
         }
     }
 
-    pub fn keys(&self) -> std::collections::hash_map::Keys<'_, K, V> {
+    #[inline]
+    pub fn keys(&self) -> hashbrown::hash_map::Keys<'_, K, V> {
         self.inner.keys()
     }
 
+    #[inline]
     pub fn sorted_keys(&self) -> std::collections::vec_deque::Iter<'_, K> {
         self.order.iter()
     }
 
-    pub fn values(&self) -> std::collections::hash_map::Values<'_, K, V> {
+    #[inline]
+    pub fn values(&self) -> hashbrown::hash_map::Values<'_, K, V> {
         self.inner.values()
     }
 
-    pub fn iter(&self) -> std::collections::hash_map::Iter<'_, K, V> {
+    #[inline]
+    pub fn iter(&self) -> hashbrown::hash_map::Iter<'_, K, V> {
         self.inner.iter()
     }
 
@@ -786,6 +832,7 @@ impl<K: std::hash::Hash + Eq, V> LRUCache<K, V> {
         }
     }
 
+    #[inline]
     pub fn fast_get(&self, key: &K) -> Option<&V> {
         self.inner.get(key)
     }
@@ -839,6 +886,7 @@ impl<T: Clone> TTLValue<T> {
         }
     }
 
+    #[inline(always)]
     pub fn expired(&self) -> bool {
         time::Instant::now() > self.expiration
     }
@@ -848,7 +896,7 @@ impl<T: Clone> TTLValue<T> {
 ///
 /// In simple terms, The TTL cache is one that evicts items that are older than a time-to-live.
 pub struct TTLCache<K, V: Clone> {
-    inner: AHashMap<K, TTLValue<V>>,
+    inner: HashMap<K, TTLValue<V>>,
     order: VecDeque<K>,
     pub ttl: time::Duration,
     pub maxsize: usize,
@@ -865,7 +913,7 @@ impl<K, V: Clone> TTLCache<K, V> {
             };
 
             return Self {
-                inner: AHashMap::with_capacity(cap),
+                inner: HashMap::with_capacity(cap),
                 order: VecDeque::with_capacity(cap),
                 ttl: time::Duration::from_secs_f32(ttl),
                 maxsize,
@@ -873,25 +921,29 @@ impl<K, V: Clone> TTLCache<K, V> {
         }
 
         Self {
-            inner: AHashMap::new(),
+            inner: HashMap::new(),
             order: VecDeque::new(),
             ttl: time::Duration::from_secs_f32(ttl),
             maxsize,
         }
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         self.inner.len()
     }
 
+    #[inline]
     pub fn capacity(&self) -> usize {
         self.inner.capacity()
     }
 
+    #[inline]
     pub fn order_capacity(&self) -> usize {
         self.order.capacity()
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
@@ -973,6 +1025,7 @@ impl<K: std::hash::Hash + Eq, V: Clone> TTLCache<K, V> {
         }
     }
 
+    #[inline]
     pub fn shrink_to_fit(&mut self) {
         self.inner.shrink_to_fit();
         self.order.shrink_to_fit();
@@ -1019,6 +1072,7 @@ impl<K: std::hash::Hash + Eq, V: Clone> TTLCache<K, V> {
         }
     }
 
+    #[inline]
     pub fn clear(&mut self, reuse: bool) {
         self.inner.clear();
         self.order.clear();
@@ -1029,22 +1083,27 @@ impl<K: std::hash::Hash + Eq, V: Clone> TTLCache<K, V> {
         }
     }
 
-    pub fn keys(&self) -> std::collections::hash_map::Keys<'_, K, TTLValue<V>> {
+    #[inline]
+    pub fn keys(&self) -> hashbrown::hash_map::Keys<'_, K, TTLValue<V>> {
         self.inner.keys()
     }
 
+    #[inline]
     pub fn sorted_keys(&self) -> std::collections::vec_deque::Iter<'_, K> {
         self.order.iter()
     }
 
-    pub fn values(&self) -> std::collections::hash_map::Values<'_, K, TTLValue<V>> {
+    #[inline]
+    pub fn values(&self) -> hashbrown::hash_map::Values<'_, K, TTLValue<V>> {
         self.inner.values()
     }
 
-    pub fn iter(&self) -> std::collections::hash_map::Iter<'_, K, TTLValue<V>> {
+    #[inline]
+    pub fn iter(&self) -> hashbrown::hash_map::Iter<'_, K, TTLValue<V>> {
         self.inner.iter()
     }
 
+    #[inline]
     pub fn get(&self, key: &K) -> Option<&TTLValue<V>> {
         self.inner.get(key).filter(|&val| !val.expired())
     }
@@ -1079,6 +1138,7 @@ impl<T: Clone> TTLValueOption<T> {
         }
     }
 
+    #[inline]
     pub fn expired(&self) -> bool {
         self.expiration
             .is_some_and(|val| time::Instant::now() > val)
@@ -1089,7 +1149,7 @@ impl<T: Clone> TTLValueOption<T> {
 ///
 /// Works like TTLCache, with this different that each key has own time-to-live value.
 pub struct VTTLCache<K, V: Clone> {
-    inner: AHashMap<K, TTLValueOption<V>>,
+    inner: HashMap<K, TTLValueOption<V>>,
     order: Vec<K>,
     pub maxsize: usize,
 }
@@ -1105,31 +1165,35 @@ impl<K, V: Clone> VTTLCache<K, V> {
             };
 
             return Self {
-                inner: AHashMap::with_capacity(cap),
+                inner: HashMap::with_capacity(cap),
                 order: Vec::with_capacity(cap),
                 maxsize,
             };
         }
 
         Self {
-            inner: AHashMap::new(),
+            inner: HashMap::new(),
             order: Vec::new(),
             maxsize,
         }
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         self.inner.len()
     }
 
+    #[inline]
     pub fn capacity(&self) -> usize {
         self.inner.capacity()
     }
 
+    #[inline]
     pub fn order_capacity(&self) -> usize {
         self.order.capacity()
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
@@ -1178,8 +1242,8 @@ impl<K: std::hash::Hash + Eq + Clone + Ord, V: Clone> VTTLCache<K, V> {
         if length + 1 > 1 {
             // Sort from less to greater
             self.order.sort_by(|a, b| {
-                let ap = self.inner.get(a).unwrap();
-                let bp = self.inner.get(b).unwrap();
+                let ap = unsafe { self.inner.get(a).unwrap_unchecked() };
+                let bp = unsafe { self.inner.get(b).unwrap_unchecked() };
 
                 if ap.expiration.is_none() && bp.expiration.is_none() {
                     return std::cmp::Ordering::Equal;
@@ -1214,8 +1278,8 @@ impl<K: std::hash::Hash + Eq + Clone + Ord, V: Clone> VTTLCache<K, V> {
         if self.inner.len() > 1 {
             // Sort from less to greater
             self.order.sort_by(|a, b| {
-                let ap = self.inner.get(a).unwrap();
-                let bp = self.inner.get(b).unwrap();
+                let ap = unsafe { self.inner.get(a).unwrap_unchecked() };
+                let bp = unsafe { self.inner.get(b).unwrap_unchecked() };
 
                 if ap.expiration.is_none() && bp.expiration.is_none() {
                     return std::cmp::Ordering::Equal;
@@ -1258,8 +1322,8 @@ impl<K: std::hash::Hash + Eq + Clone + Ord, V: Clone> VTTLCache<K, V> {
         if length + 1 > 1 {
             // Sort from less to greater
             self.order.sort_by(|a, b| {
-                let ap = self.inner.get(a).unwrap();
-                let bp = self.inner.get(b).unwrap();
+                let ap = unsafe { self.inner.get(a).unwrap_unchecked() };
+                let bp = unsafe { self.inner.get(b).unwrap_unchecked() };
 
                 if ap.expiration.is_none() && bp.expiration.is_none() {
                     return std::cmp::Ordering::Equal;
@@ -1321,7 +1385,7 @@ impl<K: std::hash::Hash + Eq + Ord, V: Clone> VTTLCache<K, V> {
         match self.inner.remove(key) {
             Some(val) => {
                 let index = unsafe { self.order.iter().position(|x| x == key).unwrap_unchecked() };
-                self.order.remove(index);
+                self.order.swap_remove(index);
 
                 if val.expired() {
                     None
@@ -1333,6 +1397,7 @@ impl<K: std::hash::Hash + Eq + Ord, V: Clone> VTTLCache<K, V> {
         }
     }
 
+    #[inline]
     pub fn contains_key(&self, key: &K) -> bool {
         match self.inner.get(key) {
             Some(val) => !val.expired(),
@@ -1350,22 +1415,27 @@ impl<K: std::hash::Hash + Eq + Ord, V: Clone> VTTLCache<K, V> {
         }
     }
 
-    pub fn keys(&self) -> std::collections::hash_map::Keys<'_, K, TTLValueOption<V>> {
+    #[inline]
+    pub fn keys(&self) -> hashbrown::hash_map::Keys<'_, K, TTLValueOption<V>> {
         self.inner.keys()
     }
 
+    #[inline]
     pub fn sorted_keys(&self) -> std::slice::Iter<'_, K> {
         self.order.iter()
     }
 
-    pub fn values(&self) -> std::collections::hash_map::Values<'_, K, TTLValueOption<V>> {
+    #[inline]
+    pub fn values(&self) -> hashbrown::hash_map::Values<'_, K, TTLValueOption<V>> {
         self.inner.values()
     }
 
-    pub fn iter(&self) -> std::collections::hash_map::Iter<'_, K, TTLValueOption<V>> {
+    #[inline]
+    pub fn iter(&self) -> hashbrown::hash_map::Iter<'_, K, TTLValueOption<V>> {
         self.inner.iter()
     }
 
+    #[inline]
     pub fn get(&self, key: &K) -> Option<&TTLValueOption<V>> {
         self.inner.get(key).filter(|&val| !val.expired())
     }

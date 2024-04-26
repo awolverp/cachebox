@@ -42,12 +42,4 @@ format:
 clean:
 	-ruff clean
 	rm -rf `find . -name __pycache__`
-	rm -f `find . -type f -name '*.py[co]' `
-	rm -f `find . -type f -name '*~' `
-	rm -f `find . -type f -name '.*~' `
-	rm -rf .cache
-	rm -rf flame
-	rm -rf *.egg-info
-	rm -rf build
-	rm -rf perf.data*
 	rm -rf cachebox/*.so

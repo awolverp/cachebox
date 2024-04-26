@@ -375,7 +375,7 @@ KeyError
 | RRCache      | O(1)~  | O(1)~*          | O(1)~          | O(m)~            | O(1)~   |
 | LRUCache     | O(1)~  | ?               | O(1)~          | ?                | O(1)    |
 | TTLCache     | O(1)~  | O(min(i, n-i))* | O(min(i, n-i)) | O(m*min(i, n-i)) | O(1)    |
-| VTTLCache    | O(1)~  | ?               | O(n-i)         | ?                | O(1)~   |
+| VTTLCache    | O(1)~  | ?               | O(1)~          | ?                | O(1)~   |
 
 ## Frequently asked questions
 #### What is the difference between TTLCache and VTTLCache?

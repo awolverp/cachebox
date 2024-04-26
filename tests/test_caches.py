@@ -1,7 +1,7 @@
 import cachebox
 import unittest
 import typing
-
+import time
 
 class CacheTestSuiteMixin:
     cache: typing.Type[cachebox.BaseCacheImpl]
@@ -416,7 +416,6 @@ class TestVTTLCache(unittest.TestCase, CacheTestSuiteMixin):
     cache = cachebox.VTTLCache
 
     def test_policy(self):
-        import time
 
         obj = self.cache(2)
 
@@ -443,7 +442,6 @@ class TestVTTLCache(unittest.TestCase, CacheTestSuiteMixin):
         self.assertTupleEqual((0, 0), obj.popitem())
 
     def test_update_with_ttl(self):
-        import time
 
         obj = self.cache(2)
 
@@ -487,7 +485,6 @@ class TestTTLCache(unittest.TestCase, CacheTestSuiteMixin):
     kwargs = {"ttl": 120}
 
     def test_policy(self):
-        import time
 
         obj = self.cache(2, 0.5)
         self.assertEqual(obj.ttl, 0.5)
@@ -508,7 +505,6 @@ class TestTTLCache(unittest.TestCase, CacheTestSuiteMixin):
         self.assertTupleEqual((1, 1), obj.popitem())
 
     def test_update_with_ttl(self):
-        import time
 
         obj = self.cache(2, 0.5)
 

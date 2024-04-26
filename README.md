@@ -6,13 +6,11 @@
 The fastest caching library with different implementations, written in Rust.
 
 - 🚀 3-21x faster than other libraries (like cachetools and cacheout)
-- 🤯 Sometimes It works **as fast as dictionary**
+- 📊 Very very low memory usage (1/3 of dictionary)
 - **(R)** written in Rust
 - 🤝 Support Python 3.8 and above
 - 📦 Over 7 cache algorithms are supported
 - 🧶 Completely thread-safe
-
-> 🚀 you can see benchmarks [**here**](https://github.com/awolverp/cachebox-benchmark).
 
 **(@)** decorator example:
 ```python
@@ -47,8 +45,8 @@ class APIResource:
 ```
 
 ## Page Contents
-- ⁉️ [What is caching?](#what-is-caching)
 - ⁉️ [When i need caching?](#when-i-need-caching)
+- 🤷‍♂️ [Why `cachebox`?](#why-cachebox)
 - 🎯 [Features](#features)
 - 🛠️ [Installation](#installation)
 - 🎓 [Usage](#API)
@@ -57,13 +55,8 @@ class APIResource:
 - 🆕 [*CHANGELOG*](CHANGELOG.md)
 - ⏱️ [*BENCHMARK*](https://github.com/awolverp/cachebox-benchmark)
 
-## What is caching?
-In computing, caching improves performance by keeping recent or often-used data items in memory locations which are faster,
-or computationally cheaper to access than normal memory stores. When the cache is full,
-the algorithm must choose which items to discard to make room for new data. (*Wikipedia*)
-
 ## When i need caching?
-1. Sometimes you have **functions that take a long time to execute**, and you need to call them each time.
+1. **Sometimes you have functions that take a long time to execute, and you need to call them each time.**
 
 ```python
 @cached(LRUCache(260))
@@ -72,9 +65,9 @@ def function(np_array):
     ...
 ```
 
-2. Sometimes you need to **temporarily store data** in memory for a short period.
+2. **Sometimes you need to temporarily store data in memory for a short period.**
 
-3. When dealing with **remote APIs**, Instead of making frequent API calls, store the responses in a cache.
+3. **When dealing with remote APIs, Instead of making frequent API calls, store the responses in a cache.**
 
 ```python
 @cached(TTLCache(0, ttl=10))
@@ -82,7 +75,7 @@ def api_call(key):
     return api.call(key)
 ```
 
-4. **Caching query results** from databases can enhance performance.
+4. **Caching query results from databases can enhance performance.**
 
 ```python
 @cached(TTLCache(0, ttl=1))
@@ -91,6 +84,24 @@ def select_user(id):
 ```
 
 and ...
+
+## Why `cachebox`?
+**`cachebox`** library uses *Rust* language to has high-performance.
+
+**Low memory usage** - It uses very low memory usage; let's have a simple compare to dictionary:
+```python
+>>> import sys, cachebox
+>>> sys.getsizeof(cachebox.Cache(0, {i:i for i in range(100000)}))
+1835032
+>>> sys.getsizeof({i:i for i in range(100000)})
+5242960
+```
+
+**High-speed** - Is speed important for you? It's is here for you; see [**here**](https://github.com/awolverp/cachebox-benchmark).
+
+**Zero-dependecy** - As we said, `cachebox` written in Rust so you have not to install any other dependecies.
+
+**Thread-safe** - It's completely thread-safe and uses read-writer locks to prevent problems.
 
 ## Installation
 You can install **cachebox** from PyPi:

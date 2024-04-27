@@ -88,7 +88,7 @@ and ...
 ## Why `cachebox`?
 **`cachebox`** library uses *Rust* language to has high-performance.
 
-**Low memory usage** - It uses very low memory usage; let's have a simple compare to dictionary:
+**Low memory usage** - It has very low memory usage; let's have a simple compare to dictionary:
 ```python
 >>> import sys, cachebox
 >>> sys.getsizeof(cachebox.Cache(0, {i:i for i in range(100000)}))
@@ -97,7 +97,7 @@ and ...
 5242960
 ```
 
-**High-speed** - Is speed important for you? It's is here for you; see [**here**](https://github.com/awolverp/cachebox-benchmark).
+**High-speed** - Is speed important for you? It's here for you; see [**here**](https://github.com/awolverp/cachebox-benchmark).
 
 **Zero-dependecy** - As we said, `cachebox` written in Rust so you have not to install any other dependecies.
 

@@ -377,7 +377,10 @@ KeyError
 | VTTLCache    | O(1)~  | ?               | O(1)~          | ?                | O(1)~   |
 
 ## Frequently asked questions
-#### What is the difference between TTLCache and VTTLCache?
+
+<details>
+    <summary><b>What is the difference between TTLCache and VTTLCache?</b></summary>
+
 In `TTLCache`, you set an expiration time for all items, but in `VTTLCache`,
 you can set a unique expiration time for each item.
 
@@ -385,12 +388,17 @@ you can set a unique expiration time for each item.
 | ------------ | ----------- | ------- |
 | TTLCache     | One ttl for all items       | TTLCache is very faster than VTTLCache |
 | VTTLCache    | Each item has unique expiration time | VTTLCache is slow in inserting |
+</details>
 
+<details>
+    <summary><b>Can we set maxsize to zero?</b></summary>
 
-#### Can we set maxsize to zero?
 Yes, if you pass zero to maxsize, means there's no limit for items.
+</details>
 
-#### Migrate from cachetools to cachebox
+<details>
+    <summary><b>How to migrate from cachetools to cachebox?</b></summary>
+
 *cachebox* syntax is very similar to *cachetools*.
 Just change these:
 ```python
@@ -399,6 +407,7 @@ cachetools.Cache(math.inf) -> cachebox.Cache(0)
 # If you use `isinstance` for cachetools classes, change those.
 isinstance(cache, cachetools.Cache) -> isinstance(cache, cachebox.BaseCacheImpl)
 ```
+</details>
 
 ## License
 Copyright (c) 2024 aWolverP - **MIT License**

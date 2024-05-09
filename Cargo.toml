@@ -1,6 +1,6 @@
 [package]
 name = "cachebox"
-version = "2.2.3"
+version = "2.2.4"
 edition = "2021"
 
 [lib]
@@ -13,9 +13,9 @@ codegen-units=1
 strip = "symbols"
 
 [dependencies]
-hashbrown = { version = "0.14", default-features = false, features=["inline-more", "ahash", "raw", "rayon"]}
-fastrand = "2"
-parking_lot = "0.12"
+hashbrown = { version = "0.14.5", default-features = false, features=["inline-more", "ahash", "rayon"]}
+fastrand = "2.1.0"
+parking_lot = "0.12.2"
 pyo3 = {version = "0.21.2"}
 
 [lints.clippy]

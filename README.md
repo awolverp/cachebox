@@ -1,11 +1,11 @@
 # Cachebox
 ![Downloads](https://static.pepy.tech/badge/cachebox) ![Downloads](https://static.pepy.tech/badge/cachebox/week)
 
-[**v2 Changelog**](https://github.com/awolverp/cachebox/blob/main/CHANGELOG.md#200---2024-03-09) | [**Releases**](https://github.com/awolverp/cachebox/releases)
+[**Changelog**](CHANGELOG.md) | [**Releases**](https://github.com/awolverp/cachebox/releases)
 
 The fastest caching library with different implementations, written in Rust.
 
-- 🚀 3-21x faster than other libraries (like cachetools and cacheout)
+- 🚀 5-23x faster than other libraries (like cachetools and cacheout)
 - 📊 Very very low memory usage (1/3 of dictionary)
 - **(R)** written in Rust
 - 🤝 Support Python 3.8 and above
@@ -52,7 +52,6 @@ class APIResource:
 - 🎓 [Usage](#API)
 - 🚀 [Performance table](#performance-table)
 - ⁉️ [Frequently Asked Questions](#frequently-asked-questions)
-- 🆕 [*CHANGELOG*](CHANGELOG.md)
 - ⏱️ [*BENCHMARK*](https://github.com/awolverp/cachebox-benchmark)
 
 ## When i need caching?
@@ -99,7 +98,7 @@ and ...
 
 **High-speed** - Is speed important for you? It's is here for you; see [**here**](https://github.com/awolverp/cachebox-benchmark).
 
-**Zero-dependecy** - As we said, `cachebox` written in Rust so you have not to install any other dependecies.
+**Zero-dependecy** - As we said, `cachebox` written in Rust so you don't have to install any other dependecies.
 
 **Thread-safe** - It's completely thread-safe and uses read-writer locks to prevent problems.
 

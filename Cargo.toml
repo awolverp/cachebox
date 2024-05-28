@@ -13,10 +13,11 @@ codegen-units=1
 strip = "symbols"
 
 [dependencies]
-hashbrown = { version = "0.14.5", default-features = false, features=["inline-more", "ahash", "rayon"]}
-fastrand = "2.1.0"
-parking_lot = "0.12.2"
-pyo3 = {version = "0.21.2"}
+hashbrown = { version = "^0.14", default-features = false, features=["inline-more", "raw"]}
+fastrand = "2"
+parking_lot = "^0.12"
+pyo3 = { version = "^0.21", default-features = false, features=["macros"] }
+ahash = { version = "^0.8", default-features = false, features=["std"] }
 
 [lints.clippy]
 dbg_macro = "warn"

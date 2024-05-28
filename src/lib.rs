@@ -1,22 +1,16 @@
 use pyo3::prelude::*;
 
-// Internal implementations
-mod classes;
-mod internal;
+mod cache;
+mod base;
 
 #[pymodule]
 #[pyo3(name = "_cachebox")]
 fn _cachebox(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
-    m.add("__author__", "aWolverP")?;
-    m.add_class::<classes::BaseCacheImpl>()?;
-    m.add_class::<classes::Cache>()?;
-    m.add_class::<classes::FIFOCache>()?;
-    m.add_class::<classes::LFUCache>()?;
-    m.add_class::<classes::LRUCache>()?;
-    m.add_class::<classes::RRCache>()?;
-    m.add_class::<classes::TTLCache>()?;
-    m.add_class::<classes::VTTLCache>()?;
+    m.add("__author__", "awolverp")?;
+
+    m.add_class::<base::BaseCacheImpl>()?;
+    m.add_class::<cache::Cache>()?;
 
     Ok(())
 }

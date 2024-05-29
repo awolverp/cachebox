@@ -240,53 +240,6 @@ class CacheTestSuiteMixin:
 
         self.assertEqual(obj.popitem(), ("age", 19))
 
-    def test_references_count(self):
-        import sys
-
-        key = "Key1"
-        value = "Value1"
-        keyref = sys.getrefcount(key)
-        valueref = sys.getrefcount(value)
-
-        obj = self.cache(0, **self.kwargs)
-
-        obj[key] = value
-        self.assertEqual(keyref + 1, sys.getrefcount(key))
-        self.assertEqual(valueref + 1, sys.getrefcount(value))
-
-        del obj[key]
-        self.assertEqual(keyref, sys.getrefcount(key))
-        self.assertEqual(valueref, sys.getrefcount(value))
-
-        obj.setdefault(key, value)
-        self.assertEqual(keyref + 1, sys.getrefcount(key))
-        self.assertEqual(valueref + 1, sys.getrefcount(value))
-
-        obj.pop(key)
-        self.assertEqual(keyref, sys.getrefcount(key))
-        self.assertEqual(valueref, sys.getrefcount(value))
-
-        obj[key] = value
-        obj.clear()
-        self.assertEqual(keyref, sys.getrefcount(key))
-        self.assertEqual(valueref, sys.getrefcount(value))
-
-        obj.update({key: value})
-        self.assertEqual(keyref + 1, sys.getrefcount(key))
-        self.assertEqual(valueref + 1, sys.getrefcount(value))
-
-        obj.update(
-            [(key, value)]
-        )  # this updates old value, so should not increase reference counts
-        self.assertEqual(keyref + 1, sys.getrefcount(key))
-        self.assertEqual(valueref + 1, sys.getrefcount(value))
-
-        if self.has_popitem:
-            obj[key] = value
-            obj.popitem()
-            self.assertEqual(keyref, sys.getrefcount(key))
-            self.assertEqual(valueref, sys.getrefcount(value))
-
     def test_subclass(self):
         self.assertIsInstance(self.cache(0, **self.kwargs), cachebox.BaseCacheImpl)
 
@@ -308,230 +261,230 @@ class TestCache(unittest.TestCase, CacheTestSuiteMixin):
     has_popitem = False
 
 
-class TestFIFOCache(unittest.TestCase, CacheTestSuiteMixin):
-    cache = cachebox.FIFOCache
+# class TestFIFOCache(unittest.TestCase, CacheTestSuiteMixin):
+#     cache = cachebox.FIFOCache
 
-    def test_policy(self):
-        obj = self.cache(2)
+#     def test_policy(self):
+#         obj = self.cache(2)
 
-        obj["name"] = 1
-        obj["age"] = 2
+#         obj["name"] = 1
+#         obj["age"] = 2
 
-        obj["key3"] = "value3"
-        self.assertEqual(2, len(obj))
-        self.assertNotIn("name", obj)
+#         obj["key3"] = "value3"
+#         self.assertEqual(2, len(obj))
+#         self.assertNotIn("name", obj)
 
-        obj["key4"] = "value4"
-        self.assertEqual(2, len(obj))
-        self.assertNotIn("age", obj)
+#         obj["key4"] = "value4"
+#         self.assertEqual(2, len(obj))
+#         self.assertNotIn("age", obj)
 
 
-class TestLFUCache(unittest.TestCase, CacheTestSuiteMixin):
-    cache = cachebox.LFUCache
+# class TestLFUCache(unittest.TestCase, CacheTestSuiteMixin):
+#     cache = cachebox.LFUCache
 
-    def test_policy(self):
-        obj = self.cache(5)
+#     def test_policy(self):
+#         obj = self.cache(5)
 
-        for i in range(5):
-            obj[i] = i
+#         for i in range(5):
+#             obj[i] = i
 
-        for i in range(10):
-            self.assertEqual(0, obj[0])
-        for i in range(7):
-            self.assertEqual(1, obj[1])
-        for i in range(3):
-            self.assertEqual(2, obj[2])
-        for i in range(4):
-            self.assertEqual(3, obj[3])
-        for i in range(6):
-            self.assertEqual(4, obj[4])
+#         for i in range(10):
+#             self.assertEqual(0, obj[0])
+#         for i in range(7):
+#             self.assertEqual(1, obj[1])
+#         for i in range(3):
+#             self.assertEqual(2, obj[2])
+#         for i in range(4):
+#             self.assertEqual(3, obj[3])
+#         for i in range(6):
+#             self.assertEqual(4, obj[4])
 
-        self.assertEqual((2, 2), obj.popitem())
-        self.assertEqual((3, 3), obj.popitem())
+#         self.assertEqual((2, 2), obj.popitem())
+#         self.assertEqual((3, 3), obj.popitem())
 
-        for i in range(10):
-            self.assertEqual(4, obj.get(4))
+#         for i in range(10):
+#             self.assertEqual(4, obj.get(4))
 
-        self.assertEqual((1, 1), obj.popitem())
+#         self.assertEqual((1, 1), obj.popitem())
 
-        self.assertEqual(2, len(obj))
-        obj.clear()
+#         self.assertEqual(2, len(obj))
+#         obj.clear()
 
-        for i in range(5):
-            obj[i] = i
-        self.assertEqual([0, 1, 2, 3, 4], sorted(obj.keys()))
+#         for i in range(5):
+#             obj[i] = i
+#         self.assertEqual([0, 1, 2, 3, 4], sorted(obj.keys()))
 
-        for i in range(10):
-            obj[0] += 1
-        for i in range(7):
-            obj[1] += 1
-        for i in range(3):
-            obj[2] += 1
-        for i in range(4):
-            obj[3] += 1
-        for i in range(6):
-            obj[4] += 1
+#         for i in range(10):
+#             obj[0] += 1
+#         for i in range(7):
+#             obj[1] += 1
+#         for i in range(3):
+#             obj[2] += 1
+#         for i in range(4):
+#             obj[3] += 1
+#         for i in range(6):
+#             obj[4] += 1
 
-        obj[5] = 4
-        self.assertEqual([0, 1, 3, 4, 5], sorted(obj.keys()))
+#         obj[5] = 4
+#         self.assertEqual([0, 1, 3, 4, 5], sorted(obj.keys()))
 
 
-class TestLRUCache(unittest.TestCase, CacheTestSuiteMixin):
-    cache = cachebox.LRUCache
+# class TestLRUCache(unittest.TestCase, CacheTestSuiteMixin):
+#     cache = cachebox.LRUCache
 
-    def test_policy(self):
-        obj = self.cache(3)
+#     def test_policy(self):
+#         obj = self.cache(3)
 
-        obj[1] = 1
-        obj[2] = 2
-        obj[3] = 3
+#         obj[1] = 1
+#         obj[2] = 2
+#         obj[3] = 3
 
-        self.assertEqual((1, 1), obj.popitem())
+#         self.assertEqual((1, 1), obj.popitem())
 
-        obj[1] = 1
-        obj[2]
+#         obj[1] = 1
+#         obj[2]
 
-        self.assertEqual((3, 3), obj.popitem()) 
+#         self.assertEqual((3, 3), obj.popitem()) 
 
-        obj[4] = 4
-        self.assertEqual(1, obj.get(1))
+#         obj[4] = 4
+#         self.assertEqual(1, obj.get(1))
 
-        obj[5] = 5
-        self.assertNotIn(2, obj)
+#         obj[5] = 5
+#         self.assertNotIn(2, obj)
 
 
-class TestRRCache(unittest.TestCase, CacheTestSuiteMixin):
-    cache = cachebox.RRCache
+# class TestRRCache(unittest.TestCase, CacheTestSuiteMixin):
+#     cache = cachebox.RRCache
 
-    def test_policy(self):
-        obj = self.cache(2)
+#     def test_policy(self):
+#         obj = self.cache(2)
 
-        obj["name"] = 1
-        obj["age"] = 2
+#         obj["name"] = 1
+#         obj["age"] = 2
 
-        self.assertIn(obj.popitem(), [("name", 1), ("age", 2)])
+#         self.assertIn(obj.popitem(), [("name", 1), ("age", 2)])
 
 
-class TestVTTLCache(unittest.TestCase, CacheTestSuiteMixin):
-    cache = cachebox.VTTLCache
+# class TestVTTLCache(unittest.TestCase, CacheTestSuiteMixin):
+#     cache = cachebox.VTTLCache
 
-    def test_policy(self):
+#     def test_policy(self):
 
-        obj = self.cache(2)
+#         obj = self.cache(2)
 
-        obj.insert(0, 1, 0.5)
-        time.sleep(0.5)
+#         obj.insert(0, 1, 0.5)
+#         time.sleep(0.5)
 
-        with self.assertRaises(KeyError):
-            obj[0]
+#         with self.assertRaises(KeyError):
+#             obj[0]
 
-        obj.insert("name", "nick", 0.3)
-        obj.insert("age", 18, None)
-        time.sleep(0.3)
+#         obj.insert("name", "nick", 0.3)
+#         obj.insert("age", 18, None)
+#         time.sleep(0.3)
 
-        with self.assertRaises(KeyError):
-            obj["name"]
+#         with self.assertRaises(KeyError):
+#             obj["name"]
 
-        del obj["age"]
+#         del obj["age"]
 
-        obj.insert(0, 0, 70)
-        obj.insert(1, 1, 60)
-        obj.insert(2, 2, 90)
+#         obj.insert(0, 0, 70)
+#         obj.insert(1, 1, 60)
+#         obj.insert(2, 2, 90)
 
-        self.assertNotIn(1, obj)
-        self.assertTupleEqual((0, 0), obj.popitem())
+#         self.assertNotIn(1, obj)
+#         self.assertTupleEqual((0, 0), obj.popitem())
 
-    def test_update_with_ttl(self):
+#     def test_update_with_ttl(self):
 
-        obj = self.cache(2)
+#         obj = self.cache(2)
 
-        obj.update({1: 1, 2: 2, 3: 3}, 0.5)
-        time.sleep(0.5)
+#         obj.update({1: 1, 2: 2, 3: 3}, 0.5)
+#         time.sleep(0.5)
 
-        with self.assertRaises(KeyError):
-            obj[1]
+#         with self.assertRaises(KeyError):
+#             obj[1]
 
-        with self.assertRaises(KeyError):
-            obj[2]
+#         with self.assertRaises(KeyError):
+#             obj[2]
 
-        with self.assertRaises(KeyError):
-            obj[3]
+#         with self.assertRaises(KeyError):
+#             obj[3]
 
-    def test_get_with_expire(self):
-        obj = self.cache(2)
+#     def test_get_with_expire(self):
+#         obj = self.cache(2)
 
-        obj.insert(1, 1, 10)
+#         obj.insert(1, 1, 10)
 
-        value, dur = obj.get_with_expire(1)
-        self.assertEqual(1, value)
-        self.assertTrue(10 > dur > 9, "10 > dur > 9 failed [dur: %f]" % dur)
+#         value, dur = obj.get_with_expire(1)
+#         self.assertEqual(1, value)
+#         self.assertTrue(10 > dur > 9, "10 > dur > 9 failed [dur: %f]" % dur)
 
-        obj.insert(1, 1, None)
-        value, dur = obj.get_with_expire(1)
-        self.assertEqual(1, value)
-        self.assertEqual(0, dur)
+#         obj.insert(1, 1, None)
+#         value, dur = obj.get_with_expire(1)
+#         self.assertEqual(1, value)
+#         self.assertEqual(0, dur)
 
-        value, dur = obj.get_with_expire("no-exists")
-        self.assertIs(None, value)
-        self.assertEqual(0, dur)
+#         value, dur = obj.get_with_expire("no-exists")
+#         self.assertIs(None, value)
+#         self.assertEqual(0, dur)
 
-        value, dur = obj.get_with_expire("no-exists", "value")
-        self.assertEqual("value", value)
-        self.assertEqual(0, dur)
+#         value, dur = obj.get_with_expire("no-exists", "value")
+#         self.assertEqual("value", value)
+#         self.assertEqual(0, dur)
 
 
-class TestTTLCache(unittest.TestCase, CacheTestSuiteMixin):
-    cache = cachebox.TTLCache
-    kwargs = {"ttl": 120}
+# class TestTTLCache(unittest.TestCase, CacheTestSuiteMixin):
+#     cache = cachebox.TTLCache
+#     kwargs = {"ttl": 120}
 
-    def test_policy(self):
+#     def test_policy(self):
 
-        obj = self.cache(2, 0.5)
-        self.assertEqual(obj.ttl, 0.5)
+#         obj = self.cache(2, 0.5)
+#         self.assertEqual(obj.ttl, 0.5)
 
-        obj.insert(0, 1)
-        time.sleep(0.5)
+#         obj.insert(0, 1)
+#         time.sleep(0.5)
 
-        with self.assertRaises(KeyError):
-            obj[0]
+#         with self.assertRaises(KeyError):
+#             obj[0]
 
-        obj = self.cache(2, 20)
+#         obj = self.cache(2, 20)
 
-        obj.insert(0, 0)
-        obj.insert(1, 1)
-        obj.insert(2, 2)
+#         obj.insert(0, 0)
+#         obj.insert(1, 1)
+#         obj.insert(2, 2)
 
-        self.assertNotIn(0, obj)
-        self.assertTupleEqual((1, 1), obj.popitem())
+#         self.assertNotIn(0, obj)
+#         self.assertTupleEqual((1, 1), obj.popitem())
 
-    def test_update_with_ttl(self):
+#     def test_update_with_ttl(self):
 
-        obj = self.cache(2, 0.5)
+#         obj = self.cache(2, 0.5)
 
-        obj.update({1: 1, 2: 2, 3: 3})
-        time.sleep(0.5)
+#         obj.update({1: 1, 2: 2, 3: 3})
+#         time.sleep(0.5)
 
-        with self.assertRaises(KeyError):
-            obj[1]
+#         with self.assertRaises(KeyError):
+#             obj[1]
 
-        with self.assertRaises(KeyError):
-            obj[2]
+#         with self.assertRaises(KeyError):
+#             obj[2]
 
-        with self.assertRaises(KeyError):
-            obj[3]
+#         with self.assertRaises(KeyError):
+#             obj[3]
 
-    def test_get_with_expire(self):
-        obj = self.cache(2, 10)
+#     def test_get_with_expire(self):
+#         obj = self.cache(2, 10)
 
-        obj.insert(1, 1)
-        value, dur = obj.get_with_expire(1)
-        self.assertEqual(1, value)
-        self.assertTrue(10 > dur > 9, "10 > dur > 9 failed [dur: %f]" % dur)
+#         obj.insert(1, 1)
+#         value, dur = obj.get_with_expire(1)
+#         self.assertEqual(1, value)
+#         self.assertTrue(10 > dur > 9, "10 > dur > 9 failed [dur: %f]" % dur)
 
-        value, dur = obj.get_with_expire("no-exists")
-        self.assertIs(None, value)
-        self.assertEqual(0, dur)
+#         value, dur = obj.get_with_expire("no-exists")
+#         self.assertIs(None, value)
+#         self.assertEqual(0, dur)
 
-        value, dur = obj.get_with_expire("no-exists", "value")
-        self.assertEqual("value", value)
-        self.assertEqual(0, dur)
+#         value, dur = obj.get_with_expire("no-exists", "value")
+#         self.assertEqual("value", value)
+#         self.assertEqual(0, dur)

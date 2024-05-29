@@ -16,7 +16,7 @@ strip = "symbols"
 hashbrown = { version = "^0.14", default-features = false, features=["inline-more", "raw"]}
 fastrand = "2"
 parking_lot = "^0.12"
-pyo3 = { version = "^0.21", default-features = false, features=["macros"] }
+pyo3 = { version = "^0.21", default-features = false, features=["macros", "extension-module"] }
 ahash = { version = "^0.8", default-features = false, features=["std"] }
 
 [lints.clippy]

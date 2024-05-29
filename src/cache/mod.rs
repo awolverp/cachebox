@@ -41,6 +41,16 @@ impl Cache {
         self.table.read().maxsize.get()
     }
 
+    pub fn is_full(&self) -> bool {
+        let lock = self.table.read();
+        return lock.as_ref().len() == lock.maxsize.get();
+    }
+
+    pub fn is_empty(&self) -> bool {
+        let lock = self.table.read();
+        return lock.as_ref().len() == 0;
+    }
+
     #[inline]
     pub fn __len__(&self) -> usize {
         self.table.read().as_ref().len()

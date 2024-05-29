@@ -63,6 +63,10 @@ pub struct items_iterator {
 
 #[pymethods]
 impl items_iterator {
+    pub fn size(&self) -> usize {
+        self.safeiter.len
+    }
+
     pub fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
@@ -80,6 +84,10 @@ pub struct keys_iterator {
 
 #[pymethods]
 impl keys_iterator {
+    pub fn size(&self) -> usize {
+        self.safeiter.len
+    }
+
     pub fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
@@ -97,6 +105,10 @@ pub struct values_iterator {
 
 #[pymethods]
 impl values_iterator {
+    pub fn size(&self) -> usize {
+        self.safeiter.len
+    }
+    
     pub fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }

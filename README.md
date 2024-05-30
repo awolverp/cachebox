@@ -3,6 +3,9 @@
 
 [**Changelog**](CHANGELOG.md) | [**Releases**](https://github.com/awolverp/cachebox/releases)
 
+> [!WARNING]\
+> This branch is under developing, don't use this branch's source
+
 The fastest caching library with different implementations, written in Rust.
 
 - 🚀 5-23x faster than other libraries (like cachetools and cacheout)

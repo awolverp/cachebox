@@ -217,7 +217,7 @@ impl lfu_tuple_ptr_iterator {
 
 #[pymethods]
 impl lfu_tuple_ptr_iterator {
-    pub fn size(&self) -> usize {
+    pub fn __len__(&self) -> usize {
         self.iter.len
     }
 
@@ -246,7 +246,7 @@ impl lfu_object_ptr_iterator {
 
 #[pymethods]
 impl lfu_object_ptr_iterator {
-    pub fn size(&self) -> usize {
+    pub fn __len__(&self) -> usize {
         self.iter.len
     }
 

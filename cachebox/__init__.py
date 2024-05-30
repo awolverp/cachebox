@@ -23,10 +23,6 @@ from ._cachebox import (
     # TTLCache as TTLCache,
     __version__ as __version__,
     __author__ as __author__,
-    tuple_ptr_iterator as tuple_ptr_iterator,
-    object_ptr_iterator as object_ptr_iterator,
-    lfu_tuple_ptr_iterator as lfu_tuple_ptr_iterator,
-    lfu_object_ptr_iterator as lfu_object_ptr_iterator,
 )
 
 from .utils import (

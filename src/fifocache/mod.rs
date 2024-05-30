@@ -1,18 +1,18 @@
 mod raw;
 
-use self::raw::RawCache;
+use self::raw::RawFIFOCache;
 use crate::basic::HashablePyObject;
 use crate::{create_pyerr, make_eq_func, make_hasher_func};
 use parking_lot::RwLock;
 use pyo3::prelude::*;
 
 #[pyclass(mapping, extends=crate::basic::BaseCacheImpl, subclass, module="cachebox._cachebox")]
-pub struct Cache {
-    table: RwLock<RawCache>,
+pub struct FIFOCache {
+    table: RwLock<RawFIFOCache>,
 }
 
 #[pymethods]
-impl Cache {
+impl FIFOCache {
     #[new]
     #[pyo3(signature=(maxsize, iterable=None, *, capacity=0))]
     pub fn new(
@@ -20,9 +20,9 @@ impl Cache {
         maxsize: usize,
         iterable: Option<PyObject>,
         capacity: usize,
-    ) -> PyResult<PyClassInitializer<Cache>> {
+    ) -> PyResult<PyClassInitializer<FIFOCache>> {
         let slf = Self {
-            table: RwLock::new(RawCache::new(maxsize, capacity)?),
+            table: RwLock::new(RawFIFOCache::new(maxsize, capacity)?),
         };
 
         if let Some(x) = iterable {
@@ -55,12 +55,15 @@ impl Cache {
 
     #[inline]
     pub fn __sizeof__(&self) -> usize {
-        let cap = self.table.read().as_ref().capacity();
+        let lock = self.table.read();
+        let cap = lock.as_ref().capacity();
+        let o_cap = lock.order_ref().capacity();
 
-        // sizeof(self) + capacity * sizeof(HashablePyObject) + capacity * sizeof(PyObject)
+        // capacity * sizeof(HashablePyObject) + capacity * sizeof(PyObject) + order_capacity * sizeof(non-null pointer)
         core::mem::size_of::<Self>()
             + cap * (super::basic::PYOBJECT_MEM_SIZE + 8)
             + cap * super::basic::PYOBJECT_MEM_SIZE
+            + o_cap * core::mem::size_of::<core::ptr::NonNull<(HashablePyObject, PyObject)>>()
     }
 
     #[inline]
@@ -134,7 +137,7 @@ impl Cache {
     }
 
     #[inline]
-    #[pyo3(signature=(*, reuse=false), text_signature="(*, reuse=False)")]
+    #[pyo3(signature=(*, reuse=false))]
     pub fn clear(&self, reuse: bool) {
         let mut lock = self.table.write();
         let tb = lock.as_mut();
@@ -142,6 +145,12 @@ impl Cache {
 
         if !reuse {
             tb.shrink_to(0, make_hasher_func!());
+        }
+
+        let order = lock.order_mut();
+        order.clear();
+        if !reuse {
+            order.shrink_to_fit();
         }
     }
 
@@ -183,14 +192,29 @@ impl Cache {
     }
 
     #[inline]
-    pub fn popitem(&self) -> PyResult<()> {
-        Err(create_pyerr!(pyo3::exceptions::PyNotImplementedError))
+    pub fn popitem(&self) -> PyResult<(PyObject, PyObject)> {
+        let mut lock = self.table.write();
+        let (k, v) = lock.popitem()?;
+        Ok((k.object, v))
     }
 
-    #[allow(unused_variables)]
     #[inline]
-    pub fn drain(&self, n: usize) -> PyResult<()> {
-        Err(create_pyerr!(pyo3::exceptions::PyNotImplementedError))
+    pub fn drain(&self, n: usize) -> usize {
+        let mut lock = self.table.write();
+
+        if n == 0 || lock.as_ref().is_empty() {
+            return 0;
+        }
+
+        let mut c = 0usize;
+        while c < n {
+            if lock.popitem().is_err() {
+                break;
+            }
+            c += 1;
+        }
+
+        c
     }
 
     #[inline]
@@ -211,10 +235,9 @@ impl Cache {
 
     #[inline]
     pub fn shrink_to_fit(&self) {
-        self.table
-            .write()
-            .as_mut()
-            .shrink_to(0, make_hasher_func!());
+        let mut lock = self.table.write();
+        lock.as_mut().shrink_to(0, make_hasher_func!());
+        lock.order_mut().shrink_to_fit();
     }
 
     pub fn items(
@@ -322,7 +345,7 @@ impl Cache {
         let lock = self.table.read();
         let tb = lock.as_ref();
         format!(
-            "Cache({} / {}, capacity={})",
+            "FIFOCache({} / {}, capacity={})",
             tb.len(),
             lock.maxsize.get(),
             tb.capacity()
@@ -341,5 +364,17 @@ impl Cache {
     pub fn __clear__(&self) {
         let mut t = self.table.write();
         t.as_mut().clear();
+    }
+
+    pub fn first(&self) -> Option<PyObject> {
+        let lock = self.table.read();
+        let h = lock.first()?;
+        Some(h.object.clone())
+    }
+
+    pub fn last(&self) -> Option<PyObject> {
+        let lock = self.table.read();
+        let h = lock.last()?;
+        Some(h.object.clone())
     }
 }

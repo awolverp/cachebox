@@ -108,7 +108,7 @@ impl values_iterator {
     pub fn size(&self) -> usize {
         self.safeiter.len
     }
-    
+
     pub fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }

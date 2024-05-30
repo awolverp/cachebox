@@ -1,14 +1,17 @@
-use crate::{basic::HashablePyObject, create_pyerr, make_eq_func, make_hasher_func};
+use crate::basic::HashablePyObject;
+use crate::{create_pyerr, make_eq_func, make_hasher_func};
 use core::num::NonZeroUsize;
-use hashbrown::raw::RawTable;
+use hashbrown::raw::{Bucket, RawTable};
 use pyo3::prelude::*;
+use std::collections::VecDeque;
 
-pub struct RawCache {
+pub struct RawFIFOCache {
     table: RawTable<(HashablePyObject, PyObject)>,
+    order: VecDeque<Bucket<(HashablePyObject, PyObject)>>,
     pub maxsize: NonZeroUsize,
 }
 
-impl RawCache {
+impl RawFIFOCache {
     #[inline]
     pub fn new(maxsize: usize, capacity: usize) -> PyResult<Self> {
         let capacity = core::cmp::min(maxsize, capacity);
@@ -25,7 +28,22 @@ impl RawCache {
             }
         };
 
-        Ok(Self { table, maxsize })
+        Ok(Self {
+            table,
+            maxsize,
+            order: VecDeque::new(),
+        })
+    }
+
+    #[inline]
+    pub fn popitem(&mut self) -> PyResult<(HashablePyObject, PyObject)> {
+        match self.order.pop_front() {
+            Some(x) => {
+                let (v, _) = unsafe { self.table.remove(x) };
+                Ok(v)
+            }
+            None => Err(create_pyerr!(pyo3::exceptions::PyKeyError)),
+        }
     }
 
     #[inline]
@@ -38,7 +56,8 @@ impl RawCache {
                 let _ = std::mem::replace(unsafe { &mut bucket.as_mut().1 }, value);
             }
             Err(slot) => unsafe {
-                self.table.insert_in_slot(key.hash, slot, (key, value));
+                let bucket = self.table.insert_in_slot(key.hash, slot, (key, value));
+                self.order.push_back(bucket);
             },
         }
     }
@@ -48,15 +67,13 @@ impl RawCache {
         if self.table.len() >= self.maxsize.get()
             && self.table.find(key.hash, make_eq_func!(key)).is_none()
         {
-            return Err(create_pyerr!(
-                pyo3::exceptions::PyOverflowError,
-                "The cache reached maximum size"
-            ));
+            unsafe { self.popitem().unwrap_unchecked() };
         }
 
         unsafe {
             self.insert_unchecked(key, value);
         }
+
         Ok(())
     }
 
@@ -80,11 +97,38 @@ impl RawCache {
 
         match self.table.find(key.hash, make_eq_func!(key)) {
             Some(bucket) => {
+                #[cfg(debug_assertions)]
+                let index = self
+                    .order
+                    .iter()
+                    .position(|x| core::ptr::addr_eq(x.as_ptr(), bucket.as_ptr()))
+                    .unwrap();
+
+                #[cfg(not(debug_assertions))]
+                let index = unsafe {
+                    self.order
+                        .iter()
+                        .position(|x| core::ptr::addr_eq(x.as_ptr(), bucket.as_ptr()))
+                        .unwrap_unchecked()
+                };
+
+                self.order.remove(index);
+
                 let (val, _) = unsafe { self.table.remove(bucket) };
                 Some(val)
             }
             None => None,
         }
+    }
+
+    #[inline]
+    pub fn order_ref(&self) -> &VecDeque<Bucket<(HashablePyObject, PyObject)>> {
+        &self.order
+    }
+
+    #[inline]
+    pub fn order_mut(&mut self) -> &mut VecDeque<Bucket<(HashablePyObject, PyObject)>> {
+        &mut self.order
     }
 
     #[inline]
@@ -121,16 +165,30 @@ impl RawCache {
 
         Ok(())
     }
+
+    #[inline]
+    pub fn first(&self) -> Option<&HashablePyObject> {
+        let bucket = self.order.front()?;
+        let (k, _) = unsafe { bucket.as_ref() };
+        Some(k)
+    }
+
+    #[inline]
+    pub fn last(&self) -> Option<&HashablePyObject> {
+        let bucket = self.order.back()?;
+        let (k, _) = unsafe { bucket.as_ref() };
+        Some(k)
+    }
 }
 
-impl AsRef<RawTable<(HashablePyObject, PyObject)>> for RawCache {
+impl AsRef<RawTable<(HashablePyObject, PyObject)>> for RawFIFOCache {
     #[inline]
     fn as_ref(&self) -> &RawTable<(HashablePyObject, PyObject)> {
         &self.table
     }
 }
 
-impl AsMut<RawTable<(HashablePyObject, PyObject)>> for RawCache {
+impl AsMut<RawTable<(HashablePyObject, PyObject)>> for RawFIFOCache {
     #[inline]
     fn as_mut(&mut self) -> &mut RawTable<(HashablePyObject, PyObject)> {
         &mut self.table

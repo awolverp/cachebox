@@ -15,7 +15,7 @@ Example::
 from ._cachebox import (
     BaseCacheImpl as BaseCacheImpl,
     Cache as Cache,
-    # FIFOCache as FIFOCache,
+    FIFOCache as FIFOCache,
     # LFUCache as LFUCache,
     # RRCache as RRCache,
     # LRUCache as LRUCache,

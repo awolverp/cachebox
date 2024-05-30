@@ -243,7 +243,7 @@ impl RRCache {
             let mut lock = self.table.write();
             for pair in obj.iter()? {
                 let (key, value): (Py<PyAny>, Py<PyAny>) = pair?.extract()?;
-    
+
                 let hashable = HashablePyObject::try_from_pyobject(key, py)?;
                 rr_alg_insert(&mut lock, hashable, value)?;
             }

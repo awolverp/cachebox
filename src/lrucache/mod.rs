@@ -2,7 +2,7 @@ mod raw;
 
 use self::raw::RawLRUCache;
 use crate::basic::HashablePyObject;
-use crate::{create_pyerr, make_hasher_func, make_eq_func};
+use crate::{create_pyerr, make_eq_func, make_hasher_func};
 use parking_lot::RwLock;
 use pyo3::prelude::*;
 

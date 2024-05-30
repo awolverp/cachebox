@@ -4,8 +4,8 @@ mod basic;
 mod cache;
 mod fifocache;
 mod lfucache;
-mod rrcache;
 mod lrucache;
+mod rrcache;
 
 #[pymodule]
 #[pyo3(name = "_cachebox")]

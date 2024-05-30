@@ -216,10 +216,7 @@ impl LFUCache {
         lock.as_mut().shrink_to(0, |(x, _, _)| x.hash);
     }
 
-    pub fn items(
-        slf: PyRef<'_, Self>,
-        py: Python<'_>,
-    ) -> PyResult<Py<lfu_tuple_ptr_iterator>> {
+    pub fn items(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<lfu_tuple_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
@@ -233,10 +230,7 @@ impl LFUCache {
         Py::new(py, iter)
     }
 
-    pub fn __iter__(
-        slf: PyRef<'_, Self>,
-        py: Python<'_>,
-    ) -> PyResult<Py<lfu_object_ptr_iterator>> {
+    pub fn __iter__(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<lfu_object_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
@@ -249,10 +243,7 @@ impl LFUCache {
         Py::new(py, iter)
     }
 
-    pub fn keys(
-        slf: PyRef<'_, Self>,
-        py: Python<'_>,
-    ) -> PyResult<Py<lfu_object_ptr_iterator>> {
+    pub fn keys(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<lfu_object_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
@@ -265,10 +256,7 @@ impl LFUCache {
         Py::new(py, iter)
     }
 
-    pub fn values(
-        slf: PyRef<'_, Self>,
-        py: Python<'_>,
-    ) -> PyResult<Py<lfu_object_ptr_iterator>> {
+    pub fn values(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<lfu_object_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };

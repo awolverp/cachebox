@@ -2,3 +2,4 @@
 /target
 __pycache__
 *.so
+/.caches.rs

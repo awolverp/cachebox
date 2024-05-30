@@ -1,5 +1,7 @@
 mod raw;
 
+pub use self::raw::{lfu_object_ptr_iterator, lfu_tuple_ptr_iterator};
+
 use self::raw::RawLFUCache;
 use crate::basic::HashablePyObject;
 use crate::create_pyerr;
@@ -217,12 +219,12 @@ impl LFUCache {
     pub fn items(
         slf: PyRef<'_, Self>,
         py: Python<'_>,
-    ) -> PyResult<Py<self::raw::lfu_tuple_ptr_iterator>> {
+    ) -> PyResult<Py<lfu_tuple_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
 
-        let iter = self::raw::lfu_tuple_ptr_iterator::new(crate::basic::iter::SafeRawIter::new(
+        let iter = lfu_tuple_ptr_iterator::new(crate::basic::iter::SafeRawIter::new(
             slf.as_ptr(),
             len,
             iter,
@@ -231,15 +233,31 @@ impl LFUCache {
         Py::new(py, iter)
     }
 
-    pub fn keys(
+    pub fn __iter__(
         slf: PyRef<'_, Self>,
         py: Python<'_>,
-    ) -> PyResult<Py<self::raw::lfu_object_ptr_iterator>> {
+    ) -> PyResult<Py<lfu_object_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
 
-        let iter = self::raw::lfu_object_ptr_iterator::new(
+        let iter = lfu_object_ptr_iterator::new(
+            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
+            0,
+        );
+
+        Py::new(py, iter)
+    }
+
+    pub fn keys(
+        slf: PyRef<'_, Self>,
+        py: Python<'_>,
+    ) -> PyResult<Py<lfu_object_ptr_iterator>> {
+        let lock = slf.table.read();
+        let len = lock.as_ref().len();
+        let iter = unsafe { lock.as_ref().iter() };
+
+        let iter = lfu_object_ptr_iterator::new(
             crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
             0,
         );
@@ -250,12 +268,12 @@ impl LFUCache {
     pub fn values(
         slf: PyRef<'_, Self>,
         py: Python<'_>,
-    ) -> PyResult<Py<self::raw::lfu_object_ptr_iterator>> {
+    ) -> PyResult<Py<lfu_object_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
 
-        let iter = self::raw::lfu_object_ptr_iterator::new(
+        let iter = lfu_object_ptr_iterator::new(
             crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
             1,
         );

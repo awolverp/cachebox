@@ -5,6 +5,7 @@ mod cache;
 mod fifocache;
 mod lfucache;
 mod rrcache;
+mod lrucache;
 
 #[pymodule]
 #[pyo3(name = "_cachebox")]
@@ -17,6 +18,12 @@ fn _cachebox(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<crate::fifocache::FIFOCache>()?;
     m.add_class::<crate::lfucache::LFUCache>()?;
     m.add_class::<crate::rrcache::RRCache>()?;
+
+    // iterators
+    m.add_class::<crate::basic::iter::tuple_ptr_iterator>()?;
+    m.add_class::<crate::basic::iter::object_ptr_iterator>()?;
+    m.add_class::<crate::lfucache::lfu_object_ptr_iterator>()?;
+    m.add_class::<crate::lfucache::lfu_tuple_ptr_iterator>()?;
 
     Ok(())
 }

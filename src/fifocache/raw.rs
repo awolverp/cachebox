@@ -94,14 +94,14 @@ impl RawFIFOCache {
     }
 
     #[inline]
-    pub fn get(&self, key: &HashablePyObject) -> Option<PyObject> {
+    pub fn get(&self, key: &HashablePyObject) -> Option<&PyObject> {
         if self.table.is_empty() {
             return None;
         }
 
         self.table.find(key.hash, make_eq_func!(key)).map(|bucket| {
             let (_, val) = unsafe { bucket.as_ref() };
-            val.clone()
+            val
         })
     }
 

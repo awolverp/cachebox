@@ -97,7 +97,7 @@ impl RawLFUCache {
     }
 
     #[inline]
-    pub fn get(&mut self, key: &HashablePyObject) -> Option<PyObject> {
+    pub fn get(&mut self, key: &HashablePyObject) -> Option<&PyObject> {
         if self.table.is_empty() {
             return None;
         }
@@ -107,7 +107,7 @@ impl RawLFUCache {
             .map(|bucket| {
                 let (_, val, n) = unsafe { bucket.as_mut() };
                 *n += 1;
-                val.clone()
+                val as &PyObject
             })
     }
 

@@ -341,28 +341,28 @@ class TestLFUCache(unittest.TestCase, CacheTestSuiteMixin):
         self.assertEqual([0, 1, 3, 4, 5], sorted(obj.keys()))
 
 
-# class TestLRUCache(unittest.TestCase, CacheTestSuiteMixin):
-#     cache = cachebox.LRUCache
+class TestLRUCache(unittest.TestCase, CacheTestSuiteMixin):
+    cache = cachebox.LRUCache
 
-#     def test_policy(self):
-#         obj = self.cache(3)
+    def test_policy(self):
+        obj = self.cache(3)
 
-#         obj[1] = 1
-#         obj[2] = 2
-#         obj[3] = 3
+        obj[1] = 1
+        obj[2] = 2
+        obj[3] = 3
 
-#         self.assertEqual((1, 1), obj.popitem())
+        self.assertEqual((1, 1), obj.popitem())
 
-#         obj[1] = 1
-#         obj[2]
+        obj[1] = 1
+        obj[2]
 
-#         self.assertEqual((3, 3), obj.popitem()) 
+        self.assertEqual((3, 3), obj.popitem()) 
 
-#         obj[4] = 4
-#         self.assertEqual(1, obj.get(1))
+        obj[4] = 4
+        self.assertEqual(1, obj.get(1))
 
-#         obj[5] = 5
-#         self.assertNotIn(2, obj)
+        obj[5] = 5
+        self.assertNotIn(2, obj)
 
 
 class TestRRCache(unittest.TestCase, CacheTestSuiteMixin):

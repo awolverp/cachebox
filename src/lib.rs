@@ -18,6 +18,7 @@ fn _cachebox(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<crate::fifocache::FIFOCache>()?;
     m.add_class::<crate::lfucache::LFUCache>()?;
     m.add_class::<crate::rrcache::RRCache>()?;
+    m.add_class::<crate::lrucache::LRUCache>()?;
 
     // iterators
     m.add_class::<crate::basic::iter::tuple_ptr_iterator>()?;

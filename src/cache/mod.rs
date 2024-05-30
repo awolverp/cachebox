@@ -79,7 +79,7 @@ impl Cache {
         let lock = self.table.read();
 
         match lock.get(&hashable) {
-            Some(x) => Ok(x),
+            Some(x) => Ok(x.clone()),
             None => Err(create_pyerr!(pyo3::exceptions::PyKeyError, hashable.object)),
         }
     }
@@ -97,7 +97,7 @@ impl Cache {
         let hashable = HashablePyObject::try_from_pyobject(key, py)?;
         let lock = self.table.read();
         match lock.get(&hashable) {
-            Some(x) => Ok(x),
+            Some(x) => Ok(x.clone()),
             None => Ok(default.unwrap_or_else(|| py.None())),
         }
     }
@@ -158,7 +158,7 @@ impl Cache {
         let mut lock = self.table.write();
 
         if let Some(x) = lock.get(&hashable) {
-            return Ok(x);
+            return Ok(x.clone());
         }
 
         let default_val = default.unwrap_or_else(|| py.None());

@@ -84,7 +84,7 @@ impl LFUCache {
         let mut lock = self.table.write();
 
         match lock.get(&hashable) {
-            Some(x) => Ok(x),
+            Some(x) => Ok(x.clone()),
             None => Err(create_pyerr!(pyo3::exceptions::PyKeyError, hashable.object)),
         }
     }
@@ -102,7 +102,7 @@ impl LFUCache {
         let hashable = HashablePyObject::try_from_pyobject(key, py)?;
         let mut lock = self.table.write();
         match lock.get(&hashable) {
-            Some(x) => Ok(x),
+            Some(x) => Ok(x.clone()),
             None => Ok(default.unwrap_or_else(|| py.None())),
         }
     }
@@ -163,7 +163,7 @@ impl LFUCache {
         let mut lock = self.table.write();
 
         if let Some(x) = lock.get(&hashable) {
-            return Ok(x);
+            return Ok(x.clone());
         }
 
         let default_val = default.unwrap_or_else(|| py.None());

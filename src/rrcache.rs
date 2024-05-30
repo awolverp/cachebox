@@ -1,18 +1,54 @@
-mod raw;
-
-pub use self::raw::RawCache;
 use crate::basic::HashablePyObject;
+use crate::cache::RawCache;
 use crate::{create_pyerr, make_eq_func, make_hasher_func};
 use parking_lot::RwLock;
 use pyo3::prelude::*;
 
 #[pyclass(mapping, extends=crate::basic::BaseCacheImpl, subclass, module="cachebox._cachebox")]
-pub struct Cache {
+pub struct RRCache {
     table: RwLock<RawCache>,
 }
 
+macro_rules! rr_alg_popitem {
+    ($tb:expr) => {{
+        if $tb.is_empty() {
+            Err(create_pyerr!(pyo3::exceptions::PyKeyError))
+        } else {
+            let rnd = fastrand::usize(0..$tb.len());
+
+            #[cfg(debug_assertions)]
+            let bucket = unsafe { $tb.iter().nth(rnd).unwrap() };
+
+            #[cfg(not(debug_assertions))]
+            let bucket = unsafe { $tb.iter().nth(rnd).unwrap_unchecked() };
+
+            let (h, _) = unsafe { $tb.remove(bucket) };
+            Ok((h.0.object, h.1))
+        }
+    }};
+}
+
+fn rr_alg_insert(
+    lock: &mut parking_lot::lock_api::RwLockWriteGuard<'_, parking_lot::RawRwLock, RawCache>,
+    hashable: HashablePyObject,
+    value: PyObject,
+) -> PyResult<()> {
+    if lock.as_ref().len() >= lock.maxsize.get() {
+        let tb = lock.as_mut();
+        if tb.find(hashable.hash, make_eq_func!(hashable)).is_none() {
+            rr_alg_popitem!(tb)?;
+        }
+    }
+
+    unsafe {
+        lock.insert_unchecked(hashable, value);
+    }
+
+    Ok(())
+}
+
 #[pymethods]
-impl Cache {
+impl RRCache {
     #[new]
     #[pyo3(signature=(maxsize, iterable=None, *, capacity=0))]
     pub fn new(
@@ -20,7 +56,7 @@ impl Cache {
         maxsize: usize,
         iterable: Option<PyObject>,
         capacity: usize,
-    ) -> PyResult<PyClassInitializer<Cache>> {
+    ) -> PyResult<PyClassInitializer<RRCache>> {
         let slf = Self {
             table: RwLock::new(RawCache::new(maxsize, capacity)?),
         };
@@ -66,7 +102,7 @@ impl Cache {
     pub fn __setitem__(&self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
         let hashable = HashablePyObject::try_from_pyobject(key, py)?;
         let mut lock = self.table.write();
-        lock.insert(hashable, value)
+        rr_alg_insert(&mut lock, hashable, value)
     }
 
     #[pyo3(text_signature = "(key, value)")]
@@ -167,13 +203,29 @@ impl Cache {
         Ok(default_val)
     }
 
-    pub fn popitem(&self) -> PyResult<()> {
-        Err(create_pyerr!(pyo3::exceptions::PyNotImplementedError))
+    pub fn popitem(&self) -> PyResult<(PyObject, PyObject)> {
+        let mut lock = self.table.write();
+        let tb = lock.as_mut();
+        rr_alg_popitem!(tb)
     }
 
-    #[allow(unused_variables)]
-    pub fn drain(&self, n: usize) -> PyResult<()> {
-        Err(create_pyerr!(pyo3::exceptions::PyNotImplementedError))
+    pub fn drain(&self, n: usize) -> usize {
+        let mut lock = self.table.write();
+        let tb = lock.as_mut();
+
+        if n == 0 || tb.is_empty() {
+            return 0;
+        }
+
+        let mut c = 0usize;
+        while c < n {
+            if rr_alg_popitem!(tb).is_err() {
+                break;
+            }
+            c += 1;
+        }
+
+        c
     }
 
     fn update(&self, py: Python<'_>, iterable: PyObject) -> PyResult<()> {
@@ -182,10 +234,19 @@ impl Cache {
         if obj.is_instance_of::<pyo3::types::PyDict>() {
             let dict = obj.downcast::<pyo3::types::PyDict>()?;
             let mut lock = self.table.write();
-            lock.extend_from_dict(dict)?;
+
+            for (key, value) in dict.iter() {
+                let hashable = HashablePyObject::try_from_bound(key)?;
+                rr_alg_insert(&mut lock, hashable, value.unbind())?;
+            }
         } else {
             let mut lock = self.table.write();
-            lock.extend_from_iter(obj, py)?;
+            for pair in obj.iter()? {
+                let (key, value): (Py<PyAny>, Py<PyAny>) = pair?.extract()?;
+    
+                let hashable = HashablePyObject::try_from_pyobject(key, py)?;
+                rr_alg_insert(&mut lock, hashable, value)?;
+            }
         }
 
         Ok(())

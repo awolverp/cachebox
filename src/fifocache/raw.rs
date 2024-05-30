@@ -1,13 +1,13 @@
 use crate::basic::HashablePyObject;
 use crate::{create_pyerr, make_eq_func, make_hasher_func};
 use core::num::NonZeroUsize;
-use hashbrown::raw::{Bucket, RawTable};
+use hashbrown::raw::RawTable;
 use pyo3::prelude::*;
 use std::collections::VecDeque;
 
 pub struct RawFIFOCache {
     table: RawTable<(HashablePyObject, PyObject)>,
-    order: VecDeque<Bucket<(HashablePyObject, PyObject)>>,
+    order: VecDeque<HashablePyObject>,
     pub maxsize: NonZeroUsize,
 }
 
@@ -39,8 +39,17 @@ impl RawFIFOCache {
     pub fn popitem(&mut self) -> PyResult<(HashablePyObject, PyObject)> {
         match self.order.pop_front() {
             Some(x) => {
-                let (v, _) = unsafe { self.table.remove(x) };
-                Ok(v)
+                #[cfg(debug_assertions)]
+                let val = self.table.remove_entry(x.hash, make_eq_func!(x)).unwrap();
+
+                #[cfg(not(debug_assertions))]
+                let val = unsafe {
+                    self.table
+                        .remove_entry(x.hash, make_eq_func!(x))
+                        .unwrap_unchecked()
+                };
+
+                Ok(val)
             }
             None => Err(create_pyerr!(pyo3::exceptions::PyKeyError)),
         }
@@ -56,8 +65,8 @@ impl RawFIFOCache {
                 let _ = std::mem::replace(unsafe { &mut bucket.as_mut().1 }, value);
             }
             Err(slot) => unsafe {
-                let bucket = self.table.insert_in_slot(key.hash, slot, (key, value));
-                self.order.push_back(bucket);
+                self.table.insert_in_slot(key.hash, slot, (key.clone(), value));
+                self.order.push_back(key);
             },
         }
     }
@@ -67,7 +76,13 @@ impl RawFIFOCache {
         if self.table.len() >= self.maxsize.get()
             && self.table.find(key.hash, make_eq_func!(key)).is_none()
         {
-            unsafe { self.popitem().unwrap_unchecked() };
+            #[cfg(debug_assertions)]
+            self.popitem().unwrap();
+
+            #[cfg(not(debug_assertions))]
+            unsafe {
+                self.popitem().unwrap_unchecked()
+            };
         }
 
         unsafe {
@@ -97,18 +112,22 @@ impl RawFIFOCache {
 
         match self.table.find(key.hash, make_eq_func!(key)) {
             Some(bucket) => {
+                let (key, _) = unsafe {
+                    bucket.as_ref()
+                };
+
                 #[cfg(debug_assertions)]
                 let index = self
                     .order
                     .iter()
-                    .position(|x| core::ptr::addr_eq(x.as_ptr(), bucket.as_ptr()))
+                    .position(|x| x.eq(key))
                     .unwrap();
 
                 #[cfg(not(debug_assertions))]
                 let index = unsafe {
                     self.order
                         .iter()
-                        .position(|x| core::ptr::addr_eq(x.as_ptr(), bucket.as_ptr()))
+                        .position(|x| x.eq(key))
                         .unwrap_unchecked()
                 };
 
@@ -122,12 +141,12 @@ impl RawFIFOCache {
     }
 
     #[inline]
-    pub fn order_ref(&self) -> &VecDeque<Bucket<(HashablePyObject, PyObject)>> {
+    pub fn order_ref(&self) -> &VecDeque<HashablePyObject> {
         &self.order
     }
 
     #[inline]
-    pub fn order_mut(&mut self) -> &mut VecDeque<Bucket<(HashablePyObject, PyObject)>> {
+    pub fn order_mut(&mut self) -> &mut VecDeque<HashablePyObject> {
         &mut self.order
     }
 
@@ -168,16 +187,12 @@ impl RawFIFOCache {
 
     #[inline]
     pub fn first(&self) -> Option<&HashablePyObject> {
-        let bucket = self.order.front()?;
-        let (k, _) = unsafe { bucket.as_ref() };
-        Some(k)
+        self.order.front()
     }
 
     #[inline]
     pub fn last(&self) -> Option<&HashablePyObject> {
-        let bucket = self.order.back()?;
-        let (k, _) = unsafe { bucket.as_ref() };
-        Some(k)
+        self.order.back()
     }
 }
 

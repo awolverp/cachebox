@@ -250,6 +250,16 @@ class CacheTestSuiteMixin:
 
         self.assertIsInstance(CustomClass(0, **self.kwargs), cachebox.BaseCacheImpl)
 
+    def test_limit(self):
+        obj = self.cache(maxsize=10, **self.kwargs)
+
+        if self.has_popitem:
+            obj.update({i:i for i in range(20)})
+        
+        else:
+            with self.assertRaises(OverflowError):
+                obj.update({i:i for i in range(20)})
+
 
 class TestBaseCacheImpl(unittest.TestCase):
     def test_new(self):

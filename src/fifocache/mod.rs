@@ -59,11 +59,11 @@ impl FIFOCache {
         let cap = lock.as_ref().capacity();
         let o_cap = lock.order_ref().capacity();
 
-        // capacity * sizeof(HashablePyObject) + capacity * sizeof(PyObject) + order_capacity * sizeof(non-null pointer)
+        // capacity * sizeof(PyObject) + capacity * sizeof(HashablePyObject) + order_capacity * sizeof(HashablePyObject)
         core::mem::size_of::<Self>()
             + cap * (super::basic::PYOBJECT_MEM_SIZE + 8)
-            + cap * super::basic::PYOBJECT_MEM_SIZE
-            + o_cap * core::mem::size_of::<core::ptr::NonNull<(HashablePyObject, PyObject)>>()
+            + cap * core::mem::size_of::<HashablePyObject>()
+            + o_cap * core::mem::size_of::<HashablePyObject>()
     }
 
     #[inline]
@@ -353,17 +353,23 @@ impl FIFOCache {
     }
 
     pub fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
-        for value in unsafe { self.table.read().as_ref().iter() } {
+        let lock = self.table.read();
+        for value in unsafe { lock.as_ref().iter() } {
             let (key, value) = unsafe { value.as_ref() };
             visit.call(&key.object)?;
             visit.call(value)?;
         }
+        for value in lock.order_ref().iter() {
+            visit.call(&value.object)?;
+        }
+
         Ok(())
     }
 
     pub fn __clear__(&self) {
         let mut t = self.table.write();
         t.as_mut().clear();
+        t.order_mut().clear();
     }
 
     pub fn first(&self) -> Option<PyObject> {

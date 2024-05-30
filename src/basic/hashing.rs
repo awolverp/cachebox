@@ -1,5 +1,6 @@
 use core::hash::{Hash, Hasher};
 
+#[derive(Clone)]
 pub struct HashablePyObject {
     pub object: pyo3::PyObject,
     pub hash: u64,
@@ -22,7 +23,7 @@ macro_rules! hash_object {
 #[macro_export]
 macro_rules! make_eq_func {
     ($key:expr) => {
-        |(x, _)| x == &$key
+        |(x, _)| x.eq(&$key)
     };
 }
 
@@ -75,13 +76,6 @@ impl HashablePyObject {
 impl PartialEq for HashablePyObject {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.compare_eq(other)
-    }
-}
-
-impl PartialEq<&Self> for HashablePyObject {
-    #[inline]
-    fn eq(&self, other: &&Self) -> bool {
         self.compare_eq(other)
     }
 }

@@ -9,7 +9,7 @@ description = "The fastest memoizing and caching Python library written in Rust"
 readme = "README.md"
 requires-python = ">=3.8"
 license = {file = "LICENSE"}
-keywords = ["caching", "cached", "cachetools", "cachebox", "cache", "in-memory-caching", "memoizing"]
+keywords = ["caching", "cached", "cachebox", "cache", "in-memory-caching", "memoizing"]
 authors = [
   {email = "awolverp@gmail.com"},
   {name = "awolverp"}
@@ -19,7 +19,6 @@ classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
-    'Intended Audience :: Developers',
     'License :: OSI Approved :: MIT License',
     'Operating System :: POSIX :: Linux',
     'Operating System :: Microsoft :: Windows',

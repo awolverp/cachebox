@@ -11,6 +11,7 @@ crate-type = ["cdylib"]
 lto = "fat"
 codegen-units=1
 strip = "symbols"
+panic = "abort"
 
 [dependencies]
 hashbrown = { version = "^0.14", default-features = false, features=["inline-more", "raw"]}

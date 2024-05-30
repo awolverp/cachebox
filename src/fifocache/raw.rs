@@ -65,7 +65,8 @@ impl RawFIFOCache {
                 let _ = std::mem::replace(unsafe { &mut bucket.as_mut().1 }, value);
             }
             Err(slot) => unsafe {
-                self.table.insert_in_slot(key.hash, slot, (key.clone(), value));
+                self.table
+                    .insert_in_slot(key.hash, slot, (key.clone(), value));
                 self.order.push_back(key);
             },
         }
@@ -112,24 +113,13 @@ impl RawFIFOCache {
 
         match self.table.find(key.hash, make_eq_func!(key)) {
             Some(bucket) => {
-                let (key, _) = unsafe {
-                    bucket.as_ref()
-                };
+                let (key, _) = unsafe { bucket.as_ref() };
 
                 #[cfg(debug_assertions)]
-                let index = self
-                    .order
-                    .iter()
-                    .position(|x| x.eq(key))
-                    .unwrap();
+                let index = self.order.iter().position(|x| x.eq(key)).unwrap();
 
                 #[cfg(not(debug_assertions))]
-                let index = unsafe {
-                    self.order
-                        .iter()
-                        .position(|x| x.eq(key))
-                        .unwrap_unchecked()
-                };
+                let index = unsafe { self.order.iter().position(|x| x.eq(key)).unwrap_unchecked() };
 
                 self.order.remove(index);
 

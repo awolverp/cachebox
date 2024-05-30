@@ -1,18 +1,18 @@
 mod raw;
 
-use self::raw::RawCache;
+use self::raw::RawLFUCache;
 use crate::basic::HashablePyObject;
-use crate::{create_pyerr, make_eq_func, make_hasher_func};
+use crate::create_pyerr;
 use parking_lot::RwLock;
 use pyo3::prelude::*;
 
 #[pyclass(mapping, extends=crate::basic::BaseCacheImpl, subclass, module="cachebox._cachebox")]
-pub struct Cache {
-    table: RwLock<RawCache>,
+pub struct LFUCache {
+    table: RwLock<RawLFUCache>,
 }
 
 #[pymethods]
-impl Cache {
+impl LFUCache {
     #[new]
     #[pyo3(signature=(maxsize, iterable=None, *, capacity=0))]
     pub fn new(
@@ -20,9 +20,9 @@ impl Cache {
         maxsize: usize,
         iterable: Option<PyObject>,
         capacity: usize,
-    ) -> PyResult<PyClassInitializer<Cache>> {
+    ) -> PyResult<PyClassInitializer<LFUCache>> {
         let slf = Self {
-            table: RwLock::new(RawCache::new(maxsize, capacity)?),
+            table: RwLock::new(RawLFUCache::new(maxsize, capacity)?),
         };
 
         if let Some(x) = iterable {
@@ -56,7 +56,10 @@ impl Cache {
 
         // sizeof(self) + capacity * (sizeof(HashablePyObject) + sizeof(PyObject))
         core::mem::size_of::<Self>()
-            + cap * (super::basic::PYOBJECT_MEM_SIZE + super::basic::HASHABLE_PYOBJECT_MEM_SIZE)
+            + cap
+                * (super::basic::PYOBJECT_MEM_SIZE
+                    + super::basic::HASHABLE_PYOBJECT_MEM_SIZE
+                    + core::mem::size_of::<usize>())
     }
 
     pub fn __bool__(&self) -> bool {
@@ -76,7 +79,7 @@ impl Cache {
 
     pub fn __getitem__(&self, py: Python<'_>, key: PyObject) -> PyResult<PyObject> {
         let hashable = HashablePyObject::try_from_pyobject(key, py)?;
-        let lock = self.table.read();
+        let mut lock = self.table.write();
 
         match lock.get(&hashable) {
             Some(x) => Ok(x),
@@ -95,7 +98,7 @@ impl Cache {
         default: Option<PyObject>,
     ) -> PyResult<PyObject> {
         let hashable = HashablePyObject::try_from_pyobject(key, py)?;
-        let lock = self.table.read();
+        let mut lock = self.table.write();
         match lock.get(&hashable) {
             Some(x) => Ok(x),
             None => Ok(default.unwrap_or_else(|| py.None())),
@@ -128,7 +131,7 @@ impl Cache {
         tb.clear();
 
         if !reuse {
-            tb.shrink_to(0, make_hasher_func!());
+            tb.shrink_to(0, |(x, _, _)| x.hash);
         }
     }
 
@@ -167,13 +170,28 @@ impl Cache {
         Ok(default_val)
     }
 
-    pub fn popitem(&self) -> PyResult<()> {
-        Err(create_pyerr!(pyo3::exceptions::PyNotImplementedError))
+    pub fn popitem(&self) -> PyResult<(PyObject, PyObject)> {
+        let mut lock = self.table.write();
+        let (k, v) = lock.popitem()?;
+        Ok((k.object, v))
     }
 
-    #[allow(unused_variables)]
-    pub fn drain(&self, n: usize) -> PyResult<()> {
-        Err(create_pyerr!(pyo3::exceptions::PyNotImplementedError))
+    pub fn drain(&self, n: usize) -> usize {
+        let mut lock = self.table.write();
+
+        if n == 0 || lock.as_ref().is_empty() {
+            return 0;
+        }
+
+        let mut c = 0usize;
+        while c < n {
+            if lock.popitem().is_err() {
+                break;
+            }
+            c += 1;
+        }
+
+        c
     }
 
     fn update(&self, py: Python<'_>, iterable: PyObject) -> PyResult<()> {
@@ -192,39 +210,23 @@ impl Cache {
     }
 
     pub fn shrink_to_fit(&self) {
-        self.table
-            .write()
-            .as_mut()
-            .shrink_to(0, make_hasher_func!());
+        let mut lock = self.table.write();
+        lock.as_mut().shrink_to(0, |(x, _, _)| x.hash);
     }
 
     pub fn items(
         slf: PyRef<'_, Self>,
         py: Python<'_>,
-    ) -> PyResult<Py<crate::basic::iter::tuple_ptr_iterator>> {
+    ) -> PyResult<Py<self::raw::lfu_tuple_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
 
-        let iter = crate::basic::iter::tuple_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
-        );
-
-        Py::new(py, iter)
-    }
-
-    pub fn __iter__(
-        slf: PyRef<'_, Self>,
-        py: Python<'_>,
-    ) -> PyResult<Py<crate::basic::iter::object_ptr_iterator>> {
-        let lock = slf.table.read();
-        let len = lock.as_ref().len();
-        let iter = unsafe { lock.as_ref().iter() };
-
-        let iter = crate::basic::iter::object_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
-            0,
-        );
+        let iter = self::raw::lfu_tuple_ptr_iterator::new(crate::basic::iter::SafeRawIter::new(
+            slf.as_ptr(),
+            len,
+            iter,
+        ));
 
         Py::new(py, iter)
     }
@@ -232,12 +234,12 @@ impl Cache {
     pub fn keys(
         slf: PyRef<'_, Self>,
         py: Python<'_>,
-    ) -> PyResult<Py<crate::basic::iter::object_ptr_iterator>> {
+    ) -> PyResult<Py<self::raw::lfu_object_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
 
-        let iter = crate::basic::iter::object_ptr_iterator::new(
+        let iter = self::raw::lfu_object_ptr_iterator::new(
             crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
             0,
         );
@@ -248,12 +250,12 @@ impl Cache {
     pub fn values(
         slf: PyRef<'_, Self>,
         py: Python<'_>,
-    ) -> PyResult<Py<crate::basic::iter::object_ptr_iterator>> {
+    ) -> PyResult<Py<self::raw::lfu_object_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
 
-        let iter = crate::basic::iter::object_ptr_iterator::new(
+        let iter = self::raw::lfu_object_ptr_iterator::new(
             crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
             1,
         );
@@ -277,9 +279,9 @@ impl Cache {
 
         unsafe {
             t1.iter().all(|x| {
-                let (k, v1) = x.as_ref();
-                t2.find(k.hash, make_eq_func!(k)).map_or(false, |y| {
-                    let (_, v2) = y.as_ref();
+                let (k, v1, _) = x.as_ref();
+                t2.find(k.hash, |(x, _, _)| x.eq(k)).map_or(false, |y| {
+                    let (_, v2, _) = y.as_ref();
 
                     let res = pyo3::ffi::PyObject_RichCompareBool(
                         v1.as_ptr(),
@@ -305,7 +307,7 @@ impl Cache {
         let lock = self.table.read();
         let tb = lock.as_ref();
         format!(
-            "Cache({} / {}, capacity={})",
+            "LFUCache({} / {}, capacity={})",
             tb.len(),
             lock.maxsize.get(),
             tb.capacity()
@@ -314,7 +316,7 @@ impl Cache {
 
     pub fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
         for value in unsafe { self.table.read().as_ref().iter() } {
-            let (key, value) = unsafe { value.as_ref() };
+            let (key, value, _) = unsafe { value.as_ref() };
             visit.call(&key.object)?;
             visit.call(value)?;
         }
@@ -324,5 +326,10 @@ impl Cache {
     pub fn __clear__(&self) {
         let mut t = self.table.write();
         t.as_mut().clear();
+    }
+
+    pub fn least_frequently_used(&self) -> Option<PyObject> {
+        let lock = self.table.read();
+        lock.least_frequently_used().map(|h| h.object.clone())
     }
 }

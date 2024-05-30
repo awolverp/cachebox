@@ -6,16 +6,12 @@ use pyo3::prelude::*;
 
 pub struct SafeRawIter<I> {
     ptr: core::ptr::NonNull<pyo3::ffi::PyObject>,
-    len: usize,
-    iter: parking_lot::Mutex<hashbrown::raw::RawIter<I>>,
+    pub len: usize,
+    raw: parking_lot::Mutex<hashbrown::raw::RawIter<I>>,
 }
 
 impl<I> SafeRawIter<I> {
-    pub fn new(
-        ptr: *mut pyo3::ffi::PyObject,
-        len: usize,
-        iter: hashbrown::raw::RawIter<I>,
-    ) -> Self {
+    pub fn new(ptr: *mut pyo3::ffi::PyObject, len: usize, raw: hashbrown::raw::RawIter<I>) -> Self {
         unsafe {
             pyo3::ffi::Py_INCREF(ptr);
         }
@@ -23,7 +19,7 @@ impl<I> SafeRawIter<I> {
         Self {
             ptr: unsafe { core::ptr::NonNull::new_unchecked(ptr) },
             len,
-            iter: parking_lot::Mutex::new(iter),
+            raw: parking_lot::Mutex::new(raw),
         }
     }
 
@@ -36,7 +32,7 @@ impl<I> SafeRawIter<I> {
             ));
         }
 
-        let mut l = self.iter.lock();
+        let mut l = self.raw.lock();
         if let Some(x) = l.next() {
             return Ok(unsafe { x.as_ref() });
         }
@@ -57,14 +53,20 @@ unsafe impl<I> Send for SafeRawIter<I> {}
 unsafe impl<I> Sync for SafeRawIter<I> {}
 
 #[pyclass(module = "cachebox._cachebox")]
-pub struct items_iterator {
-    pub safeiter: SafeRawIter<(HashablePyObject, PyObject)>,
+pub struct tuple_ptr_iterator {
+    iter: SafeRawIter<(HashablePyObject, PyObject)>,
+}
+
+impl tuple_ptr_iterator {
+    pub fn new(iter: SafeRawIter<(HashablePyObject, PyObject)>) -> Self {
+        Self { iter }
+    }
 }
 
 #[pymethods]
-impl items_iterator {
+impl tuple_ptr_iterator {
     pub fn size(&self) -> usize {
-        self.safeiter.len
+        self.iter.len
     }
 
     pub fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
@@ -72,20 +74,27 @@ impl items_iterator {
     }
 
     pub fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<(PyObject, PyObject)> {
-        let (k, v) = slf.safeiter.next()?;
+        let (k, v) = slf.iter.next()?;
         Ok((k.object.clone(), v.clone()))
     }
 }
 
 #[pyclass(module = "cachebox._cachebox")]
-pub struct keys_iterator {
-    pub safeiter: SafeRawIter<(HashablePyObject, PyObject)>,
+pub struct object_ptr_iterator {
+    iter: SafeRawIter<(HashablePyObject, PyObject)>,
+    index: u8,
+}
+
+impl object_ptr_iterator {
+    pub fn new(iter: SafeRawIter<(HashablePyObject, PyObject)>, index: u8) -> Self {
+        Self { iter, index }
+    }
 }
 
 #[pymethods]
-impl keys_iterator {
+impl object_ptr_iterator {
     pub fn size(&self) -> usize {
-        self.safeiter.len
+        self.iter.len
     }
 
     pub fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
@@ -93,28 +102,20 @@ impl keys_iterator {
     }
 
     pub fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<PyObject> {
-        let (k, _) = slf.safeiter.next()?;
-        Ok(k.object.clone())
-    }
-}
+        if slf.index == 0 {
+            let (k, _) = slf.iter.next()?;
+            Ok(k.object.clone())
+        } else if slf.index == 1 {
+            let (_, v) = slf.iter.next()?;
+            Ok(v.clone())
+        } else {
+            #[cfg(debug_assertions)]
+            unreachable!("invalid iteration index specified");
 
-#[pyclass(module = "cachebox._cachebox")]
-pub struct values_iterator {
-    pub safeiter: SafeRawIter<(HashablePyObject, PyObject)>,
-}
-
-#[pymethods]
-impl values_iterator {
-    pub fn size(&self) -> usize {
-        self.safeiter.len
-    }
-
-    pub fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
-        slf
-    }
-
-    pub fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<PyObject> {
-        let (_, v) = slf.safeiter.next()?;
-        Ok(v.clone())
+            #[cfg(not(debug_assertions))]
+            unsafe {
+                core::hint::unreachable_unchecked();
+            }
+        }
     }
 }

@@ -32,7 +32,6 @@ impl FIFOCache {
         Ok(PyClassInitializer::from(super::basic::BaseCacheImpl).add_subclass(slf))
     }
 
-    #[inline]
     #[getter]
     pub fn maxsize(&self) -> usize {
         self.table.read().maxsize.get()
@@ -48,12 +47,10 @@ impl FIFOCache {
         return lock.as_ref().len() == 0;
     }
 
-    #[inline]
     pub fn __len__(&self) -> usize {
         self.table.read().as_ref().len()
     }
 
-    #[inline]
     pub fn __sizeof__(&self) -> usize {
         let lock = self.table.read();
         let cap = lock.as_ref().capacity();
@@ -61,17 +58,14 @@ impl FIFOCache {
 
         // capacity * sizeof(PyObject) + capacity * sizeof(HashablePyObject) + order_capacity * sizeof(HashablePyObject)
         core::mem::size_of::<Self>()
-            + cap * (super::basic::PYOBJECT_MEM_SIZE + 8)
-            + cap * core::mem::size_of::<HashablePyObject>()
-            + o_cap * core::mem::size_of::<HashablePyObject>()
+            + cap * (super::basic::PYOBJECT_MEM_SIZE + super::basic::HASHABLE_PYOBJECT_MEM_SIZE)
+            + o_cap * super::basic::HASHABLE_PYOBJECT_MEM_SIZE
     }
 
-    #[inline]
     pub fn __bool__(&self) -> bool {
         !self.table.read().as_ref().is_empty()
     }
 
-    #[inline]
     pub fn __setitem__(&self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
         let hashable = HashablePyObject::try_from_pyobject(key, py)?;
         let mut lock = self.table.write();
@@ -79,12 +73,10 @@ impl FIFOCache {
     }
 
     #[pyo3(text_signature = "(key, value)")]
-    #[inline]
     pub fn insert(&self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
         self.__setitem__(py, key, value)
     }
 
-    #[inline]
     pub fn __getitem__(&self, py: Python<'_>, key: PyObject) -> PyResult<PyObject> {
         let hashable = HashablePyObject::try_from_pyobject(key, py)?;
         let lock = self.table.read();
@@ -95,7 +87,6 @@ impl FIFOCache {
         }
     }
 
-    #[inline]
     #[pyo3(
         signature=(key, default=None, /),
         text_signature="(key, default=None, /)"
@@ -114,7 +105,6 @@ impl FIFOCache {
         }
     }
 
-    #[inline]
     pub fn __delitem__(&self, py: Python<'_>, key: PyObject) -> PyResult<()> {
         let hashable = HashablePyObject::try_from_pyobject(key, py)?;
         let mut lock = self.table.write();
@@ -124,19 +114,16 @@ impl FIFOCache {
         }
     }
 
-    #[inline]
     pub fn __contains__(&self, py: Python<'_>, key: PyObject) -> PyResult<bool> {
         let hashable = HashablePyObject::try_from_pyobject(key, py)?;
         let lock = self.table.read();
         Ok(lock.contains_key(&hashable))
     }
 
-    #[inline]
     pub fn capacity(&self) -> usize {
         self.table.read().as_ref().capacity()
     }
 
-    #[inline]
     #[pyo3(signature=(*, reuse=false))]
     pub fn clear(&self, reuse: bool) {
         let mut lock = self.table.write();
@@ -154,7 +141,6 @@ impl FIFOCache {
         }
     }
 
-    #[inline]
     #[pyo3(signature=(key, default=None, /), text_signature="(key, default=None, /)")]
     pub fn pop(
         &self,
@@ -170,7 +156,6 @@ impl FIFOCache {
         }
     }
 
-    #[inline]
     #[pyo3(signature=(key, default=None, /), text_signature="(key, default=None, /)")]
     pub fn setdefault(
         &self,
@@ -191,14 +176,12 @@ impl FIFOCache {
         Ok(default_val)
     }
 
-    #[inline]
     pub fn popitem(&self) -> PyResult<(PyObject, PyObject)> {
         let mut lock = self.table.write();
         let (k, v) = lock.popitem()?;
         Ok((k.object, v))
     }
 
-    #[inline]
     pub fn drain(&self, n: usize) -> usize {
         let mut lock = self.table.write();
 
@@ -217,7 +200,6 @@ impl FIFOCache {
         c
     }
 
-    #[inline]
     fn update(&self, py: Python<'_>, iterable: PyObject) -> PyResult<()> {
         let obj = iterable.bind_borrowed(py);
 
@@ -233,7 +215,6 @@ impl FIFOCache {
         Ok(())
     }
 
-    #[inline]
     pub fn shrink_to_fit(&self) {
         let mut lock = self.table.write();
         lock.as_mut().shrink_to(0, make_hasher_func!());
@@ -243,14 +224,14 @@ impl FIFOCache {
     pub fn items(
         slf: PyRef<'_, Self>,
         py: Python<'_>,
-    ) -> PyResult<Py<crate::basic::iter::items_iterator>> {
+    ) -> PyResult<Py<crate::basic::iter::tuple_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
 
-        let iter = crate::basic::iter::items_iterator {
-            safeiter: crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
-        };
+        let iter = crate::basic::iter::tuple_ptr_iterator::new(
+            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
+        );
 
         Py::new(py, iter)
     }
@@ -258,14 +239,15 @@ impl FIFOCache {
     pub fn __iter__(
         slf: PyRef<'_, Self>,
         py: Python<'_>,
-    ) -> PyResult<Py<crate::basic::iter::keys_iterator>> {
+    ) -> PyResult<Py<crate::basic::iter::object_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
 
-        let iter = crate::basic::iter::keys_iterator {
-            safeiter: crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
-        };
+        let iter = crate::basic::iter::object_ptr_iterator::new(
+            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
+            0,
+        );
 
         Py::new(py, iter)
     }
@@ -273,14 +255,15 @@ impl FIFOCache {
     pub fn keys(
         slf: PyRef<'_, Self>,
         py: Python<'_>,
-    ) -> PyResult<Py<crate::basic::iter::keys_iterator>> {
+    ) -> PyResult<Py<crate::basic::iter::object_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
 
-        let iter = crate::basic::iter::keys_iterator {
-            safeiter: crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
-        };
+        let iter = crate::basic::iter::object_ptr_iterator::new(
+            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
+            0,
+        );
 
         Py::new(py, iter)
     }
@@ -288,14 +271,15 @@ impl FIFOCache {
     pub fn values(
         slf: PyRef<'_, Self>,
         py: Python<'_>,
-    ) -> PyResult<Py<crate::basic::iter::values_iterator>> {
+    ) -> PyResult<Py<crate::basic::iter::object_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
 
-        let iter = crate::basic::iter::values_iterator {
-            safeiter: crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
-        };
+        let iter = crate::basic::iter::object_ptr_iterator::new(
+            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
+            1,
+        );
 
         Py::new(py, iter)
     }
@@ -340,7 +324,6 @@ impl FIFOCache {
         !self.__eq__(other)
     }
 
-    #[inline]
     pub fn __str__(&self) -> String {
         let lock = self.table.read();
         let tb = lock.as_ref();

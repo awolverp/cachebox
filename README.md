@@ -9,9 +9,9 @@
 **Are You Ready For Next Version?**
 - [x] Rewrite all cache algorithms and use low-level API hashmap
 - [x] Change hashing system
-- [] Rewrite and improve tests
-- [] Rewrite stub-file (`.pyi`)
-- [] Rewrite `README.md`
+- [ ] Rewrite and improve tests
+- [ ] Rewrite stub-file (`.pyi`)
+- [ ] Rewrite `README.md`
 
 ----
 

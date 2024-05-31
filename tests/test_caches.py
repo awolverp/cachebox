@@ -260,6 +260,10 @@ class CacheTestSuiteMixin:
             with self.assertRaises(OverflowError):
                 obj.update({i:i for i in range(20)})
 
+    def test_generic(self):
+        obj: self.cache[int, int] = self.cache(maxsize=0, **self.kwargs)
+        _ = obj
+
 
 class TestBaseCacheImpl(unittest.TestCase):
     def test_new(self):

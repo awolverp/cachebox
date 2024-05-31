@@ -28,9 +28,14 @@ impl BaseCacheImpl {
     pub fn new(maxsize: usize, capacity: usize) -> PyResult<Self> {
         Err(create_pyerr!(pyo3::exceptions::PyNotImplementedError))
     }
+
+    #[allow(unused_variables)]
+    #[pyo3(signature=(*args))]
+    #[staticmethod]
+    pub fn __class_getitem__(args: &Bound<'_, pyo3::types::PyTuple>) {}
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct HashablePyObject {
     pub object: pyo3::PyObject,
     pub hash: u64,
@@ -111,3 +116,12 @@ impl PartialEq for HashablePyObject {
 }
 
 impl Eq for HashablePyObject {}
+
+impl Clone for HashablePyObject {
+    fn clone(&self) -> Self {
+        Self {
+            object: self.object.clone(),
+            hash: self.hash,
+        }
+    }
+}

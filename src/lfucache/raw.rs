@@ -1,4 +1,3 @@
-use crate::basic::iter::SafeRawIter;
 use crate::basic::HashablePyObject;
 use crate::create_pyerr;
 use core::num::NonZeroUsize;
@@ -200,75 +199,5 @@ impl AsMut<RawTable<(HashablePyObject, PyObject, usize)>> for RawLFUCache {
     #[inline]
     fn as_mut(&mut self) -> &mut RawTable<(HashablePyObject, PyObject, usize)> {
         &mut self.table
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[pyclass(module = "cachebox._cachebox")]
-pub struct lfu_tuple_ptr_iterator {
-    iter: SafeRawIter<(HashablePyObject, PyObject, usize)>,
-}
-
-impl lfu_tuple_ptr_iterator {
-    pub fn new(iter: SafeRawIter<(HashablePyObject, PyObject, usize)>) -> Self {
-        Self { iter }
-    }
-}
-
-#[pymethods]
-impl lfu_tuple_ptr_iterator {
-    pub fn __len__(&self) -> usize {
-        self.iter.len
-    }
-
-    pub fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
-        slf
-    }
-
-    pub fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<(PyObject, PyObject)> {
-        let (k, v, _) = slf.iter.next()?;
-        Ok((k.object.clone(), v.clone()))
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[pyclass(module = "cachebox._cachebox")]
-pub struct lfu_object_ptr_iterator {
-    iter: SafeRawIter<(HashablePyObject, PyObject, usize)>,
-    index: u8,
-}
-
-impl lfu_object_ptr_iterator {
-    pub fn new(iter: SafeRawIter<(HashablePyObject, PyObject, usize)>, index: u8) -> Self {
-        Self { iter, index }
-    }
-}
-
-#[pymethods]
-impl lfu_object_ptr_iterator {
-    pub fn __len__(&self) -> usize {
-        self.iter.len
-    }
-
-    pub fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
-        slf
-    }
-
-    pub fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<PyObject> {
-        if slf.index == 0 {
-            let (k, _, _) = slf.iter.next()?;
-            Ok(k.object.clone())
-        } else if slf.index == 1 {
-            let (_, v, _) = slf.iter.next()?;
-            Ok(v.clone())
-        } else {
-            #[cfg(debug_assertions)]
-            unreachable!("invalid iteration index specified");
-
-            #[cfg(not(debug_assertions))]
-            unsafe {
-                core::hint::unreachable_unchecked();
-            }
-        }
     }
 }

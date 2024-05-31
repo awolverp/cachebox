@@ -39,12 +39,12 @@ impl FIFOCache {
 
     pub fn is_full(&self) -> bool {
         let lock = self.table.read();
-        return lock.as_ref().len() == lock.maxsize.get();
+        lock.as_ref().len() == lock.maxsize.get()
     }
 
     pub fn is_empty(&self) -> bool {
         let lock = self.table.read();
-        return lock.as_ref().len() == 0;
+        lock.as_ref().len() == 0
     }
 
     pub fn __len__(&self) -> usize {
@@ -88,8 +88,8 @@ impl FIFOCache {
     }
 
     #[pyo3(
-        signature=(key, default=None, /),
-        text_signature="(key, default=None, /)"
+        signature=(key, default=None),
+        text_signature="(key, default=None)"
     )]
     pub fn get(
         &self,
@@ -141,7 +141,7 @@ impl FIFOCache {
         }
     }
 
-    #[pyo3(signature=(key, default=None, /), text_signature="(key, default=None, /)")]
+    #[pyo3(signature=(key, default=None), text_signature="(key, default=None)")]
     pub fn pop(
         &self,
         py: Python<'_>,
@@ -156,7 +156,7 @@ impl FIFOCache {
         }
     }
 
-    #[pyo3(signature=(key, default=None, /), text_signature="(key, default=None, /)")]
+    #[pyo3(signature=(key, default=None), text_signature="(key, default=None)")]
     pub fn setdefault(
         &self,
         py: Python<'_>,

@@ -39,6 +39,11 @@ impl TTLCache {
         self.table.read().maxsize.get()
     }
 
+    #[getter]
+    pub fn ttl(&self) -> f32 {
+        self.table.read().ttl
+    }
+
     pub fn is_full(&self) -> bool {
         let mut lock = self.table.write();
         lock.expire();
@@ -343,7 +348,7 @@ impl TTLCache {
         let lock = self.table.read();
         let tb = lock.as_ref();
         format!(
-            "FIFOCache({} / {}, capacity={})",
+            "TTLCache({} / {}, capacity={})",
             tb.len(),
             lock.maxsize.get(),
             tb.capacity()

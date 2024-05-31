@@ -449,58 +449,58 @@ class TestRRCache(unittest.TestCase, CacheTestSuiteMixin):
 #         self.assertEqual(0, dur)
 
 
-# class TestTTLCache(unittest.TestCase, CacheTestSuiteMixin):
-#     cache = cachebox.TTLCache
-#     kwargs = {"ttl": 120}
+class TestTTLCache(unittest.TestCase, CacheTestSuiteMixin):
+    cache = cachebox.TTLCache
+    kwargs = {"ttl": 120}
 
-#     def test_policy(self):
+    def test_policy(self):
 
-#         obj = self.cache(2, 0.5)
-#         self.assertEqual(obj.ttl, 0.5)
+        obj = self.cache(2, 0.5)
+        self.assertEqual(obj.ttl, 0.5)
 
-#         obj.insert(0, 1)
-#         time.sleep(0.5)
+        obj.insert(0, 1)
+        time.sleep(0.5)
 
-#         with self.assertRaises(KeyError):
-#             obj[0]
+        with self.assertRaises(KeyError):
+            obj[0]
 
-#         obj = self.cache(2, 20)
+        obj = self.cache(2, 20)
 
-#         obj.insert(0, 0)
-#         obj.insert(1, 1)
-#         obj.insert(2, 2)
+        obj.insert(0, 0)
+        obj.insert(1, 1)
+        obj.insert(2, 2)
 
-#         self.assertNotIn(0, obj)
-#         self.assertTupleEqual((1, 1), obj.popitem())
+        self.assertNotIn(0, obj)
+        self.assertTupleEqual((1, 1), obj.popitem())
 
-#     def test_update_with_ttl(self):
+    def test_update_with_ttl(self):
 
-#         obj = self.cache(2, 0.5)
+        obj = self.cache(2, 0.5)
 
-#         obj.update({1: 1, 2: 2, 3: 3})
-#         time.sleep(0.5)
+        obj.update({1: 1, 2: 2, 3: 3})
+        time.sleep(0.5)
 
-#         with self.assertRaises(KeyError):
-#             obj[1]
+        with self.assertRaises(KeyError):
+            obj[1]
 
-#         with self.assertRaises(KeyError):
-#             obj[2]
+        with self.assertRaises(KeyError):
+            obj[2]
 
-#         with self.assertRaises(KeyError):
-#             obj[3]
+        with self.assertRaises(KeyError):
+            obj[3]
 
-#     def test_get_with_expire(self):
-#         obj = self.cache(2, 10)
+    def test_get_with_expire(self):
+        obj = self.cache(2, 10)
 
-#         obj.insert(1, 1)
-#         value, dur = obj.get_with_expire(1)
-#         self.assertEqual(1, value)
-#         self.assertTrue(10 > dur > 9, "10 > dur > 9 failed [dur: %f]" % dur)
+        obj.insert(1, 1)
+        value, dur = obj.get_with_expire(1)
+        self.assertEqual(1, value)
+        self.assertTrue(10 > dur > 9, "10 > dur > 9 failed [dur: %f]" % dur)
 
-#         value, dur = obj.get_with_expire("no-exists")
-#         self.assertIs(None, value)
-#         self.assertEqual(0, dur)
+        value, dur = obj.get_with_expire("no-exists")
+        self.assertIs(None, value)
+        self.assertEqual(0, dur)
 
-#         value, dur = obj.get_with_expire("no-exists", "value")
-#         self.assertEqual("value", value)
-#         self.assertEqual(0, dur)
+        value, dur = obj.get_with_expire("no-exists", "value")
+        self.assertEqual("value", value)
+        self.assertEqual(0, dur)

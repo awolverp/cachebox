@@ -366,7 +366,7 @@ impl RRCache {
         let lock = self.table.read();
         let tb = lock.as_ref();
         format!(
-            "Cache({} / {}, capacity={})",
+            "RRCache({} / {}, capacity={})",
             tb.len(),
             lock.maxsize.get(),
             tb.capacity()

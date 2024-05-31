@@ -165,7 +165,7 @@ impl TTLCache {
         let hashable = HashablePyObject::try_from_pyobject(key, py)?;
         let mut lock = self.table.write();
         match lock.remove(&hashable) {
-            Some(x) => Ok(x.1.0),
+            Some(x) => Ok(x.1 .0),
             None => Ok(default.unwrap_or_else(|| py.None())),
         }
     }
@@ -241,7 +241,9 @@ impl TTLCache {
     }
 
     pub fn items(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<ttl_tuple_ptr_iterator>> {
-        let lock = slf.table.read();
+        let mut lock = slf.table.write();
+        lock.expire();
+
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
 
@@ -255,7 +257,9 @@ impl TTLCache {
     }
 
     pub fn __iter__(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<ttl_object_ptr_iterator>> {
-        let lock = slf.table.read();
+        let mut lock = slf.table.write();
+        lock.expire();
+
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
 
@@ -268,7 +272,9 @@ impl TTLCache {
     }
 
     pub fn keys(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<ttl_object_ptr_iterator>> {
-        let lock = slf.table.read();
+        let mut lock = slf.table.write();
+        lock.expire();
+
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
 
@@ -281,7 +287,9 @@ impl TTLCache {
     }
 
     pub fn values(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<ttl_object_ptr_iterator>> {
-        let lock = slf.table.read();
+        let mut lock = slf.table.write();
+        lock.expire();
+        
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
 
@@ -319,9 +327,7 @@ impl TTLCache {
                             return true;
                         }
                         (false, false) => (),
-                        _ => {
-                            return false
-                        }
+                        _ => return false,
                     }
 
                     let res = pyo3::ffi::PyObject_RichCompareBool(
@@ -449,7 +455,7 @@ impl ttl_tuple_ptr_iterator {
             item = slf.iter.next()?;
         }
 
-        Ok((item.0.object.clone(), item.1.0.clone()))
+        Ok((item.0.object.clone(), item.1 .0.clone()))
     }
 }
 
@@ -486,7 +492,7 @@ impl ttl_object_ptr_iterator {
         if index == 0 {
             Ok(item.0.object.clone())
         } else if index == 1 {
-            Ok(item.1.0.clone())
+            Ok(item.1 .0.clone())
         } else {
             #[cfg(debug_assertions)]
             unreachable!("invalid iteration index specified");

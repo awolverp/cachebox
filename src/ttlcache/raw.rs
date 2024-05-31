@@ -42,7 +42,10 @@ impl RawTTLCache {
     #[inline]
     pub fn new(maxsize: usize, ttl: f32, capacity: usize) -> PyResult<Self> {
         if ttl <= 0.0 {
-            return Err(create_pyerr!(pyo3::exceptions::PyValueError, "ttl value cannot be negative or zero"));
+            return Err(create_pyerr!(
+                pyo3::exceptions::PyValueError,
+                "ttl value cannot be negative or zero"
+            ));
         }
 
         let capacity = core::cmp::min(maxsize, capacity);

@@ -246,9 +246,10 @@ impl VTTLCache {
         lock.order_mut().shrink_to_fit();
     }
 
-
     pub fn items(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<vttl_tuple_ptr_iterator>> {
-        let lock = slf.table.read();
+        let mut lock = slf.table.write();
+        lock.expire();
+        
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
 
@@ -261,8 +262,13 @@ impl VTTLCache {
         Py::new(py, iter)
     }
 
-    pub fn __iter__(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<vttl_object_ptr_iterator>> {
-        let lock = slf.table.read();
+    pub fn __iter__(
+        slf: PyRef<'_, Self>,
+        py: Python<'_>,
+    ) -> PyResult<Py<vttl_object_ptr_iterator>> {
+        let mut lock = slf.table.write();
+        lock.expire();
+        
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
 
@@ -275,7 +281,9 @@ impl VTTLCache {
     }
 
     pub fn keys(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<vttl_object_ptr_iterator>> {
-        let lock = slf.table.read();
+        let mut lock = slf.table.write();
+        lock.expire();
+        
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
 
@@ -288,7 +296,9 @@ impl VTTLCache {
     }
 
     pub fn values(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<vttl_object_ptr_iterator>> {
-        let lock = slf.table.read();
+        let mut lock = slf.table.write();
+        lock.expire();
+        
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
 
@@ -317,32 +327,31 @@ impl VTTLCache {
         unsafe {
             t1.iter().all(|x| {
                 let (k1, v1) = x.as_ref();
-                t2.find(k1.key().hash, |(vttlk, _)| vttlk.key() == k1.key()).map_or(false, |y| {
-                    let (k2, v2) = y.as_ref();
+                t2.find(k1.key().hash, |(vttlk, _)| vttlk.key() == k1.key())
+                    .map_or(false, |y| {
+                        let (k2, v2) = y.as_ref();
 
-                    match (k1.expired(), k2.expired()) {
-                        (true, true) => {
-                            // ignore expired cases
-                            return true;
+                        match (k1.expired(), k2.expired()) {
+                            (true, true) => {
+                                // ignore expired cases
+                                return true;
+                            }
+                            (false, false) => (),
+                            _ => return false,
                         }
-                        (false, false) => (),
-                        _ => {
-                            return false
+
+                        let res = pyo3::ffi::PyObject_RichCompareBool(
+                            v1.as_ptr(),
+                            v2.as_ptr(),
+                            pyo3::pyclass::CompareOp::Eq as std::os::raw::c_int,
+                        );
+
+                        if res == -1 {
+                            pyo3::ffi::PyErr_Clear();
                         }
-                    }
 
-                    let res = pyo3::ffi::PyObject_RichCompareBool(
-                        v1.as_ptr(),
-                        v2.as_ptr(),
-                        pyo3::pyclass::CompareOp::Eq as std::os::raw::c_int,
-                    );
-
-                    if res == -1 {
-                        pyo3::ffi::PyErr_Clear();
-                    }
-
-                    res == 1
-                })
+                        res == 1
+                    })
             })
         }
     }
@@ -410,9 +419,7 @@ impl VTTLCache {
         let hashable = HashablePyObject::try_from_pyobject(key, py)?;
         let mut lock = self.table.write();
         match lock.remove(&hashable) {
-            Some((ttl, t)) => {
-                Ok((t, ttl.remaining().unwrap_or(0.0)))
-            }
+            Some((ttl, t)) => Ok((t, ttl.remaining().unwrap_or(0.0))),
             None => Ok((default.unwrap_or_else(|| py.None()), 0.0)),
         }
     }
@@ -421,7 +428,7 @@ impl VTTLCache {
         let mut lock = self.table.write();
         lock.expire();
         let (k, v) = lock.popitem()?;
-        let d =  k.remaining().unwrap_or(0.0);
+        let d = k.remaining().unwrap_or(0.0);
         Ok((k.into_key().object, v, d))
     }
 }

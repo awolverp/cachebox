@@ -11,7 +11,27 @@ macro_rules! make_eq_func {
     };
 }
 
-#[derive(Clone)]
+macro_rules! sort_keys {
+    ($order:expr) => {
+        $order.sort_by(|a, b| {
+            let ap = a.expiration();
+            let bp = b.expiration();
+
+            if ap.is_none() && bp.is_none() {
+                return std::cmp::Ordering::Equal;
+            }
+            if bp.is_none() {
+                return std::cmp::Ordering::Greater;
+            }
+            if ap.is_none() {
+                return std::cmp::Ordering::Less;
+            }
+            bp.cmp(&ap)
+        });
+    };
+}
+
+#[derive(Clone, Debug)]
 pub enum VTTLKey {
     NoExpire(HashablePyObject),
     Expire(HashablePyObject, time::Instant),
@@ -19,7 +39,7 @@ pub enum VTTLKey {
 
 impl VTTLKey {
     pub const SIZE: usize = core::mem::size_of::<VTTLKey>();
-    
+
     #[must_use]
     #[inline]
     pub fn new(val: HashablePyObject, ttl: Option<f32>) -> Self {
@@ -63,7 +83,8 @@ impl VTTLKey {
 
     #[inline]
     pub fn remaining(&self) -> Option<f32> {
-        self.expiration().map(|instant| (*instant - time::Instant::now()).as_secs_f32())
+        self.expiration()
+            .map(|instant| (*instant - time::Instant::now()).as_secs_f32())
     }
 }
 
@@ -110,7 +131,7 @@ impl RawVTTLCache {
                 #[cfg(not(debug_assertions))]
                 let val = unsafe {
                     self.table
-                        .remove_entry(x.hash, make_eq_func!(key))
+                        .remove_entry(key.key().hash, make_eq_func!(key))
                         .unwrap_unchecked()
                 };
 
@@ -123,23 +144,8 @@ impl RawVTTLCache {
     #[inline]
     pub fn expire(&mut self) {
         while let Some(key) = self.order.last() {
-            match self.table.find(key.key().hash, make_eq_func!(key)) {
-                Some(bucket) => {
-                    let (k, _) = unsafe { bucket.as_ref() };
-                    if !k.expired() {
-                        break;
-                    }
-                }
-
-                None => {
-                    #[cfg(debug_assertions)]
-                    unreachable!("key not found in order vecdeque: {:?}", key.key());
-
-                    #[cfg(not(debug_assertions))]
-                    unsafe {
-                        core::hint::unreachable_unchecked()
-                    }
-                }
+            if !key.expired() {
+                break;
             }
 
             self.table.remove_entry(key.key().hash, make_eq_func!(key));
@@ -199,23 +205,9 @@ impl RawVTTLCache {
             self.insert_unsorted(key, value, ttl);
         }
 
-        if self.order.is_empty() {
+        if self.order.len() > 1 {
             // Sort from less to greater
-            self.order.sort_by(|a, b| {
-                let ap = a.expiration();
-                let bp = b.expiration();
-
-                if ap.is_none() && bp.is_none() {
-                    return std::cmp::Ordering::Equal;
-                }
-                if bp.is_none() {
-                    return std::cmp::Ordering::Greater;
-                }
-                if ap.is_none() {
-                    return std::cmp::Ordering::Less;
-                }
-                bp.cmp(&ap)
-            });
+            sort_keys!(self.order);
         }
 
         Ok(())
@@ -260,7 +252,12 @@ impl RawVTTLCache {
                     .unwrap();
 
                 #[cfg(not(debug_assertions))]
-                let index = unsafe { self.order.iter().position(|x| x.eq(key)).unwrap_unchecked() };
+                let index = unsafe {
+                    self.order
+                        .iter()
+                        .position(|x| x.key() == key.key())
+                        .unwrap_unchecked()
+                };
 
                 self.order.swap_remove(index);
 
@@ -313,23 +310,9 @@ impl RawVTTLCache {
             }
         }
 
-        if self.order.is_empty() {
+        if self.order.len() > 1 {
             // Sort from less to greater
-            self.order.sort_by(|a, b| {
-                let ap = a.expiration();
-                let bp = b.expiration();
-
-                if ap.is_none() && bp.is_none() {
-                    return std::cmp::Ordering::Equal;
-                }
-                if bp.is_none() {
-                    return std::cmp::Ordering::Greater;
-                }
-                if ap.is_none() {
-                    return std::cmp::Ordering::Less;
-                }
-                bp.cmp(&ap)
-            });
+            sort_keys!(self.order);
         }
 
         Ok(())
@@ -350,23 +333,9 @@ impl RawVTTLCache {
             }
         }
 
-        if self.order.is_empty() {
+        if self.order.len() > 1 {
             // Sort from less to greater
-            self.order.sort_by(|a, b| {
-                let ap = a.expiration();
-                let bp = b.expiration();
-
-                if ap.is_none() && bp.is_none() {
-                    return std::cmp::Ordering::Equal;
-                }
-                if bp.is_none() {
-                    return std::cmp::Ordering::Greater;
-                }
-                if ap.is_none() {
-                    return std::cmp::Ordering::Less;
-                }
-                bp.cmp(&ap)
-            });
+            sort_keys!(self.order);
         }
 
         Ok(())

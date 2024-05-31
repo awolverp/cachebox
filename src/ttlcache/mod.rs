@@ -308,6 +308,17 @@ impl TTLCache {
                 t2.find(k.hash, make_eq_func!(k)).map_or(false, |y| {
                     let (_, v2) = y.as_ref();
 
+                    match (v1.expired(), v2.expired()) {
+                        (true, true) => {
+                            // ignore expired cases
+                            return true;
+                        }
+                        (false, false) => (),
+                        _ => {
+                            return false
+                        }
+                    }
+
                     let res = pyo3::ffi::PyObject_RichCompareBool(
                         v1.0.as_ptr(),
                         v2.0.as_ptr(),

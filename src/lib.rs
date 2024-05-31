@@ -7,6 +7,7 @@ mod lfucache;
 mod lrucache;
 mod rrcache;
 mod ttlcache;
+mod vttlcache;
 
 #[pymodule]
 #[pyo3(name = "_cachebox")]

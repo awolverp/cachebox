@@ -30,9 +30,9 @@ impl BaseCacheImpl {
     }
 
     #[allow(unused_variables)]
-    #[pyo3(signature=(*args))]
+    #[pyo3(signature=(generics))]
     #[staticmethod]
-    pub fn __class_getitem__(args: &Bound<'_, pyo3::types::PyTuple>) {}
+    pub fn __class_getitem__(generics: PyObject) {}
 }
 
 #[derive(Debug)]

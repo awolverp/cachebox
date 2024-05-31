@@ -102,8 +102,8 @@ impl TTLCache {
     }
 
     #[pyo3(
-        signature=(key, default=None, /),
-        text_signature="(key, default=None, /)"
+        signature=(key, default=None),
+        text_signature="(key, default=None)"
     )]
     pub fn get(
         &self,
@@ -165,7 +165,7 @@ impl TTLCache {
         let hashable = HashablePyObject::try_from_pyobject(key, py)?;
         let mut lock = self.table.write();
         match lock.remove(&hashable) {
-            Some(x) => Ok(x.1 .0),
+            Some(x) => Ok(x.1.0),
             None => Ok(default.unwrap_or_else(|| py.None())),
         }
     }
@@ -348,9 +348,10 @@ impl TTLCache {
         let lock = self.table.read();
         let tb = lock.as_ref();
         format!(
-            "TTLCache({} / {}, capacity={})",
+            "TTLCache({} / {}, ttl={}, capacity={})",
             tb.len(),
             lock.maxsize.get(),
+            lock.ttl,
             tb.capacity()
         )
     }
@@ -376,8 +377,8 @@ impl TTLCache {
     }
 
     #[pyo3(
-        signature=(key, default=None, /),
-        text_signature="(key, default=None, /)"
+        signature=(key, default=None),
+        text_signature="(key, default=None)"
     )]
     pub fn get_with_expire(
         &self,
@@ -448,7 +449,7 @@ impl ttl_tuple_ptr_iterator {
             item = slf.iter.next()?;
         }
 
-        Ok((item.0.object.clone(), item.1 .0.clone()))
+        Ok((item.0.object.clone(), item.1.0.clone()))
     }
 }
 
@@ -485,7 +486,7 @@ impl ttl_object_ptr_iterator {
         if index == 0 {
             Ok(item.0.object.clone())
         } else if index == 1 {
-            Ok(item.1 .0.clone())
+            Ok(item.1.0.clone())
         } else {
             #[cfg(debug_assertions)]
             unreachable!("invalid iteration index specified");

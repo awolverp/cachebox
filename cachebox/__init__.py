@@ -20,7 +20,7 @@ from ._cachebox import (
     RRCache as RRCache,
     LRUCache as LRUCache,
     TTLCache as TTLCache,
-    # VTTLCache as VTTLCache,
+    VTTLCache as VTTLCache,
     __version__ as __version__,
     __author__ as __author__,
 )

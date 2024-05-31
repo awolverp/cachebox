@@ -22,6 +22,7 @@ fn _cachebox(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<crate::rrcache::RRCache>()?;
     m.add_class::<crate::lrucache::LRUCache>()?;
     m.add_class::<crate::ttlcache::TTLCache>()?;
+    m.add_class::<crate::vttlcache::VTTLCache>()?;
 
     // iterators
     m.add_class::<crate::basic::iter::tuple_ptr_iterator>()?;
@@ -30,6 +31,8 @@ fn _cachebox(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<crate::lfucache::lfu_object_ptr_iterator>()?;
     m.add_class::<crate::ttlcache::ttl_tuple_ptr_iterator>()?;
     m.add_class::<crate::ttlcache::ttl_object_ptr_iterator>()?;
+    m.add_class::<crate::vttlcache::vttl_tuple_ptr_iterator>()?;
+    m.add_class::<crate::vttlcache::vttl_object_ptr_iterator>()?;
 
     Ok(())
 }

@@ -11,10 +11,16 @@ pub struct RawCache {
 impl RawCache {
     #[inline]
     pub fn new(maxsize: usize, capacity: usize) -> PyResult<Self> {
-        let capacity = core::cmp::min(maxsize, capacity);
+        let capacity = {
+            if maxsize != 0 {
+                core::cmp::min(maxsize, capacity)
+            } else {
+                capacity
+            }
+        };
 
         let maxsize =
-            unsafe { NonZeroUsize::new_unchecked(if maxsize == 0 { usize::MAX } else { maxsize }) };
+            unsafe { NonZeroUsize::new_unchecked(if maxsize == 0 { isize::MAX as usize } else { maxsize }) };
 
         let table = {
             if capacity > 0 {
@@ -50,7 +56,7 @@ impl RawCache {
         {
             return Err(create_pyerr!(
                 pyo3::exceptions::PyOverflowError,
-                "The cache reached maximum size"
+                "The cache has reached the maxsize limit"
             ));
         }
 

@@ -249,7 +249,7 @@ impl VTTLCache {
     pub fn items(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<vttl_tuple_ptr_iterator>> {
         let mut lock = slf.table.write();
         lock.expire();
-        
+
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
 
@@ -268,7 +268,7 @@ impl VTTLCache {
     ) -> PyResult<Py<vttl_object_ptr_iterator>> {
         let mut lock = slf.table.write();
         lock.expire();
-        
+
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
 
@@ -283,7 +283,7 @@ impl VTTLCache {
     pub fn keys(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<vttl_object_ptr_iterator>> {
         let mut lock = slf.table.write();
         lock.expire();
-        
+
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
 
@@ -298,7 +298,7 @@ impl VTTLCache {
     pub fn values(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<vttl_object_ptr_iterator>> {
         let mut lock = slf.table.write();
         lock.expire();
-        
+
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
 

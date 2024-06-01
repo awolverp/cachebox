@@ -289,7 +289,7 @@ impl TTLCache {
     pub fn values(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<ttl_object_ptr_iterator>> {
         let mut lock = slf.table.write();
         lock.expire();
-        
+
         let len = lock.as_ref().len();
         let iter = unsafe { lock.as_ref().iter() };
 

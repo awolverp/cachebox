@@ -14,10 +14,16 @@ pub struct RawFIFOCache {
 impl RawFIFOCache {
     #[inline]
     pub fn new(maxsize: usize, capacity: usize) -> PyResult<Self> {
-        let capacity = core::cmp::min(maxsize, capacity);
+        let capacity = {
+            if maxsize != 0 {
+                core::cmp::min(maxsize, capacity)
+            } else {
+                capacity
+            }
+        };
 
         let maxsize =
-            unsafe { NonZeroUsize::new_unchecked(if maxsize == 0 { usize::MAX } else { maxsize }) };
+            unsafe { NonZeroUsize::new_unchecked(if maxsize == 0 { isize::MAX as usize } else { maxsize }) };
 
         let table = {
             if capacity > 0 {

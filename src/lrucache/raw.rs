@@ -35,8 +35,13 @@ impl RawLRUCache {
             }
         };
 
-        let maxsize =
-            unsafe { NonZeroUsize::new_unchecked(if maxsize == 0 { isize::MAX as usize } else { maxsize }) };
+        let maxsize = unsafe {
+            NonZeroUsize::new_unchecked(if maxsize == 0 {
+                isize::MAX as usize
+            } else {
+                maxsize
+            })
+        };
 
         let table = {
             if capacity > 0 {

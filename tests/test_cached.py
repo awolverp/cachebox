@@ -6,7 +6,7 @@ import time
 
 class TestCached(unittest.TestCase):
     def test_cached(self):
-        obj = cachebox.LRUCache(3) # type: cachebox.LRUCache[int, int]
+        obj = cachebox.LRUCache(3)  # type: cachebox.LRUCache[int, int]
 
         @cachebox.cached(obj, info=False)
         def func(a, b, c):

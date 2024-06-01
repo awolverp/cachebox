@@ -3,6 +3,7 @@ import unittest
 import typing
 import time
 
+
 class CacheTestSuiteMixin:
     cache: typing.Type[cachebox.BaseCacheImpl]
     fixed_size = False
@@ -258,11 +259,11 @@ class CacheTestSuiteMixin:
         obj = self.cache(maxsize=10, **self.kwargs)
 
         if self.has_popitem:
-            obj.update({i:i for i in range(20)})
-        
+            obj.update({i: i for i in range(20)})
+
         else:
             with self.assertRaises(OverflowError):
-                obj.update({i:i for i in range(20)})
+                obj.update({i: i for i in range(20)})
 
     def test_generic(self):
         obj: self.cache[int, int] = self.cache(maxsize=0, **self.kwargs)
@@ -364,7 +365,7 @@ class TestLRUCache(unittest.TestCase, CacheTestSuiteMixin):
         obj[1] = 1
         obj[2]
 
-        self.assertEqual((3, 3), obj.popitem()) 
+        self.assertEqual((3, 3), obj.popitem())
 
         obj[4] = 4
         self.assertEqual(1, obj.get(1))
@@ -389,7 +390,6 @@ class TestVTTLCache(unittest.TestCase, CacheTestSuiteMixin):
     cache = cachebox.VTTLCache
 
     def test_policy(self):
-
         obj = self.cache(2)
 
         obj.insert(0, 1, 0.5)
@@ -415,7 +415,6 @@ class TestVTTLCache(unittest.TestCase, CacheTestSuiteMixin):
         self.assertTupleEqual((0, 0), obj.popitem())
 
     def test_update_with_ttl(self):
-
         obj = self.cache(2)
 
         obj.update({1: 1, 2: 2, 3: 3}, 0.5)
@@ -458,7 +457,6 @@ class TestTTLCache(unittest.TestCase, CacheTestSuiteMixin):
     kwargs = {"ttl": 120}
 
     def test_policy(self):
-
         obj = self.cache(2, 0.5)
         self.assertEqual(obj.ttl, 0.5)
 
@@ -478,7 +476,6 @@ class TestTTLCache(unittest.TestCase, CacheTestSuiteMixin):
         self.assertTupleEqual((1, 1), obj.popitem())
 
     def test_update_with_ttl(self):
-
         obj = self.cache(2, 0.5)
 
         obj.update({1: 1, 2: 2, 3: 3})

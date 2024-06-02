@@ -19,8 +19,8 @@ from ._cachebox import (
     LFUCache as LFUCache,
     RRCache as RRCache,
     LRUCache as LRUCache,
-    VTTLCache as VTTLCache,
     TTLCache as TTLCache,
+    VTTLCache as VTTLCache,
     __version__ as __version__,
     __author__ as __author__,
 )
@@ -28,4 +28,6 @@ from ._cachebox import (
 from .utils import (
     cached as cached,
     cachedmethod as cachedmethod,
+    make_hash_key as make_hash_key,
+    make_typed_key as make_typed_key
 )

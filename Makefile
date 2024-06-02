@@ -21,11 +21,9 @@ test-py: build-dev
 	python3 -m unittest
 
 
-
 .PHONY: test-rs
 test-rs:
 	cargo clippy
-	cargo check
 
 
 .PHONY: test-all

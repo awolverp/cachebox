@@ -33,6 +33,60 @@ def cached(
     clear_reuse: bool = False,
     info: bool = False,
 ):
+    """
+    Memoize your functions (async functions are supported) ...
+
+    By `cache` param, set your cache and cache policy.
+
+    By `key_maker` param, you can set your key maker, see examples below.
+
+    The `clear_reuse` param will be passed to cache's `clear` method.
+
+    If `info` is `True`, the function cache will tracked.
+
+    Simple Example::
+
+        @cachebox.cached(cachebox.LRUCache(128))
+        def sum_as_string(a, b):
+            return str(a+b)
+        
+        assert sum_as_string(1, 2) == "3"
+
+        assert len(sum_as_string.cache) == 1
+        sum_as_string.cache_clear()
+        assert len(sum_as_string.cache) == 0
+    
+    Info Example::
+
+        @cachebox.cached(cachebox.LRUCache(128), info=True)
+        def sum_as_string(a, b):
+            return str(a+b)
+        
+        assert sum_as_string(1, 2) == "3"
+        assert sum_as_string(1, 2) == "3"
+
+        info = sum_as_string.cache_info()
+        assert info.misses == 1
+        assert info.hits == 1
+    
+    Key Maker Example::
+
+        def simple_key_maker(args: tuple, kwds: dict):
+            return args[0].path
+        
+        @cachebox.cached(cachebox.LRUCache(128), key_maker=simple_key_maker)
+        def request_handler(request: Request):
+            return Response("hello man")
+    
+    Typed Example::
+
+        @cachebox.cached(cachebox.LRUCache(128), key_maker=cachebox.make_typed_key)
+        def sum_as_string(a, b):
+            return str(a+b)
+        
+        # ...
+    """
+    
     if isinstance(cache, dict) or cache is None:
         cache = _cachebox.Cache(0)
 
@@ -145,6 +199,9 @@ def cachedmethod(
     clear_reuse: bool = False,
     info: bool = False,
 ):
+    """
+    It works like `cached()`, but you can use it for class methods, because it ignores `self` param.
+    """
     if isinstance(cache, dict) or cache is None:
         cache = _cachebox.Cache(0)
 

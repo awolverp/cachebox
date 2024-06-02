@@ -12,7 +12,7 @@
 </p>
 
 <p align=center>
-    <a href="https://github.com/awolverp/cachebox/issues/new">Did you found any bugs?</a>
+    <a href="https://github.com/awolverp/cachebox/issues/new">Did you find any bugs?</a>
 </p>
 
 > [!NOTE]\

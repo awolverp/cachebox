@@ -57,7 +57,7 @@ There are some situations that you may need caching to imprve your application s
 5. and ...
 
 ### Why `cachebox`?
-**Rust** - **`cachebox`** library uses *Rust* language to has high-performance.
+**Rust** - It library uses *Rust* language to has high-performance.
 
 **SwissTable** - It uses Google's high-performance SwissTable hash map.
 
@@ -115,6 +115,7 @@ print(cache.get("key")) # Output: None
 ## Incompatible changes
 These are changes that are not compatible with the previous version:
 
+> [!NOTE]\
 > You can see more info about changes in [Changelog](CHANGELOG.md).
 
 #### Maxsize default value changed!

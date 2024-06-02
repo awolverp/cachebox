@@ -245,7 +245,7 @@ class Cache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def update(self, iterable: typing.Iterable) -> None:
+    def update(self, iterable: typing.Union[typing.Iterable[KT, VT], typing.Dict[KT, VT]]) -> None:
         """
         Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
 
@@ -513,7 +513,7 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def update(self, iterable: typing.Iterable) -> None:
+    def update(self, iterable: typing.Union[typing.Iterable[KT, VT], typing.Dict[KT, VT]]) -> None:
         """
         Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
 
@@ -814,7 +814,7 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def update(self, iterable: typing.Iterable) -> None:
+    def update(self, iterable: typing.Union[typing.Iterable[KT, VT], typing.Dict[KT, VT]]) -> None:
         """
         Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
 
@@ -1093,7 +1093,7 @@ class RRCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def update(self, iterable: typing.Iterable) -> None:
+    def update(self, iterable: typing.Union[typing.Iterable[KT, VT], typing.Dict[KT, VT]]) -> None:
         """
         Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
 
@@ -1362,7 +1362,7 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def update(self, iterable: typing.Iterable) -> None:
+    def update(self, iterable: typing.Union[typing.Iterable[KT, VT], typing.Dict[KT, VT]]) -> None:
         """
         Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
 
@@ -1493,7 +1493,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         self,
         maxsize: int,
         ttl: float,
-        iterable: typing.Iterable[typing.Tuple[KT, VT]] | typing.Dict[KT, VT] = ...,
+        iterable: typing.Union[typing.Iterable[KT, VT], typing.Dict[KT, VT]][typing.Tuple[KT, VT]] | typing.Dict[KT, VT] = ...,
         *,
         capacity: int = ...,
     ) -> None:
@@ -1658,7 +1658,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def update(self, iterable: typing.Iterable) -> None:
+    def update(self, iterable: typing.Union[typing.Iterable[KT, VT], typing.Dict[KT, VT]]) -> None:
         """
         Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
 
@@ -1993,7 +1993,7 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def update(self, iterable: typing.Iterable, ttl: typing.Optional[float] = None) -> None:
+    def update(self, iterable: typing.Union[typing.Iterable[KT, VT], typing.Dict[KT, VT]], ttl: typing.Optional[float] = None) -> None:
         """
         Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
 

@@ -16,7 +16,7 @@
 </p>
 
 > [!NOTE]\
-> The new version v3 has some incompatible with v2, for more info please see [Incompatible changes](#new-version-changes)
+> The new version v3 has some incompatible with v2, for more info please see [Incompatible changes](#incompatible-changes)
 
 **What does it do?** \
 You can easily and powerfully perform caching operations in Python as fast as possible.
@@ -39,7 +39,7 @@ pip3 install -U cachebox
 - ⁉️ [When i need caching?](#when-i-need-caching)
 - 🤷‍♂️ [Why `cachebox`?](#why-cachebox)
 - 🎓 [Examples](#examples)
-- 💡 [Incompatible changes](#new-version-changes)
+- 💡 [Incompatible changes](#incompatible-changes)
 - ⁉️ [Frequently Asked Questions](#faq)
 - ⏱️ [*BENCHMARK*](https://github.com/awolverp/cachebox-benchmark)
 
@@ -57,7 +57,7 @@ There are some situations that you may need caching to imprve your application s
 5. and ...
 
 ### Why `cachebox`?
-**Rust** - It library uses *Rust* language to has high-performance.
+**Rust** - It uses *Rust* language to has high-performance.
 
 **SwissTable** - It uses Google's high-performance SwissTable hash map.
 

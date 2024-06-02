@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2024-06-02
+
+### Changed
+- `__repr__` changed to `__str__`
+- Maxsize system changed; when you pass `0` as maxsize, the value of `sys.maxsize` is automatically used.
+- \_\_eq\_\_ and \_\_ne\_\_ behaviors changed
+- Iterators mechanisms changed:
+    - Now uses pointer to hashmap and iterate it
+    - Additional spaces are removed
+    - Caches cannot change while using iterators
+- hashing machanism changed; now we cache hashes for elements to improve speed
+- `Cache` was rewritten:
+    - Now we use low-level API of hashbrown hashmap.
+    - We removed additional layers to improve speed and performance.
+- `FIFOCache` was rewritten:
+    - The additional memory space removed
+    - Keeping items order system changed
+    - popitem, last, and first methods optimized
+- `LFUCache` was rewritten:
+    - optimized and additional spaces removed
+    - now just uses one hashmap instead of two
+    - algorithm optimized
+- `RRCache` was rewritten:
+    - Uses low-level API of hashbrown hashmap
+- `LRUCache` was rewritten; Doesn't have any special changes.
+- `TTLCache` was rewritten:
+    - Time-To-Live checking system has a little changes
+    - iterators do not return expired items now
+- `VTTLCache` was rewritten:
+    - Now keeps expire times of each element in vector; this may improves speed in some operations
+
+### Fixed
+- Fix generic error: type ... is not subscriptable
+
+### Added
+- Added new methods `is_empty` and `is_full`
+
 ## [2.2.4] - 2024-05-09
 
 ### Fixed

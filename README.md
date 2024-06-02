@@ -111,6 +111,8 @@ print(cache.get("key")) # Output: None
 ## Incompatible changes
 These are changes that are not compatible with the previous version:
 
+> You can see more info about changes in [Changelog](CHANGELOG.md).
+
 #### Maxsize default value changed!
 The change applied is that when you pass `0` as maxsize, the value of `sys.maxsize` is automatically used.
 
@@ -166,6 +168,19 @@ for key in c:
 # (9, 9)
 # (0, 0)
 # ...
+```
+
+#### \_\_repr\_\_ changed to \_\_str\_\_
+We changed the `__repr__` method to `__str__`:
+```python
+import cachebox
+c = cachebox.Cache(0)
+
+print(c)
+# Output: Cache(0 / 9223372036854775807, capacity=0)
+
+print(repr(c))
+# Output: <cachebox._cachebox.Cache object at 0x7f96938f06a0>
 ```
 
 ## FAQ

@@ -11,6 +11,10 @@
     <b>The fastest caching Python library written in Rust</b>
 </p>
 
+<p align=center>
+    <a href="https://github.com/awolverp/cachebox/issues/new">Did you found any bugs?</a>
+</p>
+
 > [!NOTE]\
 > The new version v3 has some incompatible with v2, for more info please see [Incompatible changes](#new-version-changes)
 

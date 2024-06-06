@@ -226,8 +226,8 @@ impl crate::basic::PickleMethods for RawLFUCache {
 
             let val_tuple = pyo3::ffi::PyTuple_New(2);
             let c = pyo3::ffi::PyLong_FromSize_t(*count);
-            pyo3::ffi::PyTuple_SET_ITEM(val_tuple, 0, val.as_ptr());
-            pyo3::ffi::PyTuple_SET_ITEM(val_tuple, 1, c);
+            pyo3::ffi::PyTuple_SetItem(val_tuple, 0, val.as_ptr());
+            pyo3::ffi::PyTuple_SetItem(val_tuple, 1, c);
 
             pyo3::ffi::PyDict_SetItem(dict, key.object.as_ptr(), val_tuple);
             pyo3::ffi::Py_XDECREF(val_tuple);
@@ -237,9 +237,9 @@ impl crate::basic::PickleMethods for RawLFUCache {
         let capacity = pyo3::ffi::PyLong_FromSize_t(self.table.capacity());
 
         let tuple = pyo3::ffi::PyTuple_New(Self::PICKLE_TUPLE_SIZE);
-        pyo3::ffi::PyTuple_SET_ITEM(tuple, 0, maxsize);
-        pyo3::ffi::PyTuple_SET_ITEM(tuple, 1, dict);
-        pyo3::ffi::PyTuple_SET_ITEM(tuple, 2, capacity);
+        pyo3::ffi::PyTuple_SetItem(tuple, 0, maxsize);
+        pyo3::ffi::PyTuple_SetItem(tuple, 1, dict);
+        pyo3::ffi::PyTuple_SetItem(tuple, 2, capacity);
 
         tuple
     }
@@ -264,17 +264,17 @@ impl crate::basic::PickleMethods for RawLFUCache {
 
             let op = value.as_ptr();
 
-            if pyo3::ffi::PyTuple_CheckExact(op) != 1 || pyo3::ffi::PyTuple_GET_SIZE(op) != 2 {
+            if pyo3::ffi::PyTuple_CheckExact(op) != 1 || pyo3::ffi::PyTuple_Size(op) != 2 {
                 return Err(create_pyerr!(
                     pyo3::exceptions::PyTypeError,
                     "expected tuple, found another type #op"
                 ));
             }
 
-            let val = pyo3::ffi::PyTuple_GET_ITEM(op, 0);
+            let val = pyo3::ffi::PyTuple_GetItem(op, 0);
 
             let n = {
-                let obj = pyo3::ffi::PyTuple_GET_ITEM(op, 1);
+                let obj = pyo3::ffi::PyTuple_GetItem(op, 1);
                 pyo3::ffi::PyLong_AsSize_t(obj)
             };
 

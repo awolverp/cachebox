@@ -428,8 +428,8 @@ impl crate::basic::PickleMethods for RawVTTLCache {
                     let key_tuple = pyo3::ffi::PyTuple_New(2);
                     let timestamp = pyo3::ffi::PyFloat_FromDouble(f);
 
-                    pyo3::ffi::PyTuple_SET_ITEM(key_tuple, 0, key.key().object.as_ptr());
-                    pyo3::ffi::PyTuple_SET_ITEM(key_tuple, 1, timestamp);
+                    pyo3::ffi::PyTuple_SetItem(key_tuple, 0, key.key().object.as_ptr());
+                    pyo3::ffi::PyTuple_SetItem(key_tuple, 1, timestamp);
 
                     pyo3::ffi::PyDict_SetItem(dict, key_tuple, val.as_ptr());
                     pyo3::ffi::Py_XDECREF(key_tuple);
@@ -446,13 +446,13 @@ impl crate::basic::PickleMethods for RawVTTLCache {
                 Some(f) => {
                     let key_tuple = pyo3::ffi::PyTuple_New(2);
                     let timestamp = pyo3::ffi::PyFloat_FromDouble(f);
-                    pyo3::ffi::PyTuple_SET_ITEM(key_tuple, 0, key.key().object.as_ptr());
-                    pyo3::ffi::PyTuple_SET_ITEM(key_tuple, 1, timestamp);
+                    pyo3::ffi::PyTuple_SetItem(key_tuple, 0, key.key().object.as_ptr());
+                    pyo3::ffi::PyTuple_SetItem(key_tuple, 1, timestamp);
 
-                    pyo3::ffi::PyTuple_SET_ITEM(order, index as isize, key_tuple);
+                    pyo3::ffi::PyTuple_SetItem(order, index as isize, key_tuple);
                 }
                 None => {
-                    pyo3::ffi::PyTuple_SET_ITEM(order, index as isize, key.key().object.as_ptr());
+                    pyo3::ffi::PyTuple_SetItem(order, index as isize, key.key().object.as_ptr());
                 }
             }
         }
@@ -461,10 +461,10 @@ impl crate::basic::PickleMethods for RawVTTLCache {
         let capacity = pyo3::ffi::PyLong_FromSize_t(self.table.capacity());
 
         let tuple = pyo3::ffi::PyTuple_New(Self::PICKLE_TUPLE_SIZE);
-        pyo3::ffi::PyTuple_SET_ITEM(tuple, 0, maxsize);
-        pyo3::ffi::PyTuple_SET_ITEM(tuple, 1, dict);
-        pyo3::ffi::PyTuple_SET_ITEM(tuple, 2, capacity);
-        pyo3::ffi::PyTuple_SET_ITEM(tuple, 3, order);
+        pyo3::ffi::PyTuple_SetItem(tuple, 0, maxsize);
+        pyo3::ffi::PyTuple_SetItem(tuple, 1, dict);
+        pyo3::ffi::PyTuple_SetItem(tuple, 2, capacity);
+        pyo3::ffi::PyTuple_SetItem(tuple, 3, order);
 
         tuple
     }
@@ -477,7 +477,7 @@ impl crate::basic::PickleMethods for RawVTTLCache {
         let (maxsize, iterable, capacity) = pickle_get_first_objects!(py, state);
 
         let order = {
-            let obj = pyo3::ffi::PyTuple_GET_ITEM(state, 3);
+            let obj = pyo3::ffi::PyTuple_GetItem(state, 3);
 
             if pyo3::ffi::PyTuple_CheckExact(obj) != 1 {
                 return Err(create_pyerr!(
@@ -509,15 +509,15 @@ impl crate::basic::PickleMethods for RawVTTLCache {
             let key_as_ptr = key.as_ptr();
 
             if pyo3::ffi::PyTuple_CheckExact(key_as_ptr) == 1 {
-                if pyo3::ffi::PyTuple_GET_SIZE(key_as_ptr) != 2 {
+                if pyo3::ffi::PyTuple_Size(key_as_ptr) != 2 {
                     return Err(create_pyerr!(
                         pyo3::exceptions::PyTypeError,
                         "a value in dictionary that's tuple, but its size isn't equal 2"
                     ));
                 }
 
-                let key_object = pyo3::ffi::PyTuple_GET_ITEM(key_as_ptr, 0);
-                let timestamp_object = pyo3::ffi::PyTuple_GET_ITEM(key_as_ptr, 1);
+                let key_object = pyo3::ffi::PyTuple_GetItem(key_as_ptr, 0);
+                let timestamp_object = pyo3::ffi::PyTuple_GetItem(key_as_ptr, 1);
                 let timestamp = pyo3::ffi::PyFloat_AsDouble(timestamp_object);
 
                 let hashable = HashablePyObject::try_from_pyobject(
@@ -541,18 +541,18 @@ impl crate::basic::PickleMethods for RawVTTLCache {
         }
 
         for k in 0..tuple_length {
-            let key_as_ptr = pyo3::ffi::PyTuple_GET_ITEM(order, k);
+            let key_as_ptr = pyo3::ffi::PyTuple_GetItem(order, k);
 
             if pyo3::ffi::PyTuple_CheckExact(key_as_ptr) == 1 {
-                if pyo3::ffi::PyTuple_GET_SIZE(key_as_ptr) != 2 {
+                if pyo3::ffi::PyTuple_Size(key_as_ptr) != 2 {
                     return Err(create_pyerr!(
                         pyo3::exceptions::PyTypeError,
                         "a value in dictionary that's tuple, but its size isn't equal 2"
                     ));
                 }
 
-                let key_object = pyo3::ffi::PyTuple_GET_ITEM(key_as_ptr, 0);
-                let timestamp_object = pyo3::ffi::PyTuple_GET_ITEM(key_as_ptr, 1);
+                let key_object = pyo3::ffi::PyTuple_GetItem(key_as_ptr, 0);
+                let timestamp_object = pyo3::ffi::PyTuple_GetItem(key_as_ptr, 1);
                 let timestamp = pyo3::ffi::PyFloat_AsDouble(timestamp_object);
 
                 let hashable = HashablePyObject::try_from_pyobject(

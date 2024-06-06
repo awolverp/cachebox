@@ -7,7 +7,7 @@ name = "cachebox"
 version = "3.1.0"
 description = "The fastest memoizing and caching Python library written in Rust"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 license = {file = "LICENSE"}
 keywords = ["caching", "cached", "cachebox", "cache", "in-memory-caching", "memoizing"]
 authors = [

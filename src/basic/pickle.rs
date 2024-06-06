@@ -24,7 +24,7 @@ macro_rules! pickle_check_state {
             ))
         } else {
             let tuple = $state.as_ptr();
-            if unsafe { pyo3::ffi::PyTuple_GET_SIZE(tuple) != $size } {
+            if unsafe { pyo3::ffi::PyTuple_Size(tuple) != $size } {
                 Err($crate::create_pyerr!(
                     pyo3::exceptions::PyTypeError,
                     "tuple length is invalid"
@@ -40,7 +40,7 @@ macro_rules! pickle_check_state {
 macro_rules! pickle_get_first_objects {
     ($py:expr, $state:expr) => {{
         let maxsize = {
-            let obj = pyo3::ffi::PyTuple_GET_ITEM($state, 0);
+            let obj = pyo3::ffi::PyTuple_GetItem($state, 0);
             pyo3::ffi::PyLong_AsSize_t(obj)
         };
 
@@ -49,7 +49,7 @@ macro_rules! pickle_get_first_objects {
         }
 
         let iterable = {
-            let obj = pyo3::ffi::PyTuple_GET_ITEM($state, 1);
+            let obj = pyo3::ffi::PyTuple_GetItem($state, 1);
 
             if pyo3::ffi::PyDict_CheckExact(obj) != 1 {
                 return Err(create_pyerr!(
@@ -63,7 +63,7 @@ macro_rules! pickle_get_first_objects {
         };
 
         let capacity = {
-            let obj = pyo3::ffi::PyTuple_GET_ITEM($state, 2);
+            let obj = pyo3::ffi::PyTuple_GetItem($state, 2);
             pyo3::ffi::PyLong_AsSize_t(obj)
         };
 

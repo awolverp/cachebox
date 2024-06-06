@@ -248,17 +248,17 @@ impl PickleMethods for RawLRUCache {
 
         let order = pyo3::ffi::PyTuple_New(self.order.len() as isize);
         for (index, key) in self.order.iter().enumerate() {
-            pyo3::ffi::PyTuple_SET_ITEM(order, index as isize, key.object.as_ptr());
+            pyo3::ffi::PyTuple_SetItem(order, index as isize, key.object.as_ptr());
         }
 
         let maxsize = pyo3::ffi::PyLong_FromSize_t(self.maxsize.get());
         let capacity = pyo3::ffi::PyLong_FromSize_t(self.table.capacity());
 
         let tuple = pyo3::ffi::PyTuple_New(Self::PICKLE_TUPLE_SIZE);
-        pyo3::ffi::PyTuple_SET_ITEM(tuple, 0, maxsize);
-        pyo3::ffi::PyTuple_SET_ITEM(tuple, 1, dict);
-        pyo3::ffi::PyTuple_SET_ITEM(tuple, 2, capacity);
-        pyo3::ffi::PyTuple_SET_ITEM(tuple, 3, order);
+        pyo3::ffi::PyTuple_SetItem(tuple, 0, maxsize);
+        pyo3::ffi::PyTuple_SetItem(tuple, 1, dict);
+        pyo3::ffi::PyTuple_SetItem(tuple, 2, capacity);
+        pyo3::ffi::PyTuple_SetItem(tuple, 3, order);
 
         tuple
     }
@@ -271,7 +271,7 @@ impl PickleMethods for RawLRUCache {
         let (maxsize, iterable, capacity) = pickle_get_first_objects!(py, state);
 
         let order = {
-            let obj = pyo3::ffi::PyTuple_GET_ITEM(state, 3);
+            let obj = pyo3::ffi::PyTuple_GetItem(state, 3);
 
             if pyo3::ffi::PyTuple_CheckExact(obj) != 1 {
                 return Err(create_pyerr!(
@@ -290,7 +290,7 @@ impl PickleMethods for RawLRUCache {
         #[cfg(not(debug_assertions))]
         let dict: &Bound<pyo3::types::PyDict> = iterable.downcast_bound(py).unwrap_unchecked();
 
-        let tuple_length = pyo3::ffi::PyTuple_GET_SIZE(order);
+        let tuple_length = pyo3::ffi::PyTuple_Size(order);
 
         if tuple_length as usize != dict.len() {
             return Err(create_pyerr!(
@@ -310,7 +310,7 @@ impl PickleMethods for RawLRUCache {
         }
 
         for k in 0..tuple_length {
-            let key = pyo3::ffi::PyTuple_GET_ITEM(order, k);
+            let key = pyo3::ffi::PyTuple_GetItem(order, k);
             let hashable =
                 HashablePyObject::try_from_pyobject(PyObject::from_borrowed_ptr(py, key), py)?;
             new.order.push_back(hashable);

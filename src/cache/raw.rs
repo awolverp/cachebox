@@ -168,9 +168,9 @@ impl PickleMethods for RawCache {
         let capacity = pyo3::ffi::PyLong_FromSize_t(self.table.capacity());
 
         let tuple = pyo3::ffi::PyTuple_New(Self::PICKLE_TUPLE_SIZE);
-        pyo3::ffi::PyTuple_SET_ITEM(tuple, 0, maxsize);
-        pyo3::ffi::PyTuple_SET_ITEM(tuple, 1, dict);
-        pyo3::ffi::PyTuple_SET_ITEM(tuple, 2, capacity);
+        pyo3::ffi::PyTuple_SetItem(tuple, 0, maxsize);
+        pyo3::ffi::PyTuple_SetItem(tuple, 1, dict);
+        pyo3::ffi::PyTuple_SetItem(tuple, 2, capacity);
 
         tuple
     }

@@ -20,7 +20,7 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
 
         cache: BaseCacheImpl[int, str] = create_a_cache()
 
-    Or use it for checking types::
+    Or use it for type checking::
 
         assert isinstance(cachebox.Cache(0), BaseCacheImpl)
         assert isinstance(cachebox.LRUCache(0), BaseCacheImpl)
@@ -69,6 +69,17 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
     def __eq__(self, other: typing.Self) -> bool: ...
     def __ne__(self, other: typing.Self) -> bool: ...
     def __str__(self) -> str: ...
+    def __getstate__(self) -> typing.Any:
+        """
+        This is unstable
+        """
+        ...
+    def __setstate__(self, state: typing.Any):
+        """
+        This is unstable
+        """
+        ...
+    def __getnewargs__(self) -> tuple: ...
 
 class Cache(BaseCacheImpl[KT, VT]):
     """
@@ -1493,7 +1504,8 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         self,
         maxsize: int,
         ttl: float,
-        iterable: typing.Union[typing.Iterable[KT, VT], typing.Dict[KT, VT]][typing.Tuple[KT, VT]] | typing.Dict[KT, VT] = ...,
+        iterable: typing.Union[typing.Iterable[KT, VT], typing.Dict[KT, VT]][typing.Tuple[KT, VT]]
+        | typing.Dict[KT, VT] = ...,
         *,
         capacity: int = ...,
     ) -> None:
@@ -1993,7 +2005,11 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def update(self, iterable: typing.Union[typing.Iterable[KT, VT], typing.Dict[KT, VT]], ttl: typing.Optional[float] = None) -> None:
+    def update(
+        self,
+        iterable: typing.Union[typing.Iterable[KT, VT], typing.Dict[KT, VT]],
+        ttl: typing.Optional[float] = None,
+    ) -> None:
         """
         Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
 

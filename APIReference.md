@@ -205,6 +205,9 @@ for i in range(20):
 assert cache.is_full()
 ```
 
+> [!NOTE]
+> Added in version 3.0.0
+
 ### cachebox.Cache.is_empty
 Returns `True` if cache is empty.
 
@@ -215,6 +218,9 @@ assert cache.is_empty()
 cache[0] = 0
 assert not cache.is_empty()
 ```
+
+> [!NOTE]
+> Added in version 3.0.0
 
 ### cachebox.Cache.insert
 
@@ -449,6 +455,9 @@ for i in range(20):
 assert cache.is_full()
 ```
 
+> [!NOTE]
+> Added in version 3.0.0
+
 ### cachebox.FIFOCache.is_empty
 Returns `True` if cache is empty.
 
@@ -459,6 +468,9 @@ assert cache.is_empty()
 cache[0] = 0
 assert not cache.is_empty()
 ```
+
+> [!NOTE]
+> Added in version 3.0.0
 
 ### cachebox.FIFOCache.insert
 
@@ -739,6 +751,9 @@ for i in range(20):
 assert cache.is_full()
 ```
 
+> [!NOTE]
+> Added in version 3.0.0
+
 ### cachebox.LFUCache.is_empty
 Returns `True` if cache is empty.
 
@@ -749,6 +764,9 @@ assert cache.is_empty()
 cache[0] = 0
 assert not cache.is_empty()
 ```
+
+> [!NOTE]
+> Added in version 3.0.0
 
 ### cachebox.LFUCache.insert
 
@@ -1006,6 +1024,9 @@ for i in range(20):
 assert cache.is_full()
 ```
 
+> [!NOTE]
+> Added in version 3.0.0
+
 ### cachebox.RRCache.is_empty
 Returns `True` if cache is empty.
 
@@ -1016,6 +1037,9 @@ assert cache.is_empty()
 cache[0] = 0
 assert not cache.is_empty()
 ```
+
+> [!NOTE]
+> Added in version 3.0.0
 
 ### cachebox.RRCache.insert
 
@@ -1269,6 +1293,9 @@ for i in range(20):
 assert cache.is_full()
 ```
 
+> [!NOTE]
+> Added in version 3.0.0
+
 ### cachebox.LRUCache.is_empty
 Returns `True` if cache is empty.
 
@@ -1279,6 +1306,9 @@ assert cache.is_empty()
 cache[0] = 0
 assert not cache.is_empty()
 ```
+
+> [!NOTE]
+> Added in version 3.0.0
 
 ### cachebox.LRUCache.insert
 
@@ -1551,6 +1581,9 @@ for i in range(20):
 assert cache.is_full()
 ```
 
+> [!NOTE]
+> Added in version 3.0.0
+
 ### cachebox.TTLCache.is_empty
 Returns `True` if cache is empty.
 
@@ -1561,6 +1594,9 @@ assert cache.is_empty()
 cache[0] = 0
 assert not cache.is_empty()
 ```
+
+> [!NOTE]
+> Added in version 3.0.0
 
 ### cachebox.TTLCache.insert
 
@@ -1858,6 +1894,9 @@ for i in range(20):
 assert cache.is_full()
 ```
 
+> [!NOTE]
+> Added in version 3.0.0
+
 ### cachebox.VTTLCache.is_empty
 Returns `True` if cache is empty.
 
@@ -1868,6 +1907,9 @@ assert cache.is_empty()
 cache.insert(1, 1, None)
 assert not cache.is_empty()
 ```
+
+> [!NOTE]
+> Added in version 3.0.0
 
 ### cachebox.VTTLCache.insert
 

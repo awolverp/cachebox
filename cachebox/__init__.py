@@ -29,5 +29,5 @@ from .utils import (
     cached as cached,
     cachedmethod as cachedmethod,
     make_hash_key as make_hash_key,
-    make_typed_key as make_typed_key
+    make_typed_key as make_typed_key,
 )

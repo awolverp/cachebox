@@ -1,4 +1,5 @@
-use crate::{basic::HashablePyObject, create_pyerr, make_eq_func, make_hasher_func};
+use crate::basic::{HashablePyObject, PickleMethods};
+use crate::{create_pyerr, make_eq_func, make_hasher_func, pickle_get_first_objects};
 use core::num::NonZeroUsize;
 use hashbrown::raw::RawTable;
 use pyo3::prelude::*;
@@ -9,6 +10,11 @@ pub struct RawCache {
 }
 
 impl RawCache {
+    /// 1. maxsize
+    /// 2. table
+    /// 3. capacity
+    pub const PICKLE_TUPLE_SIZE: isize = 3;
+
     #[inline]
     pub fn new(maxsize: usize, capacity: usize) -> PyResult<Self> {
         let capacity = {
@@ -145,5 +151,46 @@ impl AsMut<RawTable<(HashablePyObject, PyObject)>> for RawCache {
     #[inline]
     fn as_mut(&mut self) -> &mut RawTable<(HashablePyObject, PyObject)> {
         &mut self.table
+    }
+}
+
+impl PickleMethods for RawCache {
+    unsafe fn dumps(&self) -> *mut pyo3::ffi::PyObject {
+        let dict = pyo3::ffi::PyDict_New();
+
+        for pair in self.table.iter() {
+            let (key, val) = pair.as_ref();
+            // SAFETY: we don't need to check error because we sure about key that is hashable
+            pyo3::ffi::PyDict_SetItem(dict, key.object.as_ptr(), val.as_ptr());
+        }
+
+        let maxsize = pyo3::ffi::PyLong_FromSize_t(self.maxsize.get());
+        let capacity = pyo3::ffi::PyLong_FromSize_t(self.table.capacity());
+
+        let tuple = pyo3::ffi::PyTuple_New(Self::PICKLE_TUPLE_SIZE);
+        pyo3::ffi::PyTuple_SET_ITEM(tuple, 0, maxsize);
+        pyo3::ffi::PyTuple_SET_ITEM(tuple, 1, dict);
+        pyo3::ffi::PyTuple_SET_ITEM(tuple, 2, capacity);
+
+        tuple
+    }
+
+    unsafe fn loads(
+        &mut self,
+        state: *mut pyo3::ffi::PyObject,
+        py: Python<'_>,
+    ) -> pyo3::PyResult<()> {
+        let (maxsize, iterable, capacity) = pickle_get_first_objects!(py, state);
+
+        let mut new = Self::new(maxsize, capacity)?;
+
+        #[cfg(debug_assertions)]
+        new.extend_from_dict(iterable.downcast_bound(py)?)?;
+        #[cfg(not(debug_assertions))]
+        new.extend_from_dict(iterable.downcast_bound(py).unwrap_unchecked())?;
+
+        *self = new;
+
+        Ok(())
     }
 }

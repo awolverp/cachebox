@@ -1,5 +1,5 @@
 use crate::basic::HashablePyObject;
-use crate::create_pyerr;
+use crate::{create_pyerr, pickle_get_first_objects};
 use core::num::NonZeroUsize;
 use hashbrown::raw::RawTable;
 use pyo3::prelude::*;
@@ -34,7 +34,7 @@ macro_rules! sort_keys {
 #[derive(Clone, Debug)]
 pub enum VTTLKey {
     NoExpire(HashablePyObject),
-    Expire(HashablePyObject, time::Instant),
+    Expire(HashablePyObject, time::SystemTime),
 }
 
 impl VTTLKey {
@@ -44,7 +44,10 @@ impl VTTLKey {
     #[inline]
     pub fn new(val: HashablePyObject, ttl: Option<f32>) -> Self {
         match ttl {
-            Some(x) => Self::Expire(val, time::Instant::now() + time::Duration::from_secs_f32(x)),
+            Some(x) => Self::Expire(
+                val,
+                time::SystemTime::now() + time::Duration::from_secs_f32(x),
+            ),
             None => Self::NoExpire(val),
         }
     }
@@ -52,7 +55,7 @@ impl VTTLKey {
     #[inline]
     pub fn expired(&self) -> bool {
         match *self {
-            Self::Expire(_, ref ttl) => time::Instant::now() > *ttl,
+            Self::Expire(_, ref ttl) => time::SystemTime::now() > *ttl,
             Self::NoExpire(_) => false,
         }
     }
@@ -74,7 +77,7 @@ impl VTTLKey {
     }
 
     #[inline]
-    pub fn expiration(&self) -> Option<&time::Instant> {
+    pub fn expiration(&self) -> Option<&time::SystemTime> {
         match self {
             Self::NoExpire(_) => None,
             Self::Expire(_, instant) => Some(instant),
@@ -83,8 +86,37 @@ impl VTTLKey {
 
     #[inline]
     pub fn remaining(&self) -> Option<f32> {
-        self.expiration()
-            .map(|instant| (*instant - time::Instant::now()).as_secs_f32())
+        match self {
+            Self::NoExpire(_) => None,
+            Self::Expire(_, instant) => Some(
+                instant
+                    .duration_since(time::SystemTime::now())
+                    .map(|x| x.as_secs_f32())
+                    .unwrap_or(0.0),
+            ),
+        }
+    }
+
+    #[inline]
+    pub fn timestamp(&self) -> Option<f64> {
+        match self {
+            Self::NoExpire(_) => None,
+            Self::Expire(_, instant) => Some(
+                instant
+                    .duration_since(time::UNIX_EPOCH)
+                    .map(|x| x.as_secs_f64())
+                    .unwrap_or(0.0),
+            ),
+        }
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn from_timestamp(val: HashablePyObject, timestamp: Option<f64>) -> Self {
+        match timestamp {
+            Some(x) => Self::Expire(val, time::UNIX_EPOCH + time::Duration::from_secs_f64(x)),
+            None => Self::NoExpire(val),
+        }
     }
 }
 
@@ -95,6 +127,12 @@ pub struct RawVTTLCache {
 }
 
 impl RawVTTLCache {
+    /// 1. maxsize
+    /// 2. table
+    /// 3. capacity
+    /// 4. order
+    pub const PICKLE_TUPLE_SIZE: isize = 4;
+
     #[inline]
     pub fn new(maxsize: usize, capacity: usize) -> PyResult<Self> {
         let capacity = {
@@ -164,6 +202,25 @@ impl RawVTTLCache {
         }
     }
 
+    pub unsafe fn insert_unchecked(&mut self, key: VTTLKey, value: PyObject) -> bool {
+        match self.table.find_or_find_insert_slot(
+            key.key().hash,
+            |(x, _)| x.key() == key.key(),
+            |(x, _)| x.key().hash,
+        ) {
+            Ok(bucket) => {
+                let _ = std::mem::replace(unsafe { &mut bucket.as_mut().0 }, key);
+                let _ = std::mem::replace(unsafe { &mut bucket.as_mut().1 }, value);
+                false
+            }
+            Err(slot) => unsafe {
+                self.table
+                    .insert_in_slot(key.key().hash, slot, (key, value));
+                true
+            },
+        }
+    }
+
     #[inline]
     pub unsafe fn insert_unsorted(
         &mut self,
@@ -186,22 +243,9 @@ impl RawVTTLCache {
             };
         }
 
-        match self.table.find_or_find_insert_slot(
-            key.hash,
-            |(x, _)| *x.key() == key,
-            |(x, _)| x.key().hash,
-        ) {
-            Ok(bucket) => {
-                let _ =
-                    std::mem::replace(unsafe { &mut bucket.as_mut().0 }, VTTLKey::new(key, ttl));
-                let _ = std::mem::replace(unsafe { &mut bucket.as_mut().1 }, value);
-            }
-            Err(slot) => unsafe {
-                let k = VTTLKey::new(key.clone(), ttl);
-                self.table
-                    .insert_in_slot(key.hash, slot, (k.clone(), value));
-                self.order.push(k);
-            },
+        let k = VTTLKey::new(key, ttl);
+        if self.insert_unchecked(k.clone(), value) {
+            self.order.push(k);
         }
     }
 
@@ -364,5 +408,180 @@ impl AsMut<RawTable<(VTTLKey, PyObject)>> for RawVTTLCache {
     #[inline]
     fn as_mut(&mut self) -> &mut RawTable<(VTTLKey, PyObject)> {
         &mut self.table
+    }
+}
+
+impl crate::basic::PickleMethods for RawVTTLCache {
+    unsafe fn dumps(&self) -> *mut pyo3::ffi::PyObject {
+        let dict = pyo3::ffi::PyDict_New();
+
+        for pair in self.table.iter() {
+            let (key, val) = pair.as_ref();
+
+            // dict[(key, float)] = val
+            //      ------------
+            //         object
+            //
+            // object may not tuple
+            match key.timestamp() {
+                Some(f) => {
+                    let key_tuple = pyo3::ffi::PyTuple_New(2);
+                    let timestamp = pyo3::ffi::PyFloat_FromDouble(f);
+
+                    pyo3::ffi::PyTuple_SET_ITEM(key_tuple, 0, key.key().object.as_ptr());
+                    pyo3::ffi::PyTuple_SET_ITEM(key_tuple, 1, timestamp);
+
+                    pyo3::ffi::PyDict_SetItem(dict, key_tuple, val.as_ptr());
+                    pyo3::ffi::Py_XDECREF(key_tuple);
+                }
+                None => {
+                    pyo3::ffi::PyDict_SetItem(dict, key.key().object.as_ptr(), val.as_ptr());
+                }
+            }
+        }
+
+        let order = pyo3::ffi::PyTuple_New(self.order.len() as isize);
+        for (index, key) in self.order.iter().enumerate() {
+            match key.timestamp() {
+                Some(f) => {
+                    let key_tuple = pyo3::ffi::PyTuple_New(2);
+                    let timestamp = pyo3::ffi::PyFloat_FromDouble(f);
+                    pyo3::ffi::PyTuple_SET_ITEM(key_tuple, 0, key.key().object.as_ptr());
+                    pyo3::ffi::PyTuple_SET_ITEM(key_tuple, 1, timestamp);
+
+                    pyo3::ffi::PyTuple_SET_ITEM(order, index as isize, key_tuple);
+                }
+                None => {
+                    pyo3::ffi::PyTuple_SET_ITEM(order, index as isize, key.key().object.as_ptr());
+                }
+            }
+        }
+
+        let maxsize = pyo3::ffi::PyLong_FromSize_t(self.maxsize.get());
+        let capacity = pyo3::ffi::PyLong_FromSize_t(self.table.capacity());
+
+        let tuple = pyo3::ffi::PyTuple_New(Self::PICKLE_TUPLE_SIZE);
+        pyo3::ffi::PyTuple_SET_ITEM(tuple, 0, maxsize);
+        pyo3::ffi::PyTuple_SET_ITEM(tuple, 1, dict);
+        pyo3::ffi::PyTuple_SET_ITEM(tuple, 2, capacity);
+        pyo3::ffi::PyTuple_SET_ITEM(tuple, 3, order);
+
+        tuple
+    }
+
+    unsafe fn loads(
+        &mut self,
+        state: *mut pyo3::ffi::PyObject,
+        py: pyo3::Python<'_>,
+    ) -> pyo3::PyResult<()> {
+        let (maxsize, iterable, capacity) = pickle_get_first_objects!(py, state);
+
+        let order = {
+            let obj = pyo3::ffi::PyTuple_GET_ITEM(state, 3);
+
+            if pyo3::ffi::PyTuple_CheckExact(obj) != 1 {
+                return Err(create_pyerr!(
+                    pyo3::exceptions::PyTypeError,
+                    "the order object is not an tuple"
+                ));
+            }
+
+            obj
+        };
+
+        let mut new = Self::new(maxsize, capacity)?;
+
+        #[cfg(debug_assertions)]
+        let dict: &Bound<pyo3::types::PyDict> = iterable.downcast_bound(py)?;
+        #[cfg(not(debug_assertions))]
+        let dict: &Bound<pyo3::types::PyDict> = iterable.downcast_bound(py).unwrap_unchecked();
+
+        let tuple_length = pyo3::ffi::PyTuple_Size(order);
+
+        if tuple_length as usize != dict.len() {
+            return Err(create_pyerr!(
+                pyo3::exceptions::PyValueError,
+                "tuple size isn't equal to dict size"
+            ));
+        }
+
+        for (key, value) in dict.iter() {
+            let key_as_ptr = key.as_ptr();
+
+            if pyo3::ffi::PyTuple_CheckExact(key_as_ptr) == 1 {
+                if pyo3::ffi::PyTuple_GET_SIZE(key_as_ptr) != 2 {
+                    return Err(create_pyerr!(
+                        pyo3::exceptions::PyTypeError,
+                        "a value in dictionary that's tuple, but its size isn't equal 2"
+                    ));
+                }
+
+                let key_object = pyo3::ffi::PyTuple_GET_ITEM(key_as_ptr, 0);
+                let timestamp_object = pyo3::ffi::PyTuple_GET_ITEM(key_as_ptr, 1);
+                let timestamp = pyo3::ffi::PyFloat_AsDouble(timestamp_object);
+
+                let hashable = HashablePyObject::try_from_pyobject(
+                    PyObject::from_borrowed_ptr(py, key_object),
+                    py,
+                )
+                .unwrap_unchecked();
+                let vttlkey = VTTLKey::from_timestamp(hashable, Some(timestamp));
+
+                new.insert_unchecked(vttlkey, value.unbind());
+            } else {
+                let hashable = HashablePyObject::try_from_bound(key).unwrap_unchecked();
+                let vttlkey = VTTLKey::from_timestamp(hashable, None);
+
+                new.insert_unchecked(vttlkey, value.unbind());
+            }
+        }
+
+        if new.order.try_reserve(tuple_length as usize).is_err() {
+            return Err(create_pyerr!(pyo3::exceptions::PyMemoryError));
+        }
+
+        for k in 0..tuple_length {
+            let key_as_ptr = pyo3::ffi::PyTuple_GET_ITEM(order, k);
+
+            if pyo3::ffi::PyTuple_CheckExact(key_as_ptr) == 1 {
+                if pyo3::ffi::PyTuple_GET_SIZE(key_as_ptr) != 2 {
+                    return Err(create_pyerr!(
+                        pyo3::exceptions::PyTypeError,
+                        "a value in dictionary that's tuple, but its size isn't equal 2"
+                    ));
+                }
+
+                let key_object = pyo3::ffi::PyTuple_GET_ITEM(key_as_ptr, 0);
+                let timestamp_object = pyo3::ffi::PyTuple_GET_ITEM(key_as_ptr, 1);
+                let timestamp = pyo3::ffi::PyFloat_AsDouble(timestamp_object);
+
+                let hashable = HashablePyObject::try_from_pyobject(
+                    PyObject::from_borrowed_ptr(py, key_object),
+                    py,
+                )?;
+                let vttlkey = VTTLKey::from_timestamp(hashable, Some(timestamp));
+
+                new.order.push(vttlkey);
+            } else {
+                let hashable = HashablePyObject::try_from_pyobject(
+                    PyObject::from_borrowed_ptr(py, key_as_ptr),
+                    py,
+                )?;
+                let vttlkey = VTTLKey::from_timestamp(hashable, None);
+
+                new.order.push(vttlkey);
+            }
+        }
+
+        if new.order.len() > 1 {
+            // Sort from less to greater
+            sort_keys!(new.order);
+        }
+
+        new.expire();
+
+        *self = new;
+
+        Ok(())
     }
 }

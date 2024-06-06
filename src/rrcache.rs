@@ -4,6 +4,9 @@ use crate::{create_pyerr, make_eq_func, make_hasher_func};
 use parking_lot::RwLock;
 use pyo3::prelude::*;
 
+/// RRCache implementation - Random Replacement policy (thread-safe).
+///
+/// In simple terms, the RR cache will choice randomly element to remove it to make space when necessary.
 #[pyclass(mapping, extends=crate::basic::BaseCacheImpl, subclass, module="cachebox._cachebox")]
 pub struct RRCache {
     table: RwLock<RawCache>,
@@ -385,5 +388,28 @@ impl RRCache {
     pub fn __clear__(&self) {
         let mut t = self.table.write();
         t.as_mut().clear();
+    }
+
+    pub fn __getstate__(&self, py: Python<'_>) -> PyObject {
+        use crate::basic::PickleMethods;
+
+        let lock = self.table.read();
+
+        unsafe {
+            let state = lock.dumps();
+            Py::from_owned_ptr(py, state)
+        }
+    }
+
+    pub fn __getnewargs__(&self) -> (usize,) {
+        (0,)
+    }
+
+    pub fn __setstate__(&self, py: Python<'_>, state: PyObject) -> PyResult<()> {
+        use crate::basic::PickleMethods;
+        let tuple = crate::pickle_check_state!(py, state, RawCache::PICKLE_TUPLE_SIZE)?;
+
+        let mut lock = self.table.write();
+        unsafe { lock.loads(tuple, py) }
     }
 }

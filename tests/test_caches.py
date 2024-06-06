@@ -2,12 +2,15 @@ import cachebox
 import unittest
 import typing
 import time
+import pickle
+import tempfile
 
 
 class CacheTestSuiteMixin:
     cache: typing.Type[cachebox.BaseCacheImpl]
     fixed_size = False
     has_popitem = True
+    can_pickle = False
     kwargs = dict()
 
     def test_creation(self):
@@ -269,6 +272,58 @@ class CacheTestSuiteMixin:
         obj: self.cache[int, int] = self.cache(maxsize=0, **self.kwargs)
         _ = obj
 
+    def test_pickle(self, co=True):
+        if not self.can_pickle:
+            return
+
+        def check_order(cache1, cache2):
+            while not cache1.is_empty():
+                if hasattr(cache1, "popitem_with_expire"):
+                    (k1, v1, r1) = cache1.popitem_with_expire()
+                    (k2, v2, r2) = cache2.popitem_with_expire()
+                    assert (k1, v1) == (k2, v2), "invalid order: ({}, {}) != ({}, {}) | [{}] and [{}]".format(
+                        k1, v1, k2, v2, r1, r2
+                    )
+                else:
+                    (k1, v1) = cache1.popitem()
+                    (k2, v2) = cache2.popitem()
+                    assert (k1, v1) == (k2, v2), "invalid order: ({}, {}) != ({}, {})".format(
+                        k1, v1, k2, v2
+                    )
+
+        # empty cache
+        c1 = self.cache(maxsize=0, **self.kwargs)
+        c2 = pickle.loads(pickle.dumps(c1))
+        assert c1 == c2
+        assert c1.capacity() == c2.capacity()
+
+        # not empty
+        c1 = self.cache(maxsize=100, **self.kwargs)
+        c1.update({i: i for i in range(55)})
+
+        c1[0]
+        c1[0]
+        c1[2]
+        c1[3]
+
+        c2 = pickle.loads(pickle.dumps(c1))
+        assert c1 == c2
+        assert c1.capacity() == c2.capacity(), "{} != {}".format(c1.capacity(), c2.capacity())
+        if co:
+            check_order(c1, c2)
+
+        # pickle in file
+        with tempfile.TemporaryFile("w+b") as fd:
+            c1 = self.cache(maxsize=100, **self.kwargs)
+            c1.update({i: i for i in range(100)})
+            pickle.dump(c1, fd)
+            fd.seek(0)
+            c2 = pickle.load(fd)
+            assert c1 == c2
+            assert c1.capacity() == c2.capacity()
+            if co:
+                check_order(c1, c2)
+
 
 class TestBaseCacheImpl(unittest.TestCase):
     def test_new(self):
@@ -280,10 +335,15 @@ class TestCache(unittest.TestCase, CacheTestSuiteMixin):
     cache = cachebox.Cache
     fixed_size = True
     has_popitem = False
+    can_pickle = True
+
+    def test_pickle(self):
+        return super().test_pickle(co=False)
 
 
 class TestFIFOCache(unittest.TestCase, CacheTestSuiteMixin):
     cache = cachebox.FIFOCache
+    can_pickle = True
 
     def test_policy(self):
         obj = self.cache(2)
@@ -302,6 +362,7 @@ class TestFIFOCache(unittest.TestCase, CacheTestSuiteMixin):
 
 class TestLFUCache(unittest.TestCase, CacheTestSuiteMixin):
     cache = cachebox.LFUCache
+    can_pickle = True
 
     def test_policy(self):
         obj = self.cache(5)
@@ -352,6 +413,7 @@ class TestLFUCache(unittest.TestCase, CacheTestSuiteMixin):
 
 class TestLRUCache(unittest.TestCase, CacheTestSuiteMixin):
     cache = cachebox.LRUCache
+    can_pickle = True
 
     def test_policy(self):
         obj = self.cache(3)
@@ -376,6 +438,7 @@ class TestLRUCache(unittest.TestCase, CacheTestSuiteMixin):
 
 class TestRRCache(unittest.TestCase, CacheTestSuiteMixin):
     cache = cachebox.RRCache
+    can_pickle = True
 
     def test_policy(self):
         obj = self.cache(2)
@@ -385,9 +448,13 @@ class TestRRCache(unittest.TestCase, CacheTestSuiteMixin):
 
         self.assertIn(obj.popitem(), [("name", 1), ("age", 2)])
 
+    def test_pickle(self):
+        return super().test_pickle(co=False)
+
 
 class TestVTTLCache(unittest.TestCase, CacheTestSuiteMixin):
     cache = cachebox.VTTLCache
+    can_pickle = True
 
     def test_policy(self):
         obj = self.cache(2)
@@ -450,11 +517,28 @@ class TestVTTLCache(unittest.TestCase, CacheTestSuiteMixin):
         value, dur = obj.get_with_expire("no-exists", "value")
         self.assertEqual("value", value)
         self.assertEqual(0, dur)
+    
+    def test_pickle(self, co=True):
+        super().test_pickle(co)
+
+        # test expire
+        c1 = cachebox.VTTLCache(10)
+        c1.update({i:i for i in range(5)}, 3)
+        time.sleep(1)
+        c1.update({i+5:i+5 for i in range(5)}, 5)
+        
+        byt = pickle.dumps(c1)
+        time.sleep(2)
+        c2 = pickle.loads(byt)
+
+        assert len(c2) == 5, "{}".format(len(c2))
+
 
 
 class TestTTLCache(unittest.TestCase, CacheTestSuiteMixin):
     cache = cachebox.TTLCache
     kwargs = {"ttl": 120}
+    can_pickle = True
 
     def test_policy(self):
         obj = self.cache(2, 0.5)
@@ -505,3 +589,18 @@ class TestTTLCache(unittest.TestCase, CacheTestSuiteMixin):
         value, dur = obj.get_with_expire("no-exists", "value")
         self.assertEqual("value", value)
         self.assertEqual(0, dur)
+
+    def test_pickle(self, co=True):
+        super().test_pickle(co)
+
+        # test expire
+        c1 = cachebox.TTLCache(10, 3)
+        c1.update({i:i for i in range(5)})
+        time.sleep(1)
+        c1.update({i+5:i+5 for i in range(5)})
+        
+        byt = pickle.dumps(c1)
+        time.sleep(2)
+        c2 = pickle.loads(byt)
+
+        assert len(c2) == 5

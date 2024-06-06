@@ -29,7 +29,7 @@ You can easily and powerfully perform caching operations in Python as fast as po
 - 📦 Over 7 cache algorithms are supported
 - 🧶 Completely thread-safe (uses `RwLock`)
 
-**Installing**: \
+## Installing
 Install it from PyPi:
 ```sh
 pip3 install -U cachebox
@@ -59,7 +59,7 @@ There are some situations that you may need caching to imprve your application s
 ### Why `cachebox`?
 **Rust** - It uses *Rust* language to has high-performance.
 
-**SwissTable** - It uses Google's high-performance SwissTable hash map.
+**SwissTable** - It uses Google's high-performance SwissTable hash map. thanks to [hashbrown](https://github.com/rust-lang/hashbrown).
 
 **Low memory usage** - It has very low memory usage.
 
@@ -209,6 +209,28 @@ isinstance(cache, cachetools.Cache) -> isinstance(cache, cachebox.BaseCacheImpl)
 ```
 </details>
 
+<details>
+    <summary><b>How to save caches in file?</b></summary>
+
+there's no file-based implementation, but you can use `pickle` for saving caches in files. For example:
+```python
+import cachebox, pickle
+c = cachebox.LRUCache(100, {i:i for i in range(78)})
+
+with open("file", "wb") as fd:
+    pickle.dump(c, fd)
+
+with open("file", "rb") as fd:
+    loaded = pickle.load(fd)
+
+assert c == loaded
+assert c.capacity() == loaded.capacity()
+```
+
+> [!NOTE]
+> Added in version 3.1.0
+</details>
+
 ## License
 cachebox is provided under the MIT license. See [LICENSE](LICENSE).
 
@@ -222,4 +244,4 @@ TODO List:
 - [x] Write an API referenece
 - [ ] Add new functions such as `cached_property`.
 - [ ] Add possible methods to implementations.
-- [ ] Make better type-hint for `cached` and `cachedmethod` if possible.
+- [ ] Make better type-hint for `cached` and `cachedmethod` (if possible).

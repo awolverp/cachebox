@@ -1,5 +1,5 @@
 use crate::basic::HashablePyObject;
-use crate::create_pyerr;
+use crate::{create_pyerr, pickle_get_first_objects};
 use core::num::NonZeroUsize;
 use hashbrown::raw::RawTable;
 use pyo3::prelude::*;
@@ -10,6 +10,11 @@ pub struct RawLFUCache {
 }
 
 impl RawLFUCache {
+    /// 1. maxsize
+    /// 2. table
+    /// 3. capacity
+    pub const PICKLE_TUPLE_SIZE: isize = 3;
+
     #[inline]
     pub fn new(maxsize: usize, capacity: usize) -> PyResult<Self> {
         let capacity = {
@@ -68,7 +73,7 @@ impl RawLFUCache {
     }
 
     #[inline]
-    pub unsafe fn insert_unchecked(&mut self, key: HashablePyObject, value: PyObject) {
+    pub unsafe fn insert_unchecked(&mut self, key: HashablePyObject, value: PyObject, n: usize) {
         match self.table.find_or_find_insert_slot(
             key.hash,
             |(x, _, _)| x.eq(&key),
@@ -79,8 +84,7 @@ impl RawLFUCache {
                 bucket.as_mut().2 += 1;
             }
             Err(slot) => unsafe {
-                self.table
-                    .insert_in_slot(key.hash, slot, (key, value, 0usize));
+                self.table.insert_in_slot(key.hash, slot, (key, value, n));
             },
         }
     }
@@ -100,7 +104,7 @@ impl RawLFUCache {
         }
 
         unsafe {
-            self.insert_unchecked(key, value);
+            self.insert_unchecked(key, value, 0);
         }
 
         Ok(())
@@ -210,5 +214,75 @@ impl AsMut<RawTable<(HashablePyObject, PyObject, usize)>> for RawLFUCache {
     #[inline]
     fn as_mut(&mut self) -> &mut RawTable<(HashablePyObject, PyObject, usize)> {
         &mut self.table
+    }
+}
+
+impl crate::basic::PickleMethods for RawLFUCache {
+    unsafe fn dumps(&self) -> *mut pyo3::ffi::PyObject {
+        let dict = pyo3::ffi::PyDict_New();
+
+        for pair in self.table.iter() {
+            let (key, val, count) = pair.as_ref();
+
+            let val_tuple = pyo3::ffi::PyTuple_New(2);
+            let c = pyo3::ffi::PyLong_FromSize_t(*count);
+            pyo3::ffi::PyTuple_SET_ITEM(val_tuple, 0, val.as_ptr());
+            pyo3::ffi::PyTuple_SET_ITEM(val_tuple, 1, c);
+
+            pyo3::ffi::PyDict_SetItem(dict, key.object.as_ptr(), val_tuple);
+            pyo3::ffi::Py_XDECREF(val_tuple);
+        }
+
+        let maxsize = pyo3::ffi::PyLong_FromSize_t(self.maxsize.get());
+        let capacity = pyo3::ffi::PyLong_FromSize_t(self.table.capacity());
+
+        let tuple = pyo3::ffi::PyTuple_New(Self::PICKLE_TUPLE_SIZE);
+        pyo3::ffi::PyTuple_SET_ITEM(tuple, 0, maxsize);
+        pyo3::ffi::PyTuple_SET_ITEM(tuple, 1, dict);
+        pyo3::ffi::PyTuple_SET_ITEM(tuple, 2, capacity);
+
+        tuple
+    }
+
+    unsafe fn loads(
+        &mut self,
+        state: *mut pyo3::ffi::PyObject,
+        py: pyo3::Python<'_>,
+    ) -> pyo3::PyResult<()> {
+        let (maxsize, iterable, capacity) = pickle_get_first_objects!(py, state);
+
+        let mut new = Self::new(maxsize, capacity)?;
+
+        #[cfg(debug_assertions)]
+        let dict: &Bound<pyo3::types::PyDict> = iterable.downcast_bound(py)?;
+        #[cfg(not(debug_assertions))]
+        let dict: &Bound<pyo3::types::PyDict> = iterable.downcast_bound(py).unwrap_unchecked();
+
+        for (key, value) in dict.iter() {
+            // SAFETY: key is hashable, so don't worry
+            let hashable = HashablePyObject::try_from_bound(key).unwrap_unchecked();
+
+            let op = value.as_ptr();
+
+            if pyo3::ffi::PyTuple_CheckExact(op) != 1 || pyo3::ffi::PyTuple_GET_SIZE(op) != 2 {
+                return Err(create_pyerr!(
+                    pyo3::exceptions::PyTypeError,
+                    "expected tuple, found another type #op"
+                ));
+            }
+
+            let val = pyo3::ffi::PyTuple_GET_ITEM(op, 0);
+
+            let n = {
+                let obj = pyo3::ffi::PyTuple_GET_ITEM(op, 1);
+                pyo3::ffi::PyLong_AsSize_t(obj)
+            };
+
+            new.insert_unchecked(hashable, PyObject::from_borrowed_ptr(py, val), n);
+        }
+
+        *self = new;
+
+        Ok(())
     }
 }

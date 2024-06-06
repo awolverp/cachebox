@@ -1,6 +1,9 @@
 pub mod iter;
+#[macro_use]
+mod pickle;
 
 use core::hash::{Hash, Hasher};
+pub use pickle::PickleMethods;
 use pyo3::prelude::*;
 
 pub const PYOBJECT_MEM_SIZE: usize = core::mem::size_of::<pyo3::PyObject>();
@@ -17,6 +20,10 @@ macro_rules! create_pyerr {
     };
 }
 
+/// A base class for all cache algorithms;
+/// Do not try to call its constructor, this is only for type-hint.
+///
+/// You can use it for type hint or use it for type checking.
 #[pyclass(subclass, module = "cachebox._cachebox")]
 pub struct BaseCacheImpl;
 

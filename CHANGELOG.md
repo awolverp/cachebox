@@ -5,12 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2024-06-06
+### Added
+- Now supports `pickle`
+- a little document added to Rust code
+
+### Changed
+- `VTTLCache`: uses `time::SystemTime` instead of `time::Instant` ( doesn't effect python codes, don't care )
+- `TTLCache`: uses `time::SystemTime` instead of `time::Instant` ( doesn't effect python codes, don't care )
+
 ## [3.0.0] - 2024-06-02
 
 ### Changed
 - `__repr__` changed to `__str__`
 - Maxsize system changed; when you pass `0` as maxsize, the value of `sys.maxsize` is automatically used.
-- \_\_eq\_\_ and \_\_ne\_\_ behaviors changed
+- `__eq__` and `__ne__` behaviors changed
 - Iterators mechanisms changed:
     - Now uses pointer to hashmap and iterate it
     - Additional spaces are removed

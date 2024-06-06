@@ -6,6 +6,9 @@ use crate::{create_pyerr, make_eq_func, make_hasher_func};
 use parking_lot::RwLock;
 use pyo3::prelude::*;
 
+/// LRU Cache implementation - Least recently used policy (thread-safe).
+///
+/// In simple terms, the LRU cache will remove the element in the cache that has not been accessed in the longest time.
 #[pyclass(mapping, extends=crate::basic::BaseCacheImpl, subclass, module="cachebox._cachebox")]
 pub struct LRUCache {
     table: RwLock<RawLRUCache>,
@@ -365,5 +368,28 @@ impl LRUCache {
         let lock = self.table.read();
         let h = lock.most_recently_used()?;
         Some(h.object.clone())
+    }
+
+    pub fn __getstate__(&self, py: Python<'_>) -> PyObject {
+        use crate::basic::PickleMethods;
+
+        let lock = self.table.read();
+
+        unsafe {
+            let state = lock.dumps();
+            Py::from_owned_ptr(py, state)
+        }
+    }
+
+    pub fn __getnewargs__(&self) -> (usize,) {
+        (0,)
+    }
+
+    pub fn __setstate__(&self, py: Python<'_>, state: PyObject) -> PyResult<()> {
+        use crate::basic::PickleMethods;
+        let tuple = crate::pickle_check_state!(py, state, RawLRUCache::PICKLE_TUPLE_SIZE)?;
+
+        let mut lock = self.table.write();
+        unsafe { lock.loads(tuple, py) }
     }
 }

@@ -6,6 +6,14 @@ use crate::{create_pyerr, make_eq_func, make_hasher_func};
 use parking_lot::RwLock;
 use pyo3::prelude::*;
 
+/// A simple cache that has no algorithm; this is only a hashmap.
+///
+/// `Cache` vs `dict`:
+/// - it is thread-safe and unordered, while `dict` isn't thread-safe and ordered (Python 3.6+).
+/// - it uses very lower memory than `dict`.
+/// - it supports useful and new methods for managing memory, while `dict` does not.
+/// - it does not support `popitem`, while `dict` does.
+/// - You can limit the size of `Cache`, but you cannot for `dict`.
 #[pyclass(mapping, extends=crate::basic::BaseCacheImpl, subclass, module="cachebox._cachebox")]
 pub struct Cache {
     table: RwLock<RawCache>,
@@ -69,7 +77,6 @@ impl Cache {
         lock.insert(hashable, value)
     }
 
-    #[pyo3(text_signature = "(key, value)")]
     pub fn insert(&self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
         self.__setitem__(py, key, value)
     }
@@ -84,10 +91,7 @@ impl Cache {
         }
     }
 
-    #[pyo3(
-        signature=(key, default=None),
-        text_signature="(key, default=None)"
-    )]
+    #[pyo3(signature=(key, default=None))]
     pub fn get(
         &self,
         py: Python<'_>,
@@ -121,7 +125,7 @@ impl Cache {
         self.table.read().as_ref().capacity()
     }
 
-    #[pyo3(signature=(*, reuse=false), text_signature="(*, reuse=False)")]
+    #[pyo3(signature=(*, reuse=false))]
     pub fn clear(&self, reuse: bool) {
         let mut lock = self.table.write();
         let tb = lock.as_mut();
@@ -132,7 +136,7 @@ impl Cache {
         }
     }
 
-    #[pyo3(signature=(key, default=None), text_signature="(key, default=None)")]
+    #[pyo3(signature=(key, default=None))]
     pub fn pop(
         &self,
         py: Python<'_>,
@@ -324,5 +328,28 @@ impl Cache {
     pub fn __clear__(&self) {
         let mut t = self.table.write();
         t.as_mut().clear();
+    }
+
+    pub fn __getstate__(&self, py: Python<'_>) -> PyObject {
+        use crate::basic::PickleMethods;
+
+        let lock = self.table.read();
+
+        unsafe {
+            let state = lock.dumps();
+            Py::from_owned_ptr(py, state)
+        }
+    }
+
+    pub fn __getnewargs__(&self) -> (usize,) {
+        (0,)
+    }
+
+    pub fn __setstate__(&self, py: Python<'_>, state: PyObject) -> PyResult<()> {
+        use crate::basic::PickleMethods;
+        let tuple = crate::pickle_check_state!(py, state, RawCache::PICKLE_TUPLE_SIZE)?;
+
+        let mut lock = self.table.write();
+        unsafe { lock.loads(tuple, py) }
     }
 }

@@ -7,6 +7,13 @@ use crate::create_pyerr;
 use parking_lot::RwLock;
 use pyo3::prelude::*;
 
+/// VTTL Cache Implementation - Time-To-Live Per-Key Policy (thread-safe).
+///
+/// In simple terms, the TTL cache will automatically remove the element in the cache that has expired.
+///
+/// `VTTLCache` vs `TTLCache`:
+/// - In `VTTLCache` each item has its own unique time-to-live, unlike `TTLCache`.
+/// - `VTTLCache` insert is slower than `TTLCache`.
 #[pyclass(mapping, extends=crate::basic::BaseCacheImpl, subclass, module="cachebox._cachebox")]
 pub struct VTTLCache {
     table: RwLock<RawVTTLCache>,
@@ -430,6 +437,29 @@ impl VTTLCache {
         let (k, v) = lock.popitem()?;
         let d = k.remaining().unwrap_or(0.0);
         Ok((k.into_key().object, v, d))
+    }
+
+    pub fn __getstate__(&self, py: Python<'_>) -> PyObject {
+        use crate::basic::PickleMethods;
+
+        let lock = self.table.read();
+
+        unsafe {
+            let state = lock.dumps();
+            Py::from_owned_ptr(py, state)
+        }
+    }
+
+    pub fn __getnewargs__(&self) -> (usize,) {
+        (0,)
+    }
+
+    pub fn __setstate__(&self, py: Python<'_>, state: PyObject) -> PyResult<()> {
+        use crate::basic::PickleMethods;
+        let tuple = crate::pickle_check_state!(py, state, RawVTTLCache::PICKLE_TUPLE_SIZE)?;
+
+        let mut lock = self.table.write();
+        unsafe { lock.loads(tuple, py) }
     }
 }
 

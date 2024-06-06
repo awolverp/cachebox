@@ -1,5 +1,5 @@
-use crate::basic::HashablePyObject;
-use crate::{create_pyerr, make_eq_func, make_hasher_func};
+use crate::basic::{HashablePyObject, PickleMethods};
+use crate::{create_pyerr, make_eq_func, make_hasher_func, pickle_get_first_objects};
 use core::num::NonZeroUsize;
 use hashbrown::raw::RawTable;
 use pyo3::prelude::*;
@@ -12,6 +12,12 @@ pub struct RawFIFOCache {
 }
 
 impl RawFIFOCache {
+    /// 1. maxsize
+    /// 2. table
+    /// 3. capacity
+    /// 4. order
+    pub const PICKLE_TUPLE_SIZE: isize = 4;
+
     #[inline]
     pub fn new(maxsize: usize, capacity: usize) -> PyResult<Self> {
         let capacity = {
@@ -67,18 +73,18 @@ impl RawFIFOCache {
     }
 
     #[inline]
-    pub unsafe fn insert_unchecked(&mut self, key: HashablePyObject, value: PyObject) {
+    pub unsafe fn insert_unchecked(&mut self, key: HashablePyObject, value: PyObject) -> bool {
         match self
             .table
             .find_or_find_insert_slot(key.hash, make_eq_func!(key), make_hasher_func!())
         {
             Ok(bucket) => {
                 let _ = std::mem::replace(unsafe { &mut bucket.as_mut().1 }, value);
+                false
             }
             Err(slot) => unsafe {
-                self.table
-                    .insert_in_slot(key.hash, slot, (key.clone(), value));
-                self.order.push_back(key);
+                self.table.insert_in_slot(key.hash, slot, (key, value));
+                true
             },
         }
     }
@@ -98,7 +104,9 @@ impl RawFIFOCache {
         }
 
         unsafe {
-            self.insert_unchecked(key, value);
+            if self.insert_unchecked(key.clone(), value) {
+                self.order.push_back(key);
+            }
         }
 
         Ok(())
@@ -208,5 +216,91 @@ impl AsMut<RawTable<(HashablePyObject, PyObject)>> for RawFIFOCache {
     #[inline]
     fn as_mut(&mut self) -> &mut RawTable<(HashablePyObject, PyObject)> {
         &mut self.table
+    }
+}
+
+impl PickleMethods for RawFIFOCache {
+    unsafe fn dumps(&self) -> *mut pyo3::ffi::PyObject {
+        let dict = pyo3::ffi::PyDict_New();
+
+        for pair in self.table.iter() {
+            let (key, val) = pair.as_ref();
+            // SAFETY: we don't need to check error because we sure about key that is hashable
+            pyo3::ffi::PyDict_SetItem(dict, key.object.as_ptr(), val.as_ptr());
+        }
+
+        let order = pyo3::ffi::PyTuple_New(self.order.len() as isize);
+        for (index, key) in self.order.iter().enumerate() {
+            pyo3::ffi::PyTuple_SET_ITEM(order, index as isize, key.object.as_ptr());
+        }
+
+        let maxsize = pyo3::ffi::PyLong_FromSize_t(self.maxsize.get());
+        let capacity = pyo3::ffi::PyLong_FromSize_t(self.table.capacity());
+
+        let tuple = pyo3::ffi::PyTuple_New(Self::PICKLE_TUPLE_SIZE);
+        pyo3::ffi::PyTuple_SET_ITEM(tuple, 0, maxsize);
+        pyo3::ffi::PyTuple_SET_ITEM(tuple, 1, dict);
+        pyo3::ffi::PyTuple_SET_ITEM(tuple, 2, capacity);
+        pyo3::ffi::PyTuple_SET_ITEM(tuple, 3, order);
+
+        tuple
+    }
+
+    unsafe fn loads(
+        &mut self,
+        state: *mut pyo3::ffi::PyObject,
+        py: pyo3::Python<'_>,
+    ) -> pyo3::PyResult<()> {
+        let (maxsize, iterable, capacity) = pickle_get_first_objects!(py, state);
+
+        let order = {
+            let obj = pyo3::ffi::PyTuple_GET_ITEM(state, 3);
+
+            if pyo3::ffi::PyTuple_CheckExact(obj) != 1 {
+                return Err(create_pyerr!(
+                    pyo3::exceptions::PyTypeError,
+                    "the order object is not an tuple"
+                ));
+            }
+
+            obj
+        };
+
+        let mut new = Self::new(maxsize, capacity)?;
+
+        #[cfg(debug_assertions)]
+        let dict: &Bound<pyo3::types::PyDict> = iterable.downcast_bound(py)?;
+        #[cfg(not(debug_assertions))]
+        let dict: &Bound<pyo3::types::PyDict> = iterable.downcast_bound(py).unwrap_unchecked();
+
+        let tuple_length = pyo3::ffi::PyTuple_GET_SIZE(order);
+
+        if tuple_length as usize != dict.len() {
+            return Err(create_pyerr!(
+                pyo3::exceptions::PyValueError,
+                "tuple size isn't equal to dict size"
+            ));
+        }
+
+        for (key, value) in dict.iter() {
+            // SAFETY: key is hashable, so don't worry
+            let hashable = HashablePyObject::try_from_bound(key).unwrap_unchecked();
+            new.insert_unchecked(hashable, value.unbind());
+        }
+
+        if new.order.try_reserve(tuple_length as usize).is_err() {
+            return Err(create_pyerr!(pyo3::exceptions::PyMemoryError));
+        }
+
+        for k in 0..tuple_length {
+            let key = pyo3::ffi::PyTuple_GET_ITEM(order, k);
+            let hashable =
+                HashablePyObject::try_from_pyobject(PyObject::from_borrowed_ptr(py, key), py)?;
+            new.order.push_back(hashable);
+        }
+
+        *self = new;
+
+        Ok(())
     }
 }

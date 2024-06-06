@@ -1,12 +1,12 @@
 use crate::basic::HashablePyObject;
-use crate::{create_pyerr, make_eq_func, make_hasher_func};
+use crate::{create_pyerr, make_eq_func, make_hasher_func, pickle_get_first_objects};
 use core::num::NonZeroUsize;
 use hashbrown::raw::RawTable;
 use pyo3::prelude::*;
 use std::collections::VecDeque;
 use std::time;
 
-pub struct TTLValue(pub PyObject, pub time::Instant);
+pub struct TTLValue(pub PyObject, pub time::SystemTime);
 
 impl TTLValue {
     pub const SIZE: usize = core::mem::size_of::<Self>();
@@ -16,18 +16,38 @@ impl TTLValue {
     pub fn new(val: PyObject, ttl: f32) -> Self {
         TTLValue(
             val,
-            time::Instant::now() + time::Duration::from_secs_f32(ttl),
+            time::SystemTime::now() + time::Duration::from_secs_f32(ttl),
         )
     }
 
     #[inline]
     pub fn expired(&self) -> bool {
-        time::Instant::now() > self.1
+        time::SystemTime::now() > self.1
     }
 
     #[inline]
     pub fn remaining(&self) -> f32 {
-        (self.1 - time::Instant::now()).as_secs_f32()
+        self.1
+            .duration_since(time::SystemTime::now())
+            .map(|x| x.as_secs_f32())
+            .unwrap_or(0.0)
+    }
+
+    #[inline]
+    pub fn timestamp(&self) -> f64 {
+        self.1
+            .duration_since(time::UNIX_EPOCH)
+            .map(|x| x.as_secs_f64())
+            .unwrap_or(0.0)
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn from_timestamp(val: PyObject, timestamp: f64) -> Self {
+        TTLValue(
+            val,
+            time::UNIX_EPOCH + time::Duration::from_secs_f64(timestamp),
+        )
     }
 }
 
@@ -39,6 +59,13 @@ pub struct RawTTLCache {
 }
 
 impl RawTTLCache {
+    /// 1. maxsize
+    /// 2. table
+    /// 3. capacity
+    /// 5. order
+    /// 4. ttl
+    pub const PICKLE_TUPLE_SIZE: isize = 5;
+
     #[inline]
     pub fn new(maxsize: usize, ttl: f32, capacity: usize) -> PyResult<Self> {
         if ttl <= 0.0 {
@@ -128,24 +155,19 @@ impl RawTTLCache {
     }
 
     #[inline]
-    pub unsafe fn insert_unchecked(&mut self, key: HashablePyObject, value: PyObject) {
+    pub unsafe fn insert_unchecked(&mut self, key: HashablePyObject, value: TTLValue) -> bool {
         match self
             .table
             .find_or_find_insert_slot(key.hash, make_eq_func!(key), make_hasher_func!())
         {
             Ok(bucket) => {
-                let _ = std::mem::replace(
-                    unsafe { &mut bucket.as_mut().1 },
-                    TTLValue::new(value, self.ttl),
-                );
+                let _ = std::mem::replace(unsafe { &mut bucket.as_mut().1 }, value);
+                false
             }
             Err(slot) => unsafe {
-                self.table.insert_in_slot(
-                    key.hash,
-                    slot,
-                    (key.clone(), TTLValue::new(value, self.ttl)),
-                );
-                self.order.push_back(key);
+                self.table
+                    .insert_in_slot(key.hash, slot, (key.clone(), value));
+                true
             },
         }
     }
@@ -165,7 +187,9 @@ impl RawTTLCache {
         }
 
         unsafe {
-            self.insert_unchecked(key, value);
+            if self.insert_unchecked(key.clone(), TTLValue::new(value, self.ttl)) {
+                self.order.push_back(key);
+            }
         }
         Ok(())
     }
@@ -282,5 +306,135 @@ impl AsMut<RawTable<(HashablePyObject, TTLValue)>> for RawTTLCache {
     #[inline]
     fn as_mut(&mut self) -> &mut RawTable<(HashablePyObject, TTLValue)> {
         &mut self.table
+    }
+}
+
+impl crate::basic::PickleMethods for RawTTLCache {
+    unsafe fn dumps(&self) -> *mut pyo3::ffi::PyObject {
+        let dict = pyo3::ffi::PyDict_New();
+
+        for pair in self.table.iter() {
+            let (key, val) = pair.as_ref();
+
+            let val_tuple = pyo3::ffi::PyTuple_New(2);
+            let timestamp = pyo3::ffi::PyFloat_FromDouble(val.timestamp());
+
+            pyo3::ffi::PyTuple_SET_ITEM(val_tuple, 0, val.0.as_ptr());
+            pyo3::ffi::PyTuple_SET_ITEM(val_tuple, 1, timestamp);
+
+            pyo3::ffi::PyDict_SetItem(dict, key.object.as_ptr(), val_tuple);
+            pyo3::ffi::Py_XDECREF(val_tuple);
+        }
+
+        let order = pyo3::ffi::PyTuple_New(self.order.len() as isize);
+        for (index, key) in self.order.iter().enumerate() {
+            pyo3::ffi::PyTuple_SET_ITEM(order, index as isize, key.object.as_ptr());
+        }
+
+        let maxsize = pyo3::ffi::PyLong_FromSize_t(self.maxsize.get());
+        let capacity = pyo3::ffi::PyLong_FromSize_t(self.table.capacity());
+        let ttl = pyo3::ffi::PyFloat_FromDouble(self.ttl as f64);
+
+        let tuple = pyo3::ffi::PyTuple_New(Self::PICKLE_TUPLE_SIZE);
+        pyo3::ffi::PyTuple_SET_ITEM(tuple, 0, maxsize);
+        pyo3::ffi::PyTuple_SET_ITEM(tuple, 1, dict);
+        pyo3::ffi::PyTuple_SET_ITEM(tuple, 2, capacity);
+        pyo3::ffi::PyTuple_SET_ITEM(tuple, 3, order);
+        pyo3::ffi::PyTuple_SET_ITEM(tuple, 4, ttl);
+
+        tuple
+    }
+
+    unsafe fn loads(
+        &mut self,
+        state: *mut pyo3::ffi::PyObject,
+        py: pyo3::Python<'_>,
+    ) -> pyo3::PyResult<()> {
+        let (maxsize, iterable, capacity) = pickle_get_first_objects!(py, state);
+
+        let order = {
+            let obj = pyo3::ffi::PyTuple_GET_ITEM(state, 3);
+
+            if pyo3::ffi::PyTuple_CheckExact(obj) != 1 {
+                return Err(create_pyerr!(
+                    pyo3::exceptions::PyTypeError,
+                    "the order object is not an tuple"
+                ));
+            }
+
+            obj
+        };
+
+        let ttl = {
+            let obj = pyo3::ffi::PyTuple_GET_ITEM(state, 4);
+            pyo3::ffi::PyFloat_AsDouble(obj) as f32
+        };
+
+        if let Some(e) = pyo3::PyErr::take(py) {
+            return Err(e);
+        }
+
+        let mut new = Self::new(maxsize, ttl, capacity)?;
+
+        #[cfg(debug_assertions)]
+        let dict: &Bound<pyo3::types::PyDict> = iterable.downcast_bound(py)?;
+        #[cfg(not(debug_assertions))]
+        let dict: &Bound<pyo3::types::PyDict> = iterable.downcast_bound(py).unwrap_unchecked();
+
+        let tuple_length = pyo3::ffi::PyTuple_GET_SIZE(order);
+
+        if tuple_length as usize != dict.len() {
+            return Err(create_pyerr!(
+                pyo3::exceptions::PyValueError,
+                "tuple size isn't equal to dict size"
+            ));
+        }
+
+        for (key, value) in dict.iter() {
+            let value_as_tuple = value.as_ptr();
+
+            if pyo3::ffi::PyTuple_CheckExact(value_as_tuple) != 1 {
+                return Err(create_pyerr!(
+                    pyo3::exceptions::PyTypeError,
+                    "a value in dictionary is not tuple"
+                ));
+            }
+
+            if pyo3::ffi::PyTuple_GET_SIZE(value_as_tuple) != 2 {
+                return Err(create_pyerr!(
+                    pyo3::exceptions::PyTypeError,
+                    "a value in dictionary that's tuple, but its size isn't equal 2"
+                ));
+            }
+
+            let value_0 = pyo3::ffi::PyTuple_GET_ITEM(value_as_tuple, 0);
+            let value_1 = pyo3::ffi::PyTuple_GET_ITEM(value_as_tuple, 1);
+            let timestamp = pyo3::ffi::PyFloat_AsDouble(value_1);
+
+            // SAFETY: key is hashable, so don't worry
+            let hashable = HashablePyObject::try_from_bound(key).unwrap_unchecked();
+
+            new.insert_unchecked(
+                hashable,
+                TTLValue::from_timestamp(PyObject::from_borrowed_ptr(py, value_0), timestamp),
+            );
+        }
+
+        if new.order.try_reserve(tuple_length as usize).is_err() {
+            return Err(create_pyerr!(pyo3::exceptions::PyMemoryError));
+        }
+
+        for k in 0..tuple_length {
+            let key = pyo3::ffi::PyTuple_GET_ITEM(order, k);
+            let hashable =
+                HashablePyObject::try_from_pyobject(PyObject::from_borrowed_ptr(py, key), py)?;
+            new.order.push_back(hashable);
+        }
+
+        new.expire();
+
+        *self = new;
+
+        Ok(())
     }
 }

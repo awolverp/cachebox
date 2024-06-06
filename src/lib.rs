@@ -9,12 +9,15 @@ mod rrcache;
 mod ttlcache;
 mod vttlcache;
 
+/// cachebox core ( written in Rust )
 #[pymodule]
 #[pyo3(name = "_cachebox")]
 fn _cachebox(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    // constants
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.add("__author__", "awolverp")?;
 
+    // classes
     m.add_class::<crate::basic::BaseCacheImpl>()?;
     m.add_class::<crate::cache::Cache>()?;
     m.add_class::<crate::fifocache::FIFOCache>()?;

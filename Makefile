@@ -18,7 +18,7 @@ build-prod:
 
 .PHONY: test-py
 test-py: build-dev
-	python3 -m unittest
+	python3 -m unittest -v
 
 
 .PHONY: test-rs

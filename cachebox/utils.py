@@ -28,7 +28,7 @@ _CacheInfo = collections.namedtuple(
 
 
 def cached(
-    cache: _cachebox.BaseCacheImpl,
+    cache: typing.Union[_cachebox.BaseCacheImpl, dict, None],
     key_maker: typing.Callable[[tuple, dict], typing.Any] = make_key,
     clear_reuse: bool = False,
     info: bool = False,
@@ -36,7 +36,7 @@ def cached(
     """
     Memoize your functions (async functions are supported) ...
 
-    By `cache` param, set your cache and cache policy.
+    By `cache` param, set your cache and cache policy. (If is `None` or `dict`, `FIFOCache` will be used)
 
     By `key_maker` param, you can set your key maker, see examples below.
 
@@ -88,7 +88,7 @@ def cached(
     """
 
     if isinstance(cache, dict) or cache is None:
-        cache = _cachebox.Cache(0)
+        cache = _cachebox.FIFOCache(0)
 
     if type(cache) is type or not isinstance(cache, _cachebox.BaseCacheImpl):
         raise TypeError("we expected cachebox caches, got %r" % (cache,))
@@ -194,16 +194,16 @@ def cached(
 
 
 def cachedmethod(
-    cache: _cachebox.BaseCacheImpl,
+    cache: typing.Union[_cachebox.BaseCacheImpl, dict, None],
     key_maker: typing.Callable[[tuple, dict], typing.Any] = make_key,
     clear_reuse: bool = False,
     info: bool = False,
 ):
     """
-    It works like `cached()`, but you can use it for class methods, because it ignores `self` param.
+    It works like `cached()`, but you can use it for class methods, because it will ignore `self` param.
     """
     if isinstance(cache, dict) or cache is None:
-        cache = _cachebox.Cache(0)
+        cache = _cachebox.FIFOCache(0)
 
     if type(cache) is type or not isinstance(cache, _cachebox.BaseCacheImpl):
         raise TypeError("we expected cachebox caches, got %r" % (cache,))

@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "cachebox"
-version = "3.1.0"
+version = "3.1.1"
 description = "The fastest memoizing and caching Python library written in Rust"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -16,14 +16,23 @@ authors = [
 ]
 
 classifiers = [
-    "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
-    'License :: OSI Approved :: MIT License',
-    'Operating System :: POSIX :: Linux',
-    'Operating System :: Microsoft :: Windows',
-    'Operating System :: MacOS',
-    'Typing :: Typed',
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python",
+    "Programming Language :: Rust",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Typing :: Typed",
 ]
 
 [project.urls]

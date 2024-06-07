@@ -8,7 +8,7 @@
 </p>
 
 <p align=center>
-    <b>The fastest caching Python library written in Rust</b>
+    <em><b>The fastest caching Python library written in Rust</b></em>
 </p>
 
 <p align=center>
@@ -25,7 +25,7 @@ You can easily and powerfully perform caching operations in Python as fast as po
 - 🚀 5-20x faster than other caching libraries ...
 - 📊 Very low memory usage (1/3 of dictionary) ...
 - **(R)** written in Rust
-- 🤝 Support Python 3.8 and above
+- 🤝 Support Python 3.8 and above (PyPy & CPython)
 - 📦 Over 7 cache algorithms are supported
 - 🧶 Completely thread-safe (uses `RwLock`)
 
@@ -227,8 +227,9 @@ assert c == loaded
 assert c.capacity() == loaded.capacity()
 ```
 
-> [!NOTE]
+> [!NOTE]\
 > Added in version 3.1.0
+
 </details>
 
 ## License

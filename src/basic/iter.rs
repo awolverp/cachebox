@@ -4,6 +4,47 @@ use super::HashablePyObject;
 use crate::create_pyerr;
 use pyo3::prelude::*;
 
+unsafe fn call_capacity_method(
+    ptr: *mut pyo3::ffi::PyObject,
+    py: Python<'_>,
+) -> PyResult<*mut pyo3::ffi::PyObject> {
+    let cap_fn_name =
+        std::ffi::CString::new("capacity").expect("cannot call std::ffi::CString::new");
+
+    cfg_if::cfg_if! {
+        if #[cfg(all(Py_3_9, not(any(Py_LIMITED_API, PyPy, GraalPy))))] {
+            Ok(pyo3::ffi::PyObject_CallMethodNoArgs(ptr, cap_fn_name.as_ptr() as *const std::ffi::c_char))
+        } else {
+            let capacity_fn =
+                pyo3::ffi::PyObject_GetAttrString(ptr, cap_fn_name.as_ptr() as *const std::ffi::c_char);
+
+            if capacity_fn.is_null() {
+                return Err(pyo3::PyErr::take(py).unwrap_unchecked());
+            }
+
+            let empty_args = pyo3::ffi::PyTuple_New(0);
+            let result = pyo3::ffi::PyObject_Call(capacity_fn, empty_args, std::ptr::null_mut());
+            pyo3::ffi::Py_XDECREF(empty_args);
+            pyo3::ffi::Py_XDECREF(capacity_fn);
+
+            Ok(result)
+        }
+    }
+}
+
+unsafe fn get_capacity(ptr: *mut pyo3::ffi::PyObject, py: Python<'_>) -> PyResult<usize> {
+    let result = call_capacity_method(ptr, py)?;
+
+    if result.is_null() {
+        return Err(pyo3::PyErr::take(py).unwrap_unchecked());
+    }
+
+    let c = pyo3::ffi::PyLong_AsSize_t(result);
+    pyo3::ffi::Py_XDECREF(result);
+
+    Ok(c)
+}
+
 pub struct SafeRawIter<I> {
     ptr: core::ptr::NonNull<pyo3::ffi::PyObject>,
     capacity: usize,
@@ -31,29 +72,8 @@ impl<I> SafeRawIter<I> {
     }
 
     pub fn next(&mut self, py: Python<'_>) -> PyResult<&I> {
-        let cap_fn_name =
-            std::ffi::CString::new("capacity").expect("cannot call std::ffi::CString::new");
-
-        // call `capacity()` to check changes in cache
-        let (capacity, length) = unsafe {
-            let capacity_fn = pyo3::ffi::PyObject_GetAttrString(
-                self.ptr.as_ptr(),
-                cap_fn_name.as_ptr() as *const std::ffi::c_char,
-            );
-            if capacity_fn.is_null() {
-                return Err(pyo3::PyErr::take(py).unwrap_unchecked());
-            }
-
-            let result = pyo3::ffi::PyObject_CallNoArgs(capacity_fn);
-            if result.is_null() {
-                return Err(pyo3::PyErr::take(py).unwrap_unchecked());
-            }
-
-            let c = pyo3::ffi::PyLong_AsSize_t(result);
-            pyo3::ffi::Py_XDECREF(result);
-
-            (c, pyo3::ffi::PyObject_Size(self.ptr.as_ptr()) as usize)
-        };
+        let capacity = unsafe { get_capacity(self.ptr.as_ptr(), py)? };
+        let length = unsafe { pyo3::ffi::PyObject_Size(self.ptr.as_ptr()) as usize };
 
         if (self.capacity != capacity) || (self.len != length) {
             return Err(create_pyerr!(

@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - `cached` and `cachedmethod` will use `FIFOCache` on default (previously it used `Cache`).
 
+### Fixed
+- Fix undefined behavior on iterators when cache's capacity changed
+
 ## [3.1.0] - 2024-06-06
 ### Added
 - Now supports `pickle`

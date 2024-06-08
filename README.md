@@ -245,4 +245,4 @@ TODO List:
 - [x] Write an API referenece
 - [ ] Add new functions such as `cached_property`.
 - [ ] Add possible methods to implementations.
-- [ ] Make better type-hint for `cached` and `cachedmethod` (if possible).
+- [x] Make better type-hint for `cached` and `cachedmethod` (if possible).

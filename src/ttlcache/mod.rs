@@ -248,10 +248,12 @@ impl TTLCache {
         lock.expire();
 
         let len = lock.as_ref().len();
+        let capacity = lock.as_ref().capacity();
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = ttl_tuple_ptr_iterator::new(crate::basic::iter::SafeRawIter::new(
             slf.as_ptr(),
+            capacity,
             len,
             iter,
         ));
@@ -264,10 +266,11 @@ impl TTLCache {
         lock.expire();
 
         let len = lock.as_ref().len();
+        let capacity = lock.as_ref().capacity();
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = ttl_object_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
+            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), capacity, len, iter),
             0,
         );
 
@@ -279,10 +282,11 @@ impl TTLCache {
         lock.expire();
 
         let len = lock.as_ref().len();
+        let capacity = lock.as_ref().capacity();
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = ttl_object_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
+            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), capacity, len, iter),
             0,
         );
 
@@ -294,10 +298,11 @@ impl TTLCache {
         lock.expire();
 
         let len = lock.as_ref().len();
+        let capacity = lock.as_ref().capacity();
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = ttl_object_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
+            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), capacity, len, iter),
             1,
         );
 
@@ -475,10 +480,10 @@ impl ttl_tuple_ptr_iterator {
         slf
     }
 
-    pub fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<(PyObject, PyObject)> {
-        let mut item = slf.iter.next()?;
+    pub fn __next__(mut slf: PyRefMut<'_, Self>, py: Python<'_>) -> PyResult<(PyObject, PyObject)> {
+        let mut item = slf.iter.next(py)?;
         while item.1.expired() {
-            item = slf.iter.next()?;
+            item = slf.iter.next(py)?;
         }
 
         Ok((item.0.object.clone(), item.1 .0.clone()))
@@ -508,11 +513,11 @@ impl ttl_object_ptr_iterator {
         slf
     }
 
-    pub fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<PyObject> {
+    pub fn __next__(mut slf: PyRefMut<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
         let index = slf.index;
-        let mut item = slf.iter.next()?;
+        let mut item = slf.iter.next(py)?;
         while item.1.expired() {
-            item = slf.iter.next()?;
+            item = slf.iter.next(py)?;
         }
 
         if index == 0 {

@@ -179,7 +179,7 @@ class CacheTestSuiteMixin:
                 obj.setdefault("newkey", 0)
 
     def test_keys_values_items(self):
-        obj = self.cache(10, **self.kwargs)
+        obj = self.cache(100, **self.kwargs)
 
         for i in range(6):
             obj[i] = i * 2
@@ -193,6 +193,21 @@ class CacheTestSuiteMixin:
         with self.assertRaises(RuntimeError):
             for i in obj:
                 del obj[i]
+        
+        for i in range(100):
+            obj[i] = i * 2
+
+        for i in range(50):
+            del obj[i]
+
+        p = iter(obj)
+        next(p)
+
+        obj.shrink_to_fit()
+
+        with self.assertRaises(RuntimeError):
+            next(p)
+        
 
     def test_get(self):
         obj = self.cache(2, **self.kwargs)

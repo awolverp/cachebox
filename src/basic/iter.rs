@@ -6,26 +6,56 @@ use pyo3::prelude::*;
 
 pub struct SafeRawIter<I> {
     ptr: core::ptr::NonNull<pyo3::ffi::PyObject>,
+    capacity: usize,
     pub len: usize,
     raw: parking_lot::Mutex<hashbrown::raw::RawIter<I>>,
 }
 
 impl<I> SafeRawIter<I> {
-    pub fn new(ptr: *mut pyo3::ffi::PyObject, len: usize, raw: hashbrown::raw::RawIter<I>) -> Self {
+    pub fn new(
+        ptr: *mut pyo3::ffi::PyObject,
+        capacity: usize,
+        len: usize,
+        raw: hashbrown::raw::RawIter<I>,
+    ) -> Self {
         unsafe {
             pyo3::ffi::Py_INCREF(ptr);
         }
 
         Self {
             ptr: unsafe { core::ptr::NonNull::new_unchecked(ptr) },
+            capacity,
             len,
             raw: parking_lot::Mutex::new(raw),
         }
     }
 
-    pub fn next(&mut self) -> PyResult<&I> {
-        // SAFETY: we do not need to check error because we sure about implmenetation of the type
-        if self.len != unsafe { pyo3::ffi::PyObject_Length(self.ptr.as_ptr()) as usize } {
+    pub fn next(&mut self, py: Python<'_>) -> PyResult<&I> {
+        let cap_fn_name =
+            std::ffi::CString::new("capacity").expect("cannot call std::ffi::CString::new");
+
+        // call `capacity()` to check changes in cache
+        let (capacity, length) = unsafe {
+            let capacity_fn = pyo3::ffi::PyObject_GetAttrString(
+                self.ptr.as_ptr(),
+                cap_fn_name.as_ptr() as *const std::ffi::c_char,
+            );
+            if capacity_fn.is_null() {
+                return Err(pyo3::PyErr::take(py).unwrap_unchecked());
+            }
+
+            let result = pyo3::ffi::PyObject_CallNoArgs(capacity_fn);
+            if result.is_null() {
+                return Err(pyo3::PyErr::take(py).unwrap_unchecked());
+            }
+
+            let c = pyo3::ffi::PyLong_AsSize_t(result);
+            pyo3::ffi::Py_XDECREF(result);
+
+            (c, pyo3::ffi::PyObject_Size(self.ptr.as_ptr()) as usize)
+        };
+
+        if (self.capacity != capacity) || (self.len != length) {
             return Err(create_pyerr!(
                 pyo3::exceptions::PyRuntimeError,
                 "cache changed size during iteration"
@@ -73,8 +103,8 @@ impl tuple_ptr_iterator {
         slf
     }
 
-    pub fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<(PyObject, PyObject)> {
-        let (k, v) = slf.iter.next()?;
+    pub fn __next__(mut slf: PyRefMut<'_, Self>, py: Python<'_>) -> PyResult<(PyObject, PyObject)> {
+        let (k, v) = slf.iter.next(py)?;
         Ok((k.object.clone(), v.clone()))
     }
 }
@@ -101,12 +131,12 @@ impl object_ptr_iterator {
         slf
     }
 
-    pub fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<PyObject> {
+    pub fn __next__(mut slf: PyRefMut<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
         if slf.index == 0 {
-            let (k, _) = slf.iter.next()?;
+            let (k, _) = slf.iter.next(py)?;
             Ok(k.object.clone())
         } else if slf.index == 1 {
-            let (_, v) = slf.iter.next()?;
+            let (_, v) = slf.iter.next(py)?;
             Ok(v.clone())
         } else {
             #[cfg(debug_assertions)]

@@ -222,10 +222,12 @@ impl LFUCache {
     pub fn items(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<lfu_tuple_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
+        let capacity = lock.as_ref().capacity();
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = lfu_tuple_ptr_iterator::new(crate::basic::iter::SafeRawIter::new(
             slf.as_ptr(),
+            capacity,
             len,
             iter,
         ));
@@ -236,10 +238,11 @@ impl LFUCache {
     pub fn __iter__(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<lfu_object_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
+        let capacity = lock.as_ref().capacity();
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = lfu_object_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
+            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), capacity, len, iter),
             0,
         );
 
@@ -249,10 +252,11 @@ impl LFUCache {
     pub fn keys(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<lfu_object_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
+        let capacity = lock.as_ref().capacity();
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = lfu_object_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
+            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), capacity, len, iter),
             0,
         );
 
@@ -262,10 +266,11 @@ impl LFUCache {
     pub fn values(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<lfu_object_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
+        let capacity = lock.as_ref().capacity();
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = lfu_object_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
+            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), capacity, len, iter),
             1,
         );
 
@@ -388,8 +393,8 @@ impl lfu_tuple_ptr_iterator {
         slf
     }
 
-    pub fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<(PyObject, PyObject)> {
-        let (k, v, _) = slf.iter.next()?;
+    pub fn __next__(mut slf: PyRefMut<'_, Self>, py: Python<'_>) -> PyResult<(PyObject, PyObject)> {
+        let (k, v, _) = slf.iter.next(py)?;
         Ok((k.object.clone(), v.clone()))
     }
 }
@@ -417,12 +422,12 @@ impl lfu_object_ptr_iterator {
         slf
     }
 
-    pub fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<PyObject> {
+    pub fn __next__(mut slf: PyRefMut<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
         if slf.index == 0 {
-            let (k, _, _) = slf.iter.next()?;
+            let (k, _, _) = slf.iter.next(py)?;
             Ok(k.object.clone())
         } else if slf.index == 1 {
-            let (_, v, _) = slf.iter.next()?;
+            let (_, v, _) = slf.iter.next(py)?;
             Ok(v.clone())
         } else {
             #[cfg(debug_assertions)]

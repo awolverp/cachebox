@@ -208,10 +208,11 @@ impl Cache {
     ) -> PyResult<Py<crate::basic::iter::tuple_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
+        let capacity = lock.as_ref().capacity();
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = crate::basic::iter::tuple_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
+            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), capacity, len, iter),
         );
 
         Py::new(py, iter)
@@ -223,10 +224,11 @@ impl Cache {
     ) -> PyResult<Py<crate::basic::iter::object_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
+        let capacity = lock.as_ref().capacity();
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = crate::basic::iter::object_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
+            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), capacity, len, iter),
             0,
         );
 
@@ -239,10 +241,11 @@ impl Cache {
     ) -> PyResult<Py<crate::basic::iter::object_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
+        let capacity = lock.as_ref().capacity();
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = crate::basic::iter::object_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
+            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), capacity, len, iter),
             0,
         );
 
@@ -255,10 +258,11 @@ impl Cache {
     ) -> PyResult<Py<crate::basic::iter::object_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
+        let capacity = lock.as_ref().capacity();
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = crate::basic::iter::object_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), len, iter),
+            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), capacity, len, iter),
             1,
         );
 

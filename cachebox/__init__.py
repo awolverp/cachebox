@@ -23,6 +23,7 @@ from ._cachebox import (
     VTTLCache as VTTLCache,
     __version__ as __version__,
     __author__ as __author__,
+    version_info as version_info,
 )
 
 from .utils import (

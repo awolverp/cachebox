@@ -1,11 +1,14 @@
 """
-The Cache Implementations (written in Rust)
+cachebox core ( written in Rust )
 """
 
 import typing
 
 __version_: str
 __author__: str
+
+version_info: typing.Tuple[int, int, int, bool]
+""" (major, minor, patch, is_beta) """
 
 KT = typing.TypeVar("KT")
 VT = typing.TypeVar("VT")

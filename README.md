@@ -227,8 +227,7 @@ assert c == loaded
 assert c.capacity() == loaded.capacity()
 ```
 
-> [!NOTE]\
-> Added in version 3.1.0
+> **NOTE**: Added in version 3.1.0
 
 </details>
 

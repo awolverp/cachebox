@@ -45,14 +45,14 @@ unsafe fn get_capacity(ptr: *mut pyo3::ffi::PyObject, py: Python<'_>) -> PyResul
     Ok(c)
 }
 
-pub struct SafeRawIter<I> {
+pub struct SafeRawHashMapIter<I> {
     ptr: core::ptr::NonNull<pyo3::ffi::PyObject>,
     capacity: usize,
     pub len: usize,
     raw: parking_lot::Mutex<hashbrown::raw::RawIter<I>>,
 }
 
-impl<I> SafeRawIter<I> {
+impl<I> SafeRawHashMapIter<I> {
     pub fn new(
         ptr: *mut pyo3::ffi::PyObject,
         capacity: usize,
@@ -91,7 +91,7 @@ impl<I> SafeRawIter<I> {
     }
 }
 
-impl<I> Drop for SafeRawIter<I> {
+impl<I> Drop for SafeRawHashMapIter<I> {
     fn drop(&mut self) {
         unsafe {
             pyo3::ffi::Py_DECREF(self.ptr.as_ptr());
@@ -99,16 +99,16 @@ impl<I> Drop for SafeRawIter<I> {
     }
 }
 
-unsafe impl<I> Send for SafeRawIter<I> {}
-unsafe impl<I> Sync for SafeRawIter<I> {}
+unsafe impl<I> Send for SafeRawHashMapIter<I> {}
+unsafe impl<I> Sync for SafeRawHashMapIter<I> {}
 
 #[pyclass(module = "cachebox._cachebox")]
 pub struct tuple_ptr_iterator {
-    iter: SafeRawIter<(HashablePyObject, PyObject)>,
+    iter: SafeRawHashMapIter<(HashablePyObject, PyObject)>,
 }
 
 impl tuple_ptr_iterator {
-    pub fn new(iter: SafeRawIter<(HashablePyObject, PyObject)>) -> Self {
+    pub fn new(iter: SafeRawHashMapIter<(HashablePyObject, PyObject)>) -> Self {
         Self { iter }
     }
 }
@@ -131,12 +131,12 @@ impl tuple_ptr_iterator {
 
 #[pyclass(module = "cachebox._cachebox")]
 pub struct object_ptr_iterator {
-    iter: SafeRawIter<(HashablePyObject, PyObject)>,
+    iter: SafeRawHashMapIter<(HashablePyObject, PyObject)>,
     index: u8,
 }
 
 impl object_ptr_iterator {
-    pub fn new(iter: SafeRawIter<(HashablePyObject, PyObject)>, index: u8) -> Self {
+    pub fn new(iter: SafeRawHashMapIter<(HashablePyObject, PyObject)>, index: u8) -> Self {
         Self { iter, index }
     }
 }

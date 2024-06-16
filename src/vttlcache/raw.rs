@@ -13,7 +13,7 @@ macro_rules! make_eq_func {
 
 macro_rules! sort_keys {
     ($order:expr) => {
-        $order.sort_by(|a, b| {
+        $order.sort_unstable_by(|a, b| {
             let ap = a.expiration();
             let bp = b.expiration();
 
@@ -31,7 +31,8 @@ macro_rules! sort_keys {
     };
 }
 
-#[derive(Clone, Debug)]
+#[cfg_attr(debug_assertions, derive(Clone, Debug))]
+#[cfg_attr(not(debug_assertions), derive(Clone))]
 pub enum VTTLKey {
     NoExpire(HashablePyObject),
     Expire(HashablePyObject, time::SystemTime),

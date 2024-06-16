@@ -1,7 +1,7 @@
 mod raw;
 
 use self::raw::RawLFUCache;
-use crate::basic::iter::SafeRawIter;
+use crate::basic::iter::SafeRawHashMapIter;
 use crate::basic::HashablePyObject;
 use crate::create_pyerr;
 use parking_lot::RwLock;
@@ -225,7 +225,7 @@ impl LFUCache {
         let capacity = lock.as_ref().capacity();
         let iter = unsafe { lock.as_ref().iter() };
 
-        let iter = lfu_tuple_ptr_iterator::new(crate::basic::iter::SafeRawIter::new(
+        let iter = lfu_tuple_ptr_iterator::new(crate::basic::iter::SafeRawHashMapIter::new(
             slf.as_ptr(),
             capacity,
             len,
@@ -242,7 +242,7 @@ impl LFUCache {
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = lfu_object_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), capacity, len, iter),
+            crate::basic::iter::SafeRawHashMapIter::new(slf.as_ptr(), capacity, len, iter),
             0,
         );
 
@@ -256,7 +256,7 @@ impl LFUCache {
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = lfu_object_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), capacity, len, iter),
+            crate::basic::iter::SafeRawHashMapIter::new(slf.as_ptr(), capacity, len, iter),
             0,
         );
 
@@ -270,7 +270,7 @@ impl LFUCache {
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = lfu_object_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), capacity, len, iter),
+            crate::basic::iter::SafeRawHashMapIter::new(slf.as_ptr(), capacity, len, iter),
             1,
         );
 
@@ -374,11 +374,11 @@ impl LFUCache {
 #[allow(non_camel_case_types)]
 #[pyclass(module = "cachebox._cachebox")]
 pub struct lfu_tuple_ptr_iterator {
-    iter: SafeRawIter<(HashablePyObject, PyObject, usize)>,
+    iter: SafeRawHashMapIter<(HashablePyObject, PyObject, usize)>,
 }
 
 impl lfu_tuple_ptr_iterator {
-    pub fn new(iter: SafeRawIter<(HashablePyObject, PyObject, usize)>) -> Self {
+    pub fn new(iter: SafeRawHashMapIter<(HashablePyObject, PyObject, usize)>) -> Self {
         Self { iter }
     }
 }
@@ -402,12 +402,12 @@ impl lfu_tuple_ptr_iterator {
 #[allow(non_camel_case_types)]
 #[pyclass(module = "cachebox._cachebox")]
 pub struct lfu_object_ptr_iterator {
-    iter: SafeRawIter<(HashablePyObject, PyObject, usize)>,
+    iter: SafeRawHashMapIter<(HashablePyObject, PyObject, usize)>,
     index: u8,
 }
 
 impl lfu_object_ptr_iterator {
-    pub fn new(iter: SafeRawIter<(HashablePyObject, PyObject, usize)>, index: u8) -> Self {
+    pub fn new(iter: SafeRawHashMapIter<(HashablePyObject, PyObject, usize)>, index: u8) -> Self {
         Self { iter, index }
     }
 }

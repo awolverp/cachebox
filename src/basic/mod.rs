@@ -42,7 +42,7 @@ impl BaseCacheImpl {
     pub fn __class_getitem__(generics: PyObject) {}
 }
 
-#[derive(Debug)]
+#[cfg_attr(debug_assertions, derive(Debug))]
 pub struct HashablePyObject {
     pub object: pyo3::PyObject,
     pub hash: u64,

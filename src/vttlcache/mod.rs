@@ -1,7 +1,7 @@
 mod raw;
 
 use self::raw::{RawVTTLCache, VTTLKey};
-use crate::basic::iter::SafeRawIter;
+use crate::basic::iter::SafeRawHashMapIter;
 use crate::basic::HashablePyObject;
 use crate::create_pyerr;
 use parking_lot::RwLock;
@@ -261,7 +261,7 @@ impl VTTLCache {
         let capacity = lock.as_ref().capacity();
         let iter = unsafe { lock.as_ref().iter() };
 
-        let iter = vttl_tuple_ptr_iterator::new(crate::basic::iter::SafeRawIter::new(
+        let iter = vttl_tuple_ptr_iterator::new(crate::basic::iter::SafeRawHashMapIter::new(
             slf.as_ptr(),
             capacity,
             len,
@@ -283,7 +283,7 @@ impl VTTLCache {
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = vttl_object_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), capacity, len, iter),
+            crate::basic::iter::SafeRawHashMapIter::new(slf.as_ptr(), capacity, len, iter),
             0,
         );
 
@@ -299,7 +299,7 @@ impl VTTLCache {
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = vttl_object_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), capacity, len, iter),
+            crate::basic::iter::SafeRawHashMapIter::new(slf.as_ptr(), capacity, len, iter),
             0,
         );
 
@@ -315,7 +315,7 @@ impl VTTLCache {
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = vttl_object_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), capacity, len, iter),
+            crate::basic::iter::SafeRawHashMapIter::new(slf.as_ptr(), capacity, len, iter),
             1,
         );
 
@@ -471,11 +471,11 @@ impl VTTLCache {
 #[allow(non_camel_case_types)]
 #[pyclass(module = "cachebox._cachebox")]
 pub struct vttl_tuple_ptr_iterator {
-    iter: SafeRawIter<(VTTLKey, PyObject)>,
+    iter: SafeRawHashMapIter<(VTTLKey, PyObject)>,
 }
 
 impl vttl_tuple_ptr_iterator {
-    pub fn new(iter: SafeRawIter<(VTTLKey, PyObject)>) -> Self {
+    pub fn new(iter: SafeRawHashMapIter<(VTTLKey, PyObject)>) -> Self {
         Self { iter }
     }
 }
@@ -503,12 +503,12 @@ impl vttl_tuple_ptr_iterator {
 #[allow(non_camel_case_types)]
 #[pyclass(module = "cachebox._cachebox")]
 pub struct vttl_object_ptr_iterator {
-    iter: SafeRawIter<(VTTLKey, PyObject)>,
+    iter: SafeRawHashMapIter<(VTTLKey, PyObject)>,
     index: u8,
 }
 
 impl vttl_object_ptr_iterator {
-    pub fn new(iter: SafeRawIter<(VTTLKey, PyObject)>, index: u8) -> Self {
+    pub fn new(iter: SafeRawHashMapIter<(VTTLKey, PyObject)>, index: u8) -> Self {
         Self { iter, index }
     }
 }

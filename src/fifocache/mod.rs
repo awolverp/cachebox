@@ -234,7 +234,7 @@ impl FIFOCache {
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = crate::basic::iter::tuple_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), capacity, len, iter),
+            crate::basic::iter::SafeRawHashMapIter::new(slf.as_ptr(), capacity, len, iter),
         );
 
         Py::new(py, iter)
@@ -250,7 +250,7 @@ impl FIFOCache {
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = crate::basic::iter::object_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), capacity, len, iter),
+            crate::basic::iter::SafeRawHashMapIter::new(slf.as_ptr(), capacity, len, iter),
             0,
         );
 
@@ -267,7 +267,7 @@ impl FIFOCache {
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = crate::basic::iter::object_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), capacity, len, iter),
+            crate::basic::iter::SafeRawHashMapIter::new(slf.as_ptr(), capacity, len, iter),
             0,
         );
 
@@ -284,7 +284,7 @@ impl FIFOCache {
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = crate::basic::iter::object_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), capacity, len, iter),
+            crate::basic::iter::SafeRawHashMapIter::new(slf.as_ptr(), capacity, len, iter),
             1,
         );
 

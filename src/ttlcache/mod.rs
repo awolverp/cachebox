@@ -1,7 +1,7 @@
 mod raw;
 
 use self::raw::{RawTTLCache, TTLValue};
-use crate::basic::iter::SafeRawIter;
+use crate::basic::iter::SafeRawHashMapIter;
 use crate::basic::HashablePyObject;
 use crate::{create_pyerr, make_eq_func, make_hasher_func};
 use parking_lot::RwLock;
@@ -251,7 +251,7 @@ impl TTLCache {
         let capacity = lock.as_ref().capacity();
         let iter = unsafe { lock.as_ref().iter() };
 
-        let iter = ttl_tuple_ptr_iterator::new(crate::basic::iter::SafeRawIter::new(
+        let iter = ttl_tuple_ptr_iterator::new(crate::basic::iter::SafeRawHashMapIter::new(
             slf.as_ptr(),
             capacity,
             len,
@@ -270,7 +270,7 @@ impl TTLCache {
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = ttl_object_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), capacity, len, iter),
+            crate::basic::iter::SafeRawHashMapIter::new(slf.as_ptr(), capacity, len, iter),
             0,
         );
 
@@ -286,7 +286,7 @@ impl TTLCache {
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = ttl_object_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), capacity, len, iter),
+            crate::basic::iter::SafeRawHashMapIter::new(slf.as_ptr(), capacity, len, iter),
             0,
         );
 
@@ -302,7 +302,7 @@ impl TTLCache {
         let iter = unsafe { lock.as_ref().iter() };
 
         let iter = ttl_object_ptr_iterator::new(
-            crate::basic::iter::SafeRawIter::new(slf.as_ptr(), capacity, len, iter),
+            crate::basic::iter::SafeRawHashMapIter::new(slf.as_ptr(), capacity, len, iter),
             1,
         );
 
@@ -461,11 +461,11 @@ impl TTLCache {
 #[allow(non_camel_case_types)]
 #[pyclass(module = "cachebox._cachebox")]
 pub struct ttl_tuple_ptr_iterator {
-    iter: SafeRawIter<(HashablePyObject, TTLValue)>,
+    iter: SafeRawHashMapIter<(HashablePyObject, TTLValue)>,
 }
 
 impl ttl_tuple_ptr_iterator {
-    pub fn new(iter: SafeRawIter<(HashablePyObject, TTLValue)>) -> Self {
+    pub fn new(iter: SafeRawHashMapIter<(HashablePyObject, TTLValue)>) -> Self {
         Self { iter }
     }
 }
@@ -493,12 +493,12 @@ impl ttl_tuple_ptr_iterator {
 #[allow(non_camel_case_types)]
 #[pyclass(module = "cachebox._cachebox")]
 pub struct ttl_object_ptr_iterator {
-    iter: SafeRawIter<(HashablePyObject, TTLValue)>,
+    iter: SafeRawHashMapIter<(HashablePyObject, TTLValue)>,
     index: u8,
 }
 
 impl ttl_object_ptr_iterator {
-    pub fn new(iter: SafeRawIter<(HashablePyObject, TTLValue)>, index: u8) -> Self {
+    pub fn new(iter: SafeRawHashMapIter<(HashablePyObject, TTLValue)>, index: u8) -> Self {
         Self { iter, index }
     }
 }

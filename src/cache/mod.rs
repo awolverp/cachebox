@@ -151,7 +151,7 @@ impl Cache {
         }
     }
 
-    #[pyo3(signature=(key, default=None), text_signature="(key, default=None)")]
+    #[pyo3(signature=(key, default=None))]
     pub fn setdefault(
         &self,
         py: Python<'_>,

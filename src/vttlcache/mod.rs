@@ -112,10 +112,7 @@ impl VTTLCache {
         }
     }
 
-    #[pyo3(
-        signature=(key, default=None),
-        text_signature="(key, default=None)"
-    )]
+    #[pyo3(signature=(key, default=None))]
     pub fn get(
         &self,
         py: Python<'_>,
@@ -166,7 +163,7 @@ impl VTTLCache {
         }
     }
 
-    #[pyo3(signature=(key, default=None), text_signature="(key, default=None)")]
+    #[pyo3(signature=(key, default=None))]
     pub fn pop(
         &self,
         py: Python<'_>,
@@ -421,7 +418,7 @@ impl VTTLCache {
         }
     }
 
-    #[pyo3(signature=(key, default=None), text_signature="(key, default=None)")]
+    #[pyo3(signature=(key, default=None))]
     pub fn pop_with_expire(
         &self,
         py: Python<'_>,

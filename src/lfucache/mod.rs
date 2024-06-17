@@ -92,10 +92,7 @@ impl LFUCache {
         }
     }
 
-    #[pyo3(
-        signature=(key, default=None),
-        text_signature="(key, default=None)"
-    )]
+    #[pyo3(signature=(key, default=None))]
     pub fn get(
         &self,
         py: Python<'_>,
@@ -129,7 +126,7 @@ impl LFUCache {
         self.table.read().as_ref().capacity()
     }
 
-    #[pyo3(signature=(*, reuse=false), text_signature="(*, reuse=False)")]
+    #[pyo3(signature=(*, reuse=false))]
     pub fn clear(&self, reuse: bool) {
         let mut lock = self.table.write();
         let tb = lock.as_mut();
@@ -140,7 +137,7 @@ impl LFUCache {
         }
     }
 
-    #[pyo3(signature=(key, default=None), text_signature="(key, default=None)")]
+    #[pyo3(signature=(key, default=None))]
     pub fn pop(
         &self,
         py: Python<'_>,
@@ -155,7 +152,7 @@ impl LFUCache {
         }
     }
 
-    #[pyo3(signature=(key, default=None), text_signature="(key, default=None)")]
+    #[pyo3(signature=(key, default=None))]
     pub fn setdefault(
         &self,
         py: Python<'_>,

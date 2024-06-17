@@ -231,6 +231,24 @@ assert c.capacity() == loaded.capacity()
 
 </details>
 
+<details>
+    <summary><b>How to copy the caches?</b></summary>
+
+Use `copy.deepcopy` for copying caches. For example:
+```python
+import cachebox, copy
+c = cachebox.LRUCache(100, {i:i for i in range(78)})
+
+copied = copy.deepcopy(c)
+
+assert c == copied
+assert c.capacity() == copied.capacity()
+```
+
+> **NOTE**: Added in version 3.1.0
+
+</details>
+
 ## License
 cachebox is provided under the MIT license. See [LICENSE](LICENSE).
 

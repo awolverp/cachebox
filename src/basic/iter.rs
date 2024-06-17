@@ -4,6 +4,7 @@ use super::HashablePyObject;
 use crate::create_pyerr;
 use pyo3::prelude::*;
 
+/// Calls `capacity()` method
 unsafe fn call_capacity_method(
     ptr: *mut pyo3::ffi::PyObject,
     py: Python<'_>,
@@ -32,6 +33,7 @@ unsafe fn call_capacity_method(
     }
 }
 
+/// Calls `capacity()` method and converts its result to `usize`
 unsafe fn get_capacity(ptr: *mut pyo3::ffi::PyObject, py: Python<'_>) -> PyResult<usize> {
     let result = call_capacity_method(ptr, py)?;
 
@@ -45,6 +47,7 @@ unsafe fn get_capacity(ptr: *mut pyo3::ffi::PyObject, py: Python<'_>) -> PyResul
     Ok(c)
 }
 
+/// Iter around `hashbrown::raw::RawIter<I>` without worry!
 pub struct SafeRawHashMapIter<I> {
     ptr: core::ptr::NonNull<pyo3::ffi::PyObject>,
     capacity: usize,
@@ -102,6 +105,7 @@ impl<I> Drop for SafeRawHashMapIter<I> {
 unsafe impl<I> Send for SafeRawHashMapIter<I> {}
 unsafe impl<I> Sync for SafeRawHashMapIter<I> {}
 
+/// Items iterator
 #[pyclass(module = "cachebox._cachebox")]
 pub struct tuple_ptr_iterator {
     iter: SafeRawHashMapIter<(HashablePyObject, PyObject)>,
@@ -129,6 +133,7 @@ impl tuple_ptr_iterator {
     }
 }
 
+/// Key or value iterator
 #[pyclass(module = "cachebox._cachebox")]
 pub struct object_ptr_iterator {
     iter: SafeRawHashMapIter<(HashablePyObject, PyObject)>,

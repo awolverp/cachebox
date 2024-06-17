@@ -20,6 +20,7 @@ incremental = false
 lto = "fat"
 opt-level = 3
 panic = "abort"
+strip = "symbols"
 
 [dependencies]
 hashbrown = { version = "^0.14", default-features = false, features=["inline-more", "raw"]}

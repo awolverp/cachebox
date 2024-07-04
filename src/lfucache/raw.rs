@@ -126,6 +126,20 @@ impl RawLFUCache {
     }
 
     #[inline]
+    pub fn peek(&self, key: &HashablePyObject) -> Option<&PyObject> {
+        if self.table.is_empty() {
+            return None;
+        }
+
+        self.table
+            .find(key.hash, |(x, _, _)| x.eq(key))
+            .map(|bucket| {
+                let (_, val, _) = unsafe { bucket.as_ref() };
+                val as &PyObject
+            })
+    }
+
+    #[inline]
     pub fn remove(&mut self, key: &HashablePyObject) -> Option<(HashablePyObject, PyObject)> {
         if self.table.is_empty() {
             return None;
@@ -176,8 +190,8 @@ impl RawLFUCache {
     }
 
     #[inline]
-    pub fn least_frequently_used(&self) -> Option<&HashablePyObject> {
-        if self.table.is_empty() {
+    pub fn least_frequently_used(&self, n: usize) -> Option<&HashablePyObject> {
+        if self.table.is_empty() || self.table.len() <= n {
             return None;
         }
 
@@ -186,17 +200,13 @@ impl RawLFUCache {
                 .iter()
                 .map(|bucket| {
                     let (_, _, n) = bucket.as_ref();
-                    (*n, bucket)
+                    (std::cmp::Reverse(*n), bucket)
                 })
                 .collect()
         };
         vector.sort_unstable_by(|(n, _), (m, _)| m.cmp(n));
 
-        #[cfg(debug_assertions)]
-        let (_, least_frequently_used_bucket) = vector.pop().unwrap();
-
-        #[cfg(not(debug_assertions))]
-        let (_, least_frequently_used_bucket) = unsafe { vector.pop().unwrap_unchecked() };
+        let (_, least_frequently_used_bucket) = vector.swap_remove(n);
 
         let (h, _, _) = unsafe { least_frequently_used_bucket.as_ref() };
         Some(h)
@@ -219,6 +229,7 @@ impl AsMut<RawTable<(HashablePyObject, PyObject, usize)>> for RawLFUCache {
 
 impl crate::basic::PickleMethods for RawLFUCache {
     unsafe fn dumps(&self) -> *mut pyo3::ffi::PyObject {
+        // {key: (val, count)}
         let dict = pyo3::ffi::PyDict_New();
 
         for pair in self.table.iter() {

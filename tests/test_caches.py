@@ -193,7 +193,7 @@ class CacheTestSuiteMixin:
         with self.assertRaises(RuntimeError):
             for i in obj:
                 del obj[i]
-        
+
         for i in range(100):
             obj[i] = i * 2
 
@@ -207,7 +207,6 @@ class CacheTestSuiteMixin:
 
         with self.assertRaises(RuntimeError):
             next(p)
-        
 
     def test_get(self):
         obj = self.cache(2, **self.kwargs)
@@ -296,7 +295,10 @@ class CacheTestSuiteMixin:
                 if hasattr(cache1, "popitem_with_expire"):
                     (k1, v1, r1) = cache1.popitem_with_expire()
                     (k2, v2, r2) = cache2.popitem_with_expire()
-                    assert (k1, v1) == (k2, v2), "invalid order: ({}, {}) != ({}, {}) | [{}] and [{}]".format(
+                    assert (k1, v1) == (
+                        k2,
+                        v2,
+                    ), "invalid order: ({}, {}) != ({}, {}) | [{}] and [{}]".format(
                         k1, v1, k2, v2, r1, r2
                     )
                 else:
@@ -314,12 +316,28 @@ class CacheTestSuiteMixin:
 
         # not empty
         c1 = self.cache(maxsize=100, **self.kwargs)
-        c1.update({i: i for i in range(55)})
+        c1.update({i: i for i in range(10)})
 
-        c1[0]
-        c1[0]
-        c1[2]
-        c1[3]
+        for _ in range(10):
+            c1[0]
+        for _ in range(9):
+            c1[1]
+        for _ in range(8):
+            c1[2]
+        for _ in range(7):
+            c1[3]
+        for _ in range(6):
+            c1[4]
+        for _ in range(5):
+            c1[5]
+        for _ in range(4):
+            c1[6]
+        for _ in range(3):
+            c1[7]
+        for _ in range(2):
+            c1[8]
+        for _ in range(1):
+            c1[9]
 
         c2 = pickle.loads(pickle.dumps(c1))
         assert c1 == c2
@@ -374,6 +392,21 @@ class TestFIFOCache(unittest.TestCase, CacheTestSuiteMixin):
         self.assertEqual(2, len(obj))
         self.assertNotIn("age", obj)
 
+    def test_ordered_iter(self):
+        keys = [0, 1, 2]
+        values = [10, 5, 7]
+
+        obj: cachebox.FIFOCache = self.cache(3, zip(keys, values))
+
+        arr = [obj.first(i) for i in range(len(obj))]
+        assert arr == keys
+
+        arr = [obj[obj.first(i)] for i in range(len(obj))]
+        assert arr == values
+
+        arr = [(obj.first(i), obj[obj.first(i)]) for i in range(len(obj))]
+        assert arr == list(zip(keys, values))
+
 
 class TestLFUCache(unittest.TestCase, CacheTestSuiteMixin):
     cache = cachebox.LFUCache
@@ -425,6 +458,35 @@ class TestLFUCache(unittest.TestCase, CacheTestSuiteMixin):
         obj[5] = 4
         self.assertEqual([0, 1, 3, 4, 5], sorted(obj.keys()))
 
+    def test_ordered_iter(self):
+        keys = [0, 1, 2]
+        values = [10, 5, 7]
+
+        obj: cachebox.LFUCache = self.cache(3, zip(keys, values))
+
+        obj[1]
+        obj[0]
+        obj[0]
+        obj[2]
+        obj[2]
+        obj[2]
+
+        # sort again keys values
+        keys = [1, 0, 2]
+        values = [5, 10, 7]
+
+        arr = [obj.least_frequently_used(i) for i in range(len(obj))]
+        assert arr == keys, "{} != {}".format(arr, keys)
+
+        arr = [obj.peek(obj.least_frequently_used(i)) for i in range(len(obj))]
+        assert arr == values, "{} != {}".format(arr, values)
+
+        arr = [
+            (obj.least_frequently_used(i), obj.peek(obj.least_frequently_used(i)))
+            for i in range(len(obj))
+        ]
+        assert arr == list(zip(keys, values)), "{} != {}".format(arr, list(zip(keys, values)))
+
 
 class TestLRUCache(unittest.TestCase, CacheTestSuiteMixin):
     cache = cachebox.LRUCache
@@ -449,6 +511,31 @@ class TestLRUCache(unittest.TestCase, CacheTestSuiteMixin):
 
         obj[5] = 5
         self.assertNotIn(2, obj)
+
+    def test_ordered_iter(self):
+        keys = [0, 1, 2]
+        values = [10, 5, 7]
+
+        obj: cachebox.LRUCache = self.cache(3, zip(keys, values))
+
+        obj[1]
+        obj[0]
+
+        # sort again keys values
+        keys = [2, 1, 0]
+        values = [7, 5, 10]
+
+        arr = [obj.least_recently_used(i) for i in range(len(obj))]
+        assert arr == keys, "{} != {}".format(arr, keys)
+
+        arr = [obj.peek(obj.least_recently_used(i)) for i in range(len(obj))]
+        assert arr == values, "{} != {}".format(arr, values)
+
+        arr = [
+            (obj.least_recently_used(i), obj.peek(obj.least_recently_used(i)))
+            for i in range(len(obj))
+        ]
+        assert arr == list(zip(keys, values)), "{} != {}".format(arr, list(zip(keys, values)))
 
 
 class TestRRCache(unittest.TestCase, CacheTestSuiteMixin):
@@ -532,22 +619,21 @@ class TestVTTLCache(unittest.TestCase, CacheTestSuiteMixin):
         value, dur = obj.get_with_expire("no-exists", "value")
         self.assertEqual("value", value)
         self.assertEqual(0, dur)
-    
+
     def test_pickle(self, co=True):
         super().test_pickle(co)
 
         # test expire
         c1 = cachebox.VTTLCache(10)
-        c1.update({i:i for i in range(5)}, 3)
+        c1.update({i: i for i in range(5)}, 3)
         time.sleep(1)
-        c1.update({i+5:i+5 for i in range(5)}, 5)
-        
+        c1.update({i + 5: i + 5 for i in range(5)}, 5)
+
         byt = pickle.dumps(c1)
         time.sleep(2)
         c2 = pickle.loads(byt)
 
         assert len(c2) == 5, "{}".format(len(c2))
-
 
 
 class TestTTLCache(unittest.TestCase, CacheTestSuiteMixin):
@@ -610,12 +696,27 @@ class TestTTLCache(unittest.TestCase, CacheTestSuiteMixin):
 
         # test expire
         c1 = cachebox.TTLCache(10, 3)
-        c1.update({i:i for i in range(5)})
+        c1.update({i: i for i in range(5)})
         time.sleep(1)
-        c1.update({i+5:i+5 for i in range(5)})
-        
+        c1.update({i + 5: i + 5 for i in range(5)})
+
         byt = pickle.dumps(c1)
         time.sleep(2)
         c2 = pickle.loads(byt)
 
         assert len(c2) == 5
+
+    def test_ordered_iter(self):
+        keys = [0, 1, 2]
+        values = [10, 5, 7]
+
+        obj: cachebox.TTLCache = self.cache(3, 10, zip(keys, values))
+
+        arr = [obj.first(i) for i in range(len(obj))]
+        assert arr == keys
+
+        arr = [obj[obj.first(i)] for i in range(len(obj))]
+        assert arr == values
+
+        arr = [(obj.first(i), obj[obj.first(i)]) for i in range(len(obj))]
+        assert arr == list(zip(keys, values))

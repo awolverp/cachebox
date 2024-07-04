@@ -142,6 +142,21 @@ impl RawLRUCache {
     }
 
     #[inline]
+    pub fn peek(&self, key: &HashablePyObject) -> Option<&PyObject> {
+        if self.table.is_empty() {
+            return None;
+        }
+
+        match self.table.find(key.hash, make_eq_func!(key)) {
+            Some(bucket) => {
+                let (_, val) = unsafe { bucket.as_ref() };
+                Some(val)
+            }
+            None => None,
+        }
+    }
+
+    #[inline]
     pub fn remove(&mut self, key: &HashablePyObject) -> Option<(HashablePyObject, PyObject)> {
         if self.table.is_empty() {
             return None;

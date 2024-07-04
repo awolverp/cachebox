@@ -107,6 +107,21 @@ impl LFUCache {
         }
     }
 
+    #[pyo3(signature=(key, default=None))]
+    pub fn peek(
+        &self,
+        py: Python<'_>,
+        key: PyObject,
+        default: Option<PyObject>,
+    ) -> PyResult<PyObject> {
+        let hashable = HashablePyObject::try_from_pyobject(key, py)?;
+        let lock = self.table.read();
+        match lock.peek(&hashable) {
+            Some(x) => Ok(x.clone()),
+            None => Ok(default.unwrap_or_else(|| py.None())),
+        }
+    }
+
     pub fn __delitem__(&self, py: Python<'_>, key: PyObject) -> PyResult<()> {
         let hashable = HashablePyObject::try_from_pyobject(key, py)?;
         let mut lock = self.table.write();
@@ -339,9 +354,10 @@ impl LFUCache {
         t.as_mut().clear();
     }
 
-    pub fn least_frequently_used(&self) -> Option<PyObject> {
+    #[pyo3(signature=(n=0))]
+    pub fn least_frequently_used(&self, n: usize) -> Option<PyObject> {
         let lock = self.table.read();
-        lock.least_frequently_used().map(|h| h.object.clone())
+        lock.least_frequently_used(n).map(|h| h.object.clone())
     }
 
     pub fn __getstate__(&self, py: Python<'_>) -> PyObject {

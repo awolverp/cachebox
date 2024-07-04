@@ -359,9 +359,18 @@ impl FIFOCache {
         t.order_mut().clear();
     }
 
-    pub fn first(&self) -> Option<PyObject> {
+    #[pyo3(signature=(n=0))]
+    pub fn first(&self, n: usize) -> Option<PyObject> {
         let lock = self.table.read();
-        let h = lock.first()?;
+
+        let h = {
+            if n == 0 {
+                lock.first()?
+            } else {
+                lock.order_ref().get(n)?
+            }
+        };
+
         Some(h.object.clone())
     }
 

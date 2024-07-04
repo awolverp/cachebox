@@ -293,6 +293,16 @@ impl RawTTLCache {
 
         Ok(())
     }
+
+    #[inline]
+    pub fn first(&self) -> Option<&HashablePyObject> {
+        self.order.front()
+    }
+
+    #[inline]
+    pub fn last(&self) -> Option<&HashablePyObject> {
+        self.order.back()
+    }
 }
 
 impl AsRef<RawTable<(HashablePyObject, TTLValue)>> for RawTTLCache {

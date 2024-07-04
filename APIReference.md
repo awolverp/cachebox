@@ -634,6 +634,18 @@ for (key, value) in cache.items():
 # ...
 ```
 
+Ordered Example:
+```python
+cache = cachebox.FIFOCache(3, {i:i for i in range(3)})
+for i in range(len(cache)):
+    key = cache.first(i)
+    print(key, cache[key])
+
+# (0, 0)
+# (1, 1)
+# (2, 2)
+```
+
 ### cachebox.FIFOCache.keys
 Returns an iterable object of the cache's keys.
 
@@ -651,6 +663,17 @@ for key in cache.keys():
 # ...
 ```
 
+Ordered Example:
+```python
+cache = cachebox.FIFOCache(3, {i:i for i in range(3)})
+for i in range(len(cache)):
+    print(cache.first(i))
+
+# 0
+# 1
+# 2
+```
+
 ### cachebox.FIFOCache.values
 Returns an iterable object of the cache's values.
 
@@ -666,6 +689,18 @@ for key in cache.values():
 # 5
 # 0
 # ...
+```
+
+Ordered Example::
+```python
+cache = cachebox.FIFOCache(3, {i:i for i in range(3)})
+for i in range(len(cache)):
+    key = cache.first(i)
+    print(cache[key])
+
+# 0
+# 1
+# 2
 ```
 
 ### cachebox.FIFOCache.first
@@ -791,7 +826,7 @@ assert cache["key"] == "value"
 - key
 - default (*optional*)
 
-Searches for a key-value in the cache and returns it.
+Searches for a key-value in the cache and returns it (and increase the frequently counter).
 
 Unlike `__getitem__`, if the key-value not found, returns `default`.
 
@@ -802,6 +837,23 @@ cache.insert("key", "value")
 assert cache.get("key") == "value"
 assert cache.get("no-exists") is None
 assert cache.get("no-exists", "default") == "default"
+```
+
+### cachebox.LFUCache.peek
+
+**Parameters**:
+- key
+- default (*optional*)
+
+Searches for a key-value in the cache and returns it (without increasing the frequently counter).
+
+Example:
+```python
+cache = cachebox.LFUCache(0)
+cache.insert("key", "value")
+assert cache.peek("key") == "value"
+assert cache.peek("no-exists") is None
+assert cache.peek("no-exists", "default") == "default"
 ```
 
 ### cachebox.LFUCache.capacity
@@ -930,6 +982,18 @@ for (key, value) in cache.items():
 # ...
 ```
 
+Ordered Example:
+```python
+cache = cachebox.LFUCache(3, {i:i for i in range(3)})
+for i in range(len(cache)):
+    key = cache.least_frequently_used(i)
+    print(key, cache.peek(key))
+
+# (0, 0)
+# (1, 1)
+# (2, 2)
+```
+
 ### cachebox.LFUCache.keys
 Returns an iterable object of the cache's keys.
 
@@ -947,6 +1011,17 @@ for key in cache.keys():
 # ...
 ```
 
+Ordered Example:
+```python
+cache = cachebox.LFUCache(3, {i:i for i in range(3)})
+for i in range(len(cache)):
+    print(cache.least_frequently_used(i))
+
+# 0
+# 1
+# 2
+```
+
 ### cachebox.LFUCache.values
 Returns an iterable object of the cache's values.
 
@@ -962,6 +1037,18 @@ for key in cache.values():
 # 5
 # 0
 # ...
+```
+
+Ordered Example::
+```python
+cache = cachebox.LFUCache(3, {i:i for i in range(3)})
+for i in range(len(cache)):
+    key = cache.least_frequently_used(i)
+    print(cache.peek(key))
+
+# 0
+# 1
+# 2
 ```
 
 ### cachebox.LFUCache.least_frequently_used
@@ -1333,7 +1420,7 @@ assert cache["key"] == "value"
 - key
 - default (*optional*)
 
-Searches for a key-value in the cache and returns it.
+Searches for a key-value in the cache and returns it (and moves the key to recently used).
 
 Unlike `__getitem__`, if the key-value not found, returns `default`.
 
@@ -1344,6 +1431,23 @@ cache.insert("key", "value")
 assert cache.get("key") == "value"
 assert cache.get("no-exists") is None
 assert cache.get("no-exists", "default") == "default"
+```
+
+### cachebox.LRUCache.peek
+
+**Parameters**:
+- key
+- default (*optional*)
+
+Searches for a key-value in the cache and returns it (without moving the key to recently used).
+
+Example:
+```python
+cache = cachebox.LRUCache(0)
+cache.insert("key", "value")
+assert cache.peek("key") == "value"
+assert cache.peek("no-exists") is None
+assert cache.peek("no-exists", "default") == "default"
 ```
 
 ### cachebox.LRUCache.capacity
@@ -1472,6 +1576,18 @@ for (key, value) in cache.items():
 # ...
 ```
 
+Ordered Example:
+```python
+cache = cachebox.LRUCache(3, {i:i for i in range(3)})
+for i in range(len(cache)):
+    key = cache.least_recently_used(i)
+    print(key, cache.peek(key))
+
+# (0, 0)
+# (1, 1)
+# (2, 2)
+```
+
 ### cachebox.LRUCache.keys
 Returns an iterable object of the cache's keys.
 
@@ -1487,6 +1603,17 @@ for key in cache.keys():
 # 5
 # 0
 # ...
+```
+
+Ordered Example::
+```python
+cache = cachebox.LRUCache(3, {i:i for i in range(3)})
+for i in range(len(cache)):
+    print(cache.least_recently_used(i))
+
+# 0
+# 1
+# 2
 ```
 
 ### cachebox.LRUCache.values
@@ -1506,6 +1633,17 @@ for key in cache.values():
 # ...
 ```
 
+Ordered Example:
+```python
+cache = cachebox.LRUCache(3, {i:i for i in range(3)})
+for i in range(len(cache)):
+    key = cache.least_recently_used(i)
+    print(cache.peek(key))
+
+# 0
+# 1
+# 2
+```
 
 ### cachebox.LRUCache.least_recently_used
 Returns the key in the cache that has not been accessed in the longest time.
@@ -1760,6 +1898,18 @@ for (key, value) in cache.items():
 # ...
 ```
 
+Ordered Example:
+```python
+cache = cachebox.TTLCache(3, 5, {i:i for i in range(3)})
+for i in range(len(cache)):
+    key = cache.first(i)
+    print(key, cache[key])
+
+# (0, 0)
+# (1, 1)
+# (2, 2)
+```
+
 ### cachebox.TTLCache.keys
 Returns an iterable object of the cache's keys.
 
@@ -1777,6 +1927,17 @@ for key in cache.keys():
 # ...
 ```
 
+Ordered Example:
+```python
+cache = cachebox.TTLCache(3, 5, {i:i for i in range(3)})
+for i in range(len(cache)):
+    print(cache.first(i))
+
+# 0
+# 1
+# 2
+```
+
 ### cachebox.TTLCache.values
 Returns an iterable object of the cache's values.
 
@@ -1792,6 +1953,18 @@ for key in cache.values():
 # 5
 # 0
 # ...
+```
+
+Ordered Example:
+```python
+cache = cachebox.TTLCache(3, 5, {i:i for i in range(3)})
+for i in range(len(cache)):
+    key = cache.first(i)
+    print(cache[key])
+
+# 0
+# 1
+# 2
 ```
 
 ### cachebox.TTLCache.get_with_expire
@@ -1841,6 +2014,35 @@ assert remaining == 0.0
 
 ### cachebox.TTLCache.popitem_with_expire
 Works like `.popitem()`, but also returns the remaining time-to-live.
+
+
+### cachebox.TTLCache.first
+Returns the oldest key from the cache; this is the one which will be removed by `popitem()`.
+
+Example:
+```python
+cache = cachebox.TTLCache(3, ttl=3)
+cache.insert(1, 1)
+cache.insert(2, 2)
+cache.insert(3, 3)
+
+assert cache.first() == 1
+assert cache.popitem() == (1, 1)
+```
+
+### cachebox.TTLCache.last
+Returns the newest key from the cache.
+
+Example:
+```python
+cache = cachebox.TTLCache(3, ttl=3)
+cache.insert(1, 1)
+cache.insert(2, 2)
+assert cache.last() == 2
+
+cache.insert(3, 3)
+assert cache.last() == 3
+```
 
 -------
 

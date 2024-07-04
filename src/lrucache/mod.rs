@@ -105,6 +105,21 @@ impl LRUCache {
         }
     }
 
+    #[pyo3(signature=(key, default=None))]
+    pub fn peek(
+        &self,
+        py: Python<'_>,
+        key: PyObject,
+        default: Option<PyObject>,
+    ) -> PyResult<PyObject> {
+        let hashable = HashablePyObject::try_from_pyobject(key, py)?;
+        let lock = self.table.read();
+        match lock.peek(&hashable) {
+            Some(x) => Ok(x.clone()),
+            None => Ok(default.unwrap_or_else(|| py.None())),
+        }
+    }
+
     pub fn __delitem__(&self, py: Python<'_>, key: PyObject) -> PyResult<()> {
         let hashable = HashablePyObject::try_from_pyobject(key, py)?;
         let mut lock = self.table.write();
@@ -359,9 +374,18 @@ impl LRUCache {
         t.order_mut().clear();
     }
 
-    pub fn least_recently_used(&self) -> Option<PyObject> {
+    #[pyo3(signature=(n=0))]
+    pub fn least_recently_used(&self, n: usize) -> Option<PyObject> {
         let lock = self.table.read();
-        let h = lock.least_recently_used()?;
+
+        let h = {
+            if n == 0 {
+                lock.least_recently_used()?
+            } else {
+                lock.order_ref().get(n)?
+            }
+        };
+
         Some(h.object.clone())
     }
 

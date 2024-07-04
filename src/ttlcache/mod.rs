@@ -431,6 +431,27 @@ impl TTLCache {
         Ok((k.object, v.0, d))
     }
 
+    #[pyo3(signature=(n=0))]
+    pub fn first(&self, n: usize) -> Option<PyObject> {
+        let lock = self.table.read();
+
+        let h = {
+            if n == 0 {
+                lock.first()?
+            } else {
+                lock.order_ref().get(n)?
+            }
+        };
+
+        Some(h.object.clone())
+    }
+
+    pub fn last(&self) -> Option<PyObject> {
+        let lock = self.table.read();
+        let h = lock.last()?;
+        Some(h.object.clone())
+    }
+
     pub fn __getstate__(&self, py: Python<'_>) -> PyObject {
         use crate::basic::PickleMethods;
 

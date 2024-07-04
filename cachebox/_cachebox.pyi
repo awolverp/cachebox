@@ -568,6 +568,17 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
             # (3, 3)
             # (9, 9)
             # ...
+
+        Ordered Example::
+
+            cache = cachebox.FIFOCache(3, {i:i for i in range(3)})
+            for i in range(len(cache)):
+                key = cache.first(i)
+                print(key, cache[key])
+
+            # (0, 0)
+            # (1, 1)
+            # (2, 2)
         """
         ...
 
@@ -587,6 +598,16 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
             # 5
             # 0
             # ...
+
+        Ordered Example::
+
+            cache = cachebox.FIFOCache(3, {i:i for i in range(3)})
+            for i in range(len(cache)):
+                print(cache.first(i))
+
+            # 0
+            # 1
+            # 2
         """
         ...
 
@@ -606,10 +627,21 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
             # 5
             # 0
             # ...
+
+        Ordered Example::
+
+            cache = cachebox.FIFOCache(3, {i:i for i in range(3)})
+            for i in range(len(cache)):
+                key = cache.first(i)
+                print(cache[key])
+
+            # 0
+            # 1
+            # 2
         """
         ...
 
-    def first(self) -> typing.Optional[KT]:
+    def first(self, n: int = 0) -> typing.Optional[KT]:
         """
         Returns the first key in cache; this is the one which will be removed by `popitem()`.
 
@@ -735,7 +767,7 @@ class LFUCache(BaseCacheImpl[KT, VT]):
 
     def get(self, key: KT, default: DT = None) -> typing.Union[VT, DT]:
         """
-        Searches for a key-value in the cache and returns it.
+        Searches for a key-value in the cache and returns it (and increase the frequently counter).
 
         Unlike `__getitem__`, if the key-value not found, returns `default`.
 
@@ -746,6 +778,20 @@ class LFUCache(BaseCacheImpl[KT, VT]):
             assert cache.get("key") == "value"
             assert cache.get("no-exists") is None
             assert cache.get("no-exists", "default") == "default"
+        """
+        ...
+
+    def peek(self, key: KT, default: DT = None) -> typing.Union[VT, DT]:
+        """
+        Searches for a key-value in the cache and returns it (without increasing the frequently counter).
+
+        Example::
+
+            cache = cachebox.LFUCache(0)
+            cache.insert("key", "value")
+            assert cache.peek("key") == "value"
+            assert cache.peek("no-exists") is None
+            assert cache.peek("no-exists", "default") == "default"
         """
         ...
 
@@ -869,6 +915,17 @@ class LFUCache(BaseCacheImpl[KT, VT]):
             # (3, 3)
             # (9, 9)
             # ...
+
+        Ordered Example::
+
+            cache = cachebox.LFUCache(3, {i:i for i in range(3)})
+            for i in range(len(cache)):
+                key = cache.least_frequently_used(i)
+                print(key, cache.peek(key))
+
+            # (0, 0)
+            # (1, 1)
+            # (2, 2)
         """
         ...
 
@@ -889,6 +946,16 @@ class LFUCache(BaseCacheImpl[KT, VT]):
             # 5
             # 0
             # ...
+
+        Ordered Example::
+
+            cache = cachebox.LFUCache(3, {i:i for i in range(3)})
+            for i in range(len(cache)):
+                print(cache.least_frequently_used(i))
+
+            # 0
+            # 1
+            # 2
         """
         ...
 
@@ -908,10 +975,21 @@ class LFUCache(BaseCacheImpl[KT, VT]):
             # 5
             # 0
             # ...
+
+        Ordered Example::
+
+            cache = cachebox.LFUCache(3, {i:i for i in range(3)})
+            for i in range(len(cache)):
+                key = cache.least_frequently_used(i)
+                print(cache.peek(key))
+
+            # 0
+            # 1
+            # 2
         """
         ...
 
-    def least_frequently_used(self) -> typing.Optional[KT]:
+    def least_frequently_used(self, n: int = 0) -> typing.Optional[KT]:
         """
         Returns the key in the cache that has been accessed the least, regardless of time.
 
@@ -929,6 +1007,9 @@ class LFUCache(BaseCacheImpl[KT, VT]):
             cache[2]
 
             assert cache.least_frequently_used() == 2
+            assert cache.least_frequently_used(0) == 2
+            assert cache.least_frequently_used(1) == 1
+            assert cache.least_frequently_used(2) is None # 2 is out of bound
         """
         ...
 
@@ -1283,7 +1364,7 @@ class LRUCache(BaseCacheImpl[KT, VT]):
 
     def get(self, key: KT, default: DT = None) -> typing.Union[VT, DT]:
         """
-        Searches for a key-value in the cache and returns it.
+        Searches for a key-value in the cache and returns it (and moves the key to recently used).
 
         Unlike `__getitem__`, if the key-value not found, returns `default`.
 
@@ -1294,6 +1375,20 @@ class LRUCache(BaseCacheImpl[KT, VT]):
             assert cache.get("key") == "value"
             assert cache.get("no-exists") is None
             assert cache.get("no-exists", "default") == "default"
+        """
+        ...
+
+    def peek(self, key: KT, default: DT = None) -> typing.Union[VT, DT]:
+        """
+        Searches for a key-value in the cache and returns it (without moving the key to recently used).
+
+        Example::
+
+            cache = cachebox.LRUCache(0)
+            cache.insert("key", "value")
+            assert cache.peek("key") == "value"
+            assert cache.peek("no-exists") is None
+            assert cache.peek("no-exists", "default") == "default"
         """
         ...
 
@@ -1417,6 +1512,17 @@ class LRUCache(BaseCacheImpl[KT, VT]):
             # (3, 3)
             # (9, 9)
             # ...
+
+        Ordered Example::
+
+            cache = cachebox.LRUCache(3, {i:i for i in range(3)})
+            for i in range(len(cache)):
+                key = cache.least_recently_used(i)
+                print(key, cache.peek(key))
+
+            # (0, 0)
+            # (1, 1)
+            # (2, 2)
         """
         ...
 
@@ -1436,6 +1542,16 @@ class LRUCache(BaseCacheImpl[KT, VT]):
             # 5
             # 0
             # ...
+
+        Ordered Example::
+
+            cache = cachebox.LRUCache(3, {i:i for i in range(3)})
+            for i in range(len(cache)):
+                print(cache.least_recently_used(i))
+
+            # 0
+            # 1
+            # 2
         """
         ...
 
@@ -1455,10 +1571,21 @@ class LRUCache(BaseCacheImpl[KT, VT]):
             # 5
             # 0
             # ...
+
+        Ordered Example::
+
+            cache = cachebox.LRUCache(3, {i:i for i in range(3)})
+            for i in range(len(cache)):
+                key = cache.least_recently_used(i)
+                print(cache.peek(key))
+
+            # 0
+            # 1
+            # 2
         """
         ...
 
-    def least_recently_used(self) -> typing.Optional[KT]:
+    def least_recently_used(self, n: int = 0) -> typing.Optional[KT]:
         """
         Returns the key in the cache that has not been accessed in the longest time.
 
@@ -1714,6 +1841,17 @@ class TTLCache(BaseCacheImpl[KT, VT]):
             # (3, 3)
             # (9, 9)
             # ...
+
+        Ordered Example::
+
+            cache = cachebox.TTLCache(3, 5, {i:i for i in range(3)})
+            for i in range(len(cache)):
+                key = cache.first(i)
+                print(key, cache[key])
+
+            # (0, 0)
+            # (1, 1)
+            # (2, 2)
         """
         ...
 
@@ -1734,6 +1872,16 @@ class TTLCache(BaseCacheImpl[KT, VT]):
             # 5
             # 0
             # ...
+
+        Ordered Example::
+
+            cache = cachebox.TTLCache(3, 5, {i:i for i in range(3)})
+            for i in range(len(cache)):
+                print(cache.first(i))
+
+            # 0
+            # 1
+            # 2
         """
         ...
 
@@ -1753,6 +1901,17 @@ class TTLCache(BaseCacheImpl[KT, VT]):
             # 5
             # 0
             # ...
+
+        Ordered Example::
+
+            cache = cachebox.TTLCache(3, 5, {i:i for i in range(3)})
+            for i in range(len(cache)):
+                key = cache.first(i)
+                print(cache[key])
+
+            # 0
+            # 1
+            # 2
         """
         ...
 
@@ -1801,6 +1960,38 @@ class TTLCache(BaseCacheImpl[KT, VT]):
     def popitem_with_expire(self) -> typing.Tuple[VT, DT, float]:
         """
         Works like `.popitem()`, but also returns the remaining time-to-live.
+        """
+        ...
+
+    def first(self, n: int = 0) -> typing.Optional[KT]:
+        """
+        Returns the oldest key from the cache; this is the one which will be removed by `popitem()`.
+
+        Example::
+
+            cache = cachebox.TTLCache(3, ttl=3)
+            cache.insert(1, 1)
+            cache.insert(2, 2)
+            cache.insert(3, 3)
+
+            assert cache.first() == 1
+            assert cache.popitem() == (1, 1)
+        """
+        ...
+
+    def last(self) -> typing.Optional[KT]:
+        """
+        Returns the newest key from the cache.
+
+        Example::
+
+            cache = cachebox.TTLCache(3, ttl=3)
+            cache.insert(1, 1)
+            cache.insert(2, 2)
+            assert cache.last() == 2
+
+            cache.insert(3, 3)
+            assert cache.last() == 3
         """
         ...
 

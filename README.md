@@ -22,9 +22,10 @@
 You can easily and powerfully perform caching operations in Python as fast as possible.
 
 **Features**:
-- 🚀 5-20x faster than other caching libraries ...
-- 📊 Very low memory usage (1/3 of dictionary) ...
-- **(R)** written in Rust
+- 🚀 5-20x faster than other caching libraries
+- 📊 Very low memory usage (1/3 of dictionary)
+- 🔥 Full-feature and easy-to-use
+- **(R)** written in Rust with high-performance
 - 🤝 Support Python 3.8 and above (PyPy & CPython)
 - 📦 Over 7 cache algorithms are supported
 - 🧶 Completely thread-safe (uses `RwLock`)
@@ -191,9 +192,18 @@ print(repr(c))
 ## FAQ
 
 <details>
-    <summary><b>Can we set maxsize to zero?</b></summary>
+    <summary><b>How do I preserve order while iterating?</b></summary>
 
-Yes, if you pass zero to maxsize, means there's no limit for items.
+On default, `.items()`, `.keys()` and `.values()` methods are unordered, so you have to do some more works to
+have a ordered iteration.
+
+For `FIFOCache`: [See here](APIReference.md#cacheboxfifocacheitems)\
+For `LFUCache`: [See here](APIReference.md#cacheboxlfucacheitems)\
+For `LRUCache`: [See here](APIReference.md#cacheboxlrucacheitems)\
+For `TTLCache`: [See here](APIReference.md#cacheboxttlcacheitems)
+
+> **NOTE**: Added in version 3.3.0
+
 </details>
 
 <details>
@@ -249,6 +259,27 @@ assert c.capacity() == copied.capacity()
 
 </details>
 
+<details>
+    <summary><b>How to save caches before exiting the app?</b></summary>
+
+You can use `atexit` (or also `signal`) and `pickle` module to do it.
+
+For example:
+```python
+import cachebox, atexit, pickle
+cache = cachebox.TTLCache(50, 10)
+
+def _save_cache(c, filename):
+    with open(filename, "wb") as fd:
+        pickle.dump(c, fd)
+
+atexit.register(_save_cache, cache, "cache.pickle")
+```
+
+> **NOTE**: Added in version 3.1.0
+
+</details>
+
 ## License
 cachebox is provided under the MIT license. See [LICENSE](LICENSE).
 
@@ -261,5 +292,5 @@ TODO List:
 - [x] Rewrite README.md
 - [x] Write an API referenece
 - [ ] Add new functions such as `cached_property`.
-- [ ] Add possible methods to implementations.
+- [x] Add possible methods to implementations.
 - [x] Make better type-hint for `cached` and `cachedmethod` (if possible).

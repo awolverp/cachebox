@@ -164,7 +164,7 @@ impl RawLFUCache {
     }
 
     #[inline]
-    pub fn extend_from_dict(&mut self, dict: &Bound<'_, pyo3::types::PyDict>) -> PyResult<()> {
+    fn extend_from_dict(&mut self, dict: &Bound<'_, pyo3::types::PyDict>) -> PyResult<()> {
         for (key, value) in dict.iter() {
             let hashable = HashablePyObject::try_from_bound(key)?;
             self.insert(hashable, value.unbind())?;
@@ -174,16 +174,23 @@ impl RawLFUCache {
     }
 
     #[inline]
-    pub fn extend_from_iter(
-        &mut self,
-        obj: pyo3::Borrowed<'_, '_, PyAny>,
-        py: Python<'_>,
-    ) -> PyResult<()> {
+    fn extend_from_iter(&mut self, obj: &pyo3::Bound<'_, PyAny>, py: Python<'_>) -> PyResult<()> {
         for pair in obj.iter()? {
             let (key, value): (Py<PyAny>, Py<PyAny>) = pair?.extract()?;
 
             let hashable = HashablePyObject::try_from_pyobject(key, py)?;
             self.insert(hashable, value)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn update(&mut self, py: Python<'_>, iterable: PyObject) -> PyResult<()> {
+        if unsafe { pyo3::ffi::PyDict_Check(iterable.as_ptr()) == 1 } {
+            let dict = iterable.downcast_bound::<pyo3::types::PyDict>(py)?;
+            self.extend_from_dict(dict)?;
+        } else {
+            self.extend_from_iter(iterable.bind(py), py)?;
         }
 
         Ok(())

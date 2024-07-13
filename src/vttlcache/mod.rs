@@ -30,13 +30,14 @@ impl VTTLCache {
         ttl: Option<f32>,
         capacity: usize,
     ) -> PyResult<PyClassInitializer<VTTLCache>> {
-        let slf = Self {
-            table: RwLock::new(RawVTTLCache::new(maxsize, capacity)?),
-        };
-
+        let mut table = RawVTTLCache::new(maxsize, capacity)?;
         if let Some(x) = iterable {
-            slf.update(py, x, ttl)?;
+            table.update(py, x, ttl)?;
         }
+
+        let slf = Self {
+            table: RwLock::new(table),
+        };
 
         Ok(PyClassInitializer::from(super::basic::BaseCacheImpl).add_subclass(slf))
     }
@@ -46,19 +47,19 @@ impl VTTLCache {
         self.table.read().maxsize.get()
     }
 
-    pub fn is_full(&self) -> bool {
+    pub fn is_full(&mut self) -> bool {
         let mut lock = self.table.write();
         lock.expire();
         lock.as_ref().len() == lock.maxsize.get()
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub fn is_empty(&mut self) -> bool {
         let mut lock = self.table.write();
         lock.expire();
         lock.as_ref().len() == 0
     }
 
-    pub fn __len__(&self) -> usize {
+    pub fn __len__(&mut self) -> usize {
         let mut lock = self.table.write();
         lock.expire();
         lock.as_ref().len()
@@ -75,22 +76,22 @@ impl VTTLCache {
             + o_cap * VTTLKey::SIZE
     }
 
-    pub fn __bool__(&self) -> bool {
+    pub fn __bool__(&mut self) -> bool {
         let mut lock = self.table.write();
         lock.expire();
         !lock.as_ref().is_empty()
     }
 
-    pub fn __setitem__(&self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
+    pub fn __setitem__(&mut self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
         let hashable = HashablePyObject::try_from_pyobject(key, py)?;
         let mut lock = self.table.write();
         lock.expire();
         lock.insert(hashable, value, None)
     }
 
-    #[pyo3(text_signature = "(key, value)")]
+    #[pyo3(text_signature = "(key, value, ttl)")]
     pub fn insert(
-        &self,
+        &mut self,
         py: Python<'_>,
         key: PyObject,
         value: PyObject,
@@ -127,7 +128,7 @@ impl VTTLCache {
         }
     }
 
-    pub fn __delitem__(&self, py: Python<'_>, key: PyObject) -> PyResult<()> {
+    pub fn __delitem__(&mut self, py: Python<'_>, key: PyObject) -> PyResult<()> {
         let hashable = HashablePyObject::try_from_pyobject(key, py)?;
         let mut lock = self.table.write();
         match lock.remove(&hashable) {
@@ -147,7 +148,7 @@ impl VTTLCache {
     }
 
     #[pyo3(signature=(*, reuse=false))]
-    pub fn clear(&self, reuse: bool) {
+    pub fn clear(&mut self, reuse: bool) {
         let mut lock = self.table.write();
         let tb = lock.as_mut();
         tb.clear();
@@ -165,7 +166,7 @@ impl VTTLCache {
 
     #[pyo3(signature=(key, default=None))]
     pub fn pop(
-        &self,
+        &mut self,
         py: Python<'_>,
         key: PyObject,
         default: Option<PyObject>,
@@ -180,7 +181,7 @@ impl VTTLCache {
 
     #[pyo3(signature=(key, default=None, ttl=None))]
     pub fn setdefault(
-        &self,
+        &mut self,
         py: Python<'_>,
         key: PyObject,
         default: Option<PyObject>,
@@ -199,14 +200,14 @@ impl VTTLCache {
         Ok(default_val)
     }
 
-    pub fn popitem(&self) -> PyResult<(PyObject, PyObject)> {
+    pub fn popitem(&mut self) -> PyResult<(PyObject, PyObject)> {
         let mut lock = self.table.write();
         lock.expire();
         let (k, v) = lock.popitem()?;
         Ok((k.into_key().object, v))
     }
 
-    pub fn drain(&self, n: usize) -> usize {
+    pub fn drain(&mut self, n: usize) -> usize {
         let mut lock = self.table.write();
 
         if n == 0 || lock.as_ref().is_empty() {
@@ -227,24 +228,21 @@ impl VTTLCache {
     }
 
     #[pyo3(signature=(iterable, ttl=None))]
-    fn update(&self, py: Python<'_>, iterable: PyObject, ttl: Option<f32>) -> PyResult<()> {
-        let obj = iterable.bind_borrowed(py);
-
-        if obj.is_instance_of::<pyo3::types::PyDict>() {
-            let dict = obj.downcast::<pyo3::types::PyDict>()?;
-            let mut lock = self.table.write();
-            lock.expire();
-            lock.extend_from_dict(dict, ttl)?;
-        } else {
-            let mut lock = self.table.write();
-            lock.expire();
-            lock.extend_from_iter(obj, ttl, py)?;
+    fn update(
+        slf: PyRefMut<'_, Self>,
+        py: Python<'_>,
+        iterable: PyObject,
+        ttl: Option<f32>,
+    ) -> PyResult<()> {
+        if slf.as_ptr() == iterable.as_ptr() {
+            return Ok(());
         }
 
-        Ok(())
+        let mut lock = slf.table.write();
+        lock.update(py, iterable, ttl)
     }
 
-    pub fn shrink_to_fit(&self) {
+    pub fn shrink_to_fit(&mut self) {
         let mut lock = self.table.write();
         lock.as_mut().shrink_to(0, |(x, _)| x.key().hash);
         lock.order_mut().shrink_to_fit();
@@ -394,7 +392,7 @@ impl VTTLCache {
         Ok(())
     }
 
-    pub fn __clear__(&self) {
+    pub fn __clear__(&mut self) {
         let mut t = self.table.write();
         t.as_mut().clear();
         t.order_mut().clear();
@@ -420,7 +418,7 @@ impl VTTLCache {
 
     #[pyo3(signature=(key, default=None))]
     pub fn pop_with_expire(
-        &self,
+        &mut self,
         py: Python<'_>,
         key: PyObject,
         default: Option<PyObject>,
@@ -433,7 +431,7 @@ impl VTTLCache {
         }
     }
 
-    pub fn popitem_with_expire(&self) -> PyResult<(PyObject, PyObject, f32)> {
+    pub fn popitem_with_expire(&mut self) -> PyResult<(PyObject, PyObject, f32)> {
         let mut lock = self.table.write();
         lock.expire();
         let (k, v) = lock.popitem()?;
@@ -456,7 +454,7 @@ impl VTTLCache {
         (0,)
     }
 
-    pub fn __setstate__(&self, py: Python<'_>, state: PyObject) -> PyResult<()> {
+    pub fn __setstate__(&mut self, py: Python<'_>, state: PyObject) -> PyResult<()> {
         use crate::basic::PickleMethods;
         let tuple = crate::pickle_check_state!(py, state, RawVTTLCache::PICKLE_TUPLE_SIZE)?;
 

@@ -354,7 +354,7 @@ impl RawVTTLCache {
     }
 
     #[inline]
-    pub fn extend_from_dict(
+    fn extend_from_dict(
         &mut self,
         dict: &Bound<'_, pyo3::types::PyDict>,
         ttl: Option<f32>,
@@ -375,9 +375,9 @@ impl RawVTTLCache {
     }
 
     #[inline]
-    pub fn extend_from_iter(
+    fn extend_from_iter(
         &mut self,
-        obj: pyo3::Borrowed<'_, '_, PyAny>,
+        obj: &pyo3::Bound<'_, PyAny>,
         ttl: Option<f32>,
         py: Python<'_>,
     ) -> PyResult<()> {
@@ -392,6 +392,17 @@ impl RawVTTLCache {
         if self.order.len() > 1 {
             // Sort from less to greater
             sort_keys!(self.order);
+        }
+
+        Ok(())
+    }
+
+    pub fn update(&mut self, py: Python<'_>, iterable: PyObject, ttl: Option<f32>) -> PyResult<()> {
+        if unsafe { pyo3::ffi::PyDict_Check(iterable.as_ptr()) == 1 } {
+            let dict = iterable.downcast_bound::<pyo3::types::PyDict>(py)?;
+            self.extend_from_dict(dict, ttl)?;
+        } else {
+            self.extend_from_iter(iterable.bind(py), ttl, py)?;
         }
 
         Ok(())

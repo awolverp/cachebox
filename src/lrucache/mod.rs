@@ -24,13 +24,14 @@ impl LRUCache {
         iterable: Option<PyObject>,
         capacity: usize,
     ) -> PyResult<PyClassInitializer<LRUCache>> {
-        let slf = Self {
-            table: RwLock::new(RawLRUCache::new(maxsize, capacity)?),
-        };
-
+        let mut table = RawLRUCache::new(maxsize, capacity)?;
         if let Some(x) = iterable {
-            slf.update(py, x)?;
+            table.update(py, x)?;
         }
+
+        let slf = Self {
+            table: RwLock::new(table),
+        };
 
         Ok(PyClassInitializer::from(super::basic::BaseCacheImpl).add_subclass(slf))
     }
@@ -69,18 +70,18 @@ impl LRUCache {
         !self.table.read().as_ref().is_empty()
     }
 
-    pub fn __setitem__(&self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
+    pub fn __setitem__(&mut self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
         let hashable = HashablePyObject::try_from_pyobject(key, py)?;
         let mut lock = self.table.write();
         lock.insert(hashable, value)
     }
 
     #[pyo3(text_signature = "(key, value)")]
-    pub fn insert(&self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
+    pub fn insert(&mut self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
         self.__setitem__(py, key, value)
     }
 
-    pub fn __getitem__(&self, py: Python<'_>, key: PyObject) -> PyResult<PyObject> {
+    pub fn __getitem__(&mut self, py: Python<'_>, key: PyObject) -> PyResult<PyObject> {
         let hashable = HashablePyObject::try_from_pyobject(key, py)?;
         let mut lock = self.table.write();
 
@@ -92,7 +93,7 @@ impl LRUCache {
 
     #[pyo3(signature=(key, default=None))]
     pub fn get(
-        &self,
+        &mut self,
         py: Python<'_>,
         key: PyObject,
         default: Option<PyObject>,
@@ -120,7 +121,7 @@ impl LRUCache {
         }
     }
 
-    pub fn __delitem__(&self, py: Python<'_>, key: PyObject) -> PyResult<()> {
+    pub fn __delitem__(&mut self, py: Python<'_>, key: PyObject) -> PyResult<()> {
         let hashable = HashablePyObject::try_from_pyobject(key, py)?;
         let mut lock = self.table.write();
         match lock.remove(&hashable) {
@@ -140,7 +141,7 @@ impl LRUCache {
     }
 
     #[pyo3(signature=(*, reuse=false))]
-    pub fn clear(&self, reuse: bool) {
+    pub fn clear(&mut self, reuse: bool) {
         let mut lock = self.table.write();
         let tb = lock.as_mut();
         tb.clear();
@@ -158,7 +159,7 @@ impl LRUCache {
 
     #[pyo3(signature=(key, default=None))]
     pub fn pop(
-        &self,
+        &mut self,
         py: Python<'_>,
         key: PyObject,
         default: Option<PyObject>,
@@ -173,7 +174,7 @@ impl LRUCache {
 
     #[pyo3(signature=(key, default=None))]
     pub fn setdefault(
-        &self,
+        &mut self,
         py: Python<'_>,
         key: PyObject,
         default: Option<PyObject>,
@@ -191,13 +192,13 @@ impl LRUCache {
         Ok(default_val)
     }
 
-    pub fn popitem(&self) -> PyResult<(PyObject, PyObject)> {
+    pub fn popitem(&mut self) -> PyResult<(PyObject, PyObject)> {
         let mut lock = self.table.write();
         let (k, v) = lock.popitem()?;
         Ok((k.object, v))
     }
 
-    pub fn drain(&self, n: usize) -> usize {
+    pub fn drain(&mut self, n: usize) -> usize {
         let mut lock = self.table.write();
 
         if n == 0 || lock.as_ref().is_empty() {
@@ -215,22 +216,16 @@ impl LRUCache {
         c
     }
 
-    fn update(&self, py: Python<'_>, iterable: PyObject) -> PyResult<()> {
-        let obj = iterable.bind_borrowed(py);
-
-        if obj.is_instance_of::<pyo3::types::PyDict>() {
-            let dict = obj.downcast::<pyo3::types::PyDict>()?;
-            let mut lock = self.table.write();
-            lock.extend_from_dict(dict)?;
-        } else {
-            let mut lock = self.table.write();
-            lock.extend_from_iter(obj, py)?;
+    fn update(slf: PyRefMut<'_, Self>, py: Python<'_>, iterable: PyObject) -> PyResult<()> {
+        if slf.as_ptr() == iterable.as_ptr() {
+            return Ok(());
         }
 
-        Ok(())
+        let mut lock = slf.table.write();
+        lock.update(py, iterable)
     }
 
-    pub fn shrink_to_fit(&self) {
+    pub fn shrink_to_fit(&mut self) {
         let mut lock = self.table.write();
         lock.as_mut().shrink_to(0, make_hasher_func!());
         lock.order_mut().shrink_to_fit();
@@ -368,7 +363,7 @@ impl LRUCache {
         Ok(())
     }
 
-    pub fn __clear__(&self) {
+    pub fn __clear__(&mut self) {
         let mut t = self.table.write();
         t.as_mut().clear();
         t.order_mut().clear();
@@ -410,7 +405,7 @@ impl LRUCache {
         (0,)
     }
 
-    pub fn __setstate__(&self, py: Python<'_>, state: PyObject) -> PyResult<()> {
+    pub fn __setstate__(&mut self, py: Python<'_>, state: PyObject) -> PyResult<()> {
         use crate::basic::PickleMethods;
         let tuple = crate::pickle_check_state!(py, state, RawLRUCache::PICKLE_TUPLE_SIZE)?;
 

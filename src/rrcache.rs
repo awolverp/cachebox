@@ -50,6 +50,32 @@ fn rr_alg_insert(
     Ok(())
 }
 
+fn rr_alg_update(
+    lock: &mut parking_lot::lock_api::RwLockWriteGuard<'_, parking_lot::RawRwLock, RawCache>,
+    iterable: PyObject,
+    py: Python<'_>,
+) -> PyResult<()> {
+    if unsafe { pyo3::ffi::PyDict_Check(iterable.as_ptr()) == 1 } {
+        let dict = iterable.downcast_bound::<pyo3::types::PyDict>(py)?;
+
+        for (key, value) in dict.iter() {
+            let hashable = HashablePyObject::try_from_bound(key)?;
+            rr_alg_insert(lock, hashable, value.unbind())?;
+        }
+    } else {
+        let obj = iterable.bind(py);
+
+        for pair in obj.iter()? {
+            let (key, value): (Py<PyAny>, Py<PyAny>) = pair?.extract()?;
+
+            let hashable = HashablePyObject::try_from_pyobject(key, py)?;
+            rr_alg_insert(lock, hashable, value)?;
+        }
+    }
+
+    Ok(())
+}
+
 #[pymethods]
 impl RRCache {
     #[new]
@@ -65,7 +91,8 @@ impl RRCache {
         };
 
         if let Some(x) = iterable {
-            slf.update(py, x)?;
+            let mut lock = slf.table.write();
+            rr_alg_update(&mut lock, x, py)?;
         }
 
         Ok(PyClassInitializer::from(super::basic::BaseCacheImpl).add_subclass(slf))
@@ -102,14 +129,14 @@ impl RRCache {
         !self.table.read().as_ref().is_empty()
     }
 
-    pub fn __setitem__(&self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
+    pub fn __setitem__(&mut self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
         let hashable = HashablePyObject::try_from_pyobject(key, py)?;
         let mut lock = self.table.write();
         rr_alg_insert(&mut lock, hashable, value)
     }
 
     #[pyo3(text_signature = "(key, value)")]
-    pub fn insert(&self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
+    pub fn insert(&mut self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
         self.__setitem__(py, key, value)
     }
 
@@ -141,7 +168,7 @@ impl RRCache {
         }
     }
 
-    pub fn __delitem__(&self, py: Python<'_>, key: PyObject) -> PyResult<()> {
+    pub fn __delitem__(&mut self, py: Python<'_>, key: PyObject) -> PyResult<()> {
         let hashable = HashablePyObject::try_from_pyobject(key, py)?;
         let mut lock = self.table.write();
         match lock.remove(&hashable) {
@@ -161,7 +188,7 @@ impl RRCache {
     }
 
     #[pyo3(signature=(*, reuse=false), text_signature="(*, reuse=False)")]
-    pub fn clear(&self, reuse: bool) {
+    pub fn clear(&mut self, reuse: bool) {
         let mut lock = self.table.write();
         let tb = lock.as_mut();
         tb.clear();
@@ -173,7 +200,7 @@ impl RRCache {
 
     #[pyo3(signature=(key, default=None, /), text_signature="(key, default=None, /)")]
     pub fn pop(
-        &self,
+        &mut self,
         py: Python<'_>,
         key: PyObject,
         default: Option<PyObject>,
@@ -188,7 +215,7 @@ impl RRCache {
 
     #[pyo3(signature=(key, default=None, /), text_signature="(key, default=None, /)")]
     pub fn setdefault(
-        &self,
+        &mut self,
         py: Python<'_>,
         key: PyObject,
         default: Option<PyObject>,
@@ -206,13 +233,13 @@ impl RRCache {
         Ok(default_val)
     }
 
-    pub fn popitem(&self) -> PyResult<(PyObject, PyObject)> {
+    pub fn popitem(&mut self) -> PyResult<(PyObject, PyObject)> {
         let mut lock = self.table.write();
         let tb = lock.as_mut();
         rr_alg_popitem!(tb)
     }
 
-    pub fn drain(&self, n: usize) -> usize {
+    pub fn drain(&mut self, n: usize) -> usize {
         let mut lock = self.table.write();
         let tb = lock.as_mut();
 
@@ -231,28 +258,13 @@ impl RRCache {
         c
     }
 
-    fn update(&self, py: Python<'_>, iterable: PyObject) -> PyResult<()> {
-        let obj = iterable.bind_borrowed(py);
-
-        if obj.is_instance_of::<pyo3::types::PyDict>() {
-            let dict = obj.downcast::<pyo3::types::PyDict>()?;
-            let mut lock = self.table.write();
-
-            for (key, value) in dict.iter() {
-                let hashable = HashablePyObject::try_from_bound(key)?;
-                rr_alg_insert(&mut lock, hashable, value.unbind())?;
-            }
-        } else {
-            let mut lock = self.table.write();
-            for pair in obj.iter()? {
-                let (key, value): (Py<PyAny>, Py<PyAny>) = pair?.extract()?;
-
-                let hashable = HashablePyObject::try_from_pyobject(key, py)?;
-                rr_alg_insert(&mut lock, hashable, value)?;
-            }
+    fn update(slf: PyRefMut<'_, Self>, py: Python<'_>, iterable: PyObject) -> PyResult<()> {
+        if slf.as_ptr() == iterable.as_ptr() {
+            return Ok(());
         }
 
-        Ok(())
+        let mut lock = slf.table.write();
+        rr_alg_update(&mut lock, iterable, py)
     }
 
     pub fn shrink_to_fit(&self) {
@@ -389,7 +401,7 @@ impl RRCache {
         Ok(())
     }
 
-    pub fn __clear__(&self) {
+    pub fn __clear__(&mut self) {
         let mut t = self.table.write();
         t.as_mut().clear();
     }
@@ -409,7 +421,7 @@ impl RRCache {
         (0,)
     }
 
-    pub fn __setstate__(&self, py: Python<'_>, state: PyObject) -> PyResult<()> {
+    pub fn __setstate__(&mut self, py: Python<'_>, state: PyObject) -> PyResult<()> {
         use crate::basic::PickleMethods;
         let tuple = crate::pickle_check_state!(py, state, RawCache::PICKLE_TUPLE_SIZE)?;
 

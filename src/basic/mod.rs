@@ -97,21 +97,23 @@ impl HashablePyObject {
 
     #[inline]
     fn compare_eq(&self, obj: &HashablePyObject) -> bool {
-        let res = unsafe {
-            pyo3::ffi::PyObject_RichCompareBool(
+        unsafe {
+            let cmp = pyo3::ffi::PyObject_RichCompare(
                 self.object.as_ptr(),
                 obj.object.as_ptr(),
                 pyo3::pyclass::CompareOp::Eq as std::os::raw::c_int,
-            )
-        };
+            );
 
-        if res == -1 {
-            unsafe {
+            if cmp.is_null() {
                 pyo3::ffi::PyErr_Clear();
+                return false;
             }
-        }
 
-        res == 1
+            let t = pyo3::ffi::PyObject_IsTrue(cmp);
+            pyo3::ffi::Py_DECREF(cmp);
+
+            t == 1
+        }
     }
 }
 

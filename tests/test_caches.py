@@ -4,6 +4,7 @@ import typing
 import time
 import pickle
 import tempfile
+import dataclasses
 
 
 class CacheTestSuiteMixin:
@@ -85,6 +86,10 @@ class CacheTestSuiteMixin:
 
         with self.assertRaises(TypeError):
             obj[set()] = set()
+
+    def test_runtime_error_on_mutable(self):
+        obj = self.cache(0, **self.kwargs)
+        obj.update(obj)
 
     def test_update(self):
         obj = self.cache(2, **self.kwargs)
@@ -356,6 +361,42 @@ class CacheTestSuiteMixin:
             assert c1.capacity() == c2.capacity()
             if co:
                 check_order(c1, c2)
+
+    def test_eq_implemetation(self):
+        # see https://github.com/awolverp/cachebox/issues/5
+
+        @dataclasses.dataclass
+        class EQ:
+            def __init__(self, val: int) -> None:
+                self.val = val
+
+            def __eq__(self, other: "EQ") -> bool:
+                return id(self) == id(other)
+
+            def __hash__(self) -> int:
+                return self.val
+
+
+        @dataclasses.dataclass
+        class NoEQ:
+            def __init__(self, val: int) -> None:
+                self.val = val
+
+            def __hash__(self) -> int:
+                return self.val
+
+        size = 1000
+        cache = self.cache(size, **self.kwargs)
+
+        for i in range(size):
+            cache.insert(NoEQ(val=i), i)
+            cache.get(NoEQ(val=i))
+        
+        cache = self.cache(size, **self.kwargs)
+
+        for i in range(size):
+            cache.insert(EQ(val=i), i)
+            cache.get(EQ(val=i))
 
 
 class TestBaseCacheImpl(unittest.TestCase):

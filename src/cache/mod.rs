@@ -29,13 +29,14 @@ impl Cache {
         iterable: Option<PyObject>,
         capacity: usize,
     ) -> PyResult<PyClassInitializer<Cache>> {
-        let slf = Self {
-            table: RwLock::new(RawCache::new(maxsize, capacity)?),
-        };
-
+        let mut table = RawCache::new(maxsize, capacity)?;
         if let Some(x) = iterable {
-            slf.update(py, x)?;
+            table.update(py, x)?;
         }
+
+        let slf = Self {
+            table: RwLock::new(table),
+        };
 
         Ok(PyClassInitializer::from(super::basic::BaseCacheImpl).add_subclass(slf))
     }
@@ -71,13 +72,13 @@ impl Cache {
         !self.table.read().as_ref().is_empty()
     }
 
-    pub fn __setitem__(&self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
+    pub fn __setitem__(&mut self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
         let hashable = HashablePyObject::try_from_pyobject(key, py)?;
         let mut lock = self.table.write();
         lock.insert(hashable, value)
     }
 
-    pub fn insert(&self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
+    pub fn insert(&mut self, py: Python<'_>, key: PyObject, value: PyObject) -> PyResult<()> {
         self.__setitem__(py, key, value)
     }
 
@@ -106,7 +107,7 @@ impl Cache {
         }
     }
 
-    pub fn __delitem__(&self, py: Python<'_>, key: PyObject) -> PyResult<()> {
+    pub fn __delitem__(&mut self, py: Python<'_>, key: PyObject) -> PyResult<()> {
         let hashable = HashablePyObject::try_from_pyobject(key, py)?;
         let mut lock = self.table.write();
         match lock.remove(&hashable) {
@@ -126,7 +127,7 @@ impl Cache {
     }
 
     #[pyo3(signature=(*, reuse=false))]
-    pub fn clear(&self, reuse: bool) {
+    pub fn clear(&mut self, reuse: bool) {
         let mut lock = self.table.write();
         let tb = lock.as_mut();
         tb.clear();
@@ -138,7 +139,7 @@ impl Cache {
 
     #[pyo3(signature=(key, default=None))]
     pub fn pop(
-        &self,
+        &mut self,
         py: Python<'_>,
         key: PyObject,
         default: Option<PyObject>,
@@ -153,7 +154,7 @@ impl Cache {
 
     #[pyo3(signature=(key, default=None))]
     pub fn setdefault(
-        &self,
+        &mut self,
         py: Python<'_>,
         key: PyObject,
         default: Option<PyObject>,
@@ -180,19 +181,13 @@ impl Cache {
         Err(create_pyerr!(pyo3::exceptions::PyNotImplementedError))
     }
 
-    fn update(&self, py: Python<'_>, iterable: PyObject) -> PyResult<()> {
-        let obj = iterable.bind_borrowed(py);
-
-        if obj.is_instance_of::<pyo3::types::PyDict>() {
-            let dict = obj.downcast::<pyo3::types::PyDict>()?;
-            let mut lock = self.table.write();
-            lock.extend_from_dict(dict)?;
-        } else {
-            let mut lock = self.table.write();
-            lock.extend_from_iter(obj, py)?;
+    pub fn update(slf: PyRefMut<'_, Self>, py: Python<'_>, iterable: PyObject) -> PyResult<()> {
+        if slf.as_ptr() == iterable.as_ptr() {
+            return Ok(());
         }
 
-        Ok(())
+        let mut lock = slf.table.write();
+        lock.update(py, iterable)
     }
 
     pub fn shrink_to_fit(&self) {
@@ -329,7 +324,7 @@ impl Cache {
         Ok(())
     }
 
-    pub fn __clear__(&self) {
+    pub fn __clear__(&mut self) {
         let mut t = self.table.write();
         t.as_mut().clear();
     }
@@ -349,7 +344,7 @@ impl Cache {
         (0,)
     }
 
-    pub fn __setstate__(&self, py: Python<'_>, state: PyObject) -> PyResult<()> {
+    pub fn __setstate__(&mut self, py: Python<'_>, state: PyObject) -> PyResult<()> {
         use crate::basic::PickleMethods;
         let tuple = crate::pickle_check_state!(py, state, RawCache::PICKLE_TUPLE_SIZE)?;
 

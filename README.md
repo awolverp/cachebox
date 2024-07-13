@@ -45,7 +45,7 @@ pip3 install -U cachebox
 - ⏱️ [*BENCHMARK*](https://github.com/awolverp/cachebox-benchmark)
 
 ## When i need caching?
-There are some situations that you may need caching to imprve your application speed:
+There are some situations that you may need caching to improve your application speed:
 
 1. Sometimes you have functions that take a long time to execute, and you need to call them each time.
 

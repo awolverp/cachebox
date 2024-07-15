@@ -17,7 +17,15 @@ build-prod:
 
 
 .PHONY: test-py
-test-py: build-dev
+test-py:
+	@rm -f cachebox/*.so
+	maturin develop
+	
+	python3 -m unittest -v
+
+	@rm -f cachebox/*.so
+	maturin develop --release
+
 	python3 -m unittest -v
 
 

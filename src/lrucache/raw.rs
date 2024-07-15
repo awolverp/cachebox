@@ -6,20 +6,18 @@ use pyo3::prelude::*;
 use std::collections::VecDeque;
 
 pub struct RawLRUCache {
-    table: RawTable<(HashablePyObject, PyObject)>,
+    table: RawTable<(HashablePyObject, PyObject, usize)>,
     order: VecDeque<HashablePyObject>,
     pub maxsize: NonZeroUsize,
 }
 
 macro_rules! vecdeque_move_to_end {
-    ($order:expr, $key:expr) => {{
+    ($order:expr, $index:expr) => {{
         #[cfg(debug_assertions)]
-        let index = $order.iter().position(|x| x.eq($key)).unwrap();
+        let item = $order.remove($index).unwrap();
 
         #[cfg(not(debug_assertions))]
-        let index = unsafe { $order.iter().position(|x| x.eq($key)).unwrap_unchecked() };
-
-        let item = unsafe { $order.remove(index).unwrap_unchecked() };
+        let item = unsafe { $order.remove($index).unwrap_unchecked() };
         $order.push_back(item);
     }};
 }
@@ -66,7 +64,7 @@ impl RawLRUCache {
     }
 
     #[inline]
-    pub fn popitem(&mut self) -> PyResult<(HashablePyObject, PyObject)> {
+    pub fn popitem(&mut self) -> PyResult<(HashablePyObject, PyObject, usize)> {
         match self.order.pop_front() {
             Some(x) => {
                 #[cfg(debug_assertions)]
@@ -79,6 +77,13 @@ impl RawLRUCache {
                         .unwrap_unchecked()
                 };
 
+                unsafe {
+                    self.table.iter().for_each(|bucket| {
+                        let (_, _, index) = bucket.as_mut();
+                        let _ = core::mem::replace(index, *index - 1);
+                    });
+                }
+
                 Ok(val)
             }
             None => Err(create_pyerr!(pyo3::exceptions::PyKeyError)),
@@ -86,18 +91,25 @@ impl RawLRUCache {
     }
 
     #[inline]
-    pub unsafe fn insert_unchecked(&mut self, key: HashablePyObject, value: PyObject) -> bool {
+    pub unsafe fn insert_unchecked(
+        &mut self,
+        key: HashablePyObject,
+        value: PyObject,
+        index: usize,
+    ) -> Option<usize> {
         match self
             .table
             .find_or_find_insert_slot(key.hash, make_eq_func!(key), make_hasher_func!())
         {
             Ok(bucket) => {
+                let oldindex = unsafe { bucket.as_ref().2 };
                 let _ = std::mem::replace(unsafe { &mut bucket.as_mut().1 }, value);
-                false
+                Some(oldindex)
             }
             Err(slot) => unsafe {
-                self.table.insert_in_slot(key.hash, slot, (key, value));
-                true
+                self.table
+                    .insert_in_slot(key.hash, slot, (key, value, index));
+                None
             },
         }
     }
@@ -116,10 +128,25 @@ impl RawLRUCache {
             };
         }
 
-        if unsafe { self.insert_unchecked(key.clone(), value) } {
-            self.order.push_back(key);
+        if let Some(index) = unsafe { self.insert_unchecked(key.clone(), value, self.order.len()) }
+        {
+            vecdeque_move_to_end!(self.order, index);
+
+            unsafe {
+                for i in index..self.order.len() - 1 {
+                    let o_key = self.order.get(i).unwrap();
+
+                    if o_key == &key {
+                        continue;
+                    }
+
+                    let bucket = self.table.find(o_key.hash, make_eq_func!(o_key)).unwrap();
+
+                    let _ = core::mem::replace(&mut bucket.as_mut().2, i);
+                }
+            }
         } else {
-            vecdeque_move_to_end!(self.order, &key);
+            self.order.push_back(key);
         }
 
         Ok(())
@@ -133,8 +160,26 @@ impl RawLRUCache {
 
         match self.table.find(key.hash, make_eq_func!(key)) {
             Some(bucket) => {
-                vecdeque_move_to_end!(self.order, key);
-                let (_, val) = unsafe { bucket.as_ref() };
+                let (_, val, index) = unsafe { bucket.as_mut() };
+
+                let r_index = core::mem::replace(index, self.order.len() - 1);
+
+                vecdeque_move_to_end!(self.order, r_index);
+
+                unsafe {
+                    for i in r_index..self.order.len() - 1 {
+                        let o_key = self.order.get(i).unwrap();
+
+                        if o_key == key {
+                            continue;
+                        }
+
+                        let bucket = self.table.find(o_key.hash, make_eq_func!(o_key)).unwrap();
+
+                        let _ = core::mem::replace(&mut bucket.as_mut().2, i);
+                    }
+                }
+
                 Some(val)
             }
             None => None,
@@ -149,7 +194,7 @@ impl RawLRUCache {
 
         match self.table.find(key.hash, make_eq_func!(key)) {
             Some(bucket) => {
-                let (_, val) = unsafe { bucket.as_ref() };
+                let (_, val, _) = unsafe { bucket.as_ref() };
                 Some(val)
             }
             None => None,
@@ -164,18 +209,22 @@ impl RawLRUCache {
 
         match self.table.find(key.hash, make_eq_func!(key)) {
             Some(bucket) => {
-                let (key, _) = unsafe { bucket.as_ref() };
+                let &(_, _, r_index) = unsafe { bucket.as_ref() };
 
-                #[cfg(debug_assertions)]
-                let index = self.order.iter().position(|x| x.eq(key)).unwrap();
-
-                #[cfg(not(debug_assertions))]
-                let index = unsafe { self.order.iter().position(|x| x.eq(key)).unwrap_unchecked() };
-
-                self.order.remove(index);
-
+                self.order.remove(r_index).unwrap();
                 let (val, _) = unsafe { self.table.remove(bucket) };
-                Some(val)
+
+                unsafe {
+                    for i in r_index..self.order.len() {
+                        let o_key = self.order.get(i).unwrap();
+
+                        let bucket = self.table.find(o_key.hash, make_eq_func!(o_key)).unwrap();
+
+                        let _ = core::mem::replace(&mut bucket.as_mut().2, i);
+                    }
+                }
+
+                Some((val.0, val.1))
             }
             None => None,
         }
@@ -244,16 +293,16 @@ impl RawLRUCache {
     }
 }
 
-impl AsRef<RawTable<(HashablePyObject, PyObject)>> for RawLRUCache {
+impl AsRef<RawTable<(HashablePyObject, PyObject, usize)>> for RawLRUCache {
     #[inline]
-    fn as_ref(&self) -> &RawTable<(HashablePyObject, PyObject)> {
+    fn as_ref(&self) -> &RawTable<(HashablePyObject, PyObject, usize)> {
         &self.table
     }
 }
 
-impl AsMut<RawTable<(HashablePyObject, PyObject)>> for RawLRUCache {
+impl AsMut<RawTable<(HashablePyObject, PyObject, usize)>> for RawLRUCache {
     #[inline]
-    fn as_mut(&mut self) -> &mut RawTable<(HashablePyObject, PyObject)> {
+    fn as_mut(&mut self) -> &mut RawTable<(HashablePyObject, PyObject, usize)> {
         &mut self.table
     }
 }
@@ -263,9 +312,15 @@ impl PickleMethods for RawLRUCache {
         let dict = pyo3::ffi::PyDict_New();
 
         for pair in self.table.iter() {
-            let (key, val) = pair.as_ref();
-            // SAFETY: we don't need to check error because we sure about key that is hashable
-            pyo3::ffi::PyDict_SetItem(dict, key.object.as_ptr(), val.as_ptr());
+            let (key, val, count) = pair.as_ref();
+
+            let val_tuple = pyo3::ffi::PyTuple_New(2);
+            let c = pyo3::ffi::PyLong_FromSize_t(*count);
+            pyo3::ffi::PyTuple_SetItem(val_tuple, 0, val.as_ptr());
+            pyo3::ffi::PyTuple_SetItem(val_tuple, 1, c);
+
+            pyo3::ffi::PyDict_SetItem(dict, key.object.as_ptr(), val_tuple);
+            pyo3::ffi::Py_XDECREF(val_tuple);
         }
 
         let order = pyo3::ffi::PyTuple_New(self.order.len() as isize);
@@ -324,7 +379,24 @@ impl PickleMethods for RawLRUCache {
         for (key, value) in dict.iter() {
             // SAFETY: key is hashable, so don't worry
             let hashable = HashablePyObject::try_from_bound(key).unwrap_unchecked();
-            new.insert_unchecked(hashable, value.unbind());
+
+            let op = value.as_ptr();
+
+            if pyo3::ffi::PyTuple_CheckExact(op) != 1 || pyo3::ffi::PyTuple_Size(op) != 2 {
+                return Err(create_pyerr!(
+                    pyo3::exceptions::PyTypeError,
+                    "expected tuple, found another type #op"
+                ));
+            }
+
+            let val = pyo3::ffi::PyTuple_GetItem(op, 0);
+
+            let n = {
+                let obj = pyo3::ffi::PyTuple_GetItem(op, 1);
+                pyo3::ffi::PyLong_AsSize_t(obj)
+            };
+
+            new.insert_unchecked(hashable, PyObject::from_borrowed_ptr(py, val), n);
         }
 
         if new.order.try_reserve(tuple_length as usize).is_err() {

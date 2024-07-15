@@ -14,7 +14,7 @@ You can behave with them same as Python dictionary (only for `VTTLCache` is a li
 | FIFOCache    | O(1)~  | O(min(i, n-i))* | O(min(i, n-i)) | O(m*min(i, n-i)) | O(1)    |
 | LFUCache     | O(1)~  | O(n)~*          | O(1)~          | O(m*n)~          | O(n)~*  |
 | RRCache      | O(1)~  | O(1)~*          | O(1)~          | O(m)~            | O(1)~   |
-| LRUCache     | O(1)~  | ?               | O(1)~          | ?                | O(1)    |
+| LRUCache     | O(n-k)~| O(1) or O(n-k)  | O(n-k)~        | ?                | O(1)    |
 | TTLCache     | O(1)~  | O(min(i, n-i))* | O(min(i, n-i)) | O(m*min(i, n-i)) | O(1)    |
 | VTTLCache    | O(1)~  | ?               | O(1)~          | ?                | O(1)~   |
 

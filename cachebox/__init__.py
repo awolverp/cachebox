@@ -31,4 +31,5 @@ from .utils import (
     cachedmethod as cachedmethod,
     make_hash_key as make_hash_key,
     make_typed_key as make_typed_key,
+    items_in_order as items_in_order,
 )

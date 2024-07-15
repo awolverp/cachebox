@@ -2074,7 +2074,7 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def insert(self, key: KT, value: VT, ttl: typing.Optional[float]) -> None:
+    def insert(self, key: KT, value: VT, ttl: typing.Optional[float] = None) -> None:
         """
         Inserts a new key-value into the cache.
 

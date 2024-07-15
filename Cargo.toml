@@ -1,6 +1,6 @@
 [package]
 name = "cachebox"
-version = "3.3.1"
+version = "3.4.0"
 edition = "2021"
 
 [lib]
@@ -11,22 +11,20 @@ crate-type = ["cdylib"]
 debug = 2
 debug-assertions = true
 lto = "off"
-opt-level = 3
 
 [profile.release]
 codegen-units = 1
 debug = false
 incremental = false
 lto = "fat"
-opt-level = 3
 panic = "abort"
 strip = "symbols"
 
 [dependencies]
-hashbrown = { version = "^0.14", default-features = false, features=["inline-more", "raw"]}
+hashbrown = { version = "^0.14", default-features = false, features=["inline-more", "raw", "allocator-api2"]}
 fastrand = "2"
 parking_lot = "^0.12"
-pyo3 = { version = "^0.21", default-features = false, features=["macros", "extension-module"] }
+pyo3 = { version = "^0.22", default-features = false, features=["macros", "extension-module", "py-clone"] }
 ahash = { version = "^0.8", default-features = false, features=["std", "compile-time-rng"] }
 cfg-if = "1.0"
 

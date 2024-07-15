@@ -306,3 +306,43 @@ def cachedmethod(
         return functools.update_wrapper(wrapper, func)
 
     return decorator
+
+
+_K = typing.TypeVar("_K")
+_V = typing.TypeVar("_V")
+
+def items_in_order(cache: _cachebox.BaseCacheImpl[_K, _V]) -> typing.Generator[typing.Tuple[_K, _V], typing.Any, None]:
+    """
+    As you know `.items()` methods in implemetations doesn't iter items in order.
+    You can use this method for iterating items in order.
+
+    Supported classes:
+        - `FIFOCache`
+        - `LFUCache`
+        - `LRUCache`
+        - `TTLCache`
+    """
+    if isinstance(cache, _cachebox.FIFOCache):
+        for i in range(len(cache)):
+            key = cache.first(i)
+            yield key, cache[key]
+    
+    elif isinstance(cache, _cachebox.LFUCache):
+        for i in range(len(cache)):
+            key = cache.least_frequently_used(i)
+            yield key, cache.peek(key)
+    
+    elif isinstance(cache, _cachebox.LRUCache):
+        for i in range(len(cache)):
+            key = cache.least_recently_used(i)
+            yield key, cache.peek(key)
+
+    elif isinstance(cache, _cachebox.TTLCache):
+        for i in range(len(cache)):
+            key = cache.first(i)
+            yield key, cache[key]
+
+    else:
+        raise TypeError(
+            "can't iterate items in order for %r class" % type(cache).__name__
+        )

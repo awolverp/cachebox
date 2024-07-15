@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.0] - 2024-07-15
+### Added
+- `items_in_order` function added - helps you to iterate caches items in order
+
+### Changed
+- `LRUCache` alghoritm changed and optimized (4x faster)
+- The `ttl` parameter of `VTTLCache.insert` now has a default value (`None`).
+- Testing improved
+
+### Updated
+- Dependecies updated
+
 ## [3.3.1] - 2024-07-13
 ### Fixed
 - Change comparing alghoritm

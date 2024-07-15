@@ -1,6 +1,7 @@
 mod raw;
 
 use self::raw::RawLRUCache;
+use crate::basic::iter::SafeRawHashMapIter;
 use crate::basic::HashablePyObject;
 use crate::{create_pyerr, make_eq_func, make_hasher_func};
 use parking_lot::RwLock;
@@ -194,7 +195,7 @@ impl LRUCache {
 
     pub fn popitem(&mut self) -> PyResult<(PyObject, PyObject)> {
         let mut lock = self.table.write();
-        let (k, v) = lock.popitem()?;
+        let (k, v, _) = lock.popitem()?;
         Ok((k.object, v))
     }
 
@@ -231,67 +232,54 @@ impl LRUCache {
         lock.order_mut().shrink_to_fit();
     }
 
-    pub fn items(
-        slf: PyRef<'_, Self>,
-        py: Python<'_>,
-    ) -> PyResult<Py<crate::basic::iter::tuple_ptr_iterator>> {
+    pub fn items(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<lru_tuple_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
         let capacity = lock.as_ref().capacity();
         let iter = unsafe { lock.as_ref().iter() };
 
-        let iter = crate::basic::iter::tuple_ptr_iterator::new(
-            crate::basic::iter::SafeRawHashMapIter::new(slf.as_ptr(), capacity, len, iter),
-        );
+        let iter =
+            lru_tuple_ptr_iterator::new(SafeRawHashMapIter::new(slf.as_ptr(), capacity, len, iter));
 
         Py::new(py, iter)
     }
 
-    pub fn __iter__(
-        slf: PyRef<'_, Self>,
-        py: Python<'_>,
-    ) -> PyResult<Py<crate::basic::iter::object_ptr_iterator>> {
+    pub fn __iter__(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<lru_object_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
         let capacity = lock.as_ref().capacity();
         let iter = unsafe { lock.as_ref().iter() };
 
-        let iter = crate::basic::iter::object_ptr_iterator::new(
-            crate::basic::iter::SafeRawHashMapIter::new(slf.as_ptr(), capacity, len, iter),
+        let iter = lru_object_ptr_iterator::new(
+            SafeRawHashMapIter::new(slf.as_ptr(), capacity, len, iter),
             0,
         );
 
         Py::new(py, iter)
     }
 
-    pub fn keys(
-        slf: PyRef<'_, Self>,
-        py: Python<'_>,
-    ) -> PyResult<Py<crate::basic::iter::object_ptr_iterator>> {
+    pub fn keys(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<lru_object_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
         let capacity = lock.as_ref().capacity();
         let iter = unsafe { lock.as_ref().iter() };
 
-        let iter = crate::basic::iter::object_ptr_iterator::new(
-            crate::basic::iter::SafeRawHashMapIter::new(slf.as_ptr(), capacity, len, iter),
+        let iter = lru_object_ptr_iterator::new(
+            SafeRawHashMapIter::new(slf.as_ptr(), capacity, len, iter),
             0,
         );
 
         Py::new(py, iter)
     }
 
-    pub fn values(
-        slf: PyRef<'_, Self>,
-        py: Python<'_>,
-    ) -> PyResult<Py<crate::basic::iter::object_ptr_iterator>> {
+    pub fn values(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Py<lru_object_ptr_iterator>> {
         let lock = slf.table.read();
         let len = lock.as_ref().len();
         let capacity = lock.as_ref().capacity();
         let iter = unsafe { lock.as_ref().iter() };
 
-        let iter = crate::basic::iter::object_ptr_iterator::new(
-            crate::basic::iter::SafeRawHashMapIter::new(slf.as_ptr(), capacity, len, iter),
+        let iter = lru_object_ptr_iterator::new(
+            SafeRawHashMapIter::new(slf.as_ptr(), capacity, len, iter),
             1,
         );
 
@@ -314,9 +302,9 @@ impl LRUCache {
 
         unsafe {
             t1.iter().all(|x| {
-                let (k, v1) = x.as_ref();
+                let (k, v1, _) = x.as_ref();
                 t2.find(k.hash, make_eq_func!(k)).map_or(false, |y| {
-                    let (_, v2) = y.as_ref();
+                    let (_, v2, _) = y.as_ref();
 
                     let res = pyo3::ffi::PyObject_RichCompareBool(
                         v1.as_ptr(),
@@ -352,7 +340,7 @@ impl LRUCache {
     pub fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
         let lock = self.table.read();
         for value in unsafe { lock.as_ref().iter() } {
-            let (key, value) = unsafe { value.as_ref() };
+            let (key, value, _) = unsafe { value.as_ref() };
             visit.call(&key.object)?;
             visit.call(value)?;
         }
@@ -411,5 +399,75 @@ impl LRUCache {
 
         let mut lock = self.table.write();
         unsafe { lock.loads(tuple, py) }
+    }
+}
+
+#[allow(non_camel_case_types)]
+#[pyclass(module = "cachebox._cachebox")]
+pub struct lru_tuple_ptr_iterator {
+    iter: SafeRawHashMapIter<(HashablePyObject, PyObject, usize)>,
+}
+
+impl lru_tuple_ptr_iterator {
+    pub fn new(iter: SafeRawHashMapIter<(HashablePyObject, PyObject, usize)>) -> Self {
+        Self { iter }
+    }
+}
+
+#[pymethods]
+impl lru_tuple_ptr_iterator {
+    pub fn __len__(&self) -> usize {
+        self.iter.len
+    }
+
+    pub fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    pub fn __next__(mut slf: PyRefMut<'_, Self>, py: Python<'_>) -> PyResult<(PyObject, PyObject)> {
+        let (k, v, _) = slf.iter.next(py)?;
+        Ok((k.object.clone(), v.clone()))
+    }
+}
+
+#[allow(non_camel_case_types)]
+#[pyclass(module = "cachebox._cachebox")]
+pub struct lru_object_ptr_iterator {
+    iter: SafeRawHashMapIter<(HashablePyObject, PyObject, usize)>,
+    index: u8,
+}
+
+impl lru_object_ptr_iterator {
+    pub fn new(iter: SafeRawHashMapIter<(HashablePyObject, PyObject, usize)>, index: u8) -> Self {
+        Self { iter, index }
+    }
+}
+
+#[pymethods]
+impl lru_object_ptr_iterator {
+    pub fn __len__(&self) -> usize {
+        self.iter.len
+    }
+
+    pub fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    pub fn __next__(mut slf: PyRefMut<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+        if slf.index == 0 {
+            let (k, _, _) = slf.iter.next(py)?;
+            Ok(k.object.clone())
+        } else if slf.index == 1 {
+            let (_, v, _) = slf.iter.next(py)?;
+            Ok(v.clone())
+        } else {
+            #[cfg(debug_assertions)]
+            unreachable!("invalid iteration index specified");
+
+            #[cfg(not(debug_assertions))]
+            unsafe {
+                core::hint::unreachable_unchecked();
+            }
+        }
     }
 }

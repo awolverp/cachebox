@@ -353,7 +353,29 @@ class CacheTestSuiteMixin:
         # pickle in file
         with tempfile.TemporaryFile("w+b") as fd:
             c1 = self.cache(maxsize=100, **self.kwargs)
-            c1.update({i: i for i in range(100)})
+            c1.update({i: i for i in range(10)})
+
+            for _ in range(10):
+                c1[0]
+            for _ in range(9):
+                c1[1]
+            for _ in range(8):
+                c1[2]
+            for _ in range(7):
+                c1[3]
+            for _ in range(6):
+                c1[4]
+            for _ in range(5):
+                c1[5]
+            for _ in range(4):
+                c1[6]
+            for _ in range(3):
+                c1[7]
+            for _ in range(2):
+                c1[8]
+            for _ in range(1):
+                c1[9]
+
             pickle.dump(c1, fd)
             fd.seek(0)
             c2 = pickle.load(fd)

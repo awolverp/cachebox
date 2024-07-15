@@ -89,7 +89,7 @@ impl VTTLCache {
         lock.insert(hashable, value, None)
     }
 
-    #[pyo3(text_signature = "(key, value, ttl)")]
+    #[pyo3(signature = (key, value, ttl=None))]
     pub fn insert(
         &mut self,
         py: Python<'_>,

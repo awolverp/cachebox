@@ -65,14 +65,14 @@ macro_rules! hash_object {
 #[macro_export]
 macro_rules! make_eq_func {
     ($key:expr) => {
-        |(x, _)| x.eq(&$key)
+        |x| x.0.eq(&$key)
     };
 }
 
 #[macro_export]
 macro_rules! make_hasher_func {
     () => {
-        |(x, _)| x.hash
+        |x| x.0.hash
     };
 }
 

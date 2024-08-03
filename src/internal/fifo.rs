@@ -56,10 +56,18 @@ impl FIFOPolicy {
             }
         } else {
             for (i, entry) in (start..end).zip(shifted) {
+                #[cfg(debug_assertions)]
                 let old = self
                     .table
                     .get_mut(entry.0.hash, |x| (*x) - self.n_shifts == i)
                     .expect("index not found");
+
+                #[cfg(not(debug_assertions))]
+                let old = unsafe {
+                    self.table
+                        .get_mut(entry.0.hash, |x| (*x) - self.n_shifts == i)
+                        .unwrap_unchecked()
+                };
 
                 *old -= 1;
             }
@@ -114,7 +122,13 @@ impl FIFOPolicy {
                 })
                 .is_none()
         {
+            #[cfg(debug_assertions)]
             self.popitem().unwrap();
+
+            #[cfg(not(debug_assertions))]
+            unsafe {
+                self.popitem().unwrap_unchecked();
+            }
         }
 
         Ok(unsafe { self.insert_unchecked(key, value) })
@@ -127,9 +141,18 @@ impl FIFOPolicy {
         }
 
         let ret = self.entries.remove(0);
+
+        #[cfg(debug_assertions)]
         self.table
             .remove_entry(ret.0.hash, |index| (*index) - self.n_shifts == 0)
-            .expect("popitem key not found");
+            .expect("popitem key not found.");
+
+        #[cfg(not(debug_assertions))]
+        unsafe {
+            self.table
+                .remove_entry(ret.0.hash, |index| (*index) - self.n_shifts == 0)
+                .unwrap_unchecked();
+        }
 
         self.decrement_indexes(1, self.entries.len());
         Some(ret)

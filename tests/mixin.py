@@ -205,7 +205,7 @@ class _TestMixin:
         obj[2] = 2
         assert 2 == len(obj)
 
-        cap = self.__sizeof__()
+        cap = obj.__sizeof__()
         obj.clear(reuse=True)
         assert 0 == len(obj)
         assert obj.__sizeof__() >= cap
@@ -214,7 +214,7 @@ class _TestMixin:
         obj[2] = 2
         assert 2 == len(obj)
 
-        cap = self.__sizeof__()
+        cap = obj.__sizeof__()
         obj.clear(reuse=False)
         assert 0 == len(obj)
         # this is not stable and

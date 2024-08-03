@@ -38,9 +38,6 @@ macro_rules! tuple {
         } else {
             unsafe {
                 $(
-                    #[cfg(not(any(Py_LIMITED_API, PyPy, GraalPy)))]
-                    pyo3::ffi::PyTuple_SET_ITEM(tuple, $index, $value);
-                    #[cfg(any(Py_LIMITED_API, PyPy, GraalPy))]
                     pyo3::ffi::PyTuple_SetItem(tuple, $index, $value);
                 )+
             }

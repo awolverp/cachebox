@@ -24,6 +24,16 @@ class NoEQ:
         return self.val
 
 
+def getsizeof(obj, use_sys=True):
+    try:
+        if use_sys:
+            return sys.getsizeof(obj)
+        else:
+            return obj.__sizeof__()
+    except TypeError: # PyPy doesn't implement getsizeof or __sizeof__
+        return len(obj)
+
+
 class _TestMixin:
     CACHE: typing.Type[BaseCacheImpl]
 
@@ -94,7 +104,7 @@ class _TestMixin:
         # __sizeof__ returns exactly allocated memory size by cache
         # but sys.getsizeof add also garbage collector overhead to that, so sometimes 
         # sys.getsizeof is greater than __sizeof__
-        assert sys.getsizeof(cache) >= cache.__sizeof__()
+        assert getsizeof(cache) >= getsizeof(cache, False)
 
     def test___bool__(self):
         cache = self.CACHE(1, **self.KWARGS, capacity=1)
@@ -205,21 +215,21 @@ class _TestMixin:
         obj[2] = 2
         assert 2 == len(obj)
 
-        cap = obj.__sizeof__()
+        cap = getsizeof(obj, False)
         obj.clear(reuse=True)
         assert 0 == len(obj)
-        assert obj.__sizeof__() >= cap
+        assert getsizeof(obj, False) >= cap
 
         obj[1] = 1
         obj[2] = 2
         assert 2 == len(obj)
 
-        cap = obj.__sizeof__()
+        cap = getsizeof(obj, False)
         obj.clear(reuse=False)
         assert 0 == len(obj)
         # this is not stable and
         # may increases the capacity!
-        assert cap != obj.__sizeof__()
+        assert cap != getsizeof(obj, False)
 
     def test_update(self):
         obj = self.CACHE(2, **self.KWARGS, capacity=2)

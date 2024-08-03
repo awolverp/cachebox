@@ -74,10 +74,10 @@ macro_rules! extract_pickle_tuple {
         let iterable = {
             let obj = pyo3::ffi::PyTuple_GetItem($state, 1);
 
-            if pyo3::ffi::PyDict_CheckExact(obj) != 1 {
+            if pyo3::ffi::PyDict_CheckExact(obj) != 1 && pyo3::ffi::PyList_CheckExact(obj) != 1 {
                 return Err(err!(
                     pyo3::exceptions::PyTypeError,
-                    "the iterable object is not an dict"
+                    "the iterable object is not an dict or list"
                 ));
             }
 

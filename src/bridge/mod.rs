@@ -2,3 +2,4 @@
 
 pub mod baseimpl;
 pub mod cache;
+pub mod fifocache;

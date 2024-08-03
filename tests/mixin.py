@@ -33,7 +33,7 @@ class _TestMixin:
     def test__new__(self):
         cache = self.CACHE(10, **self.KWARGS, capacity=8)
         assert cache.maxsize == 10
-        assert 20 > cache.capacity() >= 8
+        assert 20 > cache.capacity() >= 8, "capacity: {}".format(cache.capacity())
 
         cache = self.CACHE(20, **self.KWARGS, capacity=0)
         assert cache.maxsize == 20
@@ -346,7 +346,7 @@ class _TestMixin:
         obj: self.CACHE[int, int] = self.CACHE(maxsize=0, **self.KWARGS)
         _ = obj
 
-    def _test_pickle(self, check_order: bool):
+    def _test_pickle(self, check_order: typing.Callable):
         import pickle
         import tempfile
 
@@ -382,34 +382,36 @@ class _TestMixin:
         c2 = pickle.loads(pickle.dumps(c1))
         assert c1 == c2
         assert c1.capacity() == c2.capacity()
+        check_order(c1, c2)
 
         with tempfile.TemporaryFile("w+b") as fd:
             c1 = self.CACHE(maxsize=100, **self.KWARGS)
             c1.update({i: i for i in range(10)})
 
             for _ in range(10):
-                c1[0]
-            for _ in range(9):
                 c1[1]
-            for _ in range(8):
+            for _ in range(9):
                 c1[2]
+            for _ in range(8):
+                c1[0]
             for _ in range(7):
                 c1[3]
             for _ in range(6):
-                c1[4]
-            for _ in range(5):
                 c1[5]
+            for _ in range(5):
+                c1[4]
             for _ in range(4):
                 c1[6]
             for _ in range(3):
                 c1[7]
             for _ in range(2):
-                c1[8]
-            for _ in range(1):
                 c1[9]
+            for _ in range(1):
+                c1[8]
 
             pickle.dump(c1, fd)
             fd.seek(0)
             c2 = pickle.load(fd)
             assert c1 == c2
             assert c1.capacity() == c2.capacity()
+            check_order(c1, c2)

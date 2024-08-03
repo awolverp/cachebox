@@ -76,12 +76,12 @@ class Cache(BaseCacheImpl[KT, VT]):
     """
 
     def __new__(
-        self,
+        cls,
         maxsize: int,
         iterable: typing.Union[typing.Iterable[typing.Tuple[KT, VT]], typing.Dict[KT, VT]] = ...,
         *,
         capacity: int = ...,
-    ) -> None:
+    ):
         """
         A simple cache that has no algorithm; this is only a hashmap.
 
@@ -94,12 +94,6 @@ class Cache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    @property
-    def maxsize(self) -> int: ...
-    def __len__(self) -> int: ...
-    def __sizeof__(self) -> int: ...
-    def __bool__(self) -> bool: ...
-    def __contains__(self, key: KT) -> bool: ...
     def __setitem__(self, key: KT, value: VT) -> None:
         """
         Set self[key] to value.
@@ -125,7 +119,6 @@ class Cache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def __str__(self) -> str: ...
     def capacity(self) -> int:
         """
         Returns the number of elements the map can hold without reallocating.
@@ -230,5 +223,140 @@ class Cache(BaseCacheImpl[KT, VT]):
         Notes:
         - You should not make any changes in cache while using this iterable object.
         - Items are not ordered.
+        """
+        ...
+
+class FIFOCache(BaseCacheImpl[KT, VT]):
+    """
+    FIFO Cache implementation - First-In First-Out Policy (thread-safe).
+
+    In simple terms, the FIFO cache will remove the element that has been in the cache the longest
+    """
+    def __new__(
+        cls,
+        maxsize: int,
+        iterable: typing.Union[typing.Iterable[typing.Tuple[KT, VT]], typing.Dict[KT, VT]] = ...,
+        *,
+        capacity: int = ...,
+    ):
+        """
+        FIFO Cache implementation - First-In First-Out Policy (thread-safe).
+
+        By `maxsize` param, you can specify the limit size of the cache ( zero means infinity ); this is unchangable.
+
+        By `iterable` param, you can create cache from a dict or an iterable.
+
+        If `capacity` param is given, cache attempts to allocate a new hash table with at
+        least enough capacity for inserting the given number of elements without reallocating.
+        """
+        ...
+
+    def __setitem__(self, key: KT, value: VT) -> None:
+        """
+        Set self[key] to value.
+        """
+        ...
+
+    def __getitem__(self, key: KT) -> VT:
+        """
+        Returns self[key].
+
+        Note: raises `KeyError` if key not found.
+        """
+        ...
+
+    def __delitem__(self, key: KT) -> VT:
+        """
+        Deletes self[key].
+
+        Note: raises `KeyError` if key not found.
+        """
+        ...
+
+    def capacity(self) -> int:
+        """
+        Returns the number of elements the map can hold without reallocating.
+        """
+        ...
+
+    def is_full(self) -> bool:
+        """
+        Equivalent directly to `len(self) == self.maxsize`
+        """
+        ...
+
+    def is_empty(self) -> bool:
+        """
+        Equivalent directly to `len(self) == 0`
+        """
+        ...
+
+    def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
+        """
+        Equals to `self[key] = value`, but returns a value:
+
+        - If the cache did not have this key present, None is returned.
+        - If the cache did have this key present, the value is updated,
+          and the old value is returned. The key is not updated, though;
+        """
+        ...
+
+    def get(self, key: KT, default: DT = None) -> typing.Union[VT, DT]:
+        """
+        Equals to `self[key]`, but returns `default` if the cache don't have this key present.
+        """
+        ...
+
+    def pop(self, key: KT, default: DT = None) -> typing.Union[VT, DT]:
+        """
+        Removes specified key and return the corresponding value.
+
+        If the key is not found, returns the `default`.
+        """
+        ...
+
+    def setdefault(self, key: KT, default: typing.Optional[VT] = None) -> typing.Optional[VT]:
+        """
+        Inserts key with a value of default if key is not in the cache.
+
+        Return the value for key if key is in the cache, else default.
+        """
+        ...
+
+    def popitem(self) -> typing.Tuple[KT, VT]:
+        """
+        Removes the element that has been in the cache the longest
+        """
+        ...
+
+    def drain(self, n: int) -> int:
+        """
+        Does the `popitem()` `n` times and returns count of removed items.
+        """
+        ...
+
+    def clear(self, *, reuse: bool = False) -> None:
+        """
+        Removes all items from cache.
+
+        If reuse is True, will not free the memory for reusing in the future.
+        """
+        ...
+
+    def update(self, iterable: typing.Iterable[KT] | typing.Dict[KT, VT]) -> None:
+        """
+        Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
+        """
+        ...
+
+    def first(self, n: int = 0) -> typing.Optional[KT]:
+        """
+        Returns the first key in cache; this is the one which will be removed by `popitem()`.
+        """
+        ...
+
+    def last(self) -> typing.Optional[KT]:
+        """
+        Returns the last key in cache.
         """
         ...

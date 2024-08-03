@@ -1,5 +1,6 @@
 use std::hash::Hasher;
 
+#[derive(Debug)]
 pub struct HashedKey {
     pub key: pyo3::PyObject,
 

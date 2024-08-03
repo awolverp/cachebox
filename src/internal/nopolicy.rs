@@ -3,12 +3,12 @@
 use crate::hashedkey::HashedKey;
 use hashbrown::raw::RawTable;
 
-pub struct NoPolicyCache {
+pub struct NoPolicy {
     pub table: RawTable<(HashedKey, pyo3::PyObject)>,
     pub maxsize: core::num::NonZeroUsize,
 }
 
-impl NoPolicyCache {
+impl NoPolicy {
     #[inline]
     pub fn new(maxsize: usize, mut capacity: usize) -> pyo3::PyResult<Self> {
         let maxsize = non_zero_or!(maxsize, isize::MAX as usize);
@@ -23,7 +23,7 @@ impl NoPolicyCache {
     /// # Safety
     ///
     /// This method is unsafe because does not checks the maxsize and this
-    /// may occurred errors and bad situations in future if you don't bother
+    /// may occurred errors and bad situations in future if you don't care about
     /// maxsize.
     #[inline]
     unsafe fn insert_unchecked(
@@ -71,9 +71,7 @@ impl NoPolicyCache {
 
     #[inline]
     pub fn remove(&mut self, key: &HashedKey) -> Option<(HashedKey, pyo3::PyObject)> {
-        self.table
-            .find(key.hash, |x| x.0 == *key)
-            .map(|bucket| unsafe { self.table.remove(bucket).0 })
+        self.table.remove_entry(key.hash, |x| x.0 == *key)
     }
 
     #[inline]
@@ -155,7 +153,7 @@ impl NoPolicyCache {
     }
 }
 
-impl PartialEq for NoPolicyCache {
+impl PartialEq for NoPolicy {
     fn eq(&self, other: &Self) -> bool {
         if self.maxsize != other.maxsize {
             return false;
@@ -176,4 +174,4 @@ impl PartialEq for NoPolicyCache {
     }
 }
 
-impl Eq for NoPolicyCache {}
+impl Eq for NoPolicy {}

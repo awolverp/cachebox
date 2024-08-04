@@ -27,7 +27,7 @@ impl HashedKey {
                 return Err(pyo3::PyErr::take(py).unwrap());
             }
 
-            let mut state = std::hash::DefaultHasher::default();
+            let mut state = fxhash::FxHasher64::default();
             state.write(&py_hash.to_ne_bytes());
 
             Ok(Self::from_key_and_hash(key, state.finish()))

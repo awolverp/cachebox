@@ -20,8 +20,9 @@ hashbrown = { version = "^0.14", default-features = false, features=["inline-mor
 fastrand = "2"
 pyo3 = { version = "^0.22", default-features = false, features=["macros", "extension-module"] }
 cfg-if = "1.0"
-parking_lot_core = { version = "0.9.0", default-features = false }
-lock_api = { version = "0.4.6", default-features = false }
+parking_lot_core = { version = "^0.9", default-features = false }
+lock_api = { version = "^0.4", default-features = false }
+fxhash = {version="^0.2"}
 
 [lints.clippy]
 dbg_macro = "warn"

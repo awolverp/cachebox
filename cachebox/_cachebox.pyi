@@ -360,3 +360,6 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         Returns the last key in cache.
         """
         ...
+
+class RRCache(BaseCacheImpl[KT, VT]):
+    pass

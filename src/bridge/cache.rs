@@ -427,9 +427,9 @@ impl Cache {
 #[allow(non_camel_case_types)]
 #[pyo3::pyclass(module = "cachebox._cachebox")]
 pub struct cache_iterator {
-    ptr: _KeepForIter<Cache>,
-    iter: crate::mutex::Mutex<hashbrown::raw::RawIter<(HashedKey, pyo3::PyObject)>>,
-    typ: u8,
+    pub ptr: _KeepForIter<Cache>,
+    pub iter: crate::mutex::Mutex<hashbrown::raw::RawIter<(HashedKey, pyo3::PyObject)>>,
+    pub typ: u8,
 }
 
 #[pyo3::pymethods]

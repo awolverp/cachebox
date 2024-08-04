@@ -26,7 +26,7 @@ impl NoPolicy {
     /// may occurred errors and bad situations in future if you don't care about
     /// maxsize.
     #[inline]
-    unsafe fn insert_unchecked(
+    pub unsafe fn insert_unchecked(
         &mut self,
         key: HashedKey,
         value: pyo3::PyObject,

@@ -109,11 +109,7 @@ impl FIFOPolicy {
     }
 
     #[inline]
-    pub fn insert(
-        &mut self,
-        key: HashedKey,
-        value: pyo3::PyObject,
-    ) -> pyo3::PyResult<Option<pyo3::PyObject>> {
+    pub fn insert(&mut self, key: HashedKey, value: pyo3::PyObject) -> Option<pyo3::PyObject> {
         if self.table.len() >= self.maxsize.get()
             && self
                 .table
@@ -131,7 +127,7 @@ impl FIFOPolicy {
             }
         }
 
-        Ok(unsafe { self.insert_unchecked(key, value) })
+        unsafe { self.insert_unchecked(key, value) }
     }
 
     #[inline]
@@ -205,7 +201,7 @@ impl FIFOPolicy {
 
             for (key, value) in dict.iter() {
                 let hk = unsafe { HashedKey::from_pyobject(py, key.unbind()).unwrap_unchecked() };
-                self.insert(hk, value.unbind())?;
+                self.insert(hk, value.unbind());
             }
 
             Ok(())
@@ -214,7 +210,7 @@ impl FIFOPolicy {
                 let (key, value) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject)>()?;
 
                 let hk = HashedKey::from_pyobject(py, key)?;
-                self.insert(hk, value)?;
+                self.insert(hk, value);
             }
 
             Ok(())

@@ -1,4 +1,4 @@
-from cachebox import BaseCacheImpl, Cache, FIFOCache
+from cachebox import BaseCacheImpl, Cache, FIFOCache, RRCache
 import pytest
 
 from .mixin import _TestMixin
@@ -103,3 +103,6 @@ class TestFIFOCache(_TestMixin):
 
         assert obj.first() == 1
         assert obj.last() == 10
+
+class TestRRCache(_TestMixin):
+    CACHE = RRCache

@@ -121,7 +121,7 @@ class TestTTLCache(_TestMixin):
         assert obj.ttl == 0.5
 
         obj.insert(0, 1)
-        time.sleep(0.5)
+        time.sleep(0.8)
 
         with pytest.raises(KeyError):
             obj[0]
@@ -138,11 +138,13 @@ class TestTTLCache(_TestMixin):
     def test_update_with_ttl(self):
         obj = self.CACHE(2, 0.5)
 
-        obj.update({1: 1, 2: 2, 3: 3})
-        time.sleep(0.5)
+        # obj.update({1: 1, 2: 2, 3: 3})
+        obj.update((i+1, i+1) for i in range(3))
 
         with pytest.raises(KeyError):
             obj[1]
+
+        time.sleep(0.8)
 
         with pytest.raises(KeyError):
             obj[2]

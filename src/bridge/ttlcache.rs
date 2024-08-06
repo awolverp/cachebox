@@ -1,36 +1,46 @@
-//! implement FIFOCache, our fifo implementation
+//! implement TTLCache, our ttl implementation
 
-use crate::{hashedkey::HashedKey, util::_KeepForIter};
+use crate::{hashedkey::HashedKey, internal::TTLElement, util::_KeepForIter};
 
-/// FIFO Cache implementation - First-In First-Out Policy (thread-safe).
+/// TTL Cache implementation - Time-To-Live Policy (thread-safe).
 ///
-/// In simple terms, the FIFO cache will remove the element that has been in the cache the longest.
+/// In simple terms, the TTL cache will automatically remove the element in the cache that has expired::
 #[pyo3::pyclass(module="cachebox._cachebox", extends=crate::bridge::baseimpl::BaseCacheImpl)]
-pub struct FIFOCache {
+pub struct TTLCache {
     // Why [`Box`]? We using [`Box`] here so that there's no need for `&mut self`
     // in this struct; so RuntimeError never occurred for using this class in multiple threads.
-    raw: Box<crate::mutex::Mutex<crate::internal::FIFOPolicy>>,
+    raw: Box<crate::mutex::Mutex<crate::internal::TTLPolicy>>,
 }
 
 #[pyo3::pymethods]
-impl FIFOCache {
-    /// FIFO Cache implementation - First-In First-Out Policy (thread-safe).
+impl TTLCache {
+    /// TTL Cache implementation - First-In First-Out Policy (thread-safe).
     ///
     /// By maxsize param, you can specify the limit size of the cache ( zero means infinity ); this is unchangable.
+    ///
+    /// The ttl param specifies the time-to-live value for each element in cache (in seconds); cannot be zero or negative.
     ///
     /// By iterable param, you can create cache from a dict or an iterable.
     ///
     /// If capacity param is given, cache attempts to allocate a new hash table with at
     /// least enough capacity for inserting the given number of elements without reallocating.
     #[new]
-    #[pyo3(signature=(maxsize, iterable=None, *, capacity=0))]
+    #[pyo3(signature=(maxsize, ttl, iterable=None, *, capacity=0))]
     pub fn __new__(
         py: pyo3::Python<'_>,
         maxsize: usize,
+        ttl: f64,
         iterable: Option<pyo3::PyObject>,
         capacity: usize,
     ) -> pyo3::PyResult<(Self, crate::bridge::baseimpl::BaseCacheImpl)> {
-        let mut raw = crate::internal::FIFOPolicy::new(maxsize, capacity)?;
+        if ttl <= 0.0 {
+            return Err(err!(
+                pyo3::exceptions::PyValueError,
+                "ttl cannot be zero or negative"
+            ));
+        }
+
+        let mut raw = crate::internal::TTLPolicy::new(maxsize, capacity, ttl)?;
         if iterable.is_some() {
             raw.update(py, unsafe { iterable.unwrap_unchecked() })?;
         }
@@ -48,9 +58,17 @@ impl FIFOCache {
         lock.maxsize.get()
     }
 
+    /// Returns the cache ttl
+    #[getter]
+    pub fn ttl(&self) -> f64 {
+        let lock = self.raw.lock();
+        lock.ttl.as_secs_f64()
+    }
+
     /// Returns the number of elements in the table - len(self)
     pub fn __len__(&self) -> usize {
-        let lock = self.raw.lock();
+        let mut lock = self.raw.lock();
+        lock.expire();
         lock.table.len()
     }
 
@@ -65,7 +83,8 @@ impl FIFOCache {
 
     /// Returns true if cache not empty - bool(self)
     pub fn __bool__(&self) -> bool {
-        let lock = self.raw.lock();
+        let mut lock = self.raw.lock();
+        lock.expire();
         !lock.table.is_empty()
     }
 
@@ -85,7 +104,7 @@ impl FIFOCache {
     ) -> pyo3::PyResult<()> {
         let hk = HashedKey::from_pyobject(py, key)?;
         let mut lock = self.raw.lock();
-        lock.insert(hk, value);
+        lock.insert(hk, value, true);
         Ok(())
     }
 
@@ -101,7 +120,7 @@ impl FIFOCache {
         let lock = self.raw.lock();
 
         match lock.get(&hk) {
-            Some(val) => Ok(val.clone_ref(py)),
+            Some(val) => Ok(val.value.clone_ref(py)),
             None => Err(err!(pyo3::exceptions::PyKeyError, hk.key)),
         }
     }
@@ -121,7 +140,8 @@ impl FIFOCache {
 
     /// Returns str(self)
     pub fn __str__(&self) -> String {
-        let lock = self.raw.lock();
+        let mut lock = self.raw.lock();
+        lock.expire();
 
         format!(
             "FIFOCache({} / {}, capacity={})",
@@ -135,11 +155,13 @@ impl FIFOCache {
     pub fn __iter__(
         slf: pyo3::PyRef<'_, Self>,
         py: pyo3::Python<'_>,
-    ) -> pyo3::PyResult<pyo3::Py<fifocache_iterator>> {
-        let lock = slf.raw.lock();
+    ) -> pyo3::PyResult<pyo3::Py<ttlcache_iterator>> {
+        let mut lock = slf.raw.lock();
         let (len, capacity) = (lock.table.len(), lock.table.capacity());
 
-        let result = fifocache_iterator {
+        lock.expire();
+
+        let result = ttlcache_iterator {
             ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
             iter: crate::mutex::Mutex::new(lock.as_ptr()),
             typ: 0,
@@ -177,14 +199,15 @@ impl FIFOCache {
 
     pub fn __getstate__(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<pyo3::PyObject> {
         let lock = self.raw.lock();
+
         unsafe {
             let state = lock.to_pickle(py)?;
             Ok(pyo3::Py::from_owned_ptr(py, state))
         }
     }
 
-    pub fn __getnewargs__(&self) -> (usize,) {
-        (0,)
+    pub fn __getnewargs__(&self) -> (usize, f64) {
+        (0, 1.0)
     }
 
     pub fn __setstate__(&self, py: pyo3::Python<'_>, state: pyo3::PyObject) -> pyo3::PyResult<()> {
@@ -193,9 +216,9 @@ impl FIFOCache {
     }
 
     pub fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
-        for (key, val) in self.raw.lock().entries.iter() {
-            visit.call(&key.key)?;
-            visit.call(val)?;
+        for element in self.raw.lock().entries.iter() {
+            visit.call(&element.key.key)?;
+            visit.call(&element.value)?;
         }
         Ok(())
     }
@@ -237,7 +260,7 @@ impl FIFOCache {
     ) -> pyo3::PyResult<pyo3::PyObject> {
         let hk = HashedKey::from_pyobject(py, key)?;
         let mut lock = self.raw.lock();
-        let op = lock.insert(hk, value);
+        let op = lock.insert(hk, value, true);
         Ok(op.unwrap_or_else(|| py.None()))
     }
 
@@ -253,7 +276,7 @@ impl FIFOCache {
         let lock = self.raw.lock();
 
         match lock.get(&hk) {
-            Some(val) => Ok(val.clone_ref(py)),
+            Some(val) => Ok(val.value.clone_ref(py)),
             None => Ok(default.unwrap_or_else(|| py.None())),
         }
     }
@@ -272,7 +295,7 @@ impl FIFOCache {
         let mut lock = self.raw.lock();
 
         match lock.remove(&hk) {
-            Some((_, val)) => Ok(val),
+            Some(element) => Ok(element.value),
             None => Ok(default.unwrap_or_else(|| py.None())),
         }
     }
@@ -291,11 +314,11 @@ impl FIFOCache {
         let mut lock = self.raw.lock();
 
         if let Some(x) = lock.get(&hk) {
-            return Ok(x.clone_ref(py));
+            return Ok(x.value.clone_ref(py));
         }
 
         let defval = default.unwrap_or_else(|| py.None());
-        lock.insert(hk, defval.clone_ref(py));
+        lock.insert(hk, defval.clone_ref(py), true);
         Ok(defval)
     }
 
@@ -303,7 +326,7 @@ impl FIFOCache {
     pub fn popitem(&self) -> pyo3::PyResult<(pyo3::PyObject, pyo3::PyObject)> {
         let mut lock = self.raw.lock();
         match lock.popitem() {
-            Some((key, val)) => Ok((key.key, val)),
+            Some(element) => Ok((element.key.key, element.value)),
             None => Err(err!(pyo3::exceptions::PyKeyError, ())),
         }
     }
@@ -363,11 +386,13 @@ impl FIFOCache {
     pub fn items(
         slf: pyo3::PyRef<'_, Self>,
         py: pyo3::Python<'_>,
-    ) -> pyo3::PyResult<pyo3::Py<fifocache_iterator>> {
-        let lock = slf.raw.lock();
+    ) -> pyo3::PyResult<pyo3::Py<ttlcache_iterator>> {
+        let mut lock = slf.raw.lock();
         let (len, capacity) = (lock.table.len(), lock.table.capacity());
 
-        let result = fifocache_iterator {
+        lock.expire();
+
+        let result = ttlcache_iterator {
             ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
             iter: crate::mutex::Mutex::new(lock.as_ptr()),
             typ: 2,
@@ -383,11 +408,13 @@ impl FIFOCache {
     pub fn keys(
         slf: pyo3::PyRef<'_, Self>,
         py: pyo3::Python<'_>,
-    ) -> pyo3::PyResult<pyo3::Py<fifocache_iterator>> {
-        let lock = slf.raw.lock();
+    ) -> pyo3::PyResult<pyo3::Py<ttlcache_iterator>> {
+        let mut lock = slf.raw.lock();
         let (len, capacity) = (lock.table.len(), lock.table.capacity());
 
-        let result = fifocache_iterator {
+        lock.expire();
+
+        let result = ttlcache_iterator {
             ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
             iter: crate::mutex::Mutex::new(lock.as_ptr()),
             typ: 0,
@@ -403,11 +430,13 @@ impl FIFOCache {
     pub fn values(
         slf: pyo3::PyRef<'_, Self>,
         py: pyo3::Python<'_>,
-    ) -> pyo3::PyResult<pyo3::Py<fifocache_iterator>> {
-        let lock = slf.raw.lock();
+    ) -> pyo3::PyResult<pyo3::Py<ttlcache_iterator>> {
+        let mut lock = slf.raw.lock();
         let (len, capacity) = (lock.table.len(), lock.table.capacity());
 
-        let result = fifocache_iterator {
+        lock.expire();
+
+        let result = ttlcache_iterator {
             ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
             iter: crate::mutex::Mutex::new(lock.as_ptr()),
             typ: 1,
@@ -416,29 +445,103 @@ impl FIFOCache {
         pyo3::Py::new(py, result)
     }
 
-    /// Returns the first key in cache; this is the one which will be removed by `popitem()`.
+    /// Returns the oldest key in cache; this is the one which will be removed by `popitem()`.
     pub fn first(&self, py: pyo3::Python<'_>) -> Option<pyo3::PyObject> {
         let lock = self.raw.lock();
-        lock.entries.first().map(|x| x.0.key.clone_ref(py))
+        lock.entries.first().map(|x| x.key.key.clone_ref(py))
     }
 
-    /// Returns the last key in cache.
+    /// Returns the newest key in cache.
     pub fn last(&self, py: pyo3::Python<'_>) -> Option<pyo3::PyObject> {
         let lock = self.raw.lock();
-        lock.entries.last().map(|x| x.0.key.clone_ref(py))
+        lock.entries.last().map(|x| x.key.key.clone_ref(py))
+    }
+
+    /// Works like `.get()`, but also returns the remaining time-to-live.
+    #[pyo3(signature = (key, default=None))]
+    pub fn get_with_expire(
+        &self,
+        py: pyo3::Python<'_>,
+        key: pyo3::PyObject,
+        default: Option<pyo3::PyObject>,
+    ) -> pyo3::PyResult<(pyo3::PyObject, f64)> {
+        let hk = HashedKey::from_pyobject(py, key)?;
+        let lock = self.raw.lock();
+
+        match lock.get(&hk) {
+            #[rustfmt::skip]
+            Some(val) => Ok(
+                (
+                    val.value.clone_ref(py),
+                    unsafe {
+                        val.expire.duration_since(std::time::SystemTime::now())
+                        .unwrap_unchecked()
+                        .as_secs_f64()
+                    }
+                )
+            ),
+            None => Ok((default.unwrap_or_else(|| py.None()), 0.0)),
+        }
+    }
+
+    /// Works like `.pop()`, but also returns the remaining time-to-live.
+    #[pyo3(signature = (key, default=None))]
+    pub fn pop_with_expire(
+        &self,
+        py: pyo3::Python<'_>,
+        key: pyo3::PyObject,
+        default: Option<pyo3::PyObject>,
+    ) -> pyo3::PyResult<(pyo3::PyObject, f64)> {
+        let hk = HashedKey::from_pyobject(py, key)?;
+        let mut lock = self.raw.lock();
+
+        match lock.remove(&hk) {
+            #[rustfmt::skip]
+            Some(element) => Ok(
+                (
+                    element.value,
+                    unsafe {
+                        element.expire.duration_since(std::time::SystemTime::now())
+                        .unwrap_unchecked()
+                        .as_secs_f64()
+                    }
+                )
+            ),
+            None => Ok((default.unwrap_or_else(|| py.None()), 0.0)),
+        }
+    }
+
+    /// Works like `.popitem()`, but also returns the remaining time-to-live.
+    pub fn popitem_with_expire(&self) -> pyo3::PyResult<(pyo3::PyObject, pyo3::PyObject, f64)> {
+        let mut lock = self.raw.lock();
+        match lock.popitem() {
+            #[rustfmt::skip]
+            Some(element) => Ok(
+                (
+                    element.key.key,
+                    element.value,
+                    unsafe {
+                        element.expire.duration_since(std::time::SystemTime::now())
+                        .unwrap_unchecked()
+                        .as_secs_f64()
+                    }
+                )
+            ),
+            None => Err(err!(pyo3::exceptions::PyKeyError, ())),
+        }
     }
 }
 
 #[allow(non_camel_case_types)]
 #[pyo3::pyclass(module = "cachebox._cachebox")]
-pub struct fifocache_iterator {
-    ptr: _KeepForIter<FIFOCache>,
-    iter: crate::mutex::Mutex<crate::internal::FIFOVecPtr>,
+pub struct ttlcache_iterator {
+    ptr: _KeepForIter<TTLCache>,
+    iter: crate::mutex::Mutex<crate::internal::TTLVecPtr>,
     typ: u8,
 }
 
 #[pyo3::pymethods]
-impl fifocache_iterator {
+impl ttlcache_iterator {
     pub fn __len__(&self) -> usize {
         self.ptr.len
     }
@@ -456,22 +559,29 @@ impl fifocache_iterator {
 
         let mut l = slf.iter.lock();
 
-        if l.offset >= l.length {
-            return Err(err!(pyo3::exceptions::PyStopIteration, ()));
+        let mut element: &TTLElement;
+        loop {
+            if l.offset >= l.length {
+                return Err(err!(pyo3::exceptions::PyStopIteration, ()));
+            }
+
+            element = unsafe { &*l.entries.add(l.offset) };
+            l.offset += 1;
+
+            if element.expire > std::time::SystemTime::now() {
+                break;
+            }
         }
 
-        let (key, val) = unsafe { &*l.entries.add(l.offset) };
-        l.offset += 1;
-
         match slf.typ {
-            0 => Ok(key.key.clone_ref(py).into_ptr()),
-            1 => Ok(val.clone_ref(py).into_ptr()),
+            0 => Ok(element.key.key.clone_ref(py).into_ptr()),
+            1 => Ok(element.value.clone_ref(py).into_ptr()),
             2 => {
                 tuple!(
                     py,
                     2,
-                    0 => key.key.clone_ref(py).into_ptr(),
-                    1 => val.clone_ref(py).into_ptr(),
+                    0 => element.key.key.clone_ref(py).into_ptr(),
+                    1 => element.value.clone_ref(py).into_ptr(),
                 )
             }
             _ => {

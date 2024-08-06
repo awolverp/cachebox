@@ -49,6 +49,7 @@ fn _cachebox(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<bridge::cache::cache_iterator>()?;
     m.add_class::<bridge::fifocache::FIFOCache>()?;
     m.add_class::<bridge::rrcache::RRCache>()?;
+    m.add_class::<bridge::ttlcache::TTLCache>()?;
 
     Ok(())
 }

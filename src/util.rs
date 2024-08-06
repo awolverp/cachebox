@@ -78,7 +78,7 @@ macro_rules! extract_pickle_tuple {
                 ));
             }
 
-            // Tuple uses borrowed references
+            // Tuple returns borrowed references
             pyo3::PyObject::from_borrowed_ptr($py, obj)
         };
 

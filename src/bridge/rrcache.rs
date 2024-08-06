@@ -51,8 +51,6 @@ pub struct RRCache {
 
 #[pyo3::pymethods]
 impl RRCache {
-    /// A simple cache that has no algorithm; this is only a hashmap.
-    ///
     /// By maxsize param, you can specify the limit size of the cache ( zero means infinity ); this is unchangable.
     ///
     /// By iterable param, you can create cache from a dict or an iterable.

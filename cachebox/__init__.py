@@ -17,6 +17,7 @@ from ._cachebox import (
     Cache as Cache,
     FIFOCache as FIFOCache,
     RRCache as RRCache,
+    TTLCache as TTLCache,
     __version__ as __version__,
     __author__ as __author__,
     version_info as version_info,

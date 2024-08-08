@@ -351,7 +351,9 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
 
     def first(self, n: int = 0) -> typing.Optional[KT]:
         """
-        Returns the first key in cache; this is the one which will be removed by `popitem()`.
+        Returns the first key in cache; this is the one which will be removed by `popitem()` (if n == 0).
+
+        By using `n` parameter, you can browse order index by index.
         """
         ...
 
@@ -640,7 +642,9 @@ class TTLCache(BaseCacheImpl[KT, VT]):
 
     def first(self, n: int = 0) -> typing.Optional[KT]:
         """
-        Returns the oldest key in cache; this is the one which will be removed by `popitem()`.
+        Returns the oldest key in cache; this is the one which will be removed by `popitem()` (if n == 0).
+
+        By using `n` parameter, you can browse order index by index.
         """
         ...
 

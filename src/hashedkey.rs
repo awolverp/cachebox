@@ -33,6 +33,13 @@ impl HashedKey {
             Ok(Self::from_key_and_hash(key, state.finish()))
         }
     }
+
+    pub fn clone_ref(&self, py: pyo3::Python<'_>) -> Self {
+        Self {
+            key: self.key.clone_ref(py),
+            hash: self.hash,
+        }
+    }
 }
 
 impl PartialEq for HashedKey {

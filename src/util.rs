@@ -97,22 +97,29 @@ macro_rules! extract_pickle_tuple {
 
 macro_rules! pyobject_eq {
     ($arg1:expr, $arg2:expr) => {
-        unsafe {
-            let cmp =
-                pyo3::ffi::PyObject_RichCompare($arg1.as_ptr(), $arg2.as_ptr(), pyo3::ffi::Py_EQ);
+        if $arg1.as_ptr() == $arg2.as_ptr() {
+            true
+        } else {
+            unsafe {
+                let cmp = pyo3::ffi::PyObject_RichCompare(
+                    $arg1.as_ptr(),
+                    $arg2.as_ptr(),
+                    pyo3::ffi::Py_EQ,
+                );
 
-            if cmp.is_null() {
-                pyo3::ffi::PyErr_Clear();
-                false
-            } else {
-                let boolean = pyo3::ffi::PyObject_IsTrue(cmp);
-                pyo3::ffi::Py_DECREF(cmp);
-
-                if boolean == -1 {
+                if cmp.is_null() {
                     pyo3::ffi::PyErr_Clear();
                     false
                 } else {
-                    boolean == 1
+                    let boolean = pyo3::ffi::PyObject_IsTrue(cmp);
+                    pyo3::ffi::Py_DECREF(cmp);
+
+                    if boolean == -1 {
+                        pyo3::ffi::PyErr_Clear();
+                        false
+                    } else {
+                        boolean == 1
+                    }
                 }
             }
         }

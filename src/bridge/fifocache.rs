@@ -417,9 +417,14 @@ impl FIFOCache {
     }
 
     /// Returns the first key in cache; this is the one which will be removed by `popitem()`.
-    pub fn first(&self, py: pyo3::Python<'_>) -> Option<pyo3::PyObject> {
+    #[pyo3(signature=(n=0))]
+    pub fn first(&self, py: pyo3::Python<'_>, n: usize) -> Option<pyo3::PyObject> {
         let lock = self.raw.lock();
-        lock.entries.first().map(|x| x.0.key.clone_ref(py))
+        if n == 0 {
+            lock.entries.first().map(|x| x.0.key.clone_ref(py))
+        } else {
+            lock.entries.get(n).map(|x| x.0.key.clone_ref(py))
+        }
     }
 
     /// Returns the last key in cache.

@@ -141,7 +141,7 @@ impl FIFOCache {
 
         let result = fifocache_iterator {
             ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
-            iter: crate::mutex::Mutex::new(lock.as_ptr()),
+            iter: crate::mutex::Mutex::new(lock.iter()),
             typ: 0,
         };
 
@@ -369,7 +369,7 @@ impl FIFOCache {
 
         let result = fifocache_iterator {
             ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
-            iter: crate::mutex::Mutex::new(lock.as_ptr()),
+            iter: crate::mutex::Mutex::new(lock.iter()),
             typ: 2,
         };
 
@@ -389,7 +389,7 @@ impl FIFOCache {
 
         let result = fifocache_iterator {
             ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
-            iter: crate::mutex::Mutex::new(lock.as_ptr()),
+            iter: crate::mutex::Mutex::new(lock.iter()),
             typ: 0,
         };
 
@@ -409,7 +409,7 @@ impl FIFOCache {
 
         let result = fifocache_iterator {
             ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
-            iter: crate::mutex::Mutex::new(lock.as_ptr()),
+            iter: crate::mutex::Mutex::new(lock.iter()),
             typ: 1,
         };
 
@@ -417,13 +417,13 @@ impl FIFOCache {
     }
 
     /// Returns the first key in cache; this is the one which will be removed by `popitem()` (if n == 0).
-    /// 
+    ///
     /// By using `n` parameter, you can browse order index by index.
     #[pyo3(signature=(n=0))]
     pub fn first(&self, py: pyo3::Python<'_>, n: usize) -> Option<pyo3::PyObject> {
         let lock = self.raw.lock();
         if n == 0 {
-            lock.entries.first().map(|x| x.0.key.clone_ref(py))
+            lock.entries.front().map(|x| x.0.key.clone_ref(py))
         } else {
             lock.entries.get(n).map(|x| x.0.key.clone_ref(py))
         }
@@ -432,7 +432,7 @@ impl FIFOCache {
     /// Returns the last key in cache.
     pub fn last(&self, py: pyo3::Python<'_>) -> Option<pyo3::PyObject> {
         let lock = self.raw.lock();
-        lock.entries.last().map(|x| x.0.key.clone_ref(py))
+        lock.entries.back().map(|x| x.0.key.clone_ref(py))
     }
 }
 
@@ -440,7 +440,7 @@ impl FIFOCache {
 #[pyo3::pyclass(module = "cachebox._cachebox")]
 pub struct fifocache_iterator {
     ptr: _KeepForIter<FIFOCache>,
-    iter: crate::mutex::Mutex<crate::internal::FIFOVecPtr>,
+    iter: crate::mutex::Mutex<crate::internal::FIFOIterator>,
     typ: u8,
 }
 
@@ -461,34 +461,32 @@ impl fifocache_iterator {
     ) -> pyo3::PyResult<*mut pyo3::ffi::PyObject> {
         slf.ptr.status(py)?;
 
-        let mut l = slf.iter.lock();
+        match slf.iter.lock().next() {
+            Some(ptr) => {
+                let (key, val) = unsafe { &*ptr };
 
-        if l.offset >= l.length {
-            return Err(err!(pyo3::exceptions::PyStopIteration, ()));
-        }
-
-        let (key, val) = unsafe { &*l.entries.add(l.offset) };
-        l.offset += 1;
-
-        match slf.typ {
-            0 => Ok(key.key.clone_ref(py).into_ptr()),
-            1 => Ok(val.clone_ref(py).into_ptr()),
-            2 => {
-                tuple!(
-                    py,
-                    2,
-                    0 => key.key.clone_ref(py).into_ptr(),
-                    1 => val.clone_ref(py).into_ptr(),
-                )
+                match slf.typ {
+                    0 => Ok(key.key.clone_ref(py).into_ptr()),
+                    1 => Ok(val.clone_ref(py).into_ptr()),
+                    2 => {
+                        tuple!(
+                            py,
+                            2,
+                            0 => key.key.clone_ref(py).into_ptr(),
+                            1 => val.clone_ref(py).into_ptr(),
+                        )
+                    }
+                    _ => {
+                        #[cfg(not(debug_assertions))]
+                        unsafe {
+                            core::hint::unreachable_unchecked()
+                        };
+                        #[cfg(debug_assertions)]
+                        unreachable!();
+                    }
+                }
             }
-            _ => {
-                #[cfg(not(debug_assertions))]
-                unsafe {
-                    core::hint::unreachable_unchecked()
-                };
-                #[cfg(debug_assertions)]
-                unreachable!();
-            }
+            None => Err(err!(pyo3::exceptions::PyStopIteration, ())),
         }
     }
 }

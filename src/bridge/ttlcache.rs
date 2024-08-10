@@ -446,7 +446,7 @@ impl TTLCache {
     }
 
     /// Returns the oldest key in cache; this is the one which will be removed by `popitem()` (if n == 0).
-    /// 
+    ///
     /// By using `n` parameter, you can browse order index by index.
     #[pyo3(signature=(n=0))]
     pub fn first(&self, py: pyo3::Python<'_>, n: usize) -> Option<pyo3::PyObject> {

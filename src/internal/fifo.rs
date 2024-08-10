@@ -1,5 +1,7 @@
 //! The FIFO cache, This is inspired by Rust's indexmap with some changes.
 
+use std::collections::VecDeque;
+
 use super::MAX_N_SHIFT;
 use crate::hashedkey::HashedKey;
 use hashbrown::raw::RawTable;
@@ -10,16 +12,17 @@ pub struct FIFOPolicy {
     pub table: RawTable<usize>,
 
     /// Keep objects in order.
-    pub entries: Vec<(HashedKey, pyo3::PyObject)>,
+    pub entries: VecDeque<(HashedKey, pyo3::PyObject)>,
     pub maxsize: core::num::NonZeroUsize,
 
     /// When we pop front an object from entries, two operations have to do:
     /// 1. Shift all elements in vector.
     /// 2. Decrement all indexes in hashtable.
     ///
-    /// these are expensive operations in large elements; We removed second operation by
-    /// using this variable: Instead of decrement indexes in hashtable, we will
-    /// increment this variable.
+    /// these are expensive operations in large elements;
+    /// - We removed first operation by using [`std::collections::VecDeque`] instead of [`Vec`]
+    /// - We removed second operation by using this variable: Instead of decrement indexes in hashtable,
+    ///   we will increment this variable.
     pub n_shifts: usize,
 }
 
@@ -31,7 +34,7 @@ impl FIFOPolicy {
 
         Ok(Self {
             table: new_table!(capacity)?,
-            entries: Vec::new(),
+            entries: VecDeque::new(),
             maxsize,
             n_shifts: 0,
         })
@@ -44,8 +47,7 @@ impl FIFOPolicy {
             return;
         }
 
-        let shifted = &self.entries[start..end];
-        if shifted.len() > self.table.buckets() / 2 {
+        if (end - start) > self.table.buckets() / 2 {
             unsafe {
                 for bucket in self.table.iter() {
                     let i = bucket.as_mut();
@@ -55,6 +57,7 @@ impl FIFOPolicy {
                 }
             }
         } else {
+            let shifted = self.entries.range(start..end);
             for (i, entry) in (start..end).zip(shifted) {
                 #[cfg(debug_assertions)]
                 let old = self
@@ -102,7 +105,7 @@ impl FIFOPolicy {
                     self.table
                         .insert_in_slot(key.hash, slot, self.entries.len() + self.n_shifts);
                 }
-                self.entries.push((key, value));
+                self.entries.push_back((key, value));
                 None
             }
         }
@@ -129,7 +132,7 @@ impl FIFOPolicy {
             return None;
         }
 
-        let ret = self.entries.remove(0);
+        let ret = unsafe { self.entries.pop_front().unwrap_unchecked() };
 
         #[cfg(debug_assertions)]
         self.table
@@ -168,7 +171,14 @@ impl FIFOPolicy {
         {
             Some(index) => {
                 self.decrement_indexes(index + 1, self.entries.len());
-                Some(self.entries.remove(index))
+
+                #[cfg(debug_assertions)]
+                let m = self.entries.remove(index).unwrap();
+
+                #[cfg(not(debug_assertions))]
+                let m = unsafe { self.entries.remove(index).unwrap_unchecked() };
+
+                Some(m)
             }
             None => None,
         }
@@ -211,12 +221,27 @@ impl FIFOPolicy {
     }
 
     #[inline(always)]
-    pub fn as_ptr(&self) -> FIFOVecPtr {
-        FIFOVecPtr {
-            entries: self.entries.as_ptr(),
-            offset: 0,
-            length: self.entries.len(),
+    pub fn iter(&self) -> FIFOIterator {
+        let (a, b) = self.entries.as_slices();
+
+        FIFOIterator {
+            first: _SliceIter {
+                slice: a.as_ptr(),
+                index: 0,
+                len: a.len(),
+            },
+            second: _SliceIter {
+                slice: b.as_ptr(),
+                index: 0,
+                len: b.len(),
+            },
         }
+
+        // FIFOVecPtr {
+        //     entries: self.entries.as_ptr(),
+        //     offset: 0,
+        //     length: self.entries.len(),
+        // }
     }
 
     #[inline(always)]
@@ -313,11 +338,44 @@ impl PartialEq for FIFOPolicy {
 
 impl Eq for FIFOPolicy {}
 
-pub struct FIFOVecPtr {
-    pub entries: *const (HashedKey, pyo3::PyObject),
-    pub offset: usize,
-    pub length: usize,
+pub struct _SliceIter<T> {
+    slice: *const T,
+    index: usize,
+    len: usize,
 }
 
-unsafe impl Send for FIFOVecPtr {}
-unsafe impl Sync for FIFOVecPtr {}
+impl<T> Iterator for _SliceIter<T> {
+    type Item = *const T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index == self.len {
+            None
+        } else {
+            let value = unsafe { self.slice.add(self.index) };
+            self.index += 1;
+            Some(value)
+        }
+    }
+}
+
+pub struct FIFOIterator {
+    pub first: _SliceIter<(HashedKey, pyo3::PyObject)>,
+    pub second: _SliceIter<(HashedKey, pyo3::PyObject)>,
+}
+
+impl Iterator for FIFOIterator {
+    type Item = *const (HashedKey, pyo3::PyObject);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.first.next() {
+            Some(val) => Some(val),
+            None => {
+                core::mem::swap(&mut self.first, &mut self.second);
+                self.first.next()
+            }
+        }
+    }
+}
+
+unsafe impl Send for FIFOIterator {}
+unsafe impl Sync for FIFOIterator {}

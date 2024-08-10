@@ -6,6 +6,6 @@ mod fifo;
 mod nopolicy;
 mod ttl;
 
-pub use fifo::{FIFOPolicy, FIFOVecPtr};
+pub use fifo::{FIFOIterator, FIFOPolicy};
 pub use nopolicy::NoPolicy;
 pub use ttl::{TTLElement, TTLPolicy, TTLVecPtr};

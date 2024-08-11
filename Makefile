@@ -14,7 +14,7 @@ build-prod:
 .PHONY: test-py
 test-py:
 	maturin develop	
-	RUST_BACKTRACE=1 pytest
+	RUST_BACKTRACE=1 pytest -vv
 	rm -rf .pytest_cache
 	ruff check .
 	ruff clean

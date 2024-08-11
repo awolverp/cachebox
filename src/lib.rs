@@ -5,6 +5,7 @@ mod util;
 mod bridge;
 mod hashedkey;
 mod internal;
+mod linked_list;
 mod mutex;
 
 const PYOBJECT_SIZE: usize = core::mem::size_of::<pyo3::PyObject>();
@@ -50,6 +51,7 @@ fn _cachebox(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<bridge::fifocache::FIFOCache>()?;
     m.add_class::<bridge::rrcache::RRCache>()?;
     m.add_class::<bridge::ttlcache::TTLCache>()?;
+    m.add_class::<bridge::lrucache::LRUCache>()?;
 
     Ok(())
 }

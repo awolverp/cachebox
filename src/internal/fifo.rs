@@ -1,10 +1,8 @@
-//! The FIFO cache, This is inspired by Rust's indexmap with some changes.
+//! The FIFO policy, This is inspired by Rust's indexmap with some changes.
 
-use std::collections::VecDeque;
-
-use super::MAX_N_SHIFT;
 use crate::hashedkey::HashedKey;
 use hashbrown::raw::RawTable;
+use std::collections::VecDeque;
 
 pub struct FIFOPolicy {
     /// We set [Vec] objects indexes in hashtable to make search O(1). hashtable is unordered,
@@ -42,7 +40,7 @@ impl FIFOPolicy {
 
     #[inline]
     fn decrement_indexes(&mut self, start: usize, end: usize) {
-        if start <= 1 && end == self.entries.len() && self.n_shifts < MAX_N_SHIFT {
+        if start <= 1 && end == self.entries.len() && self.n_shifts < super::MAX_N_SHIFT {
             self.n_shifts += 1;
             return;
         }
@@ -236,12 +234,6 @@ impl FIFOPolicy {
                 len: b.len(),
             },
         }
-
-        // FIFOVecPtr {
-        //     entries: self.entries.as_ptr(),
-        //     offset: 0,
-        //     length: self.entries.len(),
-        // }
     }
 
     #[inline(always)]

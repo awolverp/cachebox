@@ -1,6 +1,5 @@
-//! The TTL Cache
+//! The TTL Policy
 
-use super::MAX_N_SHIFT;
 use crate::hashedkey::HashedKey;
 use hashbrown::raw::RawTable;
 use std::time;
@@ -37,7 +36,7 @@ impl TTLPolicy {
 
     #[inline]
     fn decrement_indexes(&mut self, start: usize, end: usize) {
-        if start <= 1 && end == self.entries.len() && self.n_shifts < MAX_N_SHIFT {
+        if start <= 1 && end == self.entries.len() && self.n_shifts < super::MAX_N_SHIFT {
             self.n_shifts += 1;
             return;
         }

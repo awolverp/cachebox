@@ -1,4 +1,4 @@
-from cachebox import BaseCacheImpl, Cache, FIFOCache, RRCache, TTLCache
+from cachebox import BaseCacheImpl, Cache, FIFOCache, RRCache, TTLCache, LRUCache
 import pytest
 import time
 
@@ -243,3 +243,66 @@ class TestTTLCache(_TestMixin):
         value, dur = obj.pop_with_expire("no-exists", "value")
         assert "value" == value
         assert 0 == dur
+
+
+class TestLRUCache(_TestMixin):
+    CACHE = LRUCache
+
+    def test_policy(self):
+        obj = self.CACHE(3)
+
+        obj[1] = 1
+        obj[2] = 2
+        obj[3] = 3
+
+        assert (1, 1) == obj.popitem()
+
+        obj[1] = 1
+        obj[2]
+
+        assert (3, 3) == obj.popitem()
+
+        obj[4] = 4
+        assert 1 == obj.get(1)
+
+        obj[5] = 5
+        assert 2 not in obj
+
+    def test_ordered_iterators(self):
+        obj = self.CACHE(20, **self.KWARGS, capacity=20)
+
+        for i in range(6):
+            obj[i] = i * 2
+        
+        obj[1]
+        obj[5]
+        obj[3] = 7
+
+        k = [0, 2, 4, 1, 5, 3]
+        v = [0, 4, 8, 2, 10, 7]
+        assert k == list(obj.keys())
+        assert v == list(obj.values())
+        assert list(zip(k, v)) == list(obj.items())
+
+    def test_recently_used_funcs(self):
+        obj = LRUCache(10)
+
+        for i in range(6):
+            obj[i] = i * 2
+        
+        obj[1]
+        obj[5]
+        obj[3] = 7
+        obj.peek(4)
+
+        assert obj.most_recently_used() == 3
+        assert obj.least_recently_used() == 0
+        assert obj.least_recently_used(1) == 2
+        assert obj.least_recently_used(5) == 3
+        assert obj.least_recently_used(6) is None
+
+    def test_pickle(self):
+        def inner(c1, c2):
+            assert list(c1.items()) == list(c2.items())
+
+        self._test_pickle(inner)

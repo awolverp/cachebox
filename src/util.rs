@@ -100,6 +100,7 @@ macro_rules! pyobject_eq {
         if $arg1.as_ptr() == $arg2.as_ptr() {
             true
         } else {
+            #[allow(unused_unsafe)]
             unsafe {
                 let cmp = pyo3::ffi::PyObject_RichCompare(
                     $arg1.as_ptr(),

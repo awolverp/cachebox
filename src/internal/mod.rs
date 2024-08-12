@@ -3,11 +3,13 @@
 pub(super) const MAX_N_SHIFT: usize = usize::MAX - (isize::MAX as usize);
 
 mod fifo;
+mod lfu;
 mod lru;
 mod nopolicy;
 mod ttl;
 
 pub use fifo::{FIFOIterator, FIFOPolicy};
+pub use lfu::{LFUNode, LFUPolicy, LFUPtrIter};
 pub use lru::LRUPolicy;
 pub use nopolicy::NoPolicy;
 pub use ttl::{TTLElement, TTLPolicy, TTLVecPtr};

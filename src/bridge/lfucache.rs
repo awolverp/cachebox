@@ -1,20 +1,20 @@
-//! implement LRUCache, our lru implementation
+//! implement LFUCache, our lfu implementation
 
 use crate::{hashedkey::HashedKey, util::_KeepForIter};
 
-/// LRU Cache implementation - Least recently used policy (thread-safe).
+/// LFU Cache implementation - Least frequantly used policy (thread-safe).
 ///
-/// In simple terms, the LRU cache will remove the element in the cache that has not been accessed in the longest time.
+/// In simple terms, the LFU cache will remove the element in the cache that has been accessed the least, regardless of time
 #[pyo3::pyclass(module="cachebox._cachebox", extends=crate::bridge::baseimpl::BaseCacheImpl)]
-pub struct LRUCache {
+pub struct LFUCache {
     // Why [`Box`]? We using [`Box`] here so that there's no need for `&mut self`
     // in this struct; so RuntimeError never occurred for using this class in multiple threads.
-    raw: Box<crate::mutex::Mutex<crate::internal::LRUPolicy>>,
+    raw: Box<crate::mutex::Mutex<crate::internal::LFUPolicy>>,
 }
 
 #[pyo3::pymethods]
-impl LRUCache {
-    /// LRU Cache implementation - Least recently used policy (thread-safe).
+impl LFUCache {
+    /// LFU Cache implementation - Least frequantly used policy (thread-safe).
     ///
     /// By maxsize param, you can specify the limit size of the cache ( zero means infinity ); this is unchangable.
     ///
@@ -30,7 +30,7 @@ impl LRUCache {
         iterable: Option<pyo3::PyObject>,
         capacity: usize,
     ) -> pyo3::PyResult<(Self, crate::bridge::baseimpl::BaseCacheImpl)> {
-        let mut raw = crate::internal::LRUPolicy::new(maxsize, capacity)?;
+        let mut raw = crate::internal::LFUPolicy::new(maxsize, capacity)?;
         if iterable.is_some() {
             raw.update(py, unsafe { iterable.unwrap_unchecked() })?;
         }
@@ -60,8 +60,8 @@ impl LRUCache {
 
         core::mem::size_of::<Self>()
             + lock.table.capacity()
-                * core::mem::size_of::<core::ptr::NonNull<crate::linked_list::Node>>()
-            + lock.list.len() * core::mem::size_of::<crate::linked_list::Node>()
+                * core::mem::size_of::<core::ptr::NonNull<crate::internal::LFUNode>>()
+            + lock.heap.len() * core::mem::size_of::<crate::internal::LFUNode>()
     }
 
     /// Returns true if cache not empty - bool(self)
@@ -125,7 +125,7 @@ impl LRUCache {
         let lock = self.raw.lock();
 
         format!(
-            "LRUCache({} / {}, capacity={})",
+            "LFUCache({} / {}, capacity={})",
             lock.table.len(),
             lock.maxsize.get(),
             lock.table.capacity(),
@@ -136,13 +136,13 @@ impl LRUCache {
     pub fn __iter__(
         slf: pyo3::PyRef<'_, Self>,
         py: pyo3::Python<'_>,
-    ) -> pyo3::PyResult<pyo3::Py<lrucache_iterator>> {
-        let lock = slf.raw.lock();
+    ) -> pyo3::PyResult<pyo3::Py<lfucache_iterator>> {
+        let mut lock = slf.raw.lock();
         let (len, capacity) = (lock.table.len(), lock.table.capacity());
 
-        let result = lrucache_iterator {
+        let result = lfucache_iterator {
             ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
-            iter: crate::mutex::Mutex::new(lock.list.iter()),
+            iter: crate::mutex::Mutex::new(lock.iter()),
             typ: 0,
         };
 
@@ -177,7 +177,7 @@ impl LRUCache {
     }
 
     pub fn __getstate__(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<pyo3::PyObject> {
-        let lock = self.raw.lock();
+        let mut lock = self.raw.lock();
         unsafe {
             let state = lock.to_pickle(py)?;
             Ok(pyo3::Py::from_owned_ptr(py, state))
@@ -198,8 +198,8 @@ impl LRUCache {
             for bucket in self.raw.lock().table.iter() {
                 let node = bucket.as_ref();
 
-                visit.call(&(*node.as_ptr()).element.0.key)?;
-                visit.call(&(*node.as_ptr()).element.1)?;
+                visit.call(&(*node.as_ptr()).key.key)?;
+                visit.call(&(*node.as_ptr()).value)?;
             }
         }
 
@@ -209,7 +209,7 @@ impl LRUCache {
     pub fn __clear__(&self) {
         let mut lock = self.raw.lock();
         lock.table.clear();
-        lock.list.clear();
+        lock.heap.clear();
     }
 
     /// Returns the number of elements the map can hold without reallocating.
@@ -295,7 +295,7 @@ impl LRUCache {
         let mut lock = self.raw.lock();
 
         match lock.remove(&hk) {
-            Some((_, val)) => Ok(val),
+            Some((_, val, _)) => Ok(val),
             None => Ok(default.unwrap_or_else(|| py.None())),
         }
     }
@@ -326,7 +326,7 @@ impl LRUCache {
     pub fn popitem(&self) -> pyo3::PyResult<(pyo3::PyObject, pyo3::PyObject)> {
         let mut lock = self.raw.lock();
         match lock.popitem() {
-            Some((key, val)) => Ok((key.key, val)),
+            Some((key, val, _)) => Ok((key.key, val)),
             None => Err(err!(pyo3::exceptions::PyKeyError, ())),
         }
     }
@@ -351,7 +351,7 @@ impl LRUCache {
     pub fn clear(&self, reuse: bool) {
         let mut lock = self.raw.lock();
         lock.table.clear();
-        lock.list.clear();
+        lock.heap.clear();
 
         if !reuse {
             lock.shrink_to_fit();
@@ -385,13 +385,13 @@ impl LRUCache {
     pub fn items(
         slf: pyo3::PyRef<'_, Self>,
         py: pyo3::Python<'_>,
-    ) -> pyo3::PyResult<pyo3::Py<lrucache_iterator>> {
-        let lock = slf.raw.lock();
+    ) -> pyo3::PyResult<pyo3::Py<lfucache_iterator>> {
+        let mut lock = slf.raw.lock();
         let (len, capacity) = (lock.table.len(), lock.table.capacity());
 
-        let result = lrucache_iterator {
+        let result = lfucache_iterator {
             ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
-            iter: crate::mutex::Mutex::new(lock.list.iter()),
+            iter: crate::mutex::Mutex::new(lock.iter()),
             typ: 2,
         };
 
@@ -405,13 +405,13 @@ impl LRUCache {
     pub fn keys(
         slf: pyo3::PyRef<'_, Self>,
         py: pyo3::Python<'_>,
-    ) -> pyo3::PyResult<pyo3::Py<lrucache_iterator>> {
-        let lock = slf.raw.lock();
+    ) -> pyo3::PyResult<pyo3::Py<lfucache_iterator>> {
+        let mut lock = slf.raw.lock();
         let (len, capacity) = (lock.table.len(), lock.table.capacity());
 
-        let result = lrucache_iterator {
+        let result = lfucache_iterator {
             ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
-            iter: crate::mutex::Mutex::new(lock.list.iter()),
+            iter: crate::mutex::Mutex::new(lock.iter()),
             typ: 0,
         };
 
@@ -425,64 +425,40 @@ impl LRUCache {
     pub fn values(
         slf: pyo3::PyRef<'_, Self>,
         py: pyo3::Python<'_>,
-    ) -> pyo3::PyResult<pyo3::Py<lrucache_iterator>> {
-        let lock = slf.raw.lock();
+    ) -> pyo3::PyResult<pyo3::Py<lfucache_iterator>> {
+        let mut lock = slf.raw.lock();
         let (len, capacity) = (lock.table.len(), lock.table.capacity());
 
-        let result = lrucache_iterator {
+        let result = lfucache_iterator {
             ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
-            iter: crate::mutex::Mutex::new(lock.list.iter()),
+            iter: crate::mutex::Mutex::new(lock.iter()),
             typ: 1,
         };
 
         pyo3::Py::new(py, result)
     }
 
-    /// Returns the key in the cache that has not been accessed in the longest time.
+    /// Returns the key in the cache that has been accessed the least, regardless of time.
     #[pyo3(signature=(n=0))]
-    pub fn least_recently_used(
-        &self,
-        py: pyo3::Python<'_>,
-        mut n: usize,
-    ) -> Option<pyo3::PyObject> {
-        let lock = self.raw.lock();
+    pub fn least_frequently_used(&self, py: pyo3::Python<'_>, n: usize) -> Option<pyo3::PyObject> {
+        let mut lock = self.raw.lock();
+        lock.heap.sort();
+        let node = lock.heap.get(n)?;
 
-        if n >= lock.list.len() {
-            None
-        } else {
-            let mut node = lock.list.head?;
-
-            unsafe {
-                while n > 0 {
-                    debug_assert!((*node.as_ptr()).next.is_some()); // we checked length, so it have to available
-                    node = (*node.as_ptr()).next.unwrap();
-                    n -= 1;
-                }
-
-                Some((*node.as_ptr()).element.0.key.clone_ref(py))
-            }
-        }
-    }
-
-    /// Returns the key in the cache that has been accessed in the shortest time.
-    pub fn most_recently_used(&self, py: pyo3::Python<'_>) -> Option<pyo3::PyObject> {
-        let lock = self.raw.lock();
-        lock.list
-            .tail
-            .map(|node| unsafe { (*node.as_ptr()).element.0.key.clone_ref(py) })
+        Some(unsafe { (*node.as_ptr()).key.key.clone_ref(py) })
     }
 }
 
 #[allow(non_camel_case_types)]
 #[pyo3::pyclass(module = "cachebox._cachebox")]
-pub struct lrucache_iterator {
-    ptr: _KeepForIter<LRUCache>,
-    iter: crate::mutex::Mutex<crate::linked_list::Iter>,
+pub struct lfucache_iterator {
+    ptr: _KeepForIter<LFUCache>,
+    iter: crate::mutex::Mutex<crate::internal::LFUPtrIter>,
     typ: u8,
 }
 
 #[pyo3::pymethods]
-impl lrucache_iterator {
+impl lfucache_iterator {
     pub fn __len__(&self) -> usize {
         self.ptr.len
     }
@@ -500,17 +476,17 @@ impl lrucache_iterator {
 
         match slf.iter.lock().next() {
             Some(ptr) => {
-                let (key, val) = unsafe { &(*ptr.as_ptr()).element };
+                let node = unsafe { &*ptr.as_ptr() };
 
                 match slf.typ {
-                    0 => Ok(key.key.clone_ref(py).into_ptr()),
-                    1 => Ok(val.clone_ref(py).into_ptr()),
+                    0 => Ok(node.key.key.clone_ref(py).into_ptr()),
+                    1 => Ok(node.value.clone_ref(py).into_ptr()),
                     2 => {
                         tuple!(
                             py,
                             2,
-                            0 => key.key.clone_ref(py).into_ptr(),
-                            1 => val.clone_ref(py).into_ptr(),
+                            0 => node.key.key.clone_ref(py).into_ptr(),
+                            1 => node.value.clone_ref(py).into_ptr(),
                         )
                     }
                     _ => {

@@ -14,6 +14,7 @@ pub struct Node {
 }
 
 impl LinkedList {
+    #[inline]
     pub fn new() -> Self {
         Self {
             head: None,
@@ -22,6 +23,7 @@ impl LinkedList {
         }
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         self.len
     }
@@ -70,6 +72,7 @@ impl LinkedList {
         }
     }
 
+    #[inline]
     pub fn clear(&mut self) {
         while self.pop_front().is_some() {}
     }
@@ -136,6 +139,7 @@ impl LinkedList {
         self.tail = Some(node);
     }
 
+    #[inline]
     pub fn iter(&self) -> Iter {
         Iter {
             head: self.head,
@@ -152,6 +156,7 @@ pub struct Iter {
 impl Iterator for Iter {
     type Item = NonNull<Node>;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         if self.len == 0 {
             None

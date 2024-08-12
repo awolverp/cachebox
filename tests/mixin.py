@@ -1,4 +1,4 @@
-from cachebox import BaseCacheImpl, LRUCache
+from cachebox import BaseCacheImpl, LRUCache, LFUCache
 import dataclasses
 import pytest
 import typing
@@ -221,7 +221,7 @@ class _TestMixin:
         try:
             assert getsizeof(obj, False) >= cap
         except AssertionError as e:
-            if not isinstance(obj, LRUCache):
+            if not isinstance(obj, (LRUCache, LFUCache)):
                 raise e
 
         obj[1] = 1
@@ -236,7 +236,7 @@ class _TestMixin:
         try:
             assert cap != getsizeof(obj, False)
         except AssertionError as e:
-            if not isinstance(obj, LRUCache):
+            if not isinstance(obj, (LRUCache, LFUCache)):
                 raise e
 
     def test_update(self):

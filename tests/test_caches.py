@@ -1,4 +1,8 @@
-from cachebox import BaseCacheImpl, Cache, FIFOCache, RRCache, TTLCache, LRUCache, LFUCache
+from cachebox import (
+    BaseCacheImpl, Cache, FIFOCache, RRCache, TTLCache, LRUCache, LFUCache,
+    cache_iterator, fifocache_iterator, ttlcache_iterator, lrucache_iterator, lfucache_iterator
+)
+
 import pytest
 import time
 
@@ -25,6 +29,7 @@ def test_subclass():
 class TestCache(_TestMixin):
     CACHE = Cache
     NO_POLICY = True
+    ITERATOR_CLASS = cache_iterator
 
     def test_pickle(self):
         self._test_pickle(lambda c1, c2: None)
@@ -32,6 +37,7 @@ class TestCache(_TestMixin):
 
 class TestFIFOCache(_TestMixin):
     CACHE = FIFOCache
+    ITERATOR_CLASS = fifocache_iterator
 
     def test_policy(self):
         cache = FIFOCache(5)
@@ -107,6 +113,7 @@ class TestFIFOCache(_TestMixin):
 
 class TestRRCache(_TestMixin):
     CACHE = RRCache
+    ITERATOR_CLASS = cache_iterator
 
     def test_pickle(self):
         self._test_pickle(lambda c1, c2: None)
@@ -115,6 +122,7 @@ class TestRRCache(_TestMixin):
 class TestTTLCache(_TestMixin):
     CACHE = TTLCache
     KWARGS = {"ttl": 10}
+    ITERATOR_CLASS = ttlcache_iterator
 
     def test_policy(self):
         obj = self.CACHE(2, 0.5)
@@ -247,6 +255,7 @@ class TestTTLCache(_TestMixin):
 
 class TestLRUCache(_TestMixin):
     CACHE = LRUCache
+    ITERATOR_CLASS = lrucache_iterator
 
     def test_policy(self):
         obj = self.CACHE(3)
@@ -310,6 +319,7 @@ class TestLRUCache(_TestMixin):
 
 class TestLFUCache(_TestMixin):
     CACHE = LFUCache
+    ITERATOR_CLASS = lfucache_iterator
 
     def test_policy(self):
         obj = self.CACHE(5, {i:i for i in range(5)})

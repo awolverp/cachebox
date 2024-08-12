@@ -39,6 +39,7 @@ class _TestMixin:
 
     KWARGS: dict = {}
     NO_POLICY: bool = False
+    ITERATOR_CLASS: typing.Optional[type] = None
 
     def test__new__(self):
         cache = self.CACHE(10, **self.KWARGS, capacity=8)
@@ -294,6 +295,9 @@ class _TestMixin:
 
     def test_iterators(self):
         obj = self.CACHE(100, **self.KWARGS, capacity=100)
+
+        if self.ITERATOR_CLASS:
+            assert isinstance(iter(obj), self.ITERATOR_CLASS)
 
         for i in range(6):
             obj[i] = i * 2

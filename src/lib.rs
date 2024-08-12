@@ -40,7 +40,6 @@ pub fn version_info() -> (u8, u8, u8, bool) {
 #[pymodule]
 #[pyo3(name = "_cachebox")]
 fn _cachebox(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    // constants
     m.add("__version__", CACHEBOX_VERSION)?;
     m.add("version_info", version_info())?;
     m.add("__author__", "awolverp")?;
@@ -49,10 +48,14 @@ fn _cachebox(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<bridge::cache::Cache>()?;
     m.add_class::<bridge::cache::cache_iterator>()?;
     m.add_class::<bridge::fifocache::FIFOCache>()?;
+    m.add_class::<bridge::fifocache::fifocache_iterator>()?;
     m.add_class::<bridge::rrcache::RRCache>()?;
     m.add_class::<bridge::ttlcache::TTLCache>()?;
+    m.add_class::<bridge::ttlcache::ttlcache_iterator>()?;
     m.add_class::<bridge::lrucache::LRUCache>()?;
+    m.add_class::<bridge::lrucache::lrucache_iterator>()?;
     m.add_class::<bridge::lfucache::LFUCache>()?;
+    m.add_class::<bridge::lfucache::lfucache_iterator>()?;
 
     Ok(())
 }

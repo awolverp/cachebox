@@ -60,8 +60,14 @@ impl LFUCache {
 
         core::mem::size_of::<Self>()
             + lock.table.capacity()
-                * core::mem::size_of::<core::ptr::NonNull<crate::internal::LFUNode>>()
-            + lock.heap.len() * core::mem::size_of::<crate::internal::LFUNode>()
+                * core::mem::size_of::<
+                    core::ptr::NonNull<
+                        crate::sorted_heap::Entry<(HashedKey, pyo3::PyObject, usize)>,
+                    >,
+                >()
+            + lock.heap.capacity()
+                * core::mem::size_of::<crate::sorted_heap::Entry<(HashedKey, pyo3::PyObject, usize)>>(
+                )
     }
 
     /// Returns true if cache not empty - bool(self)
@@ -198,8 +204,8 @@ impl LFUCache {
             for bucket in self.raw.lock().table.iter() {
                 let node = bucket.as_ref();
 
-                visit.call(&(*node.as_ptr()).key.key)?;
-                visit.call(&(*node.as_ptr()).value)?;
+                visit.call(&(*node.as_ptr()).as_ref().0.key)?;
+                visit.call(&(*node.as_ptr()).as_ref().1)?;
             }
         }
 
@@ -442,10 +448,10 @@ impl LFUCache {
     #[pyo3(signature=(n=0))]
     pub fn least_frequently_used(&self, py: pyo3::Python<'_>, n: usize) -> Option<pyo3::PyObject> {
         let mut lock = self.raw.lock();
-        lock.heap.sort();
+        lock.heap.sort(|a, b| a.2.cmp(&b.2));
         let node = lock.heap.get(n)?;
 
-        Some(unsafe { (*node.as_ptr()).key.key.clone_ref(py) })
+        Some(unsafe { (*node.as_ptr()).as_ref().0.key.clone_ref(py) })
     }
 }
 
@@ -453,7 +459,7 @@ impl LFUCache {
 #[pyo3::pyclass(module = "cachebox._cachebox")]
 pub struct lfucache_iterator {
     ptr: _KeepForIter<LFUCache>,
-    iter: crate::mutex::Mutex<crate::internal::LFUPtrIter>,
+    iter: crate::mutex::Mutex<crate::sorted_heap::Iter<(HashedKey, pyo3::PyObject, usize)>>,
     typ: u8,
 }
 
@@ -479,14 +485,14 @@ impl lfucache_iterator {
                 let node = unsafe { &*ptr.as_ptr() };
 
                 match slf.typ {
-                    0 => Ok(node.key.key.clone_ref(py).into_ptr()),
-                    1 => Ok(node.value.clone_ref(py).into_ptr()),
+                    0 => Ok(node.as_ref().0.key.clone_ref(py).into_ptr()),
+                    1 => Ok(node.as_ref().1.clone_ref(py).into_ptr()),
                     2 => {
                         tuple!(
                             py,
                             2,
-                            0 => node.key.key.clone_ref(py).into_ptr(),
-                            1 => node.value.clone_ref(py).into_ptr(),
+                            0 => node.as_ref().0.key.clone_ref(py).into_ptr(),
+                            1 => node.as_ref().1.clone_ref(py).into_ptr(),
                         )
                     }
                     _ => {

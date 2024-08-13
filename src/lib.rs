@@ -7,6 +7,7 @@ mod hashedkey;
 mod internal;
 mod linked_list;
 mod mutex;
+mod sorted_heap;
 
 const PYOBJECT_SIZE: usize = core::mem::size_of::<pyo3::PyObject>();
 const HASHEDKEY_SIZE: usize = core::mem::size_of::<hashedkey::HashedKey>();

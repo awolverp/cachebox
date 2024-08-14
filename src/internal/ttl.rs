@@ -62,7 +62,7 @@ impl TTLPolicy {
                 #[cfg(not(debug_assertions))]
                 let old = unsafe {
                     self.table
-                        .get_mut(entry.0.hash, |x| (*x) - self.n_shifts == i)
+                        .get_mut(entry.key.hash, |x| (*x) - self.n_shifts == i)
                         .unwrap_unchecked()
                 };
 

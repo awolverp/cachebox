@@ -224,3 +224,23 @@ impl<I> Drop for _KeepForIter<I> {
 
 unsafe impl<I> Send for _KeepForIter<I> {}
 unsafe impl<I> Sync for _KeepForIter<I> {}
+
+pub struct NoLifetimeSliceIter<T> {
+    pub slice: *const T,
+    pub index: usize,
+    pub len: usize,
+}
+
+impl<T> Iterator for NoLifetimeSliceIter<T> {
+    type Item = *const T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index == self.len {
+            None
+        } else {
+            let value = unsafe { self.slice.add(self.index) };
+            self.index += 1;
+            Some(value)
+        }
+    }
+}

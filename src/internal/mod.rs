@@ -12,4 +12,4 @@ pub use fifo::{FIFOIterator, FIFOPolicy};
 pub use lfu::LFUPolicy;
 pub use lru::LRUPolicy;
 pub use nopolicy::NoPolicy;
-pub use ttl::{TTLElement, TTLPolicy, TTLVecPtr};
+pub use ttl::{TTLElement, TTLIterator, TTLPolicy};

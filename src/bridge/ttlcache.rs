@@ -452,7 +452,7 @@ impl TTLCache {
     pub fn first(&self, py: pyo3::Python<'_>, n: usize) -> Option<pyo3::PyObject> {
         let lock = self.raw.lock();
         if n == 0 {
-            lock.entries.first().map(|x| x.key.key.clone_ref(py))
+            lock.entries.front().map(|x| x.key.key.clone_ref(py))
         } else {
             lock.entries.get(n).map(|x| x.key.key.clone_ref(py))
         }
@@ -461,7 +461,7 @@ impl TTLCache {
     /// Returns the newest key in cache.
     pub fn last(&self, py: pyo3::Python<'_>) -> Option<pyo3::PyObject> {
         let lock = self.raw.lock();
-        lock.entries.last().map(|x| x.key.key.clone_ref(py))
+        lock.entries.back().map(|x| x.key.key.clone_ref(py))
     }
 
     /// Works like `.get()`, but also returns the remaining time-to-live.
@@ -543,7 +543,7 @@ impl TTLCache {
 #[pyo3::pyclass(module = "cachebox._cachebox")]
 pub struct ttlcache_iterator {
     ptr: _KeepForIter<TTLCache>,
-    iter: crate::mutex::Mutex<crate::internal::TTLVecPtr>,
+    iter: crate::mutex::Mutex<crate::internal::TTLIterator>,
     typ: u8,
 }
 
@@ -568,12 +568,13 @@ impl ttlcache_iterator {
 
         let mut element: &TTLElement;
         loop {
-            if l.offset >= l.length {
-                return Err(err!(pyo3::exceptions::PyStopIteration, ()));
-            }
-
-            element = unsafe { &*l.entries.add(l.offset) };
-            l.offset += 1;
+            element = unsafe {
+                if let Some(x) = l.next() {
+                    &*x
+                } else {
+                    return Err(err!(pyo3::exceptions::PyStopIteration, ()));
+                }
+            };
 
             if element.expire > std::time::SystemTime::now() {
                 break;

@@ -126,11 +126,7 @@ impl FIFOPolicy {
 
     #[inline]
     pub fn popitem(&mut self) -> Option<(HashedKey, pyo3::PyObject)> {
-        if self.entries.is_empty() {
-            return None;
-        }
-
-        let ret = unsafe { self.entries.pop_front().unwrap_unchecked() };
+        let ret = self.entries.pop_front()?;
 
         #[cfg(debug_assertions)]
         self.table
@@ -223,12 +219,12 @@ impl FIFOPolicy {
         let (a, b) = self.entries.as_slices();
 
         FIFOIterator {
-            first: _SliceIter {
+            first: crate::util::NoLifetimeSliceIter {
                 slice: a.as_ptr(),
                 index: 0,
                 len: a.len(),
             },
-            second: _SliceIter {
+            second: crate::util::NoLifetimeSliceIter {
                 slice: b.as_ptr(),
                 index: 0,
                 len: b.len(),
@@ -330,29 +326,9 @@ impl PartialEq for FIFOPolicy {
 
 impl Eq for FIFOPolicy {}
 
-pub struct _SliceIter<T> {
-    slice: *const T,
-    index: usize,
-    len: usize,
-}
-
-impl<T> Iterator for _SliceIter<T> {
-    type Item = *const T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.index == self.len {
-            None
-        } else {
-            let value = unsafe { self.slice.add(self.index) };
-            self.index += 1;
-            Some(value)
-        }
-    }
-}
-
 pub struct FIFOIterator {
-    pub first: _SliceIter<(HashedKey, pyo3::PyObject)>,
-    pub second: _SliceIter<(HashedKey, pyo3::PyObject)>,
+    pub first: crate::util::NoLifetimeSliceIter<(HashedKey, pyo3::PyObject)>,
+    pub second: crate::util::NoLifetimeSliceIter<(HashedKey, pyo3::PyObject)>,
 }
 
 impl Iterator for FIFOIterator {

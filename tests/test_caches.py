@@ -224,6 +224,7 @@ class TestTTLCache(_TestMixin):
         obj = TTLCache(2, 10)
 
         obj.insert(1, 1)
+        time.sleep(0.1)
         value, dur = obj.get_with_expire(1)
         assert 1 == value
         assert 10 > dur > 9, "10 > dur > 9 failed [dur: %f]" % dur

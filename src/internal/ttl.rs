@@ -2,7 +2,7 @@
 
 use crate::hashedkey::HashedKey;
 use hashbrown::raw::RawTable;
-use std::time;
+use std::{collections::VecDeque, time};
 
 pub struct TTLElement {
     pub key: HashedKey,
@@ -10,10 +10,10 @@ pub struct TTLElement {
     pub expire: time::SystemTime,
 }
 
+/// see [`FIFOPolicy`](struct@crate::internal::FIFOPolicy) to find out fields
 pub struct TTLPolicy {
-    // see FIFOPolicy to find out fields
     pub table: RawTable<usize>,
-    pub entries: Vec<TTLElement>,
+    pub entries: VecDeque<TTLElement>,
     pub maxsize: core::num::NonZeroUsize,
     pub ttl: time::Duration,
     pub n_shifts: usize,
@@ -27,7 +27,7 @@ impl TTLPolicy {
 
         Ok(Self {
             table: new_table!(capacity)?,
-            entries: Vec::new(),
+            entries: VecDeque::new(),
             maxsize,
             n_shifts: 0,
             ttl: time::Duration::from_secs_f64(ttl),
@@ -41,8 +41,7 @@ impl TTLPolicy {
             return;
         }
 
-        let shifted = &self.entries[start..end];
-        if shifted.len() > self.table.buckets() / 2 {
+        if (end - start) > self.table.buckets() / 2 {
             unsafe {
                 for bucket in self.table.iter() {
                     let i = bucket.as_mut();
@@ -52,6 +51,7 @@ impl TTLPolicy {
                 }
             }
         } else {
+            let shifted = self.entries.range(start..end);
             for (i, entry) in (start..end).zip(shifted) {
                 #[cfg(debug_assertions)]
                 let old = self
@@ -62,7 +62,7 @@ impl TTLPolicy {
                 #[cfg(not(debug_assertions))]
                 let old = unsafe {
                     self.table
-                        .get_mut(entry.key.hash, |x| (*x) - self.n_shifts == i)
+                        .get_mut(entry.0.hash, |x| (*x) - self.n_shifts == i)
                         .unwrap_unchecked()
                 };
 
@@ -98,7 +98,7 @@ impl TTLPolicy {
                         self.entries.len() + self.n_shifts,
                     );
                 }
-                self.entries.push(element);
+                self.entries.push_back(element);
                 None
             }
         }
@@ -143,11 +143,7 @@ impl TTLPolicy {
 
     #[inline]
     pub fn popitem(&mut self) -> Option<TTLElement> {
-        if self.entries.is_empty() {
-            return None;
-        }
-
-        let ret = self.entries.remove(0);
+        let ret = self.entries.pop_front()?;
 
         #[cfg(debug_assertions)]
         self.table
@@ -205,7 +201,7 @@ impl TTLPolicy {
         {
             Some(index) => {
                 self.decrement_indexes(index + 1, self.entries.len());
-                let m = self.entries.remove(index);
+                let m = self.entries.remove(index).unwrap();
 
                 if m.expire > time::SystemTime::now() {
                     Some(m)
@@ -249,11 +245,20 @@ impl TTLPolicy {
     }
 
     #[inline(always)]
-    pub fn as_ptr(&self) -> TTLVecPtr {
-        TTLVecPtr {
-            entries: self.entries.as_ptr(),
-            offset: 0,
-            length: self.entries.len(),
+    pub fn as_ptr(&self) -> TTLIterator {
+        let (a, b) = self.entries.as_slices();
+
+        TTLIterator {
+            first: crate::util::NoLifetimeSliceIter {
+                slice: a.as_ptr(),
+                index: 0,
+                len: a.len(),
+            },
+            second: crate::util::NoLifetimeSliceIter {
+                slice: b.as_ptr(),
+                index: 0,
+                len: b.len(),
+            },
         }
     }
 
@@ -383,11 +388,24 @@ impl PartialEq for TTLPolicy {
 
 impl Eq for TTLPolicy {}
 
-pub struct TTLVecPtr {
-    pub entries: *const TTLElement,
-    pub offset: usize,
-    pub length: usize,
+pub struct TTLIterator {
+    pub first: crate::util::NoLifetimeSliceIter<TTLElement>,
+    pub second: crate::util::NoLifetimeSliceIter<TTLElement>,
 }
 
-unsafe impl Send for TTLVecPtr {}
-unsafe impl Sync for TTLVecPtr {}
+impl Iterator for TTLIterator {
+    type Item = *const TTLElement;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.first.next() {
+            Some(val) => Some(val),
+            None => {
+                core::mem::swap(&mut self.first, &mut self.second);
+                self.first.next()
+            }
+        }
+    }
+}
+
+unsafe impl Send for TTLIterator {}
+unsafe impl Sync for TTLIterator {}

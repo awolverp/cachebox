@@ -271,6 +271,8 @@ impl LFUPolicy {
             let (key, value, fr) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject, usize)>()?;
 
             let hk = HashedKey::from_pyobject(py, key)?;
+
+            // SAFETY: we don't need to check maxsize, we sure `len(iterable) <= maxsize`
             new.insert_unchecked(hk, value, fr);
         }
 

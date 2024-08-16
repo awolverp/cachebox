@@ -1,6 +1,17 @@
 from cachebox import (
-    BaseCacheImpl, Cache, FIFOCache, RRCache, TTLCache, LRUCache, LFUCache,
-    cache_iterator, fifocache_iterator, ttlcache_iterator, lrucache_iterator, lfucache_iterator
+    BaseCacheImpl,
+    Cache,
+    FIFOCache,
+    RRCache,
+    TTLCache,
+    LRUCache,
+    LFUCache,
+    VTTLCache,
+    cache_iterator,
+    fifocache_iterator,
+    ttlcache_iterator,
+    lrucache_iterator,
+    lfucache_iterator,
 )
 
 import pytest
@@ -13,14 +24,15 @@ def test___new__():
     with pytest.raises(NotImplementedError):
         BaseCacheImpl()
 
+
 def test_subclass():
     class _TestSubclass(BaseCacheImpl):
         def __init__(self) -> None:
             self.a = 1
-        
+
         def inc(self, x: int):
             self.a += x
-    
+
     t = _TestSubclass()
     t.inc(10)
     assert t.a == 11
@@ -59,13 +71,13 @@ class TestFIFOCache(_TestMixin):
 
         with pytest.raises(KeyError):
             cache.popitem()
-        
+
         for i in range(5):
             cache[i] = i
-        
+
         for i in range(5):
             assert i in cache
-        
+
         cache[10] = 10
 
         assert 0 not in cache
@@ -101,8 +113,8 @@ class TestFIFOCache(_TestMixin):
         obj = self.CACHE(5, **self.KWARGS, capacity=5)
 
         for i in range(5):
-            obj[i] = i*2
-        
+            obj[i] = i * 2
+
         assert obj.first() == 0
         assert obj.last() == 4
 
@@ -110,6 +122,7 @@ class TestFIFOCache(_TestMixin):
 
         assert obj.first() == 1
         assert obj.last() == 10
+
 
 class TestRRCache(_TestMixin):
     CACHE = RRCache
@@ -147,7 +160,7 @@ class TestTTLCache(_TestMixin):
         obj = self.CACHE(2, 0.5)
 
         # obj.update({1: 1, 2: 2, 3: 3})
-        obj.update((i+1, i+1) for i in range(3))
+        obj.update((i + 1, i + 1) for i in range(3))
 
         with pytest.raises(KeyError):
             obj[1]
@@ -180,13 +193,13 @@ class TestTTLCache(_TestMixin):
 
         with pytest.raises(KeyError):
             cache.popitem()
-        
+
         for i in range(5):
             cache[i] = i
-        
+
         for i in range(5):
             assert i in cache
-        
+
         cache[10] = 10
 
         assert 0 not in cache
@@ -210,8 +223,8 @@ class TestTTLCache(_TestMixin):
         obj = self.CACHE(5, **self.KWARGS, capacity=5)
 
         for i in range(5):
-            obj[i] = i*2
-        
+            obj[i] = i * 2
+
         assert obj.first() == 0
         assert obj.last() == 4
 
@@ -241,6 +254,7 @@ class TestTTLCache(_TestMixin):
         obj = TTLCache(2, 10)
 
         obj.insert(1, 1)
+        time.sleep(0.1)
         value, dur = obj.pop_with_expire(1)
         assert 1 == value
         assert 10 > dur > 9, "10 > dur > 9 failed [dur: %f]" % dur
@@ -252,6 +266,23 @@ class TestTTLCache(_TestMixin):
         value, dur = obj.pop_with_expire("no-exists", "value")
         assert "value" == value
         assert 0 == dur
+
+    def test_popitem_with_expire(self):
+        obj = TTLCache(2, 10)
+
+        obj.insert(1, 1)
+        obj.insert(2, 2)
+        time.sleep(0.1)
+        key, value, dur = obj.popitem_with_expire()
+        assert (1, 1) == (key, value)
+        assert 10 > dur > 9, "10 > dur > 9 failed [dur: %f]" % dur
+
+        key, value, dur = obj.popitem_with_expire()
+        assert (2, 2) == (key, value)
+        assert 10 > dur > 9, "10 > dur > 9 failed [dur: %f]" % dur
+
+        with pytest.raises(KeyError):
+            obj.popitem_with_expire()
 
 
 class TestLRUCache(_TestMixin):
@@ -283,7 +314,7 @@ class TestLRUCache(_TestMixin):
 
         for i in range(6):
             obj[i] = i * 2
-        
+
         obj[1]
         obj[5]
         obj[3] = 7
@@ -299,7 +330,7 @@ class TestLRUCache(_TestMixin):
 
         for i in range(6):
             obj[i] = i * 2
-        
+
         obj[1]
         obj[5]
         obj[3] = 7
@@ -323,7 +354,7 @@ class TestLFUCache(_TestMixin):
     ITERATOR_CLASS = lfucache_iterator
 
     def test_policy(self):
-        obj = self.CACHE(5, {i:i for i in range(5)})
+        obj = self.CACHE(5, {i: i for i in range(5)})
 
         for i in range(5):
             obj[i] = i
@@ -352,7 +383,7 @@ class TestLFUCache(_TestMixin):
 
         for i in range(5):
             obj[i] = i
-        
+
         assert [0, 1, 2, 3, 4] == list(obj.keys())
 
         for i in range(10):
@@ -374,7 +405,7 @@ class TestLFUCache(_TestMixin):
 
         for i in range(5):
             obj[i] = i * 2
-        
+
         for i in range(10):
             obj[0] += 1
         for i in range(7):
@@ -396,3 +427,147 @@ class TestLFUCache(_TestMixin):
             assert list(c1.items()) == list(c2.items())
 
         self._test_pickle(inner)
+
+
+class TestVTTLCache(_TestMixin):
+    CACHE = VTTLCache
+
+    def test_policy(self):
+        obj = VTTLCache(2)
+
+        obj.insert(0, 1, 0.5)
+        time.sleep(0.5)
+
+        with pytest.raises(KeyError):
+            obj[0]
+
+        obj.insert("name", "nick", 0.3)
+        obj.insert("age", 18, None)
+        time.sleep(0.3)
+
+        with pytest.raises(KeyError):
+            obj["name"]
+
+        del obj["age"]
+
+        obj.insert(0, 0, 70)
+        obj.insert(1, 1, 60)
+        obj.insert(2, 2, 90)
+
+        assert 1 not in obj
+        assert (0, 0) == obj.popitem()
+
+    def test_update_with_ttl(self):
+        obj = VTTLCache(3)
+
+        obj.update({1: 1, 2: 2, 3: 3}, 0.5)
+        time.sleep(0.5)
+
+        with pytest.raises(KeyError):
+            obj[1]
+
+        with pytest.raises(KeyError):
+            obj[2]
+
+        with pytest.raises(KeyError):
+            obj[3]
+
+    def test_get_with_expire(self):
+        obj = VTTLCache(2)
+
+        obj.insert(1, 1, 10)
+        time.sleep(0.1)
+        value, dur = obj.get_with_expire(1)
+        assert 1 == value
+        assert 10 > dur > 9, "10 > dur > 9 failed [dur: %f]" % dur
+
+        value, dur = obj.get_with_expire("no-exists")
+        assert value is None
+        assert 0 == dur
+
+        value, dur = obj.get_with_expire("no-exists", "value")
+        assert "value" == value
+        assert 0 == dur
+
+    def test_pop_with_expire(self):
+        obj = VTTLCache(2)
+
+        obj.insert(1, 1, 10)
+        time.sleep(0.1)
+        value, dur = obj.pop_with_expire(1)
+        assert 1 == value
+        assert 10 > dur > 9, "10 > dur > 9 failed [dur: %f]" % dur
+
+        value, dur = obj.pop_with_expire("no-exists")
+        assert value is None
+        assert 0 == dur
+
+        value, dur = obj.pop_with_expire("no-exists", "value")
+        assert "value" == value
+        assert 0 == dur
+
+    def test_popitem_with_expire(self):
+        obj = VTTLCache(2)
+
+        obj.insert(1, 1, 10)
+        obj.insert(2, 2, 6)
+        time.sleep(0.1)
+        key, value, dur = obj.popitem_with_expire()
+        assert (2, 2) == (key, value)
+        assert 6 > dur > 5, "6 > dur > 5 failed [dur: %f]" % dur
+
+        key, value, dur = obj.popitem_with_expire()
+        assert (1, 1) == (key, value)
+        assert 10 > dur > 9, "10 > dur > 9 failed [dur: %f]" % dur
+
+        with pytest.raises(KeyError):
+            obj.popitem_with_expire()
+
+    def test_pickle(self):
+        def inner(c1, c2):
+            assert list(c1.items()) == list(c2.items())
+
+        import pickle
+        import tempfile
+
+        c1 = self.CACHE(maxsize=0, **self.KWARGS)
+        c2 = pickle.loads(pickle.dumps(c1))
+        assert c1 == c2
+        assert c1.capacity() == c2.capacity()
+
+        c1 = self.CACHE(maxsize=100, **self.KWARGS)
+
+        for i in range(10):
+            c1.insert(i, i * 2, i + 2)
+
+        c2 = pickle.loads(pickle.dumps(c1))
+        assert c1 == c2
+        assert c1.capacity() == c2.capacity()
+        inner(c1, c2)
+
+        with tempfile.TemporaryFile("w+b") as fd:
+            c1 = self.CACHE(maxsize=100, **self.KWARGS)
+            c1.update({i: i for i in range(10)})
+
+            for i in range(10):
+                c1.insert(i, i * 2, i + 2)
+
+            pickle.dump(c1, fd)
+            fd.seek(0)
+            c2 = pickle.load(fd)
+            assert c1 == c2
+            assert c1.capacity() == c2.capacity()
+            inner(c1, c2)
+
+        c1 = self.CACHE(maxsize=100, **self.KWARGS)
+
+        for i in range(10):
+            c1.insert(i, i * 2, i + 0.5)
+
+        time.sleep(0.5)
+
+        c2 = pickle.loads(pickle.dumps(c1))
+
+        assert len(c2) == len(c1)
+        assert c1.capacity() == c2.capacity()
+        inner(c1, c2)

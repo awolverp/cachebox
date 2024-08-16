@@ -27,7 +27,7 @@ test-rs:
 
 .PHONY: format
 format:
-	ruff format --line-length=100 cachebox/
+	ruff format --line-length=100 .
 	ruff clean
 	cargo fmt
 

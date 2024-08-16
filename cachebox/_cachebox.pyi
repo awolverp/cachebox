@@ -349,6 +349,33 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
+    def keys(self) -> typing.Iterable[KT]:
+        """
+        Returns an iterable object of the cache's keys.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        """
+        ...
+
+    def values(self) -> typing.Iterable[VT]:
+        """
+        Returns an iterable object of the cache's values.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        """
+        ...
+
+    def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
+        """
+        Returns an iterable object of the cache's items (key-value pairs).
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        """
+        ...
+
     def first(self, n: int = 0) -> typing.Optional[KT]:
         """
         Returns the first key in cache; this is the one which will be removed by `popitem()` (if n == 0).
@@ -640,6 +667,36 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
+    def keys(self) -> typing.Iterable[KT]:
+        """
+        Returns an iterable object of the cache's keys.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        - Don't call `len(cache)` or `bool(cache)` while using this iterable object.
+        """
+        ...
+
+    def values(self) -> typing.Iterable[VT]:
+        """
+        Returns an iterable object of the cache's values.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        - Don't call `len(cache)` or `bool(cache)` while using this iterable object.
+        """
+        ...
+
+    def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
+        """
+        Returns an iterable object of the cache's items (key-value pairs).
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        - Don't call `len(cache)` or `bool(cache)` while using this iterable object.
+        """
+        ...
+
     def first(self, n: int = 0) -> typing.Optional[KT]:
         """
         Returns the oldest key in cache; this is the one which will be removed by `popitem()` (if n == 0).
@@ -806,6 +863,33 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
+    def keys(self) -> typing.Iterable[KT]:
+        """
+        Returns an iterable object of the cache's keys.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        """
+        ...
+
+    def values(self) -> typing.Iterable[VT]:
+        """
+        Returns an iterable object of the cache's values.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        """
+        ...
+
+    def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
+        """
+        Returns an iterable object of the cache's items (key-value pairs).
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        """
+        ...
+
     def least_recently_used(self, n: int = 0) -> typing.Optional[KT]:
         """
         Returns the key in the cache that has not been accessed in the longest time.
@@ -948,9 +1032,237 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
+    def keys(self) -> typing.Iterable[KT]:
+        """
+        Returns an iterable object of the cache's keys.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        """
+        ...
+
+    def values(self) -> typing.Iterable[VT]:
+        """
+        Returns an iterable object of the cache's values.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        """
+        ...
+
+    def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
+        """
+        Returns an iterable object of the cache's items (key-value pairs).
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        """
+        ...
+
     def least_frequently_used(self, n: int = 0) -> typing.Optional[KT]:
         """
         Returns the key in the cache that has been accessed the least, regardless of time.
+        """
+        ...
+
+class VTTLCache(BaseCacheImpl[KT, VT]):
+    """
+    VTTL Cache implementation - Time-To-Live Per-Key Policy (thread-safe).
+
+    In simple terms, the TTL cache will automatically remove the element in the cache that has expired when need.
+    """
+
+    def __init__(
+        self,
+        maxsize: int,
+        iterable: typing.Union[typing.Iterable[typing.Tuple[KT, VT]], typing.Dict[KT, VT]] = ...,
+        ttl: typing.Optional[float] = 0.0,
+        *,
+        capacity: int = ...,
+    ) -> None:
+        """
+        VTTL Cache implementation - Time-To-Live Per-Key Policy (thread-safe).
+
+        By `maxsize` param, you can specify the limit size of the cache ( zero means infinity ); this is unchangable.
+
+        By `iterable` param, you can create cache from a dict or an iterable.
+
+        The `ttl` param specifies the time-to-live value **for `iterable`** (in seconds); cannot be zero or negative.
+
+        If `capacity` param is given, cache attempts to allocate a new hash table with at
+        least enough capacity for inserting the given number of elements without reallocating.
+        """
+        ...
+
+    def __setitem__(self, key: KT, value: VT) -> None:
+        """
+        Set self[key] to value.
+
+        Recommended to use `.insert()` method here.
+        """
+        ...
+
+    def __getitem__(self, key: KT) -> VT:
+        """
+        Returns self[key].
+
+        Note: raises `KeyError` if key not found.
+        """
+        ...
+
+    def __delitem__(self, key: KT) -> VT:
+        """
+        Deletes self[key].
+
+        Note: raises `KeyError` if key not found.
+        """
+        ...
+
+    def capacity(self) -> int:
+        """
+        Returns the number of elements the map can hold without reallocating.
+        """
+        ...
+
+    def is_full(self) -> bool:
+        """
+        Equivalent directly to `len(self) == self.maxsize`
+        """
+        ...
+
+    def is_empty(self) -> bool:
+        """
+        Equivalent directly to `len(self) == 0`
+        """
+        ...
+
+    def insert(self, key: KT, value: VT, ttl: typing.Optional[float] = None) -> typing.Optional[VT]:
+        """
+        Equals to `self[key] = value`, but:
+        - Here you can set ttl for key-value ( with `self[key] = value` you can't )
+        - If the cache did not have this key present, None is returned.
+        - If the cache did have this key present, the value is updated,
+        and the old value is returned. The key is not updated, though;
+        """
+        ...
+
+    def get(self, key: KT, default: DT = None) -> typing.Union[VT, DT]:
+        """
+        Equals to `self[key]`, but returns `default` if the cache don't have this key present.
+        """
+        ...
+
+    def pop(self, key: KT, default: DT = None) -> typing.Union[VT, DT]:
+        """
+        Removes specified key and return the corresponding value.
+
+        If the key is not found, returns the `default`.
+        """
+        ...
+
+    def setdefault(
+        self, key: KT, default: typing.Optional[VT] = None, ttl: typing.Optional[float] = None
+    ) -> typing.Optional[VT]:
+        """
+        Inserts key with a value of default if key is not in the cache.
+
+        Return the value for key if key is in the cache, else default.
+        """
+        ...
+
+    def popitem(self) -> typing.Tuple[KT, VT]:
+        """
+        Removes the element that has been in the cache the longest
+        """
+        ...
+
+    def drain(self, n: int) -> int:
+        """
+        Does the `popitem()` `n` times and returns count of removed items.
+        """
+        ...
+
+    def clear(self, *, reuse: bool = False) -> None:
+        """
+        Removes all items from cache.
+
+        If reuse is True, will not free the memory for reusing in the future.
+        """
+        ...
+
+    def update(
+        self,
+        iterable: typing.Iterable[KT] | typing.Dict[KT, VT],
+        ttl: typing.Optional[float] = None,
+    ) -> None:
+        """
+        Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
+        """
+        ...
+
+    def keys(self) -> typing.Iterable[KT]:
+        """
+        Returns an iterable object of the cache's keys.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        - Don't call `len(cache)` or `bool(cache)` while using this iterable object.
+        """
+        ...
+
+    def values(self) -> typing.Iterable[VT]:
+        """
+        Returns an iterable object of the cache's values.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        - Don't call `len(cache)` or `bool(cache)` while using this iterable object.
+        """
+        ...
+
+    def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
+        """
+        Returns an iterable object of the cache's items (key-value pairs).
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        - Don't call `len(cache)` or `bool(cache)` while using this iterable object.
+        """
+        ...
+
+    def first(self, n: int = 0) -> typing.Optional[KT]:
+        """
+        Returns the oldest key in cache; this is the one which will be removed by `popitem()` (if n == 0).
+
+        By using `n` parameter, you can browse order index by index.
+        """
+        ...
+
+    def last(self) -> typing.Optional[KT]:
+        """
+        Returns the newest key in cache.
+        """
+        ...
+
+    def get_with_expire(
+        self, key: KT, default: DT = None
+    ) -> typing.Tuple[typing.Union[VT, DT], float]:
+        """
+        Works like `.get()`, but also returns the remaining time-to-live.
+        """
+        ...
+
+    def pop_with_expire(
+        self, key: KT, default: DT = None
+    ) -> typing.Tuple[typing.Union[VT, DT], float]:
+        """
+        Works like `.pop()`, but also returns the remaining time-to-live.
+        """
+        ...
+
+    def popitem_with_expire(self) -> typing.Tuple[KT, VT, float]:
+        """
+        Works like `.popitem()`, but also returns the remaining time-to-live.
         """
         ...
 

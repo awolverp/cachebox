@@ -4,6 +4,7 @@ import pytest
 import typing
 import sys
 
+
 @dataclasses.dataclass
 class EQ:
     def __init__(self, val: int) -> None:
@@ -14,6 +15,7 @@ class EQ:
 
     def __hash__(self) -> int:
         return self.val
+
 
 @dataclasses.dataclass
 class NoEQ:
@@ -30,7 +32,7 @@ def getsizeof(obj, use_sys=True):
             return sys.getsizeof(obj)
         else:
             return obj.__sizeof__()
-    except TypeError: # PyPy doesn't implement getsizeof or __sizeof__
+    except TypeError:  # PyPy doesn't implement getsizeof or __sizeof__
         return len(obj)
 
 
@@ -48,7 +50,7 @@ class _TestMixin:
 
         cache = self.CACHE(20, **self.KWARGS, capacity=0)
         assert cache.maxsize == 20
-        assert 2 >= cache.capacity() >= 0 # This is depends on platform
+        assert 2 >= cache.capacity() >= 0  # This is depends on platform
 
         cache = self.CACHE(20, **self.KWARGS, capacity=100)
         assert cache.maxsize == 20
@@ -60,17 +62,17 @@ class _TestMixin:
 
         cache = self.CACHE(0, **self.KWARGS, capacity=0)
         assert cache.maxsize == sys.maxsize
-        assert 2 >= cache.capacity() >= 0 # This is depends on platform
+        assert 2 >= cache.capacity() >= 0  # This is depends on platform
 
     def test_overflow(self):
         if not self.NO_POLICY:
             return
-        
+
         cache = self.CACHE(10, **self.KWARGS, capacity=10)
 
         for i in range(10):
             cache[i] = i
-        
+
         with pytest.raises(OverflowError):
             cache["new-key"] = "new-value"
 
@@ -94,16 +96,16 @@ class _TestMixin:
 
         for i in range(1000, 1000 + (10 - len(cache))):
             cache[i] = i
-        
+
         assert len(cache) == 10
         assert cache.is_full()
-    
+
     def test___sizeof__(self):
         cache = self.CACHE(10, **self.KWARGS, capacity=10)
 
         # all classes have to implement __sizeof__
         # __sizeof__ returns exactly allocated memory size by cache
-        # but sys.getsizeof add also garbage collector overhead to that, so sometimes 
+        # but sys.getsizeof add also garbage collector overhead to that, so sometimes
         # sys.getsizeof is greater than __sizeof__
         getsizeof(cache, False)
 
@@ -112,8 +114,8 @@ class _TestMixin:
 
         if cache:
             pytest.fail("bool(cache) returns invalid response")
-        
-        cache[1] =1
+
+        cache[1] = 1
         if not cache:
             pytest.fail("not bool(cache) returns invalid response")
 
@@ -129,14 +131,14 @@ class _TestMixin:
 
         with pytest.raises(KeyError):
             cache[1]
-        
+
         cache[1] = 1
         cache[1]
         cache[0] = 0
         cache[0]
         cache[2] = 2
         cache[3] = 3
-        
+
         with pytest.raises(KeyError):
             cache[4]
 
@@ -175,7 +177,7 @@ class _TestMixin:
 
         for i in range(5):
             cache[i] = i
-        
+
         assert cache.get(0, None) == 0
         assert cache.get(1, None) == 1
         assert cache.get("no-exists") is None
@@ -186,7 +188,7 @@ class _TestMixin:
         cache = self.CACHE(5, **self.KWARGS, capacity=5)
 
         for i in range(5):
-            cache[i] = i*2
+            cache[i] = i * 2
 
         assert cache.pop(1, None) == 2
         assert cache.get(1, None) is None
@@ -286,7 +288,7 @@ class _TestMixin:
         for i in range(size):
             cache.insert(NoEQ(val=i), i)
             cache.get(NoEQ(val=i))
-        
+
         cache = self.CACHE(size, **self.KWARGS, capacity=size)
 
         for i in range(size):
@@ -331,10 +333,10 @@ class _TestMixin:
 
         with pytest.raises(NotImplementedError):
             cache > cache
-        
+
         with pytest.raises(NotImplementedError):
             cache < cache
-        
+
         with pytest.raises(NotImplementedError):
             cache >= cache
 
@@ -346,7 +348,7 @@ class _TestMixin:
 
         for i in range(90):
             cache[i] = i
-        
+
         assert cache == cache
         assert not cache != cache
 

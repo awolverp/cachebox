@@ -20,6 +20,7 @@ from ._cachebox import (
     TTLCache as TTLCache,
     LRUCache as LRUCache,
     LFUCache as LFUCache,
+    VTTLCache as VTTLCache,
     cache_iterator as cache_iterator,
     fifocache_iterator as fifocache_iterator,
     ttlcache_iterator as ttlcache_iterator,

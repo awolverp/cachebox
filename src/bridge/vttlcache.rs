@@ -1,48 +1,39 @@
-//! implement TTLCache, our ttl implementation
+//! implement VTTLCache, our vttl implementation
 
-use crate::{hashedkey::HashedKey, internal::TTLElement, util::_KeepForIter};
+use crate::{hashedkey::HashedKey, internal::VTTLElement, util::_KeepForIter};
 
-/// TTL Cache implementation - Time-To-Live Policy (thread-safe).
+/// VTTL Cache Implementation - Time-To-Live Per-Key Policy (thread-safe).
 ///
-/// In simple terms, the TTL cache will automatically remove the element in the cache that has expired::
+/// In simple terms, the TTL cache will automatically remove the element in the cache that has expired when need.
 #[pyo3::pyclass(module="cachebox._cachebox", extends=crate::bridge::baseimpl::BaseCacheImpl)]
-pub struct TTLCache {
+pub struct VTTLCache {
     // Why [`Box`]? We using [`Box`] here so that there's no need for `&mut self`
     // in this struct; so RuntimeError never occurred for using this class in multiple threads.
-    raw: Box<crate::mutex::Mutex<crate::internal::TTLPolicy>>,
+    raw: Box<crate::mutex::Mutex<crate::internal::VTTLPolicy>>,
 }
 
 #[pyo3::pymethods]
-impl TTLCache {
-    /// TTL Cache implementation - First-In First-Out Policy (thread-safe).
+impl VTTLCache {
+    /// VTTL Cache Implementation - Time-To-Live Per-Key Policy (thread-safe).
     ///
     /// By maxsize param, you can specify the limit size of the cache ( zero means infinity ); this is unchangable.
-    ///
-    /// The ttl param specifies the time-to-live value for each element in cache (in seconds); cannot be zero or negative.
     ///
     /// By iterable param, you can create cache from a dict or an iterable.
     ///
     /// If capacity param is given, cache attempts to allocate a new hash table with at
     /// least enough capacity for inserting the given number of elements without reallocating.
     #[new]
-    #[pyo3(signature=(maxsize, ttl, iterable=None, *, capacity=0))]
+    #[pyo3(signature=(maxsize, iterable=None, ttl=None, *, capacity=0))]
     pub fn __new__(
         py: pyo3::Python<'_>,
         maxsize: usize,
-        ttl: f64,
         iterable: Option<pyo3::PyObject>,
+        ttl: Option<f64>,
         capacity: usize,
     ) -> pyo3::PyResult<(Self, crate::bridge::baseimpl::BaseCacheImpl)> {
-        if ttl <= 0.0 {
-            return Err(err!(
-                pyo3::exceptions::PyValueError,
-                "ttl cannot be zero or negative"
-            ));
-        }
-
-        let mut raw = crate::internal::TTLPolicy::new(maxsize, capacity, ttl)?;
+        let mut raw = crate::internal::VTTLPolicy::new(maxsize, capacity)?;
         if iterable.is_some() {
-            raw.update(py, unsafe { iterable.unwrap_unchecked() })?;
+            raw.update(py, unsafe { iterable.unwrap_unchecked() }, ttl)?;
         }
 
         let self_ = Self {
@@ -58,13 +49,6 @@ impl TTLCache {
         lock.maxsize.get()
     }
 
-    /// Returns the cache ttl
-    #[getter]
-    pub fn ttl(&self) -> f64 {
-        let lock = self.raw.lock();
-        lock.ttl.as_secs_f64()
-    }
-
     /// Returns the number of elements in the table - len(self)
     pub fn __len__(&self) -> usize {
         let mut lock = self.raw.lock();
@@ -77,8 +61,9 @@ impl TTLCache {
         let lock = self.raw.lock();
 
         core::mem::size_of::<Self>()
-            + lock.table.capacity() * core::mem::size_of::<usize>()
-            + lock.entries.capacity() * (crate::HASHEDKEY_SIZE + crate::PYOBJECT_SIZE)
+            + lock.table.capacity()
+                * core::mem::size_of::<core::ptr::NonNull<crate::sorted_heap::Entry<VTTLElement>>>()
+            + lock.heap.capacity() * core::mem::size_of::<crate::sorted_heap::Entry<VTTLElement>>()
     }
 
     /// Returns true if cache not empty - bool(self)
@@ -96,6 +81,8 @@ impl TTLCache {
     }
 
     /// Sets self\[key\] to value.
+    ///
+    /// Recommended to use `.insert()` method here.
     pub fn __setitem__(
         &self,
         py: pyo3::Python<'_>,
@@ -104,7 +91,7 @@ impl TTLCache {
     ) -> pyo3::PyResult<()> {
         let hk = HashedKey::from_pyobject(py, key)?;
         let mut lock = self.raw.lock();
-        lock.insert(hk, value, true);
+        lock.insert(hk, value, None, true);
         Ok(())
     }
 
@@ -140,18 +127,17 @@ impl TTLCache {
 
     /// Returns str(self)
     pub fn __str__(&self) -> String {
-        let mut lock = self.raw.lock();
-        lock.expire();
+        let lock = self.raw.lock();
 
         format!(
-            "FIFOCache({} / {}, capacity={})",
+            "VTTLCache({} / {}, capacity={})",
             lock.table.len(),
             lock.maxsize.get(),
             lock.table.capacity(),
         )
     }
 
-    /// Returns `iter(self)`
+    /// Returns `iter(cache)`
     ///
     /// Notes:
     /// - You should not make any changes in cache while using this iterable object.
@@ -159,15 +145,13 @@ impl TTLCache {
     pub fn __iter__(
         slf: pyo3::PyRef<'_, Self>,
         py: pyo3::Python<'_>,
-    ) -> pyo3::PyResult<pyo3::Py<ttlcache_iterator>> {
+    ) -> pyo3::PyResult<pyo3::Py<vttlcache_iterator>> {
         let mut lock = slf.raw.lock();
         let (len, capacity) = (lock.table.len(), lock.table.capacity());
 
-        lock.expire();
-
-        let result = ttlcache_iterator {
+        let result = vttlcache_iterator {
             ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
-            iter: crate::mutex::Mutex::new(lock.as_ptr()),
+            iter: crate::mutex::Mutex::new(lock.iter()),
             typ: 0,
         };
 
@@ -202,16 +186,15 @@ impl TTLCache {
     }
 
     pub fn __getstate__(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<pyo3::PyObject> {
-        let lock = self.raw.lock();
-
+        let mut lock = self.raw.lock();
         unsafe {
             let state = lock.to_pickle(py)?;
             Ok(pyo3::Py::from_owned_ptr(py, state))
         }
     }
 
-    pub fn __getnewargs__(&self) -> (usize, f64) {
-        (0, 1.0)
+    pub fn __getnewargs__(&self) -> (usize,) {
+        (0,)
     }
 
     pub fn __setstate__(&self, py: pyo3::Python<'_>, state: pyo3::PyObject) -> pyo3::PyResult<()> {
@@ -220,17 +203,22 @@ impl TTLCache {
     }
 
     pub fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
-        for element in self.raw.lock().entries.iter() {
-            visit.call(&element.key.key)?;
-            visit.call(&element.value)?;
+        unsafe {
+            for bucket in self.raw.lock().table.iter() {
+                let node = bucket.as_ref();
+
+                visit.call(&(*node.as_ptr()).as_ref().key.key)?;
+                visit.call(&(*node.as_ptr()).as_ref().value)?;
+            }
         }
+
         Ok(())
     }
 
     pub fn __clear__(&self) {
         let mut lock = self.raw.lock();
         lock.table.clear();
-        lock.entries.clear();
+        lock.heap.clear();
     }
 
     /// Returns the number of elements the map can hold without reallocating.
@@ -251,20 +239,36 @@ impl TTLCache {
         lock.table.len() == 0
     }
 
-    /// Equals to `self[key] = value`, but returns a value:
-    ///
+    /// Equals to `self[key] = value`, but:
+    /// - Here you can set ttl for key-value ( with `self[key] = value` you can't )
     /// - If the cache did not have this key present, None is returned.
     /// - If the cache did have this key present, the value is updated,
     ///   and the old value is returned. The key is not updated, though;
+    #[pyo3(signature=(key, value, ttl=None))]
     pub fn insert(
         &self,
         py: pyo3::Python<'_>,
         key: pyo3::PyObject,
         value: pyo3::PyObject,
+        ttl: Option<f64>,
     ) -> pyo3::PyResult<pyo3::PyObject> {
+        if let Some(secs) = ttl {
+            if secs == 0.0 {
+                return Err(err!(
+                    pyo3::exceptions::PyValueError,
+                    "ttl cannot be zero, if you do not want to set ttl, use `None`"
+                ));
+            } else if secs < 0.0 {
+                return Err(err!(
+                    pyo3::exceptions::PyValueError,
+                    "ttl cannot be negative"
+                ));
+            }
+        }
+
         let hk = HashedKey::from_pyobject(py, key)?;
         let mut lock = self.raw.lock();
-        let op = lock.insert(hk, value, true);
+        let op = lock.insert(hk, value, ttl, true);
         Ok(op.unwrap_or_else(|| py.None()))
     }
 
@@ -307,12 +311,13 @@ impl TTLCache {
     /// Inserts key with a value of default if key is not in the cache.
     ///
     /// Return the value for key if key is in the cache, else default.
-    #[pyo3(signature=(key, default=None))]
+    #[pyo3(signature=(key, default=None, ttl=None))]
     pub fn setdefault(
         &self,
         py: pyo3::Python<'_>,
         key: pyo3::PyObject,
         default: Option<pyo3::PyObject>,
+        ttl: Option<f64>,
     ) -> pyo3::PyResult<pyo3::PyObject> {
         let hk = HashedKey::from_pyobject(py, key)?;
         let mut lock = self.raw.lock();
@@ -322,13 +327,14 @@ impl TTLCache {
         }
 
         let defval = default.unwrap_or_else(|| py.None());
-        lock.insert(hk, defval.clone_ref(py), true);
+        lock.insert(hk, defval.clone_ref(py), ttl, true);
         Ok(defval)
     }
 
     /// Removes the element that has been in the cache the longest
     pub fn popitem(&self) -> pyo3::PyResult<(pyo3::PyObject, pyo3::PyObject)> {
         let mut lock = self.raw.lock();
+
         match lock.popitem() {
             Some(element) => Ok((element.key.key, element.value)),
             None => Err(err!(pyo3::exceptions::PyKeyError, ())),
@@ -355,8 +361,7 @@ impl TTLCache {
     pub fn clear(&self, reuse: bool) {
         let mut lock = self.raw.lock();
         lock.table.clear();
-        lock.entries.clear();
-        lock.n_shifts = 0;
+        lock.heap.clear();
 
         if !reuse {
             lock.shrink_to_fit();
@@ -370,17 +375,19 @@ impl TTLCache {
     }
 
     /// Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
+    #[pyo3(signature=(iterable, ttl=None))]
     pub fn update(
         slf: pyo3::PyRef<'_, Self>,
         py: pyo3::Python<'_>,
         iterable: pyo3::PyObject,
+        ttl: Option<f64>,
     ) -> pyo3::PyResult<()> {
         if slf.as_ptr() == iterable.as_ptr() {
             return Ok(());
         }
 
         let mut lock = slf.raw.lock();
-        lock.update(py, iterable)
+        lock.update(py, iterable, ttl)
     }
 
     /// Returns an iterable object of the cache's items (key-value pairs).
@@ -391,15 +398,13 @@ impl TTLCache {
     pub fn items(
         slf: pyo3::PyRef<'_, Self>,
         py: pyo3::Python<'_>,
-    ) -> pyo3::PyResult<pyo3::Py<ttlcache_iterator>> {
+    ) -> pyo3::PyResult<pyo3::Py<vttlcache_iterator>> {
         let mut lock = slf.raw.lock();
         let (len, capacity) = (lock.table.len(), lock.table.capacity());
 
-        lock.expire();
-
-        let result = ttlcache_iterator {
+        let result = vttlcache_iterator {
             ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
-            iter: crate::mutex::Mutex::new(lock.as_ptr()),
+            iter: crate::mutex::Mutex::new(lock.iter()),
             typ: 2,
         };
 
@@ -414,15 +419,13 @@ impl TTLCache {
     pub fn keys(
         slf: pyo3::PyRef<'_, Self>,
         py: pyo3::Python<'_>,
-    ) -> pyo3::PyResult<pyo3::Py<ttlcache_iterator>> {
+    ) -> pyo3::PyResult<pyo3::Py<vttlcache_iterator>> {
         let mut lock = slf.raw.lock();
         let (len, capacity) = (lock.table.len(), lock.table.capacity());
 
-        lock.expire();
-
-        let result = ttlcache_iterator {
+        let result = vttlcache_iterator {
             ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
-            iter: crate::mutex::Mutex::new(lock.as_ptr()),
+            iter: crate::mutex::Mutex::new(lock.iter()),
             typ: 0,
         };
 
@@ -437,38 +440,17 @@ impl TTLCache {
     pub fn values(
         slf: pyo3::PyRef<'_, Self>,
         py: pyo3::Python<'_>,
-    ) -> pyo3::PyResult<pyo3::Py<ttlcache_iterator>> {
+    ) -> pyo3::PyResult<pyo3::Py<vttlcache_iterator>> {
         let mut lock = slf.raw.lock();
         let (len, capacity) = (lock.table.len(), lock.table.capacity());
 
-        lock.expire();
-
-        let result = ttlcache_iterator {
+        let result = vttlcache_iterator {
             ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
-            iter: crate::mutex::Mutex::new(lock.as_ptr()),
+            iter: crate::mutex::Mutex::new(lock.iter()),
             typ: 1,
         };
 
         pyo3::Py::new(py, result)
-    }
-
-    /// Returns the oldest key in cache; this is the one which will be removed by `popitem()` (if n == 0).
-    ///
-    /// By using `n` parameter, you can browse order index by index.
-    #[pyo3(signature=(n=0))]
-    pub fn first(&self, py: pyo3::Python<'_>, n: usize) -> Option<pyo3::PyObject> {
-        let lock = self.raw.lock();
-        if n == 0 {
-            lock.entries.front().map(|x| x.key.key.clone_ref(py))
-        } else {
-            lock.entries.get(n).map(|x| x.key.key.clone_ref(py))
-        }
-    }
-
-    /// Returns the newest key in cache.
-    pub fn last(&self, py: pyo3::Python<'_>) -> Option<pyo3::PyObject> {
-        let lock = self.raw.lock();
-        lock.entries.back().map(|x| x.key.key.clone_ref(py))
     }
 
     /// Works like `.get()`, but also returns the remaining time-to-live.
@@ -483,17 +465,13 @@ impl TTLCache {
         let lock = self.raw.lock();
 
         match lock.get(&hk) {
-            #[rustfmt::skip]
-            Some(val) => Ok(
-                (
-                    val.value.clone_ref(py),
-                    unsafe {
-                        val.expire.duration_since(std::time::SystemTime::now())
+            Some(val) => Ok((val.value.clone_ref(py), unsafe {
+                val.expire_at.map_or(0.0, |x| {
+                    x.duration_since(std::time::SystemTime::now())
                         .unwrap_unchecked()
                         .as_secs_f64()
-                    }
-                )
-            ),
+                })
+            })),
             None => Ok((default.unwrap_or_else(|| py.None()), 0.0)),
         }
     }
@@ -515,9 +493,13 @@ impl TTLCache {
                 (
                     element.value,
                     unsafe {
-                        element.expire.duration_since(std::time::SystemTime::now())
-                        .unwrap_unchecked()
-                        .as_secs_f64()
+                        element.expire_at.map_or(
+                            0.0, |x| {
+                                x.duration_since(std::time::SystemTime::now())
+                                .unwrap_unchecked()
+                                .as_secs_f64()
+                            }
+                        )
                     }
                 )
             ),
@@ -535,9 +517,13 @@ impl TTLCache {
                     element.key.key,
                     element.value,
                     unsafe {
-                        element.expire.duration_since(std::time::SystemTime::now())
-                        .unwrap_unchecked()
-                        .as_secs_f64()
+                        element.expire_at.map_or(
+                            0.0, |x| {
+                                x.duration_since(std::time::SystemTime::now())
+                                .unwrap_unchecked()
+                                .as_secs_f64()
+                            }
+                        )
                     }
                 )
             ),
@@ -548,14 +534,14 @@ impl TTLCache {
 
 #[allow(non_camel_case_types)]
 #[pyo3::pyclass(module = "cachebox._cachebox")]
-pub struct ttlcache_iterator {
-    ptr: _KeepForIter<TTLCache>,
-    iter: crate::mutex::Mutex<crate::internal::TTLIterator>,
+pub struct vttlcache_iterator {
+    ptr: _KeepForIter<VTTLCache>,
+    iter: crate::mutex::Mutex<crate::sorted_heap::Iter<VTTLElement>>,
     typ: u8,
 }
 
 #[pyo3::pymethods]
-impl ttlcache_iterator {
+impl vttlcache_iterator {
     pub fn __len__(&self) -> usize {
         self.ptr.len
     }
@@ -571,42 +557,32 @@ impl ttlcache_iterator {
     ) -> pyo3::PyResult<*mut pyo3::ffi::PyObject> {
         slf.ptr.status(py)?;
 
-        let mut l = slf.iter.lock();
+        match slf.iter.lock().next() {
+            Some(ptr) => {
+                let node = unsafe { &*ptr.as_ptr() };
 
-        let mut element: &TTLElement;
-        loop {
-            element = unsafe {
-                if let Some(x) = l.next() {
-                    &*x
-                } else {
-                    return Err(err!(pyo3::exceptions::PyStopIteration, ()));
+                match slf.typ {
+                    0 => Ok(node.as_ref().key.key.clone_ref(py).into_ptr()),
+                    1 => Ok(node.as_ref().value.clone_ref(py).into_ptr()),
+                    2 => {
+                        tuple!(
+                            py,
+                            2,
+                            0 => node.as_ref().key.key.clone_ref(py).into_ptr(),
+                            1 => node.as_ref().value.clone_ref(py).into_ptr(),
+                        )
+                    }
+                    _ => {
+                        #[cfg(not(debug_assertions))]
+                        unsafe {
+                            core::hint::unreachable_unchecked()
+                        };
+                        #[cfg(debug_assertions)]
+                        unreachable!();
+                    }
                 }
-            };
-
-            if element.expire > std::time::SystemTime::now() {
-                break;
             }
-        }
-
-        match slf.typ {
-            0 => Ok(element.key.key.clone_ref(py).into_ptr()),
-            1 => Ok(element.value.clone_ref(py).into_ptr()),
-            2 => {
-                tuple!(
-                    py,
-                    2,
-                    0 => element.key.key.clone_ref(py).into_ptr(),
-                    1 => element.value.clone_ref(py).into_ptr(),
-                )
-            }
-            _ => {
-                #[cfg(not(debug_assertions))]
-                unsafe {
-                    core::hint::unreachable_unchecked()
-                };
-                #[cfg(debug_assertions)]
-                unreachable!();
-            }
+            None => Err(err!(pyo3::exceptions::PyStopIteration, ())),
         }
     }
 }

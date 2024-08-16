@@ -329,6 +329,14 @@ impl TTLPolicy {
         tuple!(check state, size=4)?;
         let (maxsize, iterable, capacity) = extract_pickle_tuple!(py, state);
 
+        // SAFETY: we check `iterable` type in `extract_pickle_tuple` macro
+        if maxsize < (pyo3::ffi::PyObject_Size(iterable.as_ptr()) as usize) {
+            return Err(err!(
+                pyo3::exceptions::PyValueError,
+                "the iterable object size is more than maxsize!"
+            ));
+        }
+
         let ttl = {
             let obj = pyo3::ffi::PyTuple_GetItem(state, 3);
             pyo3::ffi::PyFloat_AsDouble(obj)
@@ -342,10 +350,7 @@ impl TTLPolicy {
 
             let hk = HashedKey::from_pyobject(py, key)?;
 
-            if new.table.len() >= new.maxsize.get() && !new.contains_key(&hk) {
-                new.popitem().unwrap();
-            }
-
+            // SAFETY: we don't need to check maxsize, we sure `len(iterable) <= maxsize`
             new.insert_unchecked(TTLElement {
                 key: hk,
                 value,

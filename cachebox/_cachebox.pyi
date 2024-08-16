@@ -43,7 +43,7 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
     def __iter__(self) -> typing.Iterator[KT]: ...
     def __richcmp__(self, other: typing.Self, op: int) -> bool: ...
     def __getstate__(self) -> object: ...
-    def __getnewargs(self) -> tuple: ...
+    def __getnewargs__(self) -> tuple: ...
     def __setstate__(self, state: object) -> None: ...
     def capacity(self) -> int: ...
     def is_full(self) -> bool: ...
@@ -51,13 +51,15 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
     def insert(self, key: KT, value: VT) -> typing.Optional[VT]: ...
     def get(self, key: KT, default: DT = None) -> typing.Union[VT, DT]: ...
     def pop(self, key: KT, default: DT = None) -> typing.Union[VT, DT]: ...
-    def setdefault(self, key: KT, default: typing.Optional[VT] = None) -> typing.Optional[VT]: ...
+    def setdefault(
+        self, key: KT, default: typing.Optional[DT] = None
+    ) -> typing.Optional[VT | DT]: ...
     def popitem(self) -> typing.Tuple[KT, VT]: ...
     def drain(self, n: int) -> int: ...
     def clear(self, *, reuse: bool = False) -> None: ...
     def shrink_to_fit(self) -> None: ...
     def update(
-        self, iterable: typing.Union[typing.Iterable[KT, VT], typing.Dict[KT, VT]]
+        self, iterable: typing.Union[typing.Iterable[typing.Tuple[KT, VT]], typing.Dict[KT, VT]]
     ) -> None: ...
     def keys(self) -> typing.Iterable[KT]: ...
     def values(self) -> typing.Iterable[VT]: ...
@@ -164,7 +166,7 @@ class Cache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def setdefault(self, key: KT, default: typing.Optional[VT] = None) -> typing.Optional[VT]:
+    def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Optional[VT | DT]:
         """
         Inserts key with a value of default if key is not in the cache.
 
@@ -188,7 +190,7 @@ class Cache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def update(self, iterable: typing.Iterable[KT] | typing.Dict[KT, VT]) -> None:
+    def update(self, iterable: typing.Iterable[typing.Tuple[KT, VT]] | typing.Dict[KT, VT]) -> None:
         """
         Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
 
@@ -315,7 +317,7 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def setdefault(self, key: KT, default: typing.Optional[VT] = None) -> typing.Optional[VT]:
+    def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Optional[VT | DT]:
         """
         Inserts key with a value of default if key is not in the cache.
 
@@ -343,7 +345,7 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def update(self, iterable: typing.Iterable[KT] | typing.Dict[KT, VT]) -> None:
+    def update(self, iterable: typing.Iterable[typing.Tuple[KT, VT]] | typing.Dict[KT, VT]) -> None:
         """
         Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
         """
@@ -480,7 +482,7 @@ class RRCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def setdefault(self, key: KT, default: typing.Optional[VT] = None) -> typing.Optional[VT]:
+    def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Optional[VT | DT]:
         """
         Inserts key with a value of default if key is not in the cache.
 
@@ -502,7 +504,7 @@ class RRCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def update(self, iterable: typing.Iterable[KT] | typing.Dict[KT, VT]) -> None:
+    def update(self, iterable: typing.Iterable[typing.Tuple[KT, VT]] | typing.Dict[KT, VT]) -> None:
         """
         Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
 
@@ -633,7 +635,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def setdefault(self, key: KT, default: typing.Optional[VT] = None) -> typing.Optional[VT]:
+    def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Optional[VT | DT]:
         """
         Inserts key with a value of default if key is not in the cache.
 
@@ -661,7 +663,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def update(self, iterable: typing.Iterable[KT] | typing.Dict[KT, VT]) -> None:
+    def update(self, iterable: typing.Iterable[typing.Tuple[KT, VT]] | typing.Dict[KT, VT]) -> None:
         """
         Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
         """
@@ -673,7 +675,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
 
         Notes:
         - You should not make any changes in cache while using this iterable object.
-        - Don't call `len(cache)` or `bool(cache)` while using this iterable object.
+        - Don't call `len(cache)`, `bool(cache)`, `cache.is_full()` or `cache.is_empty()` while using this iterable object.
         """
         ...
 
@@ -683,7 +685,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
 
         Notes:
         - You should not make any changes in cache while using this iterable object.
-        - Don't call `len(cache)` or `bool(cache)` while using this iterable object.
+        - Don't call `len(cache)`, `bool(cache)`, `cache.is_full()` or `cache.is_empty()` while using this iterable object.
         """
         ...
 
@@ -693,7 +695,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
 
         Notes:
         - You should not make any changes in cache while using this iterable object.
-        - Don't call `len(cache)` or `bool(cache)` while using this iterable object.
+        - Don't call `len(cache)`, `bool(cache)`, `cache.is_full()` or `cache.is_empty()` while using this iterable object.
         """
         ...
 
@@ -829,7 +831,7 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def setdefault(self, key: KT, default: typing.Optional[VT] = None) -> typing.Optional[VT]:
+    def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Optional[VT | DT]:
         """
         Inserts key with a value of default if key is not in the cache.
 
@@ -857,7 +859,7 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def update(self, iterable: typing.Iterable[KT] | typing.Dict[KT, VT]) -> None:
+    def update(self, iterable: typing.Iterable[typing.Tuple[KT, VT]] | typing.Dict[KT, VT]) -> None:
         """
         Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
         """
@@ -998,7 +1000,7 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def setdefault(self, key: KT, default: typing.Optional[VT] = None) -> typing.Optional[VT]:
+    def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Optional[VT | DT]:
         """
         Inserts key with a value of default if key is not in the cache.
 
@@ -1026,7 +1028,7 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def update(self, iterable: typing.Iterable[KT] | typing.Dict[KT, VT]) -> None:
+    def update(self, iterable: typing.Iterable[typing.Tuple[KT, VT]] | typing.Dict[KT, VT]) -> None:
         """
         Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
         """
@@ -1161,8 +1163,8 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         ...
 
     def setdefault(
-        self, key: KT, default: typing.Optional[VT] = None, ttl: typing.Optional[float] = None
-    ) -> typing.Optional[VT]:
+        self, key: KT, default: typing.Optional[DT] = None, ttl: typing.Optional[float] = None
+    ) -> typing.Optional[VT | DT]:
         """
         Inserts key with a value of default if key is not in the cache.
 
@@ -1192,7 +1194,7 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
 
     def update(
         self,
-        iterable: typing.Iterable[KT] | typing.Dict[KT, VT],
+        iterable: typing.Iterable[typing.Tuple[KT, VT]] | typing.Dict[KT, VT],
         ttl: typing.Optional[float] = None,
     ) -> None:
         """
@@ -1206,7 +1208,7 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
 
         Notes:
         - You should not make any changes in cache while using this iterable object.
-        - Don't call `len(cache)` or `bool(cache)` while using this iterable object.
+        - Don't call `len(cache)`, `bool(cache)`, `cache.is_full()` or `cache.is_empty()` while using this iterable object.
         """
         ...
 
@@ -1216,7 +1218,7 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
 
         Notes:
         - You should not make any changes in cache while using this iterable object.
-        - Don't call `len(cache)` or `bool(cache)` while using this iterable object.
+        - Don't call `len(cache)`, `bool(cache)`, `cache.is_full()` or `cache.is_empty()` while using this iterable object.
         """
         ...
 
@@ -1226,7 +1228,7 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
 
         Notes:
         - You should not make any changes in cache while using this iterable object.
-        - Don't call `len(cache)` or `bool(cache)` while using this iterable object.
+        - Don't call `len(cache)`, `bool(cache)`, `cache.is_full()` or `cache.is_empty()` while using this iterable object.
         """
         ...
 
@@ -1287,6 +1289,11 @@ class lrucache_iterator:
     def __next__(self) -> typing.Any: ...
 
 class lfucache_iterator:
+    def __len__(self) -> int: ...
+    def __iter__(self) -> typing.Self: ...
+    def __next__(self) -> typing.Any: ...
+
+class vttlcache_iterator:
     def __len__(self) -> int: ...
     def __iter__(self) -> typing.Self: ...
     def __next__(self) -> typing.Any: ...

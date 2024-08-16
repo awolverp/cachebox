@@ -155,7 +155,7 @@ impl TTLCache {
     ///
     /// Notes:
     /// - You should not make any changes in cache while using this iterable object.
-    /// - Don't call `len(cache)` or `bool(cache)` while using this iterable object.
+    /// - Don't call `len(cache)`, `bool(cache)`, `cache.is_full()` or `cache.is_empty()` while using this iterable object.
     pub fn __iter__(
         slf: pyo3::PyRef<'_, Self>,
         py: pyo3::Python<'_>,
@@ -241,13 +241,15 @@ impl TTLCache {
 
     /// Equivalent directly to `len(self) == self.maxsize`
     pub fn is_full(&self) -> bool {
-        let lock = self.raw.lock();
+        let mut lock = self.raw.lock();
+        lock.expire();
         lock.table.len() == lock.maxsize.get()
     }
 
     /// Equivalent directly to `len(self) == 0`
     pub fn is_empty(&self) -> bool {
-        let lock = self.raw.lock();
+        let mut lock = self.raw.lock();
+        lock.expire();
         lock.table.len() == 0
     }
 
@@ -387,7 +389,7 @@ impl TTLCache {
     ///
     /// Notes:
     /// - You should not make any changes in cache while using this iterable object.
-    /// - Don't call `len(cache)` or `bool(cache)` while using this iterable object.
+    /// - Don't call `len(cache)`, `bool(cache)`, `cache.is_full()` or `cache.is_empty()` while using this iterable object.
     pub fn items(
         slf: pyo3::PyRef<'_, Self>,
         py: pyo3::Python<'_>,
@@ -410,7 +412,7 @@ impl TTLCache {
     ///
     /// Notes:
     /// - You should not make any changes in cache while using this iterable object.
-    /// - Don't call `len(cache)` or `bool(cache)` while using this iterable object.
+    /// - Don't call `len(cache)`, `bool(cache)`, `cache.is_full()` or `cache.is_empty()` while using this iterable object.
     pub fn keys(
         slf: pyo3::PyRef<'_, Self>,
         py: pyo3::Python<'_>,
@@ -433,7 +435,7 @@ impl TTLCache {
     ///
     /// Notes:
     /// - You should not make any changes in cache while using this iterable object.
-    /// - Don't call `len(cache)` or `bool(cache)` while using this iterable object.
+    /// - Don't call `len(cache)`, `bool(cache)`, `cache.is_full()` or `cache.is_empty()` while using this iterable object.
     pub fn values(
         slf: pyo3::PyRef<'_, Self>,
         py: pyo3::Python<'_>,

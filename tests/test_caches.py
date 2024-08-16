@@ -436,14 +436,14 @@ class TestVTTLCache(_TestMixin):
         obj = VTTLCache(2)
 
         obj.insert(0, 1, 0.5)
-        time.sleep(0.5)
+        time.sleep(0.501)
 
         with pytest.raises(KeyError):
             obj[0]
 
         obj.insert("name", "nick", 0.3)
         obj.insert("age", 18, None)
-        time.sleep(0.3)
+        time.sleep(0.301)
 
         with pytest.raises(KeyError):
             obj["name"]

@@ -58,6 +58,7 @@ fn _cachebox(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<bridge::lfucache::LFUCache>()?;
     m.add_class::<bridge::lfucache::lfucache_iterator>()?;
     m.add_class::<bridge::vttlcache::VTTLCache>()?;
+    m.add_class::<bridge::vttlcache::vttlcache_iterator>()?;
 
     Ok(())
 }

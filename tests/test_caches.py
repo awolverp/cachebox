@@ -564,7 +564,7 @@ class TestVTTLCache(_TestMixin):
         for i in range(10):
             c1.insert(i, i * 2, i + 0.5)
 
-        time.sleep(0.5)
+        time.sleep(0.51)
 
         c2 = pickle.loads(pickle.dumps(c1))
 

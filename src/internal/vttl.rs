@@ -33,7 +33,7 @@ impl VTTLElement {
     #[inline]
     pub fn expired(&self) -> bool {
         self.expire_at
-            .filter(|x| std::time::SystemTime::now() > *x)
+            .filter(|x| std::time::SystemTime::now() >= *x)
             .is_some()
     }
 

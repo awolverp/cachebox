@@ -5,7 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.4.0] - 2024-07-15
+## 4.0.0 - 2024-08-16
+The Big Update ...
+
+### Added
+- There's a new class: `Frozen`
+
+### Fixed
+- using `BaseCacheImpl` as subclass was cause NotImplementedError, but now fixed.
+- `make_*_key` functions error fixed
+
+### Improved
+All of caches improved and their perfomance improved a lot.
+
+### Changed
+- All of caches' algorthims changed:
+    - `Cache` performance improved about 5%.
+    - `FIFOCache` performance improved about 20%.
+    - `LFUCache` performance improved about 46%.
+    - `TTLCache` performance improved about 30%.
+    - `VTTLCache` performance improved about 20%.
+    - `LRUCache` performance improved about 40%.
+    - See [benchmarks](https://github.com/awolverp/cachebox-benchmark)
+
+- All of `.items()` and `.keys()` and `.values()` methods are now ordered.
+- `.insert()` method changed: If the cache did have this key present, the value is updated, and the old value is returned.
+
+### Deprecated
+- `utils.items_in_order` function is deprecated and no longer available.
+
+## 3.4.0 - 2024-07-15
 ### Added
 - `items_in_order` function added - helps you to iterate caches items in order
 
@@ -17,12 +46,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Updated
 - Dependecies updated
 
-## [3.3.1] - 2024-07-13
+## 3.3.1 - 2024-07-13
 ### Fixed
 - Change comparing alghoritm
 - Fix [#5](https://github.com/awolverp/cachebox/issues/5)
 
-## [3.3.0] - 2024-07-04
+## 3.3.0 - 2024-07-04
 ### Added
 - `FIFOCache`:
     - Added new parameter `n` to `.first()` method.
@@ -41,12 +70,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Updated
 - dependecies updated
 
-## [3.2.1] - 2024-06-17
+## 3.2.1 - 2024-06-17
 ### Changed
 - `VTTLCache` sorting alghrotim changed; its speed improved.
 - Compile-time flags changed and optimized
 
-## [3.2.0] - 2024-06-09
+## 3.2.0 - 2024-06-09
 ### Added
 - Add `version_info` variable
 
@@ -54,14 +83,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - pyproject.toml classifiers changed and fixed
 - Documentation markdown fixed
 
-## [3.1.1] - 2024-06-08
+## 3.1.1 - 2024-06-08
 ### Changed
 - `cached` and `cachedmethod` will use `FIFOCache` on default (previously it used `Cache`).
 
 ### Fixed
 - Fix undefined behavior on iterators when cache's capacity changed
 
-## [3.1.0] - 2024-06-06
+## 3.1.0 - 2024-06-06
 ### Added
 - Now supports `pickle`
 - a little document added to Rust code
@@ -70,7 +99,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `VTTLCache`: uses `time::SystemTime` instead of `time::Instant` ( doesn't effect python codes, don't care )
 - `TTLCache`: uses `time::SystemTime` instead of `time::Instant` ( doesn't effect python codes, don't care )
 
-## [3.0.0] - 2024-06-02
+## 3.0.0 - 2024-06-02
 
 ### Changed
 - `__repr__` changed to `__str__`
@@ -107,7 +136,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added new methods `is_empty` and `is_full`
 
-## [2.2.4] - 2024-05-09
+## 2.2.4 - 2024-05-09
 
 ### Fixed
 - Document fixed
@@ -115,7 +144,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Internal
 - Dependecies updated
 
-## [2.2.3] - 2024-04-26
+## 2.2.3 - 2024-04-26
 
 ### Changed
 - Improve code stablity
@@ -127,7 +156,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use `hashbrown` instead of standard hashmap.
 - Increase `unsafe` blocks in safe situations to optimize performance
 
-## [2.2.2] - 2024-04-13
+## 2.2.2 - 2024-04-13
 
 ### Changed
 - The behavior of the `__repr__` function has been changed and improved.
@@ -137,7 +166,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `pyo3` updated and features changed.
 - Use `fastrand` instead of `rand`.
 
-## [2.2.1] - 2024-04-05
+## 2.2.1 - 2024-04-05
 
 ### Fixed
 - Fix `RuntimeError` when you passing a cache implemetation to its own methods.
@@ -146,7 +175,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update Rust dependecies
 - Optimize code for threading
 
-## [2.2.0] - 2024-03-31
+## 2.2.0 - 2024-03-31
 
 ### Changed
 - Change and improve sorting strategy (VTTLCache)
@@ -155,7 +184,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove deprecated methods (getmaxsize, getttl, and delete)
 - Remove dependecies
 
-## [2.1.1] - 2024-03-14
+## 2.1.1 - 2024-03-14
 
 ### Added
 - New decorator `cachedmethod` for class methods.
@@ -166,7 +195,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fix some bug
 
-## [2.0.1] - 2024-03-09
+## 2.0.1 - 2024-03-09
 
 ### Added
 - README.md updated and added new examples
@@ -179,7 +208,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `strip` value changed.
 - Use `AHashMap` instead of standard `HashMap`; that's very faster.
 
-## [2.0.0] - 2024-03-09
+## 2.0.0 - 2024-03-09
 In this release, I rewritten all implemetations, documentation, and stub-file.
 
 ### Added
@@ -211,7 +240,7 @@ In this release, I rewritten all implemetations, documentation, and stub-file.
 - `strip` value changed to reduce binary file size.
 - New dependency: `typing_extensions`
 
-## [1.0.21] - 2024-03-01
+## 1.0.21 - 2024-03-01
 
 ### Fixed
 
@@ -222,7 +251,7 @@ In this release, I rewritten all implemetations, documentation, and stub-file.
 
 - Benchmarks moved to another repository (https://github.com/awolverp/cachebox-benchmark)
 
-## [1.0.19] - 2024-02-29
+## 1.0.19 - 2024-02-29
 
 ### Added
 

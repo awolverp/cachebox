@@ -4,6 +4,7 @@
 [![image](https://img.shields.io/pypi/l/cachebox.svg)](https://github.com/astral-sh/cachebox/blob/main/LICENSE)
 [![image](https://img.shields.io/pypi/pyversions/cachebox.svg)](https://pypi.python.org/pypi/cachebox)
 [![image](https://static.pepy.tech/badge/cachebox)](https://pypi.python.org/pypi/cachebox)
+[![python-test](https://github.com/awolverp/cachebox/actions/workflows/python-test.yml/badge.svg)](https://github.com/awolverp/cachebox/actions/workflows/python-test.yml)
 
 [**Releases**](https://github.com/awolverp/cachebox/releases) | [**Benchmarks**](https://github.com/awolverp/cachebox-benchmark) | [**Issues**](https://github.com/awolverp/cachebox/issues/new)
 

@@ -42,8 +42,9 @@ jobs:
 
       - run: pip freeze
 
-      - run: pytest
+      - run: pytest -vv
         env:
+          RUST_BACKTRACE: 1
           HYPOTHESIS_PROFILE: slow
 
   test-os:
@@ -74,6 +75,7 @@ jobs:
 
       - run: pip freeze
 
-      - run: pytest
+      - run: pytest -vv
         env:
+          RUST_BACKTRACE: 1
           HYPOTHESIS_PROFILE: slow

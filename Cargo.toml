@@ -1,16 +1,11 @@
 [package]
 name = "cachebox"
-version = "3.4.0"
+version = "4.0.0"
 edition = "2021"
 
 [lib]
 name = "cachebox"
 crate-type = ["cdylib"]
-
-[profile.dev]
-debug = 2
-debug-assertions = true
-lto = "off"
 
 [profile.release]
 codegen-units = 1
@@ -21,12 +16,13 @@ panic = "abort"
 strip = "symbols"
 
 [dependencies]
-hashbrown = { version = "^0.14", default-features = false, features=["inline-more", "raw", "allocator-api2"]}
+hashbrown = { version = "^0.14", default-features = false, features=["inline-more", "raw"]}
 fastrand = "2"
-parking_lot = "^0.12"
-pyo3 = { version = "^0.22", default-features = false, features=["macros", "extension-module", "py-clone"] }
-ahash = { version = "^0.8", default-features = false, features=["std", "compile-time-rng"] }
+pyo3 = { version = "^0.22", default-features = false, features=["macros", "extension-module"] }
 cfg-if = "1.0"
+parking_lot_core = { version = "^0.9", default-features = false }
+lock_api = { version = "^0.4", default-features = false }
+fxhash = {version="^0.2"}
 
 [lints.clippy]
 dbg_macro = "warn"

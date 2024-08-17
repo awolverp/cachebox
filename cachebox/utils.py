@@ -26,7 +26,6 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):
         self.__cache = cls
         self.ignore = ignore
 
-
     @property
     def cache(self) -> BaseCacheImpl[KT, VT]:
         return self.__cache
@@ -50,7 +49,7 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):
     def __setitem__(self, key: KT, value: VT) -> None:
         if self.ignore:
             return
-        
+
         raise TypeError("This cache is frozen.")
 
     def __getitem__(self, key: KT) -> VT:
@@ -59,7 +58,7 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):
     def __delitem__(self, key: KT) -> VT:
         if self.ignore:
             return
-        
+
         raise TypeError("This cache is frozen.")
 
     def __str__(self) -> str:
@@ -83,7 +82,7 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):
     def insert(self, key: KT, value: VT, *args, **kwargs) -> typing.Optional[VT]:
         if self.ignore:
             return
-        
+
         raise TypeError("This cache is frozen.")
 
     def get(self, key: KT, default: DT = None) -> typing.Union[VT, DT]:
@@ -92,7 +91,7 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):
     def pop(self, key: KT, default: DT = None) -> typing.Union[VT, DT]:
         if self.ignore:
             return
-        
+
         raise TypeError("This cache is frozen.")
 
     def setdefault(
@@ -100,31 +99,31 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):
     ) -> typing.Optional[typing.Union[VT, DT]]:
         if self.ignore:
             return
-        
+
         raise TypeError("This cache is frozen.")
 
     def popitem(self) -> typing.Tuple[KT, VT]:
         if self.ignore:
             return
-        
+
         raise TypeError("This cache is frozen.")
 
     def drain(self, n: int) -> int:
         if self.ignore:
             return
-        
+
         raise TypeError("This cache is frozen.")
 
     def clear(self, *, reuse: bool = False) -> None:
         if self.ignore:
             return
-        
+
         raise TypeError("This cache is frozen.")
 
     def shrink_to_fit(self) -> None:
         if self.ignore:
             return
-        
+
         raise TypeError("This cache is frozen.")
 
     def update(
@@ -132,7 +131,7 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):
     ) -> None:
         if self.ignore:
             return
-        
+
         raise TypeError("This cache is frozen.")
 
     def keys(self) -> typing.Iterable[KT]:

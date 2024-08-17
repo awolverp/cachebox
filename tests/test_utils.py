@@ -34,6 +34,8 @@ def test_cached():
         fact = 1
         for num in range(2, n + 1):
             fact *= num
+
+        time.sleep(0.1)  # need for testing
         return fact
 
     perf_1 = time.perf_counter()
@@ -90,6 +92,8 @@ async def _test_async_cached():
         fact = 1
         for num in range(2, n + 1):
             fact *= num
+
+        asyncio.sleep(0.1)  # need for testing
         return fact
 
     perf_1 = time.perf_counter()

@@ -79,12 +79,6 @@ macro_rules! compare_fn {
     };
 }
 
-// macro_rules! expired {
-//     ($ttl:expr) => {
-//         $ttl.filter(|x| std::time::SystemTime::now() > *x).is_some()
-//     };
-// }
-
 impl VTTLPolicy {
     #[inline]
     pub fn new(maxsize: usize, mut capacity: usize) -> pyo3::PyResult<Self> {

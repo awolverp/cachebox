@@ -10,13 +10,22 @@ DT = typing.TypeVar("DT")
 
 
 class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):
-    __slots__ = "__cache"
+    __slots__ = ("__cache", "ignore")
 
-    def __init__(self, cls: BaseCacheImpl[KT, VT]) -> None:
+    def __init__(self, cls: BaseCacheImpl[KT, VT], ignore: bool = False) -> None:
+        """
+        **This is not a cache.** this class can freeze your caches and prevents changes.
+
+        Parameters:
+            cls: your cache
+            ignore: If False, will raise TypeError if anyone try to change cache. will do nothing otherwise.
+        """
         assert isinstance(cls, BaseCacheImpl)
         assert type(cls) is not Frozen
 
         self.__cache = cls
+        self.ignore = ignore
+
 
     @property
     def cache(self) -> BaseCacheImpl[KT, VT]:
@@ -39,12 +48,18 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):
         return key in self.__cache
 
     def __setitem__(self, key: KT, value: VT) -> None:
+        if self.ignore:
+            return
+        
         raise TypeError("This cache is frozen.")
 
     def __getitem__(self, key: KT) -> VT:
         return self.__cache[key]
 
     def __delitem__(self, key: KT) -> VT:
+        if self.ignore:
+            return
+        
         raise TypeError("This cache is frozen.")
 
     def __str__(self) -> str:
@@ -66,34 +81,58 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):
         return self.__cache.is_empty()
 
     def insert(self, key: KT, value: VT, *args, **kwargs) -> typing.Optional[VT]:
+        if self.ignore:
+            return
+        
         raise TypeError("This cache is frozen.")
 
     def get(self, key: KT, default: DT = None) -> typing.Union[VT, DT]:
         return self.__cache.get(key, default)
 
     def pop(self, key: KT, default: DT = None) -> typing.Union[VT, DT]:
+        if self.ignore:
+            return
+        
         raise TypeError("This cache is frozen.")
 
     def setdefault(
         self, key: KT, default: typing.Optional[VT] = None, *args, **kwargs
     ) -> typing.Optional[typing.Union[VT, DT]]:
+        if self.ignore:
+            return
+        
         raise TypeError("This cache is frozen.")
 
     def popitem(self) -> typing.Tuple[KT, VT]:
+        if self.ignore:
+            return
+        
         raise TypeError("This cache is frozen.")
 
     def drain(self, n: int) -> int:
+        if self.ignore:
+            return
+        
         raise TypeError("This cache is frozen.")
 
     def clear(self, *, reuse: bool = False) -> None:
+        if self.ignore:
+            return
+        
         raise TypeError("This cache is frozen.")
 
     def shrink_to_fit(self) -> None:
+        if self.ignore:
+            return
+        
         raise TypeError("This cache is frozen.")
 
     def update(
         self, iterable: typing.Union[typing.Iterable[typing.Tuple[KT, VT]], typing.Dict[KT, VT]]
     ) -> None:
+        if self.ignore:
+            return
+        
         raise TypeError("This cache is frozen.")
 
     def keys(self) -> typing.Iterable[KT]:
@@ -104,6 +143,12 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):
 
     def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
         return self.__cache.items()
+
+
+def _copy_if_need(obj: object, tocopy=(dict, list, set)):
+    from copy import copy
+
+    return copy(obj) if (type(obj) in tocopy) else obj
 
 
 def make_key(args: tuple, kwds: dict, fasttype=(int, str)):
@@ -172,13 +217,13 @@ class _cached_wrapper(typing.Generic[VT]):
         try:
             result = self.cache[key]
             self._hits += 1
-            return result
+            return _copy_if_need(result)
         except KeyError:
             self._misses += 1
 
         result = self.func(*args, **kwds)
         self.cache[key] = result
-        return result
+        return _copy_if_need(result)
 
 
 class _async_cached_wrapper(_cached_wrapper[VT]):
@@ -187,13 +232,13 @@ class _async_cached_wrapper(_cached_wrapper[VT]):
         try:
             result = self.cache[key]
             self._hits += 1
-            return result
+            return _copy_if_need(result)
         except KeyError:
             self._misses += 1
 
         result = await self.func(*args, **kwds)
         self.cache[key] = result
-        return result
+        return _copy_if_need(result)
 
 
 def cached(

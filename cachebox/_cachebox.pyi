@@ -546,7 +546,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
     """
     TTL Cache implementation - Time-To-Live Policy (thread-safe).
 
-    In simple terms, the TTL cache will automatically remove the element in the cache that has expired::
+    In simple terms, the TTL cache will automatically remove the element in the cache that has expired.
     """
 
     def __init__(

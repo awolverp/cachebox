@@ -5,7 +5,7 @@
 [![image](https://img.shields.io/pypi/pyversions/cachebox.svg)](https://pypi.python.org/pypi/cachebox)
 [![image](https://static.pepy.tech/badge/cachebox)](https://pypi.python.org/pypi/cachebox)
 
-[**Releases**](https://github.com/awolverp/cachebox/releases) | [**API Reference**](APIReference.md) | [**Benchmarks**](https://github.com/awolverp/cachebox-benchmark) | [**Issues**](https://github.com/awolverp/cachebox/issues/new)
+[**Releases**](https://github.com/awolverp/cachebox/releases) | [**Benchmarks**](https://github.com/awolverp/cachebox-benchmark) | [**Issues**](https://github.com/awolverp/cachebox/issues/new)
 
 **The fastest caching Python library written in Rust**
 

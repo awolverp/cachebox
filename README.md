@@ -96,24 +96,28 @@ def factorial(number: int) -> int:
 assert factorial(5) == 125
 assert len(factorial.cache) == 1
 
-# Unlike functools.lru_cache and other caching libraries, cachebox will copy dict, list, and set results.
-@cachebox.cached(cachebox.LRUCache(maxsize=128))
-def make_dict(name: str, age: int) -> dict:
-    return {"name": name, "age": age}
-
-d = make_dict("cachebox", 10)
-assert d == {"name": "cachebox", "age": 10}
-d["new-key"] = "new-value"
-d2 = make_dict("cachebox", 10)
-# `d2` will be `{"name": "cachebox", "age": 10, "new-key": "new-value"}` if you use other libraries
-assert d2 == {"name": "cachebox", "age": 10}
-
 # Async are also supported
 @cachebox.cached(cachebox.LRUCache(maxsize=128))
 async def make_request(method: str, url: str) -> dict:
     response = await client.request(method, url)
     return response.json()
 ```
+
+> [!NOTE]\
+> Unlike functools.lru_cache and other caching libraries, cachebox will copy `dict`, `list`, and `set`.
+> ```python
+> @cachebox.cached(cachebox.LRUCache(maxsize=128))
+> def make_dict(name: str, age: int) -> dict:
+>    return {"name": name, "age": age}
+>
+> d = make_dict("cachebox", 10)
+> assert d == {"name": "cachebox", "age": 10}
+> d["new-key"] = "new-value"
+> 
+> d2 = make_dict("cachebox", 10)
+> # `d2` will be `{"name": "cachebox", "age": 10, "new-key": "new-value"}` if you use other libraries
+> assert d2 == {"name": "cachebox", "age": 10}
+> ```
 
 ## Learn
 There are 9 implementation:
@@ -129,10 +133,8 @@ There are 9 implementation:
 
 Using this library is very easy and you only need to import cachebox and then use these classes like a dictionary (or use its decorator such as `cached` and `cachedmethod`).
 
-There are some examples for you with different methods for introducing those. for more, please see [API Reference](APIReference.md).
-
-> [!NOTE]\
-> All the methods you will see in the examples are common across all classes (except for a few of them).
+There are some examples for you with different methods for introducing those. \
+**All the methods you will see in the examples are common across all classes (except for a few of them).**
 
 * * *
 
@@ -424,14 +426,20 @@ frozen.insert("key", "value")
 ## Incompatible changes
 These are changes that are not compatible with the previous version:
 
-> [!NOTE]\
-> You can see more info about changes in [Changelog](CHANGELOG.md).
+**You can see more info about changes in [Changelog](CHANGELOG.md).**
 
 * * *
 
 #### Pickle serializing changed!
 If you try to load bytes that has dumped by pickle in previous version, you will get `TypeError` exception.
 There's no way to fix that 💔, but it's worth it.
+
+```python
+import pickle
+
+with open("old-version.pickle", "rb") as fd:
+    pickle.load(fd) # TypeError: ...
+```
 
 * * *
 

@@ -461,7 +461,7 @@ class TestVTTLCache(_TestMixin):
         obj = VTTLCache(3)
 
         obj.update({1: 1, 2: 2, 3: 3}, 0.5)
-        time.sleep(0.5)
+        time.sleep(0.501)
 
         with pytest.raises(KeyError):
             obj[1]

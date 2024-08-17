@@ -68,7 +68,7 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):
     def __iter__(self) -> typing.Iterator[KT]:
         return iter(self.__cache)
 
-    def __richcmp__(self, other: typing.Self, op: int) -> bool:
+    def __richcmp__(self, other, op: int) -> bool:
         return self.__cache.__richcmp__(other, op)
 
     def capacity(self) -> int:

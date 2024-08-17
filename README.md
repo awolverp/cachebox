@@ -23,13 +23,13 @@ This can make your application very faster and it's a good choice in big applica
 - 📦 Over 7 cache algorithms are supported
 
 ## Page Content
-- [When i need caching and cachebox?](#when-i-need-caching-and-cachebox)
-- [Why `cachebox`?](#why-cachebox)
-- [Installation](#installation)
-- [Example](#example)
-- [Learn](#learn)
-- [Incompatible changes](#incompatible-changes)
-- [Tips & Notes](#tips-and-notes)
+- [**When i need caching and cachebox?**](#when-i-need-caching-and-cachebox)
+- [**Why `cachebox`?**](#why-cachebox)
+- [**Installation**](#installation)
+- [**Example**](#example)
+- [**Learn**](#learn)
+- [**Incompatible changes**](#incompatible-changes)
+- [**Tips & Notes**](#tips-and-notes)
 
 ## When i need caching and cachebox?
 **📈 Frequent Data Access** \
@@ -134,6 +134,8 @@ There are some examples for you with different methods for introducing those. fo
 > [!NOTE]\
 > All the methods you will see in the examples are common across all classes (except for a few of them).
 
+* * *
+
 ### BaseCacheImpl
 This is the base class of all cache classes such as Cache, FIFOCache, ... \
 Do not try to call its constructor, this is only for type-hint.
@@ -150,6 +152,8 @@ def func(cache: BaseCacheImpl):
 cache = cachebox.LFUCache(0)
 assert isinstance(cache, cachebox.BaseCacheImpl)
 ```
+
+* * *
 
 ### Cache
 A simple cache that has no algorithm; this is only a hashmap.
@@ -191,6 +195,8 @@ cache.update({i:i for i in range(200)})
 # OverflowError: The cache has reached the bound.
 ```
 
+* * *
+
 ### FIFOCache
 FIFO Cache implementation - First-In First-Out Policy (thread-safe).
 
@@ -224,6 +230,8 @@ print(cache.insert("new-key", "val")) # None
 print(cache.first())
 ```
 
+* * *
+
 ### RRCache
 RRCache implementation - Random Replacement policy (thread-safe).
 
@@ -252,6 +260,8 @@ cache.clear()
 print(len(cache)) # 0
 ```
 
+* * *
+
 ### TTLCache
 TTL Cache implementation - Time-To-Live Policy (thread-safe).
 
@@ -279,6 +289,8 @@ time.sleep(2)
 cache["mykey"] # KeyError
 ```
 
+* * *
+
 ### LRUCache
 LRU Cache implementation - Least recently used policy (thread-safe).
 
@@ -304,6 +316,8 @@ print(cache.popitem()) # (3, 6)
 # Does the `popitem()` `n` times and returns count of removed items.
 print(cache.drain(5)) # 5
 ```
+
+* * *
 
 ### LFUCache
 LFU Cache implementation - Least frequantly used policy (thread-safe).
@@ -339,6 +353,8 @@ for item in cache.items():
 
 > [!TIP]\
 > `.items()`, `.keys()`, and `.values()` are ordered (v4.0+)
+
+* * *
 
 ### VTTLCache
 VTTL Cache implementation - Time-To-Live Per-Key Policy (thread-safe).
@@ -377,6 +393,8 @@ print(cache.get("key2")) # None
 > - In `VTTLCache` each item has its own unique time-to-live, unlike `TTLCache`.
 > - `VTTLCache` is generally slower than `TTLCache`.
 
+* * *
+
 ### Frozen
 **This is not a cache.** this class can freeze your caches and prevents changes ❄️.
 
@@ -409,9 +427,13 @@ These are changes that are not compatible with the previous version:
 > [!NOTE]\
 > You can see more info about changes in [Changelog](CHANGELOG.md).
 
+* * *
+
 #### Pickle serializing changed!
 If you try to load bytes that has dumped by pickle in previous version, you will get `TypeError` exception.
 There's no way to fix that 💔, but it's worth it.
+
+* * *
 
 #### Iterators changed!
 In previous versions, the iterators are not ordered; but now all of iterators are ordered.
@@ -432,6 +454,8 @@ for key in cache:
 # 2
 # 3
 ```
+
+* * *
 
 #### `.insert()` method changed!
 In new version, the `.insert()` method has a small change that can help you in coding.
@@ -474,6 +498,8 @@ assert c.capacity() == loaded.capacity()
 
 > [!NOTE]\
 > Supported since version 3.1.0
+
+* * *
 
 #### How to copy the caches?
 Use `copy.deepcopy` or `copy.copy` for copying caches. For example:

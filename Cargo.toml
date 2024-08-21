@@ -24,6 +24,9 @@ parking_lot_core = { version = "^0.9", default-features = false }
 lock_api = { version = "^0.4", default-features = false }
 fxhash = {version="^0.2"}
 
+[build-dependencies]
+pyo3-build-config = { version = "^0.22", features = ["resolve-config"] }
+
 [lints.clippy]
 dbg_macro = "warn"
 print_stdout = "warn"

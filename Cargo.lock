@@ -31,6 +31,7 @@ dependencies = [
  "lock_api",
  "parking_lot_core",
  "pyo3",
+ "pyo3-build-config",
 ]
 
 [[package]]

@@ -424,6 +424,18 @@ frozen.insert("key", "value")
 # TypeError: This cache is frozen.
 ```
 
+> [!NOTE]\
+> The **Frozen** class can't prevent expiring in [TTLCache](#ttlcache) or [VTTLCache](#vttlcache).
+>
+> For example:
+> ```python
+> cache = TTLCache(0, ttl=3, iterable={i:i for i in range(10)})
+> frozen = Frozen(cache)
+> 
+> time.sleep(3)
+> print(len(frozen)) # 0
+> ```
+
 ## Incompatible changes
 These are changes that are not compatible with the previous version:
 

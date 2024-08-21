@@ -1,3 +1,5 @@
+use pyo3::IntoPy;
+
 macro_rules! err {
     ($type:ty, $val:expr) => {
         ::pyo3::PyErr::new::<$type, _>($val)
@@ -137,7 +139,8 @@ unsafe fn _get_capacity(
     ) -> pyo3::PyResult<*mut pyo3::ffi::PyObject> {
         cfg_if::cfg_if! {
             if #[cfg(all(Py_3_9, not(any(Py_LIMITED_API, PyPy, GraalPy))))] {
-                Ok(pyo3::ffi::PyObject_CallMethodNoArgs(ptr, pyo3::ffi::c_str!("capacity").as_ptr()))
+                let m_name: pyo3::Py<pyo3::types::PyString> = "capacity".into_py(py);
+                Ok(pyo3::ffi::PyObject_CallMethodNoArgs(ptr, m_name.as_ptr()))
             } else {
                 let capacity_fn =
                     pyo3::ffi::PyObject_GetAttrString(ptr, pyo3::ffi::c_str!("capacity").as_ptr());

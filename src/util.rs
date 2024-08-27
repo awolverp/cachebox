@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use pyo3::IntoPy;
 
 macro_rules! err {

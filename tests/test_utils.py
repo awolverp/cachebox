@@ -61,6 +61,12 @@ def test_cached():
     perf_3 = time.perf_counter() - perf_3
     assert perf_3 > perf_2
 
+    # test cachebox__ignore
+    factorial.cache_clear()
+    assert len(factorial.cache) == 0
+    factorial(15, cachebox__ignore=True)
+    assert len(factorial.cache) == 0
+
 
 def test_key_makers():
     @cached(LRUCache(125), key_maker=make_key)
@@ -118,6 +124,12 @@ async def _test_async_cached():
     await factorial(15, "cachebox")
     perf_3 = time.perf_counter() - perf_3
     assert perf_3 > perf_2
+
+    # test cachebox__ignore
+    factorial.cache_clear()
+    assert len(factorial.cache) == 0
+    await factorial(15, "me", cachebox__ignore=True)
+    assert len(factorial.cache) == 0
 
 
 def test_async_cached():

@@ -121,16 +121,20 @@ async def make_request(method: str, url: str) -> dict:
 > ```
 
 ## Learn
-There are 9 implementation:
-- **BaseCacheImpl**: base-class for all classes.
-- **Cache**: A simple cache that has no algorithm; this is only a hashmap.
-- **FIFOCache**: the FIFO cache will remove the element that has been in the cache the longest.
-- **RRCache**: the RR cache will choice randomly element to remove it to make space when necessary.
-- **TTLCache**: the TTL cache will automatically remove the element in the cache that has expired.
-- **LRUCache**: the LRU cache will remove the element in the cache that has not been accessed in the longest time.
-- **LFUCache**: the LFU cache will remove the element in the cache that has been accessed the least, regardless of time.
-- **VTTLCache**: the TTL cache will automatically remove the element in the cache that has expired when need.
-- **Frozen**: you can use this class for freezing your caches.
+There are 2 decorators:
+- [**cached**](#function-cached): a decorator that helps you to cache your functions and calculations with a lot of options.
+- [**cachedmethod**](#function-cachedmethod): this is excatly works like `cached()`, but ignores `self` parameters in hashing and key making.
+
+There are 9 classes:
+- [**BaseCacheImpl**](#class-basecacheimpl): base-class for all classes.
+- [**Cache**](#class-cache): A simple cache that has no algorithm; this is only a hashmap.
+- [**FIFOCache**](#class-fifocache): the FIFO cache will remove the element that has been in the cache the longest.
+- [**RRCache**](#class-rrcache): the RR cache will choice randomly element to remove it to make space when necessary.
+- [**TTLCache**](#class-ttlcache): the TTL cache will automatically remove the element in the cache that has expired.
+- [**LRUCache**](#class-lrucache): the LRU cache will remove the element in the cache that has not been accessed in the longest time.
+- [**LFUCache**](#class-lfucache): the LFU cache will remove the element in the cache that has been accessed the least, regardless of time.
+- [**VTTLCache**](#class-vttlcache): the TTL cache will automatically remove the element in the cache that has expired when need.
+- [**Frozen**](#class-frozen): you can use this class for freezing your caches.
 
 Using this library is very easy and you only need to import cachebox and then use these classes like a dictionary (or use its decorator such as `cached` and `cachedmethod`).
 
@@ -139,7 +143,108 @@ There are some examples for you with different methods for introducing those. \
 
 * * *
 
-### BaseCacheImpl
+### *function* cached
+
+a decorator that helps you to cache your functions and calculations with a lot of options.
+
+**A simple example:**
+```python
+import cachebox
+
+# Parameters:
+#   - `cache`: your cache and cache policy.
+#   - `key_maker`: you can set your key maker, see examples below.
+#   - `clear_cache`: will be passed to cache's `clear` method when clearing cache.
+@cachebox.cached(cachebox.LRUCache(128))
+def sum_as_string(a, b):
+    return str(a+b)
+
+assert sum_as_string(1, 2) == "3"
+
+assert len(sum_as_string.cache) == 1
+sum_as_string.cache_clear()
+assert len(sum_as_string.cache) == 0
+```
+
+**A key_maker example:**
+```python
+import cachebox
+
+def simple_key_maker(args: tuple, kwds: dict):
+    return args[0].path
+
+# Async methods are supported
+@cachebox.cached(cachebox.LRUCache(128), key_maker=simple_key_maker)
+async def request_handler(request: Request):
+    return Response("hello man")
+```
+
+**A typed key_maker example:**
+```python
+import cachebox
+
+@cachebox.cached(cachebox.LRUCache(128), key_maker=cachebox.make_typed_key)
+def sum_as_string(a, b):
+    return str(a+b)
+
+sum_as_string(1.0, 1)
+sum_as_string(1, 1)
+print(len(sum_as_string.cache)) # 2
+```
+
+You have also manage functions' caches with `.cache` attribute as you saw in examples.
+Also there're more attributes and methods you can use:
+```python
+import cachebox
+
+@cachebox.cached(cachebox.LRUCache(0))
+def sum_as_string(a, b):
+    return str(a+b)
+
+print(sum_as_string.cache)
+# LRUCache(0 / 9223372036854775807, capacity=0)
+
+print(sum_as_string.cache_info())
+# CacheInfo(hits=0, misses=0, maxsize=9223372036854775807, length=0, cachememory=8)
+
+# `.cache_clear()` clears the cache
+sum_as_string.cache_clear()
+```
+
+> [!TIP]\
+> There's a new feature **since `v4.1.0`** that you can tell to a cached function that don't use cache for a call:
+> ```python
+> # with `cachebox__ignore=True` parameter, cachebox does not use cache and only calls the function and returns its result.
+> sum_as_string(10, 20, cachebox__ignore=True)
+> ```
+
+> [!NOTE]\
+> You can see [LRUCache here](#class-lrucache).
+
+* * *
+
+### *function* cachedmethod
+
+this is excatly works like `cached()`, but ignores `self` parameters in hashing and key making.
+
+```python
+import cachebox
+
+class MyClass:
+    @cachebox.cachedmethod(cachebox.TTLCache(0, ttl=10))
+    def my_method(self, name: str):
+        return "Hello, " + name + "!"
+
+c = MyClass()
+c.my_method()
+```
+
+> [!NOTE]\
+> You can see [TTLCache here](#class-ttlcache).
+
+* * *
+
+### *class* BaseCacheImpl
 This is the base class of all cache classes such as Cache, FIFOCache, ... \
 Do not try to call its constructor, this is only for type-hint.
 
@@ -158,7 +263,7 @@ assert isinstance(cache, cachebox.BaseCacheImpl)
 
 * * *
 
-### Cache
+### *class* Cache
 A simple cache that has no algorithm; this is only a hashmap.
 
 > [!TIP]\
@@ -200,7 +305,7 @@ cache.update({i:i for i in range(200)})
 
 * * *
 
-### FIFOCache
+### *class* FIFOCache
 FIFO Cache implementation - First-In First-Out Policy (thread-safe).
 
 In simple terms, the FIFO cache will remove the element that has been in the cache the longest.
@@ -235,7 +340,7 @@ print(cache.first())
 
 * * *
 
-### RRCache
+### *class* RRCache
 RRCache implementation - Random Replacement policy (thread-safe).
 
 In simple terms, the RR cache will choice randomly element to remove it to make space when necessary.
@@ -265,7 +370,7 @@ print(len(cache)) # 0
 
 * * *
 
-### TTLCache
+### *class* TTLCache
 TTL Cache implementation - Time-To-Live Policy (thread-safe).
 
 In simple terms, the TTL cache will automatically remove the element in the cache that has expired.
@@ -294,7 +399,7 @@ cache["mykey"] # KeyError
 
 * * *
 
-### LRUCache
+### *class* LRUCache
 LRU Cache implementation - Least recently used policy (thread-safe).
 
 In simple terms, the LRU cache will remove the element in the cache that has not been accessed in the longest time.
@@ -322,7 +427,7 @@ print(cache.drain(5)) # 5
 
 * * *
 
-### LFUCache
+### *class* LFUCache
 LFU Cache implementation - Least frequantly used policy (thread-safe).
 
 In simple terms, the LFU cache will remove the element in the cache that has been accessed the least, regardless of time.
@@ -359,7 +464,7 @@ for item in cache.items():
 
 * * *
 
-### VTTLCache
+### *class* VTTLCache
 VTTL Cache implementation - Time-To-Live Per-Key Policy (thread-safe).
 
 In simple terms, the TTL cache will automatically remove the element in the cache that has expired when need.

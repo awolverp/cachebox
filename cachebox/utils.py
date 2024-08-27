@@ -177,7 +177,7 @@ def make_typed_key(args: tuple, kwds: dict):
     return key
 
 
-_CacheInfo = namedtuple("CacheInfo", ["hits", "misses", "maxsize", "length", "cachememory"])
+CacheInfo = namedtuple("CacheInfo", ["hits", "misses", "maxsize", "length", "cachememory"])
 
 
 class _cached_wrapper(typing.Generic[VT]):
@@ -197,9 +197,10 @@ class _cached_wrapper(typing.Generic[VT]):
         self.__reuse = clear_reuse
         self._hits = 0
         self._misses = 0
+        self.__doc__ = getattr(func, "__doc__", None)
 
-    def cache_info(self) -> _CacheInfo:
-        return _CacheInfo(
+    def cache_info(self) -> CacheInfo:
+        return CacheInfo(
             self._hits, self._misses, self.cache.maxsize, len(self.cache), self.cache.__sizeof__()
         )
 
@@ -208,10 +209,13 @@ class _cached_wrapper(typing.Generic[VT]):
         self._hits = 0
         self._misses = 0
 
-    def __str__(self) -> str:
-        return str(self.func)
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__}: {self.func}>"
 
     def __call__(self, *args, **kwds) -> VT:
+        if kwds.pop("cachebox__ignore", False):
+            return self.func(*args, **kwds)
+
         key = self._key_maker(args, kwds)
         try:
             result = self.cache[key]
@@ -227,6 +231,9 @@ class _cached_wrapper(typing.Generic[VT]):
 
 class _async_cached_wrapper(_cached_wrapper[VT]):
     async def __call__(self, *args, **kwds) -> VT:
+        if kwds.pop("cachebox__ignore", False):
+            return await self.func(*args, **kwds)
+
         key = self._key_maker(args, kwds)
         try:
             result = self.cache[key]
@@ -245,9 +252,9 @@ def cached(
     key_maker: typing.Callable[[tuple, dict], typing.Hashable] = make_key,
     clear_reuse: bool = False,
     **kwargs,
-) -> typing.Callable[[typing.Callable[..., VT]], _cached_wrapper[VT]]:
+):
     """
-    Memoize your functions (async functions are supported) ...
+    a decorator that helps you to cache your functions and calculations with a lot of options.
 
     By `cache` param, set your cache and cache policy. (If is `None` or `dict`, `FIFOCache` will be used)
 
@@ -255,7 +262,7 @@ def cached(
 
     The `clear_reuse` param will be passed to cache's `clear` method.
 
-    Simple Example::
+    Example::
 
         @cachebox.cached(cachebox.LRUCache(128))
         def sum_as_string(a, b):
@@ -267,20 +274,7 @@ def cached(
         sum_as_string.cache_clear()
         assert len(sum_as_string.cache) == 0
 
-    Key Maker Example::
-
-        def simple_key_maker(args: tuple, kwds: dict):
-            return args[0].path
-
-        @cachebox.cached(cachebox.LRUCache(128), key_maker=simple_key_maker)
-        def request_handler(request: Request):
-            return Response("hello man")
-
-    Typed Example::
-
-        @cachebox.cached(cachebox.LRUCache(128), key_maker=cachebox.make_typed_key)
-        def sum_as_string(a, b):
-            return str(a+b)
+    See more: [documentation](https://github.com/awolverp/cachebox#function-cached)
     """
     if isinstance(cache, dict) or cache is None:
         cache = FIFOCache(0)
@@ -292,11 +286,19 @@ def cached(
         import warnings
 
         warnings.warn(
-            "'info' parameter is deprecated and no longer available",
+            "'info' parameter is deprecated and no longer available.",
             DeprecationWarning,
         )
 
+    @typing.overload
     def decorator(func: typing.Callable[..., VT]) -> _cached_wrapper[VT]:
+        ...
+
+    @typing.overload
+    def decorator(func: typing.Callable[..., typing.Awaitable[VT]]) -> _async_cached_wrapper[VT]:
+        ...
+
+    def decorator(func):
         if inspect.iscoroutinefunction(func):
             return _async_cached_wrapper(
                 cache,
@@ -324,7 +326,7 @@ def cachedmethod(
     **kwargs,
 ):
     """
-    It works like `cached()`, but you can use it for class methods, because it will ignore `self` param.
+    this is excatly works like `cached()`, but ignores `self` parameters in hashing and key making.
     """
     kwargs["is_method"] = True
     return cached(cache, key_maker, clear_reuse, **kwargs)

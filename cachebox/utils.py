@@ -1,5 +1,6 @@
 from ._cachebox import BaseCacheImpl, FIFOCache
 from collections import namedtuple
+import functools
 import inspect
 import typing
 
@@ -179,6 +180,8 @@ def make_typed_key(args: tuple, kwds: dict):
 
 CacheInfo = namedtuple("CacheInfo", ["hits", "misses", "maxsize", "length", "cachememory"])
 
+_NOT_SETTED = object()
+
 
 class _cached_wrapper(typing.Generic[VT]):
     def __init__(
@@ -197,7 +200,10 @@ class _cached_wrapper(typing.Generic[VT]):
         self.__reuse = clear_reuse
         self._hits = 0
         self._misses = 0
-        self.__doc__ = getattr(func, "__doc__", None)
+
+        self.instance = _NOT_SETTED
+
+        functools.update_wrapper(self, func)
 
     def cache_info(self) -> CacheInfo:
         return CacheInfo(
@@ -212,7 +218,16 @@ class _cached_wrapper(typing.Generic[VT]):
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}: {self.func}>"
 
+    if not typing.TYPE_CHECKING:
+
+        def __get__(self, instance, *args):
+            self.instance = instance
+            return self.__call__
+
     def __call__(self, *args, **kwds) -> VT:
+        if self.instance is not _NOT_SETTED:
+            args = (self.instance, *args)
+
         if kwds.pop("cachebox__ignore", False):
             return self.func(*args, **kwds)
 
@@ -231,6 +246,9 @@ class _cached_wrapper(typing.Generic[VT]):
 
 class _async_cached_wrapper(_cached_wrapper[VT]):
     async def __call__(self, *args, **kwds) -> VT:
+        if self.instance is not _NOT_SETTED:
+            args = (_NOT_SETTED, *args)
+
         if kwds.pop("cachebox__ignore", False):
             return await self.func(*args, **kwds)
 

@@ -143,9 +143,13 @@ def test_async_cached():
 
 def test_cachedmethod():
     class TestCachedMethod:
-        @cachedmethod(None)
-        def method(self, a: int, b: str):
-            return str(a) + b
+        def __init__(self, num) -> None:
+            self.num = num
 
-    cls = TestCachedMethod()
-    assert cls.method(1, "2") == "12"
+        @cachedmethod(None)
+        def method(self, char: str):
+            assert type(self) is TestCachedMethod
+            return char * self.num
+
+    cls = TestCachedMethod(10)
+    assert cls.method("a") == ("a" * 10)

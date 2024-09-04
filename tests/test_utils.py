@@ -1,4 +1,4 @@
-from cachebox import Frozen, LRUCache, cached, make_typed_key, make_key
+from cachebox import Frozen, LRUCache, cached, make_typed_key, make_key, cachedmethod
 import asyncio
 import pytest
 import time
@@ -139,3 +139,13 @@ def test_async_cached():
         loop = asyncio.new_event_loop()
 
     loop.run_until_complete(_test_async_cached())
+
+
+def test_cachedmethod():
+    class TestCachedMethod:
+        @cachedmethod(None)
+        def method(self, a: int, b: str):
+            return str(a) + b
+
+    cls = TestCachedMethod()
+    assert cls.method(1, "2") == "12"

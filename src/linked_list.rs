@@ -134,8 +134,6 @@ impl LinkedList {
             self.head = Some(node);
         }
 
-        // std::collections::linked_list::Iter
-
         self.tail = Some(node);
     }
 

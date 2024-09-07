@@ -153,3 +153,26 @@ def test_cachedmethod():
 
     cls = TestCachedMethod(10)
     assert cls.method("a") == ("a" * 10)
+
+
+async def _test_async_cachedmethod():
+    class TestCachedMethod:
+        def __init__(self, num) -> None:
+            self.num = num
+
+        @cachedmethod(None)
+        async def method(self, char: str):
+            assert type(self) is TestCachedMethod
+            return char * self.num
+
+    cls = TestCachedMethod(10)
+    assert (await cls.method("a")) == ("a" * 10)
+
+
+def test_async_cachedmethod():
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+
+    loop.run_until_complete(_test_async_cachedmethod())

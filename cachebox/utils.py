@@ -222,7 +222,7 @@ class _cached_wrapper(typing.Generic[VT]):
 
         def __get__(self, instance, *args):
             self.instance = instance
-            return self.__call__
+            return self
 
     def __call__(self, *args, **kwds) -> VT:
         if self.instance is not _NOT_SETTED:
@@ -247,7 +247,7 @@ class _cached_wrapper(typing.Generic[VT]):
 class _async_cached_wrapper(_cached_wrapper[VT]):
     async def __call__(self, *args, **kwds) -> VT:
         if self.instance is not _NOT_SETTED:
-            args = (_NOT_SETTED, *args)
+            args = (self.instance, *args)
 
         if kwds.pop("cachebox__ignore", False):
             return await self.func(*args, **kwds)

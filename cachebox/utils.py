@@ -58,7 +58,7 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):
 
     def __delitem__(self, key: KT) -> VT:
         if self.ignore:
-            return
+            return  # type: ignore
 
         raise TypeError("This cache is frozen.")
 
@@ -91,12 +91,12 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):
 
     def pop(self, key: KT, default: DT = None) -> typing.Union[VT, DT]:
         if self.ignore:
-            return
+            return  # type: ignore
 
         raise TypeError("This cache is frozen.")
 
     def setdefault(
-        self, key: KT, default: typing.Optional[VT] = None, *args, **kwargs
+        self, key: KT, default: typing.Optional[DT] = None, *args, **kwargs
     ) -> typing.Optional[typing.Union[VT, DT]]:
         if self.ignore:
             return
@@ -105,13 +105,13 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):
 
     def popitem(self) -> typing.Tuple[KT, VT]:
         if self.ignore:
-            return
+            return  # type: ignore
 
         raise TypeError("This cache is frozen.")
 
     def drain(self, n: int) -> int:
         if self.ignore:
-            return
+            return  # type: ignore
 
         raise TypeError("This cache is frozen.")
 
@@ -145,7 +145,7 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):
         return self.__cache.items()
 
 
-def _copy_if_need(obj: object, tocopy=(dict, list, set)):
+def _copy_if_need(obj, tocopy=(dict, list, set)):
     from copy import copy
 
     return copy(obj) if (type(obj) in tocopy) else obj
@@ -266,7 +266,7 @@ class _async_cached_wrapper(_cached_wrapper[VT]):
 
 
 def cached(
-    cache: BaseCacheImpl[typing.Any, VT],
+    cache: typing.Union[BaseCacheImpl, dict, None],
     key_maker: typing.Callable[[tuple, dict], typing.Hashable] = make_key,
     clear_reuse: bool = False,
     **kwargs,
@@ -338,7 +338,7 @@ def cached(
 
 
 def cachedmethod(
-    cache: BaseCacheImpl[typing.Any, VT],
+    cache: typing.Union[BaseCacheImpl, dict, None],
     key_maker: typing.Callable[[tuple, dict], typing.Hashable] = make_key,
     clear_reuse: bool = False,
     **kwargs,

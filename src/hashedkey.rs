@@ -1,5 +1,3 @@
-use std::hash::Hasher;
-
 #[derive(Debug)]
 pub struct HashedKey {
     pub key: pyo3::PyObject,
@@ -27,10 +25,7 @@ impl HashedKey {
                 return Err(pyo3::PyErr::take(py).unwrap());
             }
 
-            let mut state = fxhash::FxHasher64::default();
-            state.write(&py_hash.to_ne_bytes());
-
-            Ok(Self::from_key_and_hash(key, state.finish()))
+            Ok(Self::from_key_and_hash(key, fxhash::hash64(&py_hash)))
         }
     }
 

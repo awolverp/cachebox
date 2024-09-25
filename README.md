@@ -503,7 +503,7 @@ print(cache.get("key2")) # None
 
 * * *
 
-### Frozen
+### *class* Frozen
 **This is not a cache.** this class can freeze your caches and prevents changes ❄️.
 
 ```python

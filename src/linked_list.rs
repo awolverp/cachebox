@@ -159,10 +159,9 @@ impl Iterator for Iter {
         if self.len == 0 {
             None
         } else {
-            self.head.map(|node| unsafe {
+            self.head.inspect(|node| unsafe {
                 self.len -= 1;
                 self.head = (*node.as_ptr()).next;
-                node
             })
         }
     }

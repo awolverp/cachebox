@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 4.2.0 - 2024-10-04
+### Added
+- New function `is_cached` is added.
+- New parameter `callback` is added to `cached` and `cachedmethod`: now you can set a callback for cached functions.
+
+### Changed
+- Some docstrings are changed.
+
+### Fixed
+- [manual_inspect](https://rust-lang.github.io/rust-clippy/master/index.html#manual_inspect) warning fixed
+
 ## 4.1.3 - 2024-09-13
 ### Fixed
 - `cached` and `cachedmethod` type hint fixed

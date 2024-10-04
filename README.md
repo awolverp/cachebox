@@ -124,6 +124,7 @@ async def make_request(method: str, url: str) -> dict:
 There are 2 decorators:
 - [**cached**](#function-cached): a decorator that helps you to cache your functions and calculations with a lot of options.
 - [**cachedmethod**](#function-cachedmethod): this is excatly works like `cached()`, but ignores `self` parameters in hashing and key making.
+- [**is_cached**](#function-is_cached)
 
 There are 9 classes:
 - [**BaseCacheImpl**](#class-basecacheimpl): base-class for all classes.
@@ -155,6 +156,7 @@ import cachebox
 #   - `cache`: your cache and cache policy.
 #   - `key_maker`: you can set your key maker, see examples below.
 #   - `clear_cache`: will be passed to cache's `clear` method when clearing cache.
+#   - `callback`: Every time the `cache` is used, callback is also called. See examples below.
 @cachebox.cached(cachebox.LRUCache(128))
 def sum_as_string(a, b):
     return str(a+b)
@@ -211,6 +213,36 @@ print(sum_as_string.cache_info())
 sum_as_string.cache_clear()
 ```
 
+**callback example:** (Added in v4.2.0)
+```python
+import cachebox
+
+def callback_func(event: int, key, value):
+    if event == cachebox.EVENT_MISS:
+        print("callback_func: miss event", key, value)
+    elif event == cachebox.EVENT_HIT:
+        print("callback_func: hit event", key, value)
+    else:
+        # unreachable code
+        raise NotImplementedError
+
+@cachebox.cached(cachebox.LRUCache(0), callback=callback_func)
+def func(a, b):
+    return a + b
+
+assert func(1, 2) == 3
+# callback_func: miss event (1, 2) 3
+
+assert func(1, 2) == 3 # hit
+# callback_func: hit event (1, 2) 3
+
+assert func(1, 2) == 3 # hit again
+# callback_func: hit event (1, 2) 3
+
+assert func(5, 4) == 9
+# callback_func: miss event (5, 4) 9
+```
+
 > [!TIP]\
 > There's a new feature **since `v4.1.0`** that you can tell to a cached function that don't use cache for a call:
 > ```python
@@ -237,6 +269,25 @@ class MyClass:
 
 c = MyClass()
 c.my_method()
+```
+
+> [!NOTE]\
+> You can see [TTLCache here](#class-ttlcache).
+
+* * *
+
+### *function* is_cached
+
+Check if a function/method cached by cachebox or not
+
+```python
+import cachebox
+
+@cachebox.cached(cachebox.FIFOCache(0))
+def func():
+    pass
+
+assert cachebox.is_cached(func)
 ```
 
 > [!NOTE]\

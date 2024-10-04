@@ -1,4 +1,14 @@
-from cachebox import Frozen, LRUCache, cached, make_typed_key, make_key, cachedmethod
+from cachebox import (
+    Frozen,
+    LRUCache,
+    cached,
+    make_typed_key,
+    make_key,
+    cachedmethod,
+    EVENT_HIT,
+    EVENT_MISS,
+    is_cached,
+)
 import asyncio
 import pytest
 import time
@@ -176,3 +186,76 @@ def test_async_cachedmethod():
         loop = asyncio.new_event_loop()
 
     loop.run_until_complete(_test_async_cachedmethod())
+
+
+def test_callback():
+    obj = LRUCache(3)
+
+    called = list()
+
+    @cached(
+        obj,
+        key_maker=lambda args, _: args[0],
+        callback=lambda event, key, value: called.append((event, key, value)),
+    )
+    def factorial(n: int, /):
+        fact = 1
+        for num in range(2, n + 1):
+            fact *= num
+
+        return fact
+
+    assert factorial(5) == 120
+    assert len(called) == 1
+    assert called[0] == (EVENT_MISS, 5, 120)
+
+    assert factorial(5) == 120
+    assert len(called) == 2
+    assert called[1] == (EVENT_HIT, 5, 120)
+
+    assert factorial(3) == 6
+    assert len(called) == 3
+    assert called[2] == (EVENT_MISS, 3, 6)
+
+    assert is_cached(factorial)
+
+
+async def _test_async_callback():
+    obj = LRUCache(3)
+
+    called = list()
+
+    async def _callback(event, key, value):
+        called.append((event, key, value))
+
+    @cached(obj, key_maker=lambda args, _: args[0], callback=_callback)
+    async def factorial(n: int, /):
+        fact = 1
+        for num in range(2, n + 1):
+            fact *= num
+
+        return fact
+
+    assert await factorial(5) == 120
+    assert len(called) == 1
+    assert called[0] == (EVENT_MISS, 5, 120)
+
+    assert await factorial(5) == 120
+    assert len(called) == 2
+    assert called[1] == (EVENT_HIT, 5, 120)
+
+    assert await factorial(3) == 6
+    assert len(called) == 3
+    assert called[2] == (EVENT_MISS, 3, 6)
+
+    assert is_cached(factorial)
+    assert not is_cached(_callback)
+
+
+def test_async_callback():
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+
+    loop.run_until_complete(_test_async_callback())

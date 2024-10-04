@@ -87,11 +87,11 @@ class Cache(BaseCacheImpl[KT, VT]):
         """
         A simple cache that has no algorithm; this is only a hashmap.
 
-        By `maxsize` param, you can specify the limit size of the cache ( zero means infinity ); this is unchangable.
+        :param maxsize: you can specify the limit size of the cache ( zero means infinity ); this is unchangable.
 
-        By `iterable` param, you can create cache from a dict or an iterable.
+        :param iterable: you can create cache from a dict or an iterable.
 
-        If `capacity` param is given, cache attempts to allocate a new hash table with at
+        :param capacity: If `capacity` param is given, cache attempts to allocate a new hash table with at
         least enough capacity for inserting the given number of elements without reallocating.
         """
         ...
@@ -244,11 +244,11 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         """
         FIFO Cache implementation - First-In First-Out Policy (thread-safe).
 
-        By `maxsize` param, you can specify the limit size of the cache ( zero means infinity ); this is unchangable.
+        :param maxsize: you can specify the limit size of the cache ( zero means infinity ); this is unchangable.
 
-        By `iterable` param, you can create cache from a dict or an iterable.
+        :param iterable: you can create cache from a dict or an iterable.
 
-        If `capacity` param is given, cache attempts to allocate a new hash table with at
+        :param capacity: If `capacity` param is given, cache attempts to allocate a new hash table with at
         least enough capacity for inserting the given number of elements without reallocating.
         """
         ...
@@ -409,11 +409,11 @@ class RRCache(BaseCacheImpl[KT, VT]):
         """
         RRCache implementation - Random Replacement policy (thread-safe).
 
-        By `maxsize` param, you can specify the limit size of the cache ( zero means infinity ); this is unchangable.
+        :param maxsize: you can specify the limit size of the cache ( zero means infinity ); this is unchangable.
 
-        By `iterable` param, you can create cache from a dict or an iterable.
+        :param iterable: you can create cache from a dict or an iterable.
 
-        If `capacity` param is given, cache attempts to allocate a new hash table with at
+        :param capacity: If `capacity` param is given, cache attempts to allocate a new hash table with at
         least enough capacity for inserting the given number of elements without reallocating.
         """
         ...
@@ -560,13 +560,13 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         """
         TTL Cache implementation - Time-To-Live Policy (thread-safe).
 
-        By `maxsize` param, you can specify the limit size of the cache ( zero means infinity ); this is unchangable.
+        :param maxsize: you can specify the limit size of the cache ( zero means infinity ); this is unchangable.
 
-        The `ttl` param specifies the time-to-live value for each element in cache (in seconds); cannot be zero or negative.
+        :param ttl: specifies the time-to-live value for each element in cache (in seconds); cannot be zero or negative.
 
-        By `iterable` param, you can create cache from a dict or an iterable.
+        :param iterable: you can create cache from a dict or an iterable.
 
-        If `capacity` param is given, cache attempts to allocate a new hash table with at
+        :param capacity: If `capacity` param is given, cache attempts to allocate a new hash table with at
         least enough capacity for inserting the given number of elements without reallocating.
         """
         ...
@@ -752,11 +752,11 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         """
         LRU Cache implementation - Least recently used policy (thread-safe).
 
-        By `maxsize` param, you can specify the limit size of the cache ( zero means infinity ); this is unchangable.
+        :param maxsize: you can specify the limit size of the cache ( zero means infinity ); this is unchangable.
 
-        By `iterable` param, you can create cache from a dict or an iterable.
+        :param iterable: you can create cache from a dict or an iterable.
 
-        If `capacity` param is given, cache attempts to allocate a new hash table with at
+        :param capacity: If `capacity` param is given, cache attempts to allocate a new hash table with at
         least enough capacity for inserting the given number of elements without reallocating.
         """
         ...
@@ -921,11 +921,11 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         """
         LFU Cache implementation - Least frequantly used policy (thread-safe).
 
-        By `maxsize` param, you can specify the limit size of the cache ( zero means infinity ); this is unchangable.
+        :param maxsize: you can specify the limit size of the cache ( zero means infinity ); this is unchangable.
 
-        By `iterable` param, you can create cache from a dict or an iterable.
+        :param iterable: you can create cache from a dict or an iterable.
 
-        If `capacity` param is given, cache attempts to allocate a new hash table with at
+        :param capacity: If `capacity` param is given, cache attempts to allocate a new hash table with at
         least enough capacity for inserting the given number of elements without reallocating.
         """
         ...
@@ -1085,13 +1085,13 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         """
         VTTL Cache implementation - Time-To-Live Per-Key Policy (thread-safe).
 
-        By `maxsize` param, you can specify the limit size of the cache ( zero means infinity ); this is unchangable.
+        :param maxsize: you can specify the limit size of the cache ( zero means infinity ); this is unchangable.
 
-        By `iterable` param, you can create cache from a dict or an iterable.
+        :param iterable: you can create cache from a dict or an iterable.
 
-        The `ttl` param specifies the time-to-live value **for `iterable`** (in seconds); cannot be zero or negative.
+        :param ttl: specifies the time-to-live value for each element in cache (in seconds); cannot be zero or negative.
 
-        If `capacity` param is given, cache attempts to allocate a new hash table with at
+        :param capacity: If `capacity` param is given, cache attempts to allocate a new hash table with at
         least enough capacity for inserting the given number of elements without reallocating.
         """
         ...

@@ -124,7 +124,7 @@ async def make_request(method: str, url: str) -> dict:
 There are 2 decorators:
 - [**cached**](#function-cached): a decorator that helps you to cache your functions and calculations with a lot of options.
 - [**cachedmethod**](#function-cachedmethod): this is excatly works like `cached()`, but ignores `self` parameters in hashing and key making.
-- [**is_cached**](#function-is_cached)
+- [**is_cached**](#function-is_cached): check if a function/method cached by cachebox or not
 
 There are 9 classes:
 - [**BaseCacheImpl**](#class-basecacheimpl): base-class for all classes.

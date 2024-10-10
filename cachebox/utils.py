@@ -296,7 +296,7 @@ def cached(
     cache: typing.Union[BaseCacheImpl, dict, None],
     key_maker: typing.Callable[[tuple, dict], typing.Hashable] = make_key,
     clear_reuse: bool = False,
-    callback: typing.Optional[typing.Callable[[int, typing.Any, VT], None]] = None,
+    callback: typing.Optional[typing.Callable[[int, typing.Any, typing.Any], None]] = None,
     **kwargs,
 ):
     """
@@ -340,12 +340,12 @@ def cached(
         )
 
     @typing.overload
-    def decorator(func: typing.Callable[..., VT]) -> _cached_wrapper[VT]: ...
-
-    @typing.overload
     def decorator(
         func: typing.Callable[..., typing.Awaitable[VT]],
     ) -> _async_cached_wrapper[VT]: ...
+
+    @typing.overload
+    def decorator(func: typing.Callable[..., VT]) -> _cached_wrapper[VT]: ...
 
     def decorator(func):
         if inspect.iscoroutinefunction(func):
@@ -374,7 +374,7 @@ def cachedmethod(
     cache: typing.Union[BaseCacheImpl, dict, None],
     key_maker: typing.Callable[[tuple, dict], typing.Hashable] = make_key,
     clear_reuse: bool = False,
-    callback: typing.Optional[typing.Callable[[int, typing.Any, VT], None]] = None,
+    callback: typing.Optional[typing.Callable[[int, typing.Any, typing.Any], None]] = None,
     **kwargs,
 ):
     """

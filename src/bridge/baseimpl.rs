@@ -30,6 +30,12 @@ impl BaseCacheImpl {
         }
     }
 
-    #[staticmethod]
-    pub fn __class_getitem__(_g: pyo3::PyObject) {}
+    #[allow(unused_variables)]
+    #[classmethod]
+    pub fn __class_getitem__(
+        cls: &pyo3::Bound<'_, pyo3::types::PyType>,
+        args: pyo3::PyObject,
+    ) -> pyo3::PyObject {
+        cls.clone().into()
+    }
 }

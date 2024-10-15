@@ -203,7 +203,7 @@ impl FIFOPolicy {
 
             Ok(())
         } else {
-            for pair in iterable.bind(py).iter()? {
+            for pair in iterable.bind(py).try_iter()? {
                 let (key, value) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject)>()?;
 
                 let hk = HashedKey::from_pyobject(py, key)?;

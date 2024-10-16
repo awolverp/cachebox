@@ -169,7 +169,7 @@ impl LFUPolicy {
 
             Ok(())
         } else {
-            for pair in iterable.bind(py).try_iter()? {
+            for pair in iterable.bind(py).iter()? {
                 let (key, value) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject)>()?;
 
                 let hk = HashedKey::from_pyobject(py, key)?;
@@ -267,7 +267,7 @@ impl LFUPolicy {
 
         let mut new = Self::new(maxsize, capacity)?;
 
-        for pair in iterable.bind(py).try_iter()? {
+        for pair in iterable.bind(py).iter()? {
             let (key, value, fr) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject, usize)>()?;
 
             let hk = HashedKey::from_pyobject(py, key)?;

@@ -144,9 +144,10 @@ impl TTLCache {
         lock.expire();
 
         format!(
-            "FIFOCache({} / {}, capacity={})",
+            "TTLCache({} / {}, ttl={}, capacity={})",
             lock.table.len(),
             lock.maxsize.get(),
+            lock.ttl.as_secs_f64(),
             lock.table.capacity(),
         )
     }

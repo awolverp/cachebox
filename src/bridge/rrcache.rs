@@ -161,7 +161,7 @@ impl RRCache {
         let lock = self.raw.lock();
 
         format!(
-            "Cache({} / {}, capacity={})",
+            "RRCache({} / {}, capacity={})",
             lock.table.len(),
             lock.maxsize.get(),
             lock.table.capacity(),
@@ -409,7 +409,7 @@ impl RRCache {
 
             Ok(())
         } else {
-            for pair in iterable.bind(py).try_iter()? {
+            for pair in iterable.bind(py).iter()? {
                 let (key, value) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject)>()?;
 
                 let hk = HashedKey::from_pyobject(py, key)?;

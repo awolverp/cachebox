@@ -162,7 +162,7 @@ impl LRUPolicy {
 
             Ok(())
         } else {
-            for pair in iterable.bind(py).try_iter()? {
+            for pair in iterable.bind(py).iter()? {
                 let (key, value) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject)>()?;
 
                 let hk = HashedKey::from_pyobject(py, key)?;

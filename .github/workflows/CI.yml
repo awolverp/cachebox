@@ -85,7 +85,7 @@ jobs:
           # windows
           - os: windows
             target: x86_64
-            interpreter: pypy3.9 pypy3.10
+            interpreter: 3.8 3.9 3.10 3.11 3.12 3.13
           - os: windows
             target: i686
             python-architecture: x86
@@ -102,7 +102,7 @@ jobs:
       - name: set up python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ (matrix.os == 'windows' && matrix.target == 'x86_64' && '>=3.9 <=3.10') || '3.13' }}
+          python-version: '3.13'
           architecture: ${{ matrix.python-architecture || 'x64' }}
 
       - run: pip install -U twine
@@ -114,7 +114,6 @@ jobs:
           manylinux: ${{ matrix.manylinux }}
           args: --release --out dist --interpreter ${{ matrix.interpreter || '3.8 3.9 3.10 3.11 3.12 3.13 pypy3.9 pypy3.10' }}
           rust-toolchain: ${{ (matrix.os == 'windows' && '1.77') || 'stable' }}
-          sccache: 'true'
           docker-options: -e CI
 
       - run: ${{ (matrix.os == 'windows' && 'dir') || 'ls -lh' }} dist/

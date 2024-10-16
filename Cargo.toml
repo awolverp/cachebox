@@ -2,6 +2,11 @@
 name = "cachebox"
 version = "4.2.2"
 edition = "2021"
+description = "The fastest memoizing and caching Python library written in Rust"
+readme = "README.md"
+license = "MIT"
+homepage = "https://github.com/awolverp/cachebox"
+repository = "https://github.com/awolverp/cachebox.git"
 
 [lib]
 name = "cachebox"

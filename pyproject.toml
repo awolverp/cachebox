@@ -5,14 +5,10 @@ build-backend = "maturin"
 [project]
 name = "cachebox"
 version = "4.2.2"
-description = "The fastest memoizing and caching Python library written in Rust"
-readme = "README.md"
 requires-python = ">=3.8"
-license = {file = "LICENSE"}
 keywords = ["caching", "cached", "cachebox", "cache", "in-memory-caching", "memoizing"]
 authors = [
-  {email = "awolverp@gmail.com"},
-  {name = "awolverp"}
+  {name = "awolverp", email = "awolverp@gmail.com"}
 ]
 
 classifiers = [
@@ -34,6 +30,13 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
     "Operating System :: MacOS",
     "Typing :: Typed",
+]
+
+dynamic = [
+    'description',
+    'license',
+    'readme',
+    'version'
 ]
 
 [project.urls]

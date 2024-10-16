@@ -63,14 +63,11 @@ jobs:
             manylinux: auto
             target: x86_64
             interpreter: pypy3.9 pypy3.10
-          
+
           # musllinux
           - os: linux
             manylinux: musllinux_1_1
             target: x86_64
-          - os: linux
-            manylinux: musllinux_1_1
-            target: x86
           - os: linux
             manylinux: musllinux_1_1
             target: aarch64
@@ -93,9 +90,6 @@ jobs:
             target: i686
             python-architecture: x86
             interpreter: 3.8 3.9 3.10 3.11 3.12 3.13
-          - os: windows
-            target: aarch64
-            interpreter: 3.11 3.12 3.13
 
         exclude:
           - os: windows

@@ -102,7 +102,7 @@ jobs:
       - name: set up python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ (matrix.os == 'windows' && matrix.target == 'x86_64' && '3.13 3.9 3.10') || '3.13' }}
+          python-version: ${{ (matrix.os == 'windows' && matrix.target == 'x86_64' && '>=3.9 <=3.10') || '3.13' }}
           architecture: ${{ matrix.python-architecture || 'x64' }}
 
       - run: pip install -U twine

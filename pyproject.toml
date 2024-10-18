@@ -4,7 +4,6 @@ build-backend = "maturin"
 
 [project]
 name = "cachebox"
-version = "4.2.2"
 requires-python = ">=3.8"
 keywords = ["caching", "cached", "cachebox", "cache", "in-memory-caching", "memoizing"]
 authors = [

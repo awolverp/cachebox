@@ -62,7 +62,7 @@ jobs:
           - os: linux
             manylinux: auto
             target: x86_64
-            interpreter: pypy3.9 pypy3.10
+            interpreter: 3.8 3.9 3.10 3.11 3.12 3.13 pypy3.9 pypy3.10
 
           # musllinux
           - os: linux
@@ -80,7 +80,7 @@ jobs:
             target: x86_64
           - os: macos
             target: aarch64
-            interpreter: 3.8 3.9 pypy3.9 pypy3.10
+            interpreter: 3.8 3.9 3.10 3.11 3.12 3.13 pypy3.9 pypy3.10
 
           # windows
           - os: windows

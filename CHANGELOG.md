@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 4.3.0 - 2024-11-08
+### Added
+- Add `always_copy` parameter to `cached` and `cachedmethod` decorators
+
 ## 4.2.1 - 2024-10-10
 ### Fixed
 - Fix `BaseCacheImpl.__class_getitem__`

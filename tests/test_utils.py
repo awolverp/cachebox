@@ -259,3 +259,33 @@ def test_async_callback():
         loop = asyncio.new_event_loop()
 
     loop.run_until_complete(_test_async_callback())
+
+
+def test_always_copy():
+    class A:
+        def __init__(self, c: int) -> None:
+            self.c = c
+
+    # without always_copy
+    @cached(LRUCache(0))
+    def func(c: int) -> A:
+        return A(c)
+
+    result = func(1)
+    assert result.c == 1
+    result.c = 2
+
+    result = func(1)
+    assert result.c == 2  # !!!
+
+    # with always_copy
+    @cached(LRUCache(0), always_copy=True)
+    def func(c: int) -> A:
+        return A(c)
+
+    result = func(1)
+    assert result.c == 1
+    result.c = 2
+
+    result = func(1)
+    assert result.c == 1  # :)

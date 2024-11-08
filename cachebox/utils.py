@@ -145,10 +145,10 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):
         return self.__cache.items()
 
 
-def _copy_if_need(obj, tocopy=(dict, list, set)):
+def _copy_if_need(obj, tocopy=(dict, list, set), force: bool = False):
     from copy import copy
 
-    return copy(obj) if (type(obj) in tocopy) else obj
+    return copy(obj) if force or (type(obj) in tocopy) else obj
 
 
 def make_key(args: tuple, kwds: dict, fasttype=(int, str)):
@@ -196,11 +196,13 @@ class _cached_wrapper(typing.Generic[VT]):
         clear_reuse: bool,
         is_method: bool,
         *,
+        always_copy: bool = False,
         callback: typing.Optional[typing.Callable[[int, typing.Any, VT], None]] = None,
     ) -> None:
         self.cache = cache
         self.func = func
         self.callback = callback
+        self.always_copy = always_copy
         self._key_maker = (
             (lambda args, kwds: key_maker(args[1:], kwds)) if is_method else (key_maker)
         )
@@ -246,7 +248,7 @@ class _cached_wrapper(typing.Generic[VT]):
             if self.callback is not None:
                 self.callback(EVENT_HIT, key, result)
 
-            return _copy_if_need(result)
+            return _copy_if_need(result, force=self.always_copy)
         except KeyError:
             self._misses += 1
 
@@ -256,7 +258,7 @@ class _cached_wrapper(typing.Generic[VT]):
             self.callback(EVENT_MISS, key, result)
 
         self.cache[key] = result
-        return _copy_if_need(result)
+        return _copy_if_need(result, force=self.always_copy)
 
 
 class _async_cached_wrapper(_cached_wrapper[VT]):
@@ -277,7 +279,7 @@ class _async_cached_wrapper(_cached_wrapper[VT]):
                 if inspect.isawaitable(awaitable):
                     await awaitable
 
-            return _copy_if_need(result)
+            return _copy_if_need(result, force=self.always_copy)
         except KeyError:
             self._misses += 1
 
@@ -289,7 +291,7 @@ class _async_cached_wrapper(_cached_wrapper[VT]):
             if inspect.isawaitable(awaitable):
                 await awaitable
 
-        return _copy_if_need(result)
+        return _copy_if_need(result, force=self.always_copy)
 
 
 def cached(
@@ -297,6 +299,7 @@ def cached(
     key_maker: typing.Callable[[tuple, dict], typing.Hashable] = make_key,
     clear_reuse: bool = False,
     callback: typing.Optional[typing.Callable[[int, typing.Any, typing.Any], None]] = None,
+    always_copy: bool = False,
     **kwargs,
 ):
     """
@@ -310,6 +313,11 @@ def cached(
 
     :param callback: Every time the `cache` is used, callback is also called.
                      The callback arguments are: event number (see `EVENT_MISS` or `EVENT_HIT` variables), key, and then result.
+
+    :param always_copy: If `True`, always copies the result of function when returning it.
+                        This is useful when function returns mutable results, such as classes, dict, tuple, or set.
+                        If `False`, only copies the `dict`, `set`, or `tuple` types.
+
 
     Example::
 
@@ -356,6 +364,7 @@ def cached(
                 clear_reuse=clear_reuse,
                 is_method=kwargs.get("is_method", False),
                 callback=callback,
+                always_copy=always_copy,
             )
 
         return _cached_wrapper(
@@ -365,6 +374,7 @@ def cached(
             clear_reuse=clear_reuse,
             is_method=kwargs.get("is_method", False),
             callback=callback,
+            always_copy=always_copy,
         )
 
     return decorator
@@ -375,13 +385,14 @@ def cachedmethod(
     key_maker: typing.Callable[[tuple, dict], typing.Hashable] = make_key,
     clear_reuse: bool = False,
     callback: typing.Optional[typing.Callable[[int, typing.Any, typing.Any], None]] = None,
+    always_copy: bool = False,
     **kwargs,
 ):
     """
     this is excatly works like `cached()`, but ignores `self` parameters in hashing and key making.
     """
     kwargs["is_method"] = True
-    return cached(cache, key_maker, clear_reuse, callback, **kwargs)
+    return cached(cache, key_maker, clear_reuse, callback, always_copy, **kwargs)
 
 
 _K = typing.TypeVar("_K")

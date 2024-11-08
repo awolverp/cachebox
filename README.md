@@ -157,6 +157,7 @@ import cachebox
 #   - `key_maker`: you can set your key maker, see examples below.
 #   - `clear_cache`: will be passed to cache's `clear` method when clearing cache.
 #   - `callback`: Every time the `cache` is used, callback is also called. See examples below.
+#   - `always_copy`: If `True`, always copies the result of function when returning it.
 @cachebox.cached(cachebox.LRUCache(128))
 def sum_as_string(a, b):
     return str(a+b)

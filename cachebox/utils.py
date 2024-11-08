@@ -315,9 +315,8 @@ def cached(
                      The callback arguments are: event number (see `EVENT_MISS` or `EVENT_HIT` variables), key, and then result.
 
     :param always_copy: If `True`, always copies the result of function when returning it.
-                        This is useful when function returns mutable results, such as classes, dict, tuple, or set.
-                        If `False`, only copies the `dict`, `set`, or `tuple` types.
-
+                        This is useful when function returns mutable results, such as classes, dict, list, or set.
+                        If `False`, only copies the `dict`, `set`, or `list` types.
 
     Example::
 

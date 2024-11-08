@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Add `always_copy` parameter to `cached` and `cachedmethod` decorators
 
+## 4.2.3 - 2024-10-18
+### Fixed
+- Fix https://github.com/awolverp/cachebox/issues/13
+
+## 4.2.2 - 2024-10-16
+### Fixed
+- Fix `TTLCache.__str__`
+- Dependencies updated
+
 ## 4.2.1 - 2024-10-10
 ### Fixed
 - Fix `BaseCacheImpl.__class_getitem__`

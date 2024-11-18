@@ -5,7 +5,7 @@ use crate::{hashedkey::HashedKey, util::_KeepForIter};
 /// LRU Cache implementation - Least recently used policy (thread-safe).
 ///
 /// In simple terms, the LRU cache will remove the element in the cache that has not been accessed in the longest time.
-#[pyo3::pyclass(module="cachebox._cachebox", extends=crate::bridge::baseimpl::BaseCacheImpl)]
+#[pyo3::pyclass(module="cachebox._cachebox", extends=crate::bridge::baseimpl::BaseCacheImpl, frozen)]
 pub struct LRUCache {
     // Why [`Box`]? We using [`Box`] here so that there's no need for `&mut self`
     // in this struct; so RuntimeError never occurred for using this class in multiple threads.
@@ -120,8 +120,8 @@ impl LRUCache {
         }
     }
 
-    /// Returns str(self)
-    pub fn __str__(&self) -> String {
+    /// Returns repr(self)
+    pub fn __repr__(&self) -> String {
         let lock = self.raw.lock();
 
         format!(

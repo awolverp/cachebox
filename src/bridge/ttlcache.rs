@@ -5,7 +5,7 @@ use crate::{hashedkey::HashedKey, internal::TTLElement, util::_KeepForIter};
 /// TTL Cache implementation - Time-To-Live Policy (thread-safe).
 ///
 /// In simple terms, the TTL cache will automatically remove the element in the cache that has expired::
-#[pyo3::pyclass(module="cachebox._cachebox", extends=crate::bridge::baseimpl::BaseCacheImpl)]
+#[pyo3::pyclass(module="cachebox._cachebox", extends=crate::bridge::baseimpl::BaseCacheImpl, frozen)]
 pub struct TTLCache {
     // Why [`Box`]? We using [`Box`] here so that there's no need for `&mut self`
     // in this struct; so RuntimeError never occurred for using this class in multiple threads.
@@ -138,8 +138,8 @@ impl TTLCache {
         }
     }
 
-    /// Returns str(self)
-    pub fn __str__(&self) -> String {
+    /// Returns repr(self)
+    pub fn __repr__(&self) -> String {
         let mut lock = self.raw.lock();
         lock.expire();
 

@@ -11,7 +11,7 @@ use crate::util::_KeepForIter;
 /// - it supports useful and new methods for managing memory, while `dict` does not.
 /// - it does not support `popitem`, while `dict` does.
 /// - You can limit the size of [`Cache`], but you cannot for `dict`.
-#[pyo3::pyclass(module="cachebox._cachebox", extends=crate::bridge::baseimpl::BaseCacheImpl)]
+#[pyo3::pyclass(module="cachebox._cachebox", extends=crate::bridge::baseimpl::BaseCacheImpl, frozen)]
 pub struct Cache {
     // Why [`Box`]? We using [`Box`] here so that there's no need for `&mut self`
     // in this struct; so RuntimeError never occurred for using this class in multiple threads.
@@ -127,8 +127,8 @@ impl Cache {
         }
     }
 
-    /// Returns str(self)
-    pub fn __str__(&self) -> String {
+    /// Returns repr(self)
+    pub fn __repr__(&self) -> String {
         let lock = self.raw.lock();
 
         format!(

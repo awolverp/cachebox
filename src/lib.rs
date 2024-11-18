@@ -41,6 +41,8 @@ pub fn version_info() -> (u8, u8, u8, bool) {
 #[pymodule]
 #[pyo3(name = "_cachebox")]
 fn _cachebox(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.gil_used(false)?;
+
     m.add("__version__", CACHEBOX_VERSION)?;
     m.add("version_info", version_info())?;
     m.add("__author__", "awolverp")?;

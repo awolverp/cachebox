@@ -1,6 +1,6 @@
 [package]
 name = "cachebox"
-version = "4.3.0"
+version = "4.3.1"
 edition = "2021"
 description = "The fastest memoizing and caching Python library written in Rust"
 readme = "README.md"
@@ -23,14 +23,14 @@ strip = "symbols"
 [dependencies]
 hashbrown = { version = "^0.14", default-features = false, features=["inline-more", "raw"]}
 fastrand = "^2.1"
-pyo3 = { version = "0.22.6", default-features = false, features=["macros", "extension-module"] }
+pyo3 = { version = "0.23.1", default-features = false, features=["macros", "extension-module"] }
 cfg-if = "1.0"
 parking_lot_core = { version = "^0.9", default-features = false }
 lock_api = { version = "^0.4", default-features = false }
 fxhash = {version = "^0.2"}
 
 [build-dependencies]
-pyo3-build-config = { version = "0.22.6", features = ["resolve-config"] }
+pyo3-build-config = { version = "0.23.1", features = ["resolve-config"] }
 
 [lints.clippy]
 dbg_macro = "warn"

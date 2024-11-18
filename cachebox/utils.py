@@ -62,7 +62,7 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):
 
         raise TypeError("This cache is frozen.")
 
-    def __str__(self) -> str:
+    def __repr__(self) -> str:
         return f"<Frozen: {self.__cache}>"
 
     def __iter__(self) -> typing.Iterator[KT]:

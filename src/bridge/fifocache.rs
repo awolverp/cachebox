@@ -5,7 +5,7 @@ use crate::{hashedkey::HashedKey, util::_KeepForIter};
 /// FIFO Cache implementation - First-In First-Out Policy (thread-safe).
 ///
 /// In simple terms, the FIFO cache will remove the element that has been in the cache the longest.
-#[pyo3::pyclass(module="cachebox._cachebox", extends=crate::bridge::baseimpl::BaseCacheImpl)]
+#[pyo3::pyclass(module="cachebox._cachebox", extends=crate::bridge::baseimpl::BaseCacheImpl, frozen)]
 pub struct FIFOCache {
     // Why [`Box`]? We using [`Box`] here so that there's no need for `&mut self`
     // in this struct; so RuntimeError never occurred for using this class in multiple threads.
@@ -119,8 +119,8 @@ impl FIFOCache {
         }
     }
 
-    /// Returns str(self)
-    pub fn __str__(&self) -> String {
+    /// Returns repr(self)
+    pub fn __repr__(&self) -> String {
         let lock = self.raw.lock();
 
         format!(

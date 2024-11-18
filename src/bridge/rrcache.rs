@@ -42,7 +42,7 @@ macro_rules! insert_rr {
 /// RRCache implementation - Random Replacement policy (thread-safe).
 ///
 /// In simple terms, the RR cache will choice randomly element to remove it to make space when necessary.
-#[pyo3::pyclass(module="cachebox._cachebox", extends=crate::bridge::baseimpl::BaseCacheImpl)]
+#[pyo3::pyclass(module="cachebox._cachebox", extends=crate::bridge::baseimpl::BaseCacheImpl, frozen)]
 pub struct RRCache {
     // Why [`Box`]? We using [`Box`] here so that there's no need for `&mut self`
     // in this struct; so RuntimeError never occurred for using this class in multiple threads.
@@ -156,8 +156,8 @@ impl RRCache {
         }
     }
 
-    /// Returns str(self)
-    pub fn __str__(&self) -> String {
+    /// Returns repr(self)
+    pub fn __repr__(&self) -> String {
         let lock = self.raw.lock();
 
         format!(
@@ -409,7 +409,7 @@ impl RRCache {
 
             Ok(())
         } else {
-            for pair in iterable.bind(py).iter()? {
+            for pair in iterable.bind(py).try_iter()? {
                 let (key, value) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject)>()?;
 
                 let hk = HashedKey::from_pyobject(py, key)?;

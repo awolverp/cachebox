@@ -151,9 +151,10 @@ class _TestMixin:
         with pytest.raises(KeyError):
             cache[2]
 
-    def test___str__(self):
+    def test___repr__(self):
         cache = self.CACHE(2, **self.KWARGS, capacity=2)
-        assert str(cache) != repr(cache)
+        assert str(cache) == repr(cache)
+        assert repr(cache).startswith(self.CACHE.__name__)
 
     def test_insert(self):
         cache = self.CACHE(5, **self.KWARGS, capacity=5)

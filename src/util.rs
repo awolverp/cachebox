@@ -130,30 +130,41 @@ macro_rules! pyobject_eq {
     };
 }
 
-unsafe fn _get_capacity(
-    py: pyo3::Python<'_>,
-    ptr: *mut pyo3::ffi::PyObject,
-) -> pyo3::PyResult<usize> {
+pub struct CacheState(usize);
+
+impl CacheState {
+    pub fn new() -> Self {
+        Self(0)
+    }
+    pub fn change(&mut self) {
+        self.0 = self.0.wrapping_add(1);
+    }
+    pub fn get(&self) -> usize {
+        self.0
+    }
+}
+
+unsafe fn _get_state(py: pyo3::Python<'_>, ptr: *mut pyo3::ffi::PyObject) -> pyo3::PyResult<usize> {
     unsafe fn inner(
         py: pyo3::Python<'_>,
         ptr: *mut pyo3::ffi::PyObject,
     ) -> pyo3::PyResult<*mut pyo3::ffi::PyObject> {
         cfg_if::cfg_if! {
             if #[cfg(all(Py_3_9, not(any(Py_LIMITED_API, PyPy, GraalPy))))] {
-                let m_name: pyo3::Bound<'_, pyo3::types::PyString> = "capacity".into_pyobject(py)?;
+                let m_name: pyo3::Bound<'_, pyo3::types::PyString> = "_state".into_pyobject(py)?;
                 Ok(pyo3::ffi::PyObject_CallMethodNoArgs(ptr, m_name.as_ptr()))
             } else {
-                let capacity_fn =
-                    pyo3::ffi::PyObject_GetAttrString(ptr, pyo3::ffi::c_str!("capacity").as_ptr());
+                let state_fn =
+                    pyo3::ffi::PyObject_GetAttrString(ptr, pyo3::ffi::c_str!("_state").as_ptr());
 
-                if capacity_fn.is_null() {
+                if state_fn.is_null() {
                     return Err(pyo3::PyErr::take(py).unwrap_unchecked());
                 }
 
                 let empty_args = pyo3::ffi::PyTuple_New(0);
-                let result = pyo3::ffi::PyObject_Call(capacity_fn, empty_args, std::ptr::null_mut());
+                let result = pyo3::ffi::PyObject_Call(state_fn, empty_args, std::ptr::null_mut());
                 pyo3::ffi::Py_XDECREF(empty_args);
-                pyo3::ffi::Py_XDECREF(capacity_fn);
+                pyo3::ffi::Py_XDECREF(state_fn);
 
                 Ok(result)
             }
@@ -174,14 +185,14 @@ unsafe fn _get_capacity(
 
 pub struct _KeepForIter<I> {
     pub ptr: core::ptr::NonNull<pyo3::ffi::PyObject>,
-    pub capacity: usize,
+    pub state: usize,
     pub len: usize,
 
     phantom: core::marker::PhantomData<I>,
 }
 
 impl<I> _KeepForIter<I> {
-    pub fn new(ptr: *mut pyo3::ffi::PyObject, capacity: usize, len: usize) -> Self {
+    pub fn new(ptr: *mut pyo3::ffi::PyObject, state: usize, len: usize) -> Self {
         unsafe {
             pyo3::ffi::Py_INCREF(ptr);
         }
@@ -191,23 +202,15 @@ impl<I> _KeepForIter<I> {
             ptr: core::ptr::NonNull::new(ptr).unwrap(),
             #[cfg(not(debug_assertions))]
             ptr: unsafe { core::ptr::NonNull::new(ptr).unwrap_unchecked() },
-            capacity,
+            state,
             len,
             phantom: core::marker::PhantomData,
         }
     }
 
     pub fn status(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<()> {
-        let capacity = unsafe { _get_capacity(py, self.ptr.as_ptr())? };
-        if capacity != self.capacity {
-            return Err(err!(
-                pyo3::exceptions::PyRuntimeError,
-                "cache changed size during iteration"
-            ));
-        }
-
-        let len = unsafe { pyo3::ffi::PyObject_Size(self.ptr.as_ptr()) as usize };
-        if len != self.len {
+        let state = unsafe { _get_state(py, self.ptr.as_ptr())? };
+        if state != self.state {
             return Err(err!(
                 pyo3::exceptions::PyRuntimeError,
                 "cache changed size during iteration"

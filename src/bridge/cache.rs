@@ -54,6 +54,11 @@ impl Cache {
         lock.maxsize.get()
     }
 
+    pub fn _state(&self) -> usize {
+        let lock = self.raw.lock();
+        lock.state.get()
+    }
+
     /// Returns the number of elements in the table - len(self)
     pub fn __len__(&self) -> usize {
         let lock = self.raw.lock();
@@ -145,11 +150,11 @@ impl Cache {
         py: pyo3::Python<'_>,
     ) -> pyo3::PyResult<pyo3::Py<cache_iterator>> {
         let lock = slf.raw.lock();
-        let (len, capacity) = (lock.table.len(), lock.table.capacity());
+        let (len, state) = (lock.table.len(), lock.state.get());
         let iter = unsafe { lock.table.iter() };
 
         let result = cache_iterator {
-            ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
+            ptr: _KeepForIter::new(slf.as_ptr(), state, len),
             iter: crate::mutex::Mutex::new(iter),
             typ: 0,
         };
@@ -338,7 +343,8 @@ impl Cache {
     /// Shrinks the cache to fit len(self) elements.
     pub fn shrink_to_fit(&self) {
         let mut lock = self.raw.lock();
-        lock.table.shrink_to(0, |x| x.0.hash)
+        lock.table.shrink_to(0, |x| x.0.hash);
+        lock.state.change();
     }
 
     /// Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
@@ -367,11 +373,11 @@ impl Cache {
         py: pyo3::Python<'_>,
     ) -> pyo3::PyResult<pyo3::Py<cache_iterator>> {
         let lock = slf.raw.lock();
-        let (len, capacity) = (lock.table.len(), lock.table.capacity());
+        let (len, state) = (lock.table.len(), lock.state.get());
         let iter = unsafe { lock.table.iter() };
 
         let result = cache_iterator {
-            ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
+            ptr: _KeepForIter::new(slf.as_ptr(), state, len),
             iter: crate::mutex::Mutex::new(iter),
             typ: 2,
         };
@@ -389,11 +395,11 @@ impl Cache {
         py: pyo3::Python<'_>,
     ) -> pyo3::PyResult<pyo3::Py<cache_iterator>> {
         let lock = slf.raw.lock();
-        let (len, capacity) = (lock.table.len(), lock.table.capacity());
+        let (len, state) = (lock.table.len(), lock.state.get());
         let iter = unsafe { lock.table.iter() };
 
         let result = cache_iterator {
-            ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
+            ptr: _KeepForIter::new(slf.as_ptr(), state, len),
             iter: crate::mutex::Mutex::new(iter),
             typ: 0,
         };
@@ -411,11 +417,11 @@ impl Cache {
         py: pyo3::Python<'_>,
     ) -> pyo3::PyResult<pyo3::Py<cache_iterator>> {
         let lock = slf.raw.lock();
-        let (len, capacity) = (lock.table.len(), lock.table.capacity());
+        let (len, state) = (lock.table.len(), lock.state.get());
         let iter = unsafe { lock.table.iter() };
 
         let result = cache_iterator {
-            ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
+            ptr: _KeepForIter::new(slf.as_ptr(), state, len),
             iter: crate::mutex::Mutex::new(iter),
             typ: 1,
         };

@@ -22,6 +22,9 @@ pub struct FIFOPolicy {
     /// - We removed second operation by using this variable: Instead of decrement indexes in hashtable,
     ///   we will increment this variable.
     pub n_shifts: usize,
+
+    /// This is for detecting changes; needed for iterators
+    pub state: crate::util::CacheState,
 }
 
 impl FIFOPolicy {
@@ -35,6 +38,7 @@ impl FIFOPolicy {
             entries: VecDeque::new(),
             maxsize,
             n_shifts: 0,
+            state: crate::util::CacheState::new(),
         })
     }
 
@@ -99,6 +103,8 @@ impl FIFOPolicy {
                 ))
             }
             Err(slot) => {
+                self.state.change();
+
                 unsafe {
                     self.table
                         .insert_in_slot(key.hash, slot, self.entries.len() + self.n_shifts);
@@ -127,6 +133,7 @@ impl FIFOPolicy {
     #[inline]
     pub fn popitem(&mut self) -> Option<(HashedKey, pyo3::PyObject)> {
         let ret = self.entries.pop_front()?;
+        self.state.change();
 
         #[cfg(debug_assertions)]
         self.table
@@ -164,6 +171,8 @@ impl FIFOPolicy {
             .map(|x| x - self.n_shifts)
         {
             Some(index) => {
+                self.state.change();
+
                 self.decrement_indexes(index + 1, self.entries.len());
 
                 #[cfg(debug_assertions)]
@@ -236,7 +245,9 @@ impl FIFOPolicy {
     pub fn shrink_to_fit(&mut self) {
         self.entries.shrink_to_fit();
         self.table
-            .shrink_to(0, |x| self.entries[(*x) - self.n_shifts].0.hash)
+            .shrink_to(0, |x| self.entries[(*x) - self.n_shifts].0.hash);
+
+        self.state.change();
     }
 
     #[inline]

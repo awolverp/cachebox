@@ -17,6 +17,7 @@ pub struct TTLPolicy {
     pub maxsize: core::num::NonZeroUsize,
     pub ttl: time::Duration,
     pub n_shifts: usize,
+    pub state: crate::util::CacheState,
 }
 
 impl TTLPolicy {
@@ -31,6 +32,7 @@ impl TTLPolicy {
             maxsize,
             n_shifts: 0,
             ttl: time::Duration::from_secs_f64(ttl),
+            state: crate::util::CacheState::new(),
         })
     }
 
@@ -91,6 +93,8 @@ impl TTLPolicy {
                 Some(core::mem::replace(&mut m.value, element.value))
             }
             Err(slot) => {
+                self.state.change();
+
                 unsafe {
                     self.table.insert_in_slot(
                         element.key.hash,
@@ -144,6 +148,7 @@ impl TTLPolicy {
     #[inline]
     pub fn popitem(&mut self) -> Option<TTLElement> {
         let ret = self.entries.pop_front()?;
+        self.state.change();
 
         #[cfg(debug_assertions)]
         self.table
@@ -201,6 +206,8 @@ impl TTLPolicy {
         {
             Some(index) => {
                 self.decrement_indexes(index + 1, self.entries.len());
+                self.state.change();
+
                 let m = self.entries.remove(index).unwrap();
 
                 if m.expire > time::SystemTime::now() {
@@ -268,7 +275,8 @@ impl TTLPolicy {
 
         self.entries.shrink_to_fit();
         self.table
-            .shrink_to(0, |x| self.entries[(*x) - self.n_shifts].key.hash)
+            .shrink_to(0, |x| self.entries[(*x) - self.n_shifts].key.hash);
+        self.state.change();
     }
 
     #[inline]

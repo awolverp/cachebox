@@ -48,6 +48,10 @@ impl VTTLCache {
         let lock = self.raw.lock();
         lock.maxsize.get()
     }
+    pub fn _state(&self) -> usize {
+        let lock = self.raw.lock();
+        lock.state.get()
+    }
 
     /// Returns the number of elements in the table - len(self)
     pub fn __len__(&self) -> usize {
@@ -147,10 +151,12 @@ impl VTTLCache {
         py: pyo3::Python<'_>,
     ) -> pyo3::PyResult<pyo3::Py<vttlcache_iterator>> {
         let mut lock = slf.raw.lock();
-        let (len, capacity) = (lock.table.len(), lock.table.capacity());
 
+        lock.expire();
+
+        let (len, state) = (lock.table.len(), lock.state.get());
         let result = vttlcache_iterator {
-            ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
+            ptr: _KeepForIter::new(slf.as_ptr(), state, len),
             iter: crate::mutex::Mutex::new(lock.iter()),
             typ: 0,
         };
@@ -402,10 +408,12 @@ impl VTTLCache {
         py: pyo3::Python<'_>,
     ) -> pyo3::PyResult<pyo3::Py<vttlcache_iterator>> {
         let mut lock = slf.raw.lock();
-        let (len, capacity) = (lock.table.len(), lock.table.capacity());
+        lock.expire();
+
+        let (len, state) = (lock.table.len(), lock.state.get());
 
         let result = vttlcache_iterator {
-            ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
+            ptr: _KeepForIter::new(slf.as_ptr(), state, len),
             iter: crate::mutex::Mutex::new(lock.iter()),
             typ: 2,
         };
@@ -423,10 +431,12 @@ impl VTTLCache {
         py: pyo3::Python<'_>,
     ) -> pyo3::PyResult<pyo3::Py<vttlcache_iterator>> {
         let mut lock = slf.raw.lock();
-        let (len, capacity) = (lock.table.len(), lock.table.capacity());
+        lock.expire();
+
+        let (len, state) = (lock.table.len(), lock.state.get());
 
         let result = vttlcache_iterator {
-            ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
+            ptr: _KeepForIter::new(slf.as_ptr(), state, len),
             iter: crate::mutex::Mutex::new(lock.iter()),
             typ: 0,
         };
@@ -444,10 +454,12 @@ impl VTTLCache {
         py: pyo3::Python<'_>,
     ) -> pyo3::PyResult<pyo3::Py<vttlcache_iterator>> {
         let mut lock = slf.raw.lock();
-        let (len, capacity) = (lock.table.len(), lock.table.capacity());
+        lock.expire();
+
+        let (len, state) = (lock.table.len(), lock.state.get());
 
         let result = vttlcache_iterator {
-            ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
+            ptr: _KeepForIter::new(slf.as_ptr(), state, len),
             iter: crate::mutex::Mutex::new(lock.iter()),
             typ: 1,
         };

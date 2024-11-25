@@ -8,6 +8,7 @@ pub struct LRUPolicy {
     pub table: RawTable<std::ptr::NonNull<linked_list::Node>>,
     pub list: linked_list::LinkedList,
     pub maxsize: core::num::NonZeroUsize,
+    pub state: crate::util::CacheState,
 }
 
 impl LRUPolicy {
@@ -20,6 +21,7 @@ impl LRUPolicy {
             table: new_table!(capacity)?,
             list: linked_list::LinkedList::new(),
             maxsize,
+            state: crate::util::CacheState::new(),
         })
     }
 
@@ -48,6 +50,8 @@ impl LRUPolicy {
                 Some(oldval)
             }
             Err(slot) => {
+                self.state.change();
+
                 // copy key hash
                 let hash = key.hash;
 
@@ -63,13 +67,13 @@ impl LRUPolicy {
     #[inline]
     pub fn insert(&mut self, key: HashedKey, value: pyo3::PyObject) -> Option<pyo3::PyObject> {
         if self.table.len() >= self.maxsize.get() && !self.contains_key(&key) {
-            // #[cfg(debug_assertions)]
+            #[cfg(debug_assertions)]
             self.popitem().unwrap();
 
-            // #[cfg(not(debug_assertions))]
-            // unsafe {
-            //     self.popitem().unwrap_unchecked();
-            // }
+            #[cfg(not(debug_assertions))]
+            unsafe {
+                self.popitem().unwrap_unchecked();
+            }
         }
 
         unsafe { self.insert_unchecked(key, value) }
@@ -78,6 +82,7 @@ impl LRUPolicy {
     #[inline]
     pub fn popitem(&mut self) -> Option<(HashedKey, pyo3::PyObject)> {
         let ret = self.list.head?;
+        self.state.change();
 
         unsafe {
             self.table
@@ -130,7 +135,10 @@ impl LRUPolicy {
             self.table
                 .remove_entry(key.hash, |node| (*node.as_ptr()).element.0 == *key)
         } {
-            Some(node) => Some(unsafe { self.list.remove(node) }),
+            Some(node) => {
+                self.state.change();
+                Some(unsafe { self.list.remove(node) })
+            }
             None => None,
         }
     }
@@ -176,7 +184,8 @@ impl LRUPolicy {
     #[inline(always)]
     pub fn shrink_to_fit(&mut self) {
         self.table
-            .shrink_to(0, |node| unsafe { (*node.as_ptr()).element.0.hash })
+            .shrink_to(0, |node| unsafe { (*node.as_ptr()).element.0.hash });
+        self.state.change();
     }
 
     #[inline]

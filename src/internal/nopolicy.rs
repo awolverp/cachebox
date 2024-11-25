@@ -6,6 +6,7 @@ use hashbrown::raw::RawTable;
 pub struct NoPolicy {
     pub table: RawTable<(HashedKey, pyo3::PyObject)>,
     pub maxsize: core::num::NonZeroUsize,
+    pub state: crate::util::CacheState,
 }
 
 impl NoPolicy {
@@ -17,6 +18,7 @@ impl NoPolicy {
         Ok(Self {
             table: new_table!(capacity)?,
             maxsize,
+            state: crate::util::CacheState::new(),
         })
     }
 
@@ -37,6 +39,7 @@ impl NoPolicy {
         {
             Ok(bucket) => Some(core::mem::replace(&mut (bucket.as_mut().1), value)),
             Err(slot) => {
+                self.state.change();
                 self.table.insert_in_slot(key.hash, slot, (key, value));
                 None
             }
@@ -71,6 +74,7 @@ impl NoPolicy {
 
     #[inline]
     pub fn remove(&mut self, key: &HashedKey) -> Option<(HashedKey, pyo3::PyObject)> {
+        self.state.change();
         self.table.remove_entry(key.hash, |x| x.0 == *key)
     }
 

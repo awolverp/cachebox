@@ -329,6 +329,19 @@ class _TestMixin:
         with pytest.raises(RuntimeError):
             next(p)
 
+        obj = self.CACHE(0, **self.KWARGS)
+        obj.update({i: i for i in range(20)})
+
+        for key, value in obj.items():
+            assert obj[key] == value
+
+        for key, value in obj.items():
+            obj[key] = value * 2
+
+        with pytest.raises(RuntimeError):
+            for key, value in obj.items():
+                obj[str(key)] = value
+
     def test___eq__(self):
         cache = self.CACHE(100, **self.KWARGS, capacity=100)
 

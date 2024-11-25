@@ -60,6 +60,7 @@ pub struct VTTLPolicy {
     pub table: RawTable<NonNull<sorted_heap::Entry<VTTLElement>>>,
     pub heap: sorted_heap::SortedHeap<VTTLElement>,
     pub maxsize: core::num::NonZeroUsize,
+    pub state: crate::util::CacheState,
 }
 
 macro_rules! compare_fn {
@@ -89,6 +90,7 @@ impl VTTLPolicy {
             table: new_table!(capacity)?,
             heap: sorted_heap::SortedHeap::new(),
             maxsize,
+            state: crate::util::CacheState::new(),
         })
     }
 
@@ -107,6 +109,7 @@ impl VTTLPolicy {
                     .unwrap();
 
                 self.heap.pop_front(compare_fn!());
+                self.state.change();
             }
         }
     }
@@ -137,6 +140,8 @@ impl VTTLPolicy {
                 Some(oldval)
             }
             Err(slot) => {
+                self.state.change();
+
                 // copy key hash
                 let hash = key.hash;
 
@@ -180,10 +185,10 @@ impl VTTLPolicy {
 
     #[inline]
     pub fn popitem(&mut self) -> Option<VTTLElement> {
-        // self.heap.sort(compare_fn!());
         self.expire();
 
         let first = self.heap.0.first()?;
+        self.state.change();
 
         unsafe {
             self.table
@@ -219,6 +224,7 @@ impl VTTLPolicy {
                 .remove_entry(key.hash, |node| (*node.as_ptr()).as_ref().key == *key)
         } {
             Some(node) => {
+                self.state.change();
                 let element = self.heap.remove(node, compare_fn!());
                 element.or_none()
             }
@@ -277,6 +283,7 @@ impl VTTLPolicy {
         self.table
             .shrink_to(0, |node| unsafe { (*node.as_ptr()).as_ref().key.hash });
         self.heap.0.shrink_to_fit();
+        self.state.change();
     }
 
     pub fn iter(&mut self) -> sorted_heap::Iter<VTTLElement> {

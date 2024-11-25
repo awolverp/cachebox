@@ -16,6 +16,7 @@ pub struct LFUPolicy {
     pub table: RawTable<NonNull<Entry<(HashedKey, pyo3::PyObject, usize)>>>,
     pub heap: SortedHeap<(HashedKey, pyo3::PyObject, usize)>,
     pub maxsize: core::num::NonZeroUsize,
+    pub state: crate::util::CacheState,
 }
 
 impl LFUPolicy {
@@ -28,6 +29,7 @@ impl LFUPolicy {
             table: new_table!(capacity)?,
             heap: SortedHeap::new(),
             maxsize,
+            state: crate::util::CacheState::new(),
         })
     }
 
@@ -57,6 +59,8 @@ impl LFUPolicy {
                 Some(oldval)
             }
             Err(slot) => {
+                self.state.change();
+
                 // copy key hash
                 let hash = key.hash;
 
@@ -83,6 +87,7 @@ impl LFUPolicy {
     pub fn popitem(&mut self) -> Option<(HashedKey, pyo3::PyObject, usize)> {
         self.heap.sort(compare_fn!());
         let first = self.heap.0.first()?;
+        self.state.change();
 
         unsafe {
             self.table
@@ -137,7 +142,11 @@ impl LFUPolicy {
             self.table
                 .remove_entry(key.hash, |node| (*node.as_ptr()).as_ref().0 == *key)
         } {
-            Some(node) => Some(self.heap.remove(node, compare_fn!())),
+            Some(node) => {
+                self.state.change();
+
+                Some(self.heap.remove(node, compare_fn!()))
+            }
             None => None,
         }
     }
@@ -185,6 +194,7 @@ impl LFUPolicy {
         self.table
             .shrink_to(0, |node| unsafe { (*node.as_ptr()).as_ref().0.hash });
         self.heap.0.shrink_to_fit();
+        self.state.change();
     }
 
     pub fn iter(&mut self) -> Iter<(HashedKey, pyo3::PyObject, usize)> {

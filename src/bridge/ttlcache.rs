@@ -58,6 +58,11 @@ impl TTLCache {
         lock.maxsize.get()
     }
 
+    pub fn _state(&self) -> usize {
+        let lock = self.raw.lock();
+        lock.state.get()
+    }
+
     /// Returns the cache ttl
     #[getter]
     pub fn ttl(&self) -> f64 {
@@ -162,12 +167,13 @@ impl TTLCache {
         py: pyo3::Python<'_>,
     ) -> pyo3::PyResult<pyo3::Py<ttlcache_iterator>> {
         let mut lock = slf.raw.lock();
-        let (len, capacity) = (lock.table.len(), lock.table.capacity());
 
         lock.expire();
 
+        let (len, state) = (lock.table.len(), lock.state.get());
+
         let result = ttlcache_iterator {
-            ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
+            ptr: _KeepForIter::new(slf.as_ptr(), state, len),
             iter: crate::mutex::Mutex::new(lock.as_ptr()),
             typ: 0,
         };
@@ -396,12 +402,12 @@ impl TTLCache {
         py: pyo3::Python<'_>,
     ) -> pyo3::PyResult<pyo3::Py<ttlcache_iterator>> {
         let mut lock = slf.raw.lock();
-        let (len, capacity) = (lock.table.len(), lock.table.capacity());
 
         lock.expire();
 
+        let (len, state) = (lock.table.len(), lock.state.get());
         let result = ttlcache_iterator {
-            ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
+            ptr: _KeepForIter::new(slf.as_ptr(), state, len),
             iter: crate::mutex::Mutex::new(lock.as_ptr()),
             typ: 2,
         };
@@ -419,12 +425,12 @@ impl TTLCache {
         py: pyo3::Python<'_>,
     ) -> pyo3::PyResult<pyo3::Py<ttlcache_iterator>> {
         let mut lock = slf.raw.lock();
-        let (len, capacity) = (lock.table.len(), lock.table.capacity());
 
         lock.expire();
 
+        let (len, state) = (lock.table.len(), lock.state.get());
         let result = ttlcache_iterator {
-            ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
+            ptr: _KeepForIter::new(slf.as_ptr(), state, len),
             iter: crate::mutex::Mutex::new(lock.as_ptr()),
             typ: 0,
         };
@@ -442,12 +448,12 @@ impl TTLCache {
         py: pyo3::Python<'_>,
     ) -> pyo3::PyResult<pyo3::Py<ttlcache_iterator>> {
         let mut lock = slf.raw.lock();
-        let (len, capacity) = (lock.table.len(), lock.table.capacity());
 
         lock.expire();
 
+        let (len, state) = (lock.table.len(), lock.state.get());
         let result = ttlcache_iterator {
-            ptr: _KeepForIter::new(slf.as_ptr(), capacity, len),
+            ptr: _KeepForIter::new(slf.as_ptr(), state, len),
             iter: crate::mutex::Mutex::new(lock.as_ptr()),
             typ: 1,
         };

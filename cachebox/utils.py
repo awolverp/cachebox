@@ -1,5 +1,5 @@
 from ._cachebox import BaseCacheImpl, FIFOCache
-from typing_extensions import ParamSpec
+from typing_extensions import ParamSpec, Concatenate
 from collections import namedtuple
 import functools
 import inspect
@@ -365,7 +365,7 @@ def cached(
                 func,
                 key_maker=key_maker,
                 clear_reuse=clear_reuse,
-                is_method=kwargs.get("is_method", False),
+                is_method=False,
                 callback=callback,
                 always_copy=always_copy,
             )
@@ -375,7 +375,7 @@ def cached(
             func,
             key_maker=key_maker,
             clear_reuse=clear_reuse,
-            is_method=kwargs.get("is_method", False),
+            is_method=False,
             callback=callback,
             always_copy=always_copy,
         )
@@ -394,8 +394,53 @@ def cachedmethod(
     """
     this is excatly works like `cached()`, but ignores `self` parameters in hashing and key making.
     """
-    kwargs["is_method"] = True
-    return cached(cache, key_maker, clear_reuse, callback, always_copy, **kwargs)
+    if isinstance(cache, dict) or cache is None:
+        cache = FIFOCache(0)
+
+    if type(cache) is type or not isinstance(cache, BaseCacheImpl):
+        raise TypeError("we expected cachebox caches, got %r" % (cache,))
+
+    if "info" in kwargs:
+        import warnings
+
+        warnings.warn(
+            "'info' parameter is deprecated and no longer available.",
+            DeprecationWarning,
+        )
+
+    @typing.overload
+    def decorator(
+        func: typing.Callable[Concatenate[typing.Any, PS], typing.Awaitable[VT]],
+    ) -> _async_cached_wrapper[VT, PS]: ...
+
+    @typing.overload
+    def decorator(
+        func: typing.Callable[Concatenate[typing.Any, PS], VT],
+    ) -> _cached_wrapper[VT, PS]: ...
+
+    def decorator(func):
+        if inspect.iscoroutinefunction(func):
+            return _async_cached_wrapper(
+                cache,
+                func,
+                key_maker=key_maker,
+                clear_reuse=clear_reuse,
+                is_method=True,
+                callback=callback,
+                always_copy=always_copy,
+            )
+
+        return _cached_wrapper(
+            cache,
+            func,
+            key_maker=key_maker,
+            clear_reuse=clear_reuse,
+            is_method=True,
+            callback=callback,
+            always_copy=always_copy,
+        )
+
+    return decorator
 
 
 _K = typing.TypeVar("_K")

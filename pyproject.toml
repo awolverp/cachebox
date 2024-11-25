@@ -38,6 +38,10 @@ dynamic = [
     'version'
 ]
 
+dependencies = [
+    'typing-extensions>=4.6.2',
+]
+
 [project.urls]
 Homepage = 'https://github.com/awolverp/cachebox'
 

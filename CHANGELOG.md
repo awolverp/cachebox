@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 4.3.2 - 2024-11-25
+### Added
+- New dependency is added: `typing_extensions`. We used this library to use `ParamSpec` that makes `cachebox` type-hint
+  better, and easier than ever for you.
+
+### Changed
+- the behaviour of the iteratores changed. Previously, iterators used capacity and length of the cache
+  to know "is cache have changes?". But now, each cache has a number called "state" that increments
+  with each change; iterators now uses this "state" number.
+
 ## 4.3.1 - 2024-11-18
 ### Changed
 - `__str__` changed to `__repr__`

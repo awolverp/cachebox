@@ -63,9 +63,6 @@ It uses Google's high-performance SwissTable hash map. thanks to [hashbrown](htt
 **✨ Low memory usage** \
 It has very low memory usage.
 
-**⭐ Zero-Dependecy** \
-As we said, `cachebox` written in Rust so you don't have to install any other dependecies.
-
 **🧶 Thread-safe** \
 It's completely thread-safe and uses locks to prevent problems.
 

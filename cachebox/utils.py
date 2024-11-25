@@ -1,4 +1,5 @@
 from ._cachebox import BaseCacheImpl, FIFOCache
+from typing_extensions import ParamSpec
 from collections import namedtuple
 import functools
 import inspect
@@ -187,7 +188,10 @@ EVENT_MISS = 1
 EVENT_HIT = 2
 
 
-class _cached_wrapper(typing.Generic[VT]):
+PS = ParamSpec("PS")
+
+
+class _cached_wrapper(typing.Generic[VT, PS]):
     def __init__(
         self,
         cache: BaseCacheImpl[typing.Any, VT],
@@ -233,7 +237,7 @@ class _cached_wrapper(typing.Generic[VT]):
             self.instance = instance
             return self
 
-    def __call__(self, *args, **kwds) -> VT:
+    def __call__(self, *args: PS.args, **kwds: PS.kwargs) -> VT:
         if self.instance is not _NOT_SETTED:
             args = (self.instance, *args)
 
@@ -261,8 +265,8 @@ class _cached_wrapper(typing.Generic[VT]):
         return _copy_if_need(result, force=self.always_copy)
 
 
-class _async_cached_wrapper(_cached_wrapper[VT]):
-    async def __call__(self, *args, **kwds) -> VT:
+class _async_cached_wrapper(_cached_wrapper[VT, PS]):
+    async def __call__(self, *args: PS.args, **kwds: PS.kwargs) -> VT:
         if self.instance is not _NOT_SETTED:
             args = (self.instance, *args)
 
@@ -348,11 +352,11 @@ def cached(
 
     @typing.overload
     def decorator(
-        func: typing.Callable[..., typing.Awaitable[VT]],
-    ) -> _async_cached_wrapper[VT]: ...
+        func: typing.Callable[PS, typing.Awaitable[VT]],
+    ) -> _async_cached_wrapper[VT, PS]: ...
 
     @typing.overload
-    def decorator(func: typing.Callable[..., VT]) -> _cached_wrapper[VT]: ...
+    def decorator(func: typing.Callable[PS, VT]) -> _cached_wrapper[VT, PS]: ...
 
     def decorator(func):
         if inspect.iscoroutinefunction(func):

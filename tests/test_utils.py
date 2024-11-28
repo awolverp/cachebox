@@ -170,7 +170,7 @@ async def _test_async_cachedmethod():
         def __init__(self, num) -> None:
             self.num = num
 
-        @cachedmethod(None)
+        @cachedmethod(LRUCache(0))
         async def method(self, char: str):
             assert type(self) is TestCachedMethod
             return char * self.num
@@ -261,12 +261,11 @@ def test_async_callback():
     loop.run_until_complete(_test_async_callback())
 
 
-def test_always_copy():
+def test_copy_level():
     class A:
         def __init__(self, c: int) -> None:
             self.c = c
 
-    # without always_copy
     @cached(LRUCache(0))
     def func(c: int) -> A:
         return A(c)
@@ -278,8 +277,7 @@ def test_always_copy():
     result = func(1)
     assert result.c == 2  # !!!
 
-    # with always_copy
-    @cached(LRUCache(0), always_copy=True)
+    @cached(LRUCache(0), copy_level=2)
     def func(c: int) -> A:
         return A(c)
 
@@ -289,3 +287,31 @@ def test_always_copy():
 
     result = func(1)
     assert result.c == 1  # :)
+
+
+def test_classmethod():
+    class MyClass:
+        def __init__(self, num: int) -> None:
+            self.num = num
+
+        @classmethod
+        @cached(None, copy_level=2)
+        def new(cls, num: int):
+            return cls(num)
+
+    a = MyClass.new(1)
+    assert isinstance(a, MyClass) and a.num == 1
+
+
+def test_staticmethod():
+    class MyClass:
+        def __init__(self, num: int) -> None:
+            self.num = num
+
+        @staticmethod
+        @cached(None, copy_level=2)
+        def new(num: int):
+            return num
+
+    a = MyClass.new(1)
+    assert isinstance(a, int) and a == 1

@@ -39,7 +39,6 @@ from .utils import (
     make_key as make_key,
     make_hash_key as make_hash_key,
     make_typed_key as make_typed_key,
-    items_in_order as items_in_order,
     EVENT_HIT as EVENT_HIT,
     EVENT_MISS as EVENT_MISS,
     is_cached as is_cached,

@@ -1,7 +1,7 @@
 from ._cachebox import BaseCacheImpl, FIFOCache
-from typing_extensions import ParamSpec, Concatenate
 from collections import namedtuple
 import functools
+import warnings
 import inspect
 import typing
 
@@ -146,10 +146,16 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):
         return self.__cache.items()
 
 
-def _copy_if_need(obj, tocopy=(dict, list, set), force: bool = False):
+def _copy_if_need(obj, tocopy=(dict, list, set), level: int = 1):
     from copy import copy
 
-    return copy(obj) if force or (type(obj) in tocopy) else obj
+    if level == 0:
+        return obj
+
+    if level == 2:
+        return copy(obj)
+
+    return copy(obj) if (type(obj) in tocopy) else obj
 
 
 def make_key(args: tuple, kwds: dict, fasttype=(int, str)):
@@ -172,7 +178,7 @@ def make_hash_key(args: tuple, kwds: dict):
 def make_typed_key(args: tuple, kwds: dict):
     key = make_key(args, kwds, fasttype=())
 
-    key += tuple(type(v) for v in args)
+    key += tuple(type(v) for v in args)  # type: ignore
     if kwds:
         key += tuple(type(v) for v in kwds.values())
 
@@ -180,147 +186,155 @@ def make_typed_key(args: tuple, kwds: dict):
 
 
 CacheInfo = namedtuple("CacheInfo", ["hits", "misses", "maxsize", "length", "cachememory"])
-
-_NOT_SETTED = object()
-
-
 EVENT_MISS = 1
 EVENT_HIT = 2
 
 
-PS = ParamSpec("PS")
+def _cached_wrapper(
+    func,
+    cache: BaseCacheImpl,
+    key_maker: typing.Callable[[tuple, dict], typing.Hashable],
+    clear_reuse: bool,
+    callback: typing.Optional[typing.Callable[[int, typing.Any, typing.Any], typing.Any]],
+    copy_level: int,
+    is_method: bool,
+) -> None:
+    _key_maker = (lambda args, kwds: key_maker(args[1:], kwds)) if is_method else key_maker
 
+    hits = 0
+    misses = 0
 
-class _cached_wrapper(typing.Generic[VT, PS]):
-    def __init__(
-        self,
-        cache: BaseCacheImpl[typing.Any, VT],
-        func: typing.Callable[..., VT],
-        key_maker: typing.Callable[[tuple, dict], typing.Hashable],
-        clear_reuse: bool,
-        is_method: bool,
-        *,
-        always_copy: bool = False,
-        callback: typing.Optional[typing.Callable[[int, typing.Any, VT], None]] = None,
-    ) -> None:
-        self.cache = cache
-        self.func = func
-        self.callback = callback
-        self.always_copy = always_copy
-        self._key_maker = (
-            (lambda args, kwds: key_maker(args[1:], kwds)) if is_method else (key_maker)
-        )
-        self.__reuse = clear_reuse
-        self._hits = 0
-        self._misses = 0
-
-        self.instance = _NOT_SETTED
-
-        functools.update_wrapper(self, func)
-
-    def cache_info(self) -> CacheInfo:
-        return CacheInfo(
-            self._hits, self._misses, self.cache.maxsize, len(self.cache), self.cache.__sizeof__()
-        )
-
-    def cache_clear(self) -> None:
-        self.cache.clear(reuse=self.__reuse)
-        self._hits = 0
-        self._misses = 0
-
-    def __repr__(self) -> str:
-        return f"<{self.__class__.__name__}: {self.func}>"
-
-    if not typing.TYPE_CHECKING:
-
-        def __get__(self, instance, *args):
-            self.instance = instance
-            return self
-
-    def __call__(self, *args: PS.args, **kwds: PS.kwargs) -> VT:
-        if self.instance is not _NOT_SETTED:
-            args = (self.instance, *args)
+    def _wrapped(*args, **kwds):
+        nonlocal hits, misses
 
         if kwds.pop("cachebox__ignore", False):
-            return self.func(*args, **kwds)
+            return func(*args, **kwds)
 
-        key = self._key_maker(args, kwds)
+        key = _key_maker(args, kwds)
         try:
-            result = self.cache[key]
-            self._hits += 1
+            result = cache[key]
+            hits += 1
 
-            if self.callback is not None:
-                self.callback(EVENT_HIT, key, result)
+            if callback is not None:
+                callback(EVENT_HIT, key, result)
 
-            return _copy_if_need(result, force=self.always_copy)
+            return _copy_if_need(result, level=copy_level)
         except KeyError:
-            self._misses += 1
+            misses += 1
 
-        result = self.func(*args, **kwds)
+        result = func(*args, **kwds)
+        cache[key] = result
 
-        if self.callback is not None:
-            self.callback(EVENT_MISS, key, result)
+        if callback is not None:
+            callback(EVENT_MISS, key, result)
 
-        self.cache[key] = result
-        return _copy_if_need(result, force=self.always_copy)
+        return _copy_if_need(result, level=copy_level)
+
+    _wrapped.cache = cache
+    _wrapped.callback = callback
+    _wrapped.cache_info = lambda: CacheInfo(
+        hits, misses, cache.maxsize, len(cache), cache.capacity()
+    )
+
+    def cache_clear():
+        nonlocal misses, hits
+        cache.clear(reuse=clear_reuse)
+        misses = 0
+        hits = 0
+
+    _wrapped.cache_clear = cache_clear
+
+    return _wrapped
 
 
-class _async_cached_wrapper(_cached_wrapper[VT, PS]):
-    async def __call__(self, *args: PS.args, **kwds: PS.kwargs) -> VT:
-        if self.instance is not _NOT_SETTED:
-            args = (self.instance, *args)
+def _async_cached_wrapper(
+    func,
+    cache: BaseCacheImpl,
+    key_maker: typing.Callable[[tuple, dict], typing.Hashable],
+    clear_reuse: bool,
+    callback: typing.Optional[typing.Callable[[int, typing.Any, typing.Any], typing.Any]],
+    copy_level: int,
+    is_method: bool,
+) -> None:
+    _key_maker = (lambda args, kwds: key_maker(args[1:], kwds)) if is_method else key_maker
+
+    hits = 0
+    misses = 0
+
+    async def _wrapped(*args, **kwds):
+        nonlocal hits, misses
 
         if kwds.pop("cachebox__ignore", False):
-            return await self.func(*args, **kwds)
+            return await func(*args, **kwds)
 
-        key = self._key_maker(args, kwds)
+        key = _key_maker(args, kwds)
         try:
-            result = self.cache[key]
-            self._hits += 1
+            result = cache[key]
+            hits += 1
 
-            if self.callback is not None:
-                awaitable = self.callback(EVENT_HIT, key, result)
+            if callback is not None:
+                awaitable = callback(EVENT_HIT, key, result)
                 if inspect.isawaitable(awaitable):
                     await awaitable
 
-            return _copy_if_need(result, force=self.always_copy)
+            return _copy_if_need(result, level=copy_level)
         except KeyError:
-            self._misses += 1
+            misses += 1
 
-        result = await self.func(*args, **kwds)
-        self.cache[key] = result
+        result = await func(*args, **kwds)
+        cache[key] = result
 
-        if self.callback is not None:
-            awaitable = self.callback(EVENT_MISS, key, result)
+        if callback is not None:
+            awaitable = callback(EVENT_MISS, key, result)
             if inspect.isawaitable(awaitable):
                 await awaitable
 
-        return _copy_if_need(result, force=self.always_copy)
+        return _copy_if_need(result, level=copy_level)
+
+    _wrapped.cache = cache
+    _wrapped.callback = callback
+    _wrapped.cache_info = lambda: CacheInfo(
+        hits, misses, cache.maxsize, len(cache), cache.capacity()
+    )
+
+    def cache_clear():
+        nonlocal misses, hits
+        cache.clear(reuse=clear_reuse)
+        misses = 0
+        hits = 0
+
+    _wrapped.cache_clear = cache_clear
+
+    return _wrapped
 
 
 def cached(
     cache: typing.Union[BaseCacheImpl, dict, None],
     key_maker: typing.Callable[[tuple, dict], typing.Hashable] = make_key,
     clear_reuse: bool = False,
-    callback: typing.Optional[typing.Callable[[int, typing.Any, typing.Any], None]] = None,
-    always_copy: bool = False,
+    callback: typing.Optional[typing.Callable[[int, typing.Any, typing.Any], typing.Any]] = None,
+    copy_level: int = 1,
     **kwargs,
 ):
     """
-    a decorator that helps you to cache your functions and calculations with a lot of options.
+    Decorator to wrap a function with a memoizing callable that saves results in a cache.
 
-    :param cache: set your cache and cache policy. (If is `None` or `dict`, `FIFOCache` will be used)
+    :param cache: Specifies a cache that handles and stores the results. if `None` or `dict`, `FIFOCache` will be used.
 
-    :param key_maker: you can set your key maker, See [examples](https://github.com/awolverp/cachebox#function-cached).
+    :param key_maker: Specifies a function that will be called with the same positional and keyword
+                      arguments as the wrapped function itself, and which has to return a suitable
+                      cache key (must be hashable).
 
-    :param clear_reuse: The `clear_reuse` param will be passed to cache's `clear` method.
+    :param clear_reuse: The wrapped function has a function named `clear_cache` that uses `cache.clear`
+                        method to clear the cache. This parameter will be passed to cache's `clear` method.
 
     :param callback: Every time the `cache` is used, callback is also called.
                      The callback arguments are: event number (see `EVENT_MISS` or `EVENT_HIT` variables), key, and then result.
 
-    :param always_copy: If `True`, always copies the result of function when returning it.
-                        This is useful when function returns mutable results, such as classes, dict, list, or set.
-                        If `False`, only copies the `dict`, `set`, or `list` types.
+    :param copy_level: The wrapped function always copies the result of your function and then returns it.
+                       This parameter specifies that the wrapped function has to copy which type of results.
+                       `0` means "never copy", `1` means "only copy `dict`, `list`, and `set` results" and
+                       `2` means "always copy the results".
 
     Example::
 
@@ -336,49 +350,34 @@ def cached(
 
     See more: [documentation](https://github.com/awolverp/cachebox#function-cached)
     """
-    if isinstance(cache, dict) or cache is None:
+    if cache is None:
         cache = FIFOCache(0)
 
-    if type(cache) is type or not isinstance(cache, BaseCacheImpl):
+    if type(cache) is dict:
+        cache = FIFOCache(0, cache)
+
+    if not isinstance(cache, BaseCacheImpl):
         raise TypeError("we expected cachebox caches, got %r" % (cache,))
 
-    if "info" in kwargs:
-        import warnings
-
+    if "always_copy" in kwargs:
         warnings.warn(
-            "'info' parameter is deprecated and no longer available.",
-            DeprecationWarning,
+            "'always_copy' parameter is deprecated and will be removed in future; use 'copy_level' instead",
+            category=DeprecationWarning,
         )
-
-    @typing.overload
-    def decorator(
-        func: typing.Callable[PS, typing.Awaitable[VT]],
-    ) -> _async_cached_wrapper[VT, PS]: ...
-
-    @typing.overload
-    def decorator(func: typing.Callable[PS, VT]) -> _cached_wrapper[VT, PS]: ...
+        if kwargs["always_copy"]:
+            copy_level = 2
 
     def decorator(func):
         if inspect.iscoroutinefunction(func):
-            return _async_cached_wrapper(
-                cache,
-                func,
-                key_maker=key_maker,
-                clear_reuse=clear_reuse,
-                is_method=False,
-                callback=callback,
-                always_copy=always_copy,
+            wrapper = _async_cached_wrapper(
+                func, cache, key_maker, clear_reuse, callback, copy_level, False
+            )
+        else:
+            wrapper = _cached_wrapper(
+                func, cache, key_maker, clear_reuse, callback, copy_level, False
             )
 
-        return _cached_wrapper(
-            cache,
-            func,
-            key_maker=key_maker,
-            clear_reuse=clear_reuse,
-            is_method=False,
-            callback=callback,
-            always_copy=always_copy,
-        )
+        return functools.update_wrapper(wrapper, func)
 
     return decorator
 
@@ -387,79 +386,47 @@ def cachedmethod(
     cache: typing.Union[BaseCacheImpl, dict, None],
     key_maker: typing.Callable[[tuple, dict], typing.Hashable] = make_key,
     clear_reuse: bool = False,
-    callback: typing.Optional[typing.Callable[[int, typing.Any, typing.Any], None]] = None,
-    always_copy: bool = False,
+    callback: typing.Optional[typing.Callable[[int, typing.Any, typing.Any], typing.Any]] = None,
+    copy_level: int = 1,
     **kwargs,
 ):
     """
     this is excatly works like `cached()`, but ignores `self` parameters in hashing and key making.
     """
-    if isinstance(cache, dict) or cache is None:
+    if cache is None:
         cache = FIFOCache(0)
 
-    if type(cache) is type or not isinstance(cache, BaseCacheImpl):
+    if type(cache) is dict:
+        cache = FIFOCache(0, cache)
+
+    if not isinstance(cache, BaseCacheImpl):
         raise TypeError("we expected cachebox caches, got %r" % (cache,))
 
-    if "info" in kwargs:
-        import warnings
-
+    if "always_copy" in kwargs:
         warnings.warn(
-            "'info' parameter is deprecated and no longer available.",
-            DeprecationWarning,
+            "'always_copy' parameter is deprecated and will be removed in future; use 'copy_level' instead",
+            category=DeprecationWarning,
         )
-
-    @typing.overload
-    def decorator(
-        func: typing.Callable[Concatenate[typing.Any, PS], typing.Awaitable[VT]],
-    ) -> _async_cached_wrapper[VT, PS]: ...
-
-    @typing.overload
-    def decorator(
-        func: typing.Callable[Concatenate[typing.Any, PS], VT],
-    ) -> _cached_wrapper[VT, PS]: ...
+        if kwargs["always_copy"]:
+            copy_level = 2
 
     def decorator(func):
         if inspect.iscoroutinefunction(func):
-            return _async_cached_wrapper(
-                cache,
-                func,
-                key_maker=key_maker,
-                clear_reuse=clear_reuse,
-                is_method=True,
-                callback=callback,
-                always_copy=always_copy,
+            wrapper = _async_cached_wrapper(
+                func, cache, key_maker, clear_reuse, callback, copy_level, True
+            )
+        else:
+            wrapper = _cached_wrapper(
+                func, cache, key_maker, clear_reuse, callback, copy_level, True
             )
 
-        return _cached_wrapper(
-            cache,
-            func,
-            key_maker=key_maker,
-            clear_reuse=clear_reuse,
-            is_method=True,
-            callback=callback,
-            always_copy=always_copy,
-        )
+        return functools.update_wrapper(wrapper, func)
 
     return decorator
-
-
-_K = typing.TypeVar("_K")
-_V = typing.TypeVar("_V")
-
-
-def items_in_order(cache: BaseCacheImpl[_K, _V]):
-    import warnings
-
-    warnings.warn(
-        "'items_in_order' function is deprecated and no longer is available, because all '.items()' methods are ordered now.",
-        DeprecationWarning,
-    )
-
-    return cache.items()
 
 
 def is_cached(func: object) -> bool:
     """
     Check if a function/method cached by cachebox or not
     """
-    return isinstance(func, (_cached_wrapper, _async_cached_wrapper))
+    return hasattr(func, "cache") and isinstance(func.cache, BaseCacheImpl)

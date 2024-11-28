@@ -314,7 +314,7 @@ def cached(
     clear_reuse: bool = False,
     callback: typing.Optional[typing.Callable[[int, typing.Any, typing.Any], typing.Any]] = None,
     copy_level: int = 1,
-    **kwargs,
+    always_copy: typing.Optional[bool] = None,
 ):
     """
     Decorator to wrap a function with a memoizing callable that saves results in a cache.
@@ -359,12 +359,12 @@ def cached(
     if not isinstance(cache, BaseCacheImpl):
         raise TypeError("we expected cachebox caches, got %r" % (cache,))
 
-    if "always_copy" in kwargs:
+    if always_copy is not None:
         warnings.warn(
             "'always_copy' parameter is deprecated and will be removed in future; use 'copy_level' instead",
             category=DeprecationWarning,
         )
-        if kwargs["always_copy"]:
+        if always_copy is True:
             copy_level = 2
 
     def decorator(func):
@@ -388,7 +388,7 @@ def cachedmethod(
     clear_reuse: bool = False,
     callback: typing.Optional[typing.Callable[[int, typing.Any, typing.Any], typing.Any]] = None,
     copy_level: int = 1,
-    **kwargs,
+    always_copy: typing.Optional[bool] = None,
 ):
     """
     this is excatly works like `cached()`, but ignores `self` parameters in hashing and key making.
@@ -402,12 +402,12 @@ def cachedmethod(
     if not isinstance(cache, BaseCacheImpl):
         raise TypeError("we expected cachebox caches, got %r" % (cache,))
 
-    if "always_copy" in kwargs:
+    if always_copy is not None:
         warnings.warn(
             "'always_copy' parameter is deprecated and will be removed in future; use 'copy_level' instead",
             category=DeprecationWarning,
         )
-        if kwargs["always_copy"]:
+        if always_copy is True:
             copy_level = 2
 
     def decorator(func):

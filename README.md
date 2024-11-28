@@ -63,10 +63,13 @@ It uses Google's high-performance SwissTable hash map. thanks to [hashbrown](htt
 **✨ Low memory usage** \
 It has very low memory usage.
 
-**🧶 Thread-safe** \
+**⭐ Zero Dependency** \
+As we said, `cachebox` written in Rust so you don't have to install any other dependecies.
+
+**🧶 Thread safe** \
 It's completely thread-safe and uses locks to prevent problems.
 
-**👌 Easy-To-Use** \
+**👌 Easy To Use** \
 You only need to import it and choice your implementation to use and behave with it like a dictionary.
 
 ## Installation
@@ -143,18 +146,30 @@ There are some examples for you with different methods for introducing those. \
 
 ### *function* cached
 
-a decorator that helps you to cache your functions and calculations with a lot of options.
+Decorator to wrap a function with a memoizing callable that saves results in a cache.
+
+**Parameters:**
+- `cache`: Specifies a cache that handles and stores the results. if `None` or `dict`, `FIFOCache` will be used.
+
+- `key_maker`: Specifies a function that will be called with the same positional and keyword
+               arguments as the wrapped function itself, and which has to return a suitable
+               cache key (must be hashable).
+
+- `clear_reuse`: The wrapped function has a function named `clear_cache` that uses `cache.clear`
+                 method to clear the cache. This parameter will be passed to cache's `clear` method.
+
+- `callback`: Every time the `cache` is used, callback is also called.
+              The callback arguments are: event number (see `EVENT_MISS` or `EVENT_HIT` variables), key, and then result.
+
+- `copy_level`: The wrapped function always copies the result of your function and then returns it.
+                This parameter specifies that the wrapped function has to copy which type of results.
+                `0` means "never copy", `1` means "only copy `dict`, `list`, and `set` results" and
+                `2` means "always copy the results".
 
 **A simple example:**
 ```python
 import cachebox
 
-# Parameters:
-#   - `cache`: your cache and cache policy.
-#   - `key_maker`: you can set your key maker, see examples below.
-#   - `clear_cache`: will be passed to cache's `clear` method when clearing cache.
-#   - `callback`: Every time the `cache` is used, callback is also called. See examples below.
-#   - `always_copy`: If `True`, always copies the result of function when returning it.
 @cachebox.cached(cachebox.LRUCache(128))
 def sum_as_string(a, b):
     return str(a+b)
@@ -240,6 +255,25 @@ assert func(1, 2) == 3 # hit again
 assert func(5, 4) == 9
 # callback_func: miss event (5, 4) 9
 ```
+
+> [!NOTE]\
+> Recommended use `cached` method for **@staticmethod**s and use [`cachedmethod`](#function-cachedmethod) for **@classmethod**s;
+> And set `copy_level` parameter to `2` on **@classmethod**s.
+> ```python
+> class MyClass:
+>   def __init__(self, num: int) -> None:
+>       self.num = num
+>
+>   @classmethod
+>   @cachedmethod({}, copy_level=2)
+>   def class_func(cls, num: int):
+>       return cls(num)
+>
+>   @staticmethod
+>   @cached({})
+>   def static_func(num: int):
+>       return num * 5
+> ```
 
 > [!TIP]\
 > There's a new feature **since `v4.1.0`** that you can tell to a cached function that don't use cache for a call:

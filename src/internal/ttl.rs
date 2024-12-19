@@ -102,6 +102,7 @@ impl TTLPolicy {
                         self.entries.len() + self.n_shifts,
                     );
                 }
+
                 self.entries.push_back(element);
                 None
             }
@@ -222,7 +223,7 @@ impl TTLPolicy {
 
     #[inline]
     pub fn update(&mut self, py: pyo3::Python<'_>, iterable: pyo3::PyObject) -> pyo3::PyResult<()> {
-        use pyo3::types::{PyAnyMethods, PyDictMethods};
+        use pyo3::types::{PyAnyMethods, PyDictMethods, PyIterator};
 
         self.expire();
 
@@ -240,7 +241,9 @@ impl TTLPolicy {
 
             Ok(())
         } else {
-            for pair in iterable.bind(py).try_iter()? {
+            let iterator = PyIterator::from_object(iterable.bind(py))?;
+
+            for pair in iterator {
                 let (key, value) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject)>()?;
 
                 let hk = HashedKey::from_pyobject(py, key)?;

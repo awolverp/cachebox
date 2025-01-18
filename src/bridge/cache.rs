@@ -13,9 +13,7 @@ use crate::util::_KeepForIter;
 /// - You can limit the size of [`Cache`], but you cannot for `dict`.
 #[pyo3::pyclass(module="cachebox._cachebox", extends=crate::bridge::baseimpl::BaseCacheImpl, frozen)]
 pub struct Cache {
-    // Why [`Box`]? We using [`Box`] here so that there's no need for `&mut self`
-    // in this struct; so RuntimeError never occurred for using this class in multiple threads.
-    raw: Box<crate::mutex::Mutex<crate::internal::NoPolicy>>,
+    raw: crate::mutex::Mutex<crate::internal::NoPolicy>,
 }
 
 #[pyo3::pymethods]
@@ -42,7 +40,7 @@ impl Cache {
         }
 
         let self_ = Self {
-            raw: Box::new(crate::mutex::Mutex::new(raw)),
+            raw: crate::mutex::Mutex::new(raw),
         };
         Ok((self_, crate::bridge::baseimpl::BaseCacheImpl {}))
     }

@@ -7,9 +7,7 @@ use crate::{hashedkey::HashedKey, util::_KeepForIter};
 /// In simple terms, the LRU cache will remove the element in the cache that has not been accessed in the longest time.
 #[pyo3::pyclass(module="cachebox._cachebox", extends=crate::bridge::baseimpl::BaseCacheImpl, frozen)]
 pub struct LRUCache {
-    // Why [`Box`]? We using [`Box`] here so that there's no need for `&mut self`
-    // in this struct; so RuntimeError never occurred for using this class in multiple threads.
-    raw: Box<crate::mutex::Mutex<crate::internal::LRUPolicy>>,
+    raw: crate::mutex::Mutex<crate::internal::LRUPolicy>,
 }
 
 #[pyo3::pymethods]
@@ -36,7 +34,7 @@ impl LRUCache {
         }
 
         let self_ = Self {
-            raw: Box::new(crate::mutex::Mutex::new(raw)),
+            raw: crate::mutex::Mutex::new(raw),
         };
         Ok((self_, crate::bridge::baseimpl::BaseCacheImpl {}))
     }

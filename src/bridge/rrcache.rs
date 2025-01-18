@@ -44,9 +44,7 @@ macro_rules! insert_rr {
 /// In simple terms, the RR cache will choice randomly element to remove it to make space when necessary.
 #[pyo3::pyclass(module="cachebox._cachebox", extends=crate::bridge::baseimpl::BaseCacheImpl, frozen)]
 pub struct RRCache {
-    // Why [`Box`]? We using [`Box`] here so that there's no need for `&mut self`
-    // in this struct; so RuntimeError never occurred for using this class in multiple threads.
-    raw: Box<crate::mutex::Mutex<crate::internal::NoPolicy>>,
+    raw: crate::mutex::Mutex<crate::internal::NoPolicy>,
 }
 
 #[pyo3::pymethods]
@@ -71,7 +69,7 @@ impl RRCache {
         }
 
         let self_ = Self {
-            raw: Box::new(crate::mutex::Mutex::new(raw)),
+            raw: crate::mutex::Mutex::new(raw),
         };
         Ok((self_, crate::bridge::baseimpl::BaseCacheImpl {}))
     }

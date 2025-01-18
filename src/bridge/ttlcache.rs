@@ -7,9 +7,7 @@ use crate::{hashedkey::HashedKey, internal::TTLElement, util::_KeepForIter};
 /// In simple terms, the TTL cache will automatically remove the element in the cache that has expired::
 #[pyo3::pyclass(module="cachebox._cachebox", extends=crate::bridge::baseimpl::BaseCacheImpl, frozen)]
 pub struct TTLCache {
-    // Why [`Box`]? We using [`Box`] here so that there's no need for `&mut self`
-    // in this struct; so RuntimeError never occurred for using this class in multiple threads.
-    raw: Box<crate::mutex::Mutex<crate::internal::TTLPolicy>>,
+    raw: crate::mutex::Mutex<crate::internal::TTLPolicy>,
 }
 
 #[pyo3::pymethods]
@@ -46,7 +44,7 @@ impl TTLCache {
         }
 
         let self_ = Self {
-            raw: Box::new(crate::mutex::Mutex::new(raw)),
+            raw: crate::mutex::Mutex::new(raw),
         };
         Ok((self_, crate::bridge::baseimpl::BaseCacheImpl {}))
     }

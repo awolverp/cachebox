@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 4.4.2 - 2024-12-19
+### Updated
+- Update `pyo3` to v0.23.4
+- Remove `Box` layout from Rust code
+
+## 4.4.1 - 2024-12-19
+### Updated
+- Update `pyo3` to v.0.23.3
+
 ## 4.4.0 - 2024-11-28
 ### Added
 - New `copy_level` parameter added to `cachedmethod` and `cached`.

@@ -1,7 +1,9 @@
 from ._cachebox import BaseCacheImpl, FIFOCache
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 import functools
 import warnings
+import asyncio
+import _thread
 import inspect
 import typing
 
@@ -146,6 +148,34 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):
         return self.__cache.items()
 
 
+class _LockWithCounter:
+    """
+    A threading/asyncio lock which count the waiters
+    """
+
+    __slots__ = ("lock", "waiters")
+
+    def __init__(self, is_async: bool = False):
+        self.lock = _thread.allocate_lock() if not is_async else asyncio.Lock()
+        self.waiters = 0
+
+    async def __aenter__(self) -> None:
+        self.waiters += 1
+        await self.lock.acquire()
+
+    async def __aexit__(self, *args, **kwds) -> None:
+        self.waiters -= 1
+        self.lock.release()
+
+    def __enter__(self) -> None:
+        self.waiters += 1
+        self.lock.acquire()
+
+    def __exit__(self, *args, **kwds) -> None:
+        self.waiters -= 1
+        self.lock.release()
+
+
 def _copy_if_need(obj, tocopy=(dict, list, set), level: int = 1):
     from copy import copy
 
@@ -203,14 +233,18 @@ def _cached_wrapper(
 
     hits = 0
     misses = 0
+    locks = defaultdict(_LockWithCounter)
+    exceptions = {}
 
     def _wrapped(*args, **kwds):
-        nonlocal hits, misses
+        nonlocal hits, misses, locks, exceptions
 
         if kwds.pop("cachebox__ignore", False):
             return func(*args, **kwds)
 
         key = _key_maker(args, kwds)
+
+        # try to get result from cache
         try:
             result = cache[key]
             hits += 1
@@ -220,13 +254,31 @@ def _cached_wrapper(
 
             return _copy_if_need(result, level=copy_level)
         except KeyError:
-            misses += 1
+            pass
 
-        result = func(*args, **kwds)
-        cache[key] = result
+        with locks[key]:
+            if exceptions.get(key, None) is not None:
+                e = exceptions[key] if locks[key].waiters > 1 else exceptions.pop(key)
+                raise e
+
+            try:
+                result = cache[key]
+                hits += 1
+                event = EVENT_HIT
+            except KeyError:
+                try:
+                    result = func(*args, **kwds)
+                except Exception as e:
+                    exceptions[key] = e
+                    raise e
+
+                else:
+                    cache[key] = result
+                    misses += 1
+                    event = EVENT_MISS
 
         if callback is not None:
-            callback(EVENT_MISS, key, result)
+            callback(event, key, result)
 
         return _copy_if_need(result, level=copy_level)
 
@@ -237,10 +289,11 @@ def _cached_wrapper(
     )
 
     def cache_clear():
-        nonlocal misses, hits
+        nonlocal misses, hits, locks
         cache.clear(reuse=clear_reuse)
         misses = 0
         hits = 0
+        locks.clear()
 
     _wrapped.cache_clear = cache_clear
 
@@ -260,14 +313,18 @@ def _async_cached_wrapper(
 
     hits = 0
     misses = 0
+    locks = defaultdict(lambda: _LockWithCounter(True))
+    exceptions = {}
 
     async def _wrapped(*args, **kwds):
-        nonlocal hits, misses
+        nonlocal hits, misses, locks, exceptions
 
         if kwds.pop("cachebox__ignore", False):
             return await func(*args, **kwds)
 
         key = _key_maker(args, kwds)
+
+        # try to get result from cache
         try:
             result = cache[key]
             hits += 1
@@ -279,13 +336,31 @@ def _async_cached_wrapper(
 
             return _copy_if_need(result, level=copy_level)
         except KeyError:
-            misses += 1
+            pass
 
-        result = await func(*args, **kwds)
-        cache[key] = result
+        async with locks[key]:
+            if exceptions.get(key, None) is not None:
+                e = exceptions[key] if locks[key].waiters > 1 else exceptions.pop(key)
+                raise e
+
+            try:
+                result = cache[key]
+                hits += 1
+                event = EVENT_HIT
+            except KeyError:
+                try:
+                    result = await func(*args, **kwds)
+                except Exception as e:
+                    exceptions[key] = e
+                    raise e
+
+                else:
+                    cache[key] = result
+                    misses += 1
+                    event = EVENT_MISS
 
         if callback is not None:
-            awaitable = callback(EVENT_MISS, key, result)
+            awaitable = callback(event, key, result)
             if inspect.isawaitable(awaitable):
                 await awaitable
 
@@ -298,10 +373,11 @@ def _async_cached_wrapper(
     )
 
     def cache_clear():
-        nonlocal misses, hits
+        nonlocal misses, hits, locks
         cache.clear(reuse=clear_reuse)
         misses = 0
         hits = 0
+        locks.clear()
 
     _wrapped.cache_clear = cache_clear
 

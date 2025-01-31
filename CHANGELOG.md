@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 4.5.0 - 2025-01-31
+### Updated
+- `cached` and `cachedmethod` improved:
+    we used `threading.Lock` for sync functions, and `asyncio.Lock` for async functions to avoid [`cache stampede`](https://en.wikipedia.org/wiki/Cache_stampede). This changes fix [#15](https://github.com/awolverp/cachebox/issues/15) and [#20](https://github.com/awolverp/cachebox/issues/20) issues. Special thanks to [@AlePiccin](https://github.com/AlePiccin).
+
 ## 4.4.2 - 2024-12-19
 ### Updated
 - Update `pyo3` to v0.23.4

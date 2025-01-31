@@ -100,7 +100,8 @@ def test_key_makers():
     assert len(func.cache) == 3
 
 
-async def _test_async_cached():
+@pytest.mark.asyncio
+async def test_async_cached():
     obj = LRUCache(3)  # type: LRUCache[int, int]
 
     @cached(obj)
@@ -142,15 +143,6 @@ async def _test_async_cached():
     assert len(factorial.cache) == 0
 
 
-def test_async_cached():
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-
-    loop.run_until_complete(_test_async_cached())
-
-
 def test_cachedmethod():
     class TestCachedMethod:
         def __init__(self, num) -> None:
@@ -165,7 +157,8 @@ def test_cachedmethod():
     assert cls.method("a") == ("a" * 10)
 
 
-async def _test_async_cachedmethod():
+@pytest.mark.asyncio
+async def test_async_cachedmethod():
     class TestCachedMethod:
         def __init__(self, num) -> None:
             self.num = num
@@ -177,15 +170,6 @@ async def _test_async_cachedmethod():
 
     cls = TestCachedMethod(10)
     assert (await cls.method("a")) == ("a" * 10)
-
-
-def test_async_cachedmethod():
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-
-    loop.run_until_complete(_test_async_cachedmethod())
 
 
 def test_callback():

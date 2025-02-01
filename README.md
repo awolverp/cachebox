@@ -72,7 +72,7 @@ It's completely thread-safe and uses locks to prevent problems.
 **👌 Easy To Use** \
 You only need to import it and choice your implementation to use and behave with it like a dictionary.
 
-**🚫 Avoids dog-piling**
+**🚫 Avoids Cache Stampede** \
 It avoids [cache stampede](https://en.wikipedia.org/wiki/Cache_stampede) to have better performance.
 
 ## Installation

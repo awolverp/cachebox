@@ -247,14 +247,17 @@ def _cached_wrapper(
         # try to get result from cache
         try:
             result = cache[key]
+        except KeyError:
+            pass
+        else:
+            # A NOTE FOR ME: we don't want to catch KeyError exceptions from `callback`
+            # so don't wrap it with try except
             hits += 1
 
             if callback is not None:
                 callback(EVENT_HIT, key, result)
 
             return _copy_if_need(result, level=copy_level)
-        except KeyError:
-            pass
 
         with locks[key]:
             if exceptions.get(key, None) is not None:
@@ -327,6 +330,11 @@ def _async_cached_wrapper(
         # try to get result from cache
         try:
             result = cache[key]
+        except KeyError:
+            pass
+        else:
+            # A NOTE FOR ME: we don't want to catch KeyError exceptions from `callback`
+            # so don't wrap it with try except
             hits += 1
 
             if callback is not None:
@@ -335,8 +343,6 @@ def _async_cached_wrapper(
                     await awaitable
 
             return _copy_if_need(result, level=copy_level)
-        except KeyError:
-            pass
 
         async with locks[key]:
             if exceptions.get(key, None) is not None:

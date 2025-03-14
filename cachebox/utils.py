@@ -292,11 +292,12 @@ def _cached_wrapper(
     )
 
     def cache_clear():
-        nonlocal misses, hits, locks
+        nonlocal misses, hits, locks, exceptions
         cache.clear(reuse=clear_reuse)
         misses = 0
         hits = 0
         locks.clear()
+        exceptions.clear()
 
     _wrapped.cache_clear = cache_clear
 
@@ -379,11 +380,12 @@ def _async_cached_wrapper(
     )
 
     def cache_clear():
-        nonlocal misses, hits, locks
+        nonlocal misses, hits, locks, exceptions
         cache.clear(reuse=clear_reuse)
         misses = 0
         hits = 0
         locks.clear()
+        exceptions.clear()
 
     _wrapped.cache_clear = cache_clear
 

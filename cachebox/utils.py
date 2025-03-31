@@ -261,8 +261,8 @@ def _cached_wrapper(
 
         with locks[key]:
             if exceptions.get(key, None) is not None:
-                e = exceptions[key] if locks[key].waiters > 1 else exceptions.pop(key)
-                raise e
+                cached_error = exceptions[key] if locks[key].waiters > 1 else exceptions.pop(key)
+                raise cached_error
 
             try:
                 result = cache[key]
@@ -272,7 +272,9 @@ def _cached_wrapper(
                 try:
                     result = func(*args, **kwds)
                 except Exception as e:
-                    exceptions[key] = e
+                    if locks[key].waiters > 1:
+                        exceptions[key] = e
+
                     raise e
 
                 else:
@@ -347,8 +349,8 @@ def _async_cached_wrapper(
 
         async with locks[key]:
             if exceptions.get(key, None) is not None:
-                e = exceptions[key] if locks[key].waiters > 1 else exceptions.pop(key)
-                raise e
+                cached_error = exceptions[key] if locks[key].waiters > 1 else exceptions.pop(key)
+                raise cached_error
 
             try:
                 result = cache[key]
@@ -358,7 +360,9 @@ def _async_cached_wrapper(
                 try:
                     result = await func(*args, **kwds)
                 except Exception as e:
-                    exceptions[key] = e
+                    if locks[key].waiters > 1:
+                        exceptions[key] = e
+
                     raise e
 
                 else:

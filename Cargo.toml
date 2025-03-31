@@ -1,6 +1,6 @@
 [package]
 name = "cachebox"
-version = "4.5.2"
+version = "4.5.3"
 edition = "2021"
 description = "The fastest memoizing and caching Python library written in Rust"
 readme = "README.md"

@@ -14,6 +14,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Make error handlings better
 - Make customizable and extensible: make your own strategies (If I found a good way)
 
+## 4.5.3 - 2025-03-31
+### Changed
+- The `cached` and `cachedmethods` decorators cached the exceptions regardless of the number of waiters. This issue has now been resolved. Thanks to @pyfreyr for the issue [#23](https://github.com/awolverp/cachebox/issues/23).
+
+## 4.5.2 - 2025-03-14
+### Changed
+- In previous version, `clear_cache`, does not clear the exceptions dictionary. Thanks to @dada-engineer for the fix [#22](https://github.com/awolverp/cachebox/pull/22).
+
+## 4.5.1 - 2025-02-01
+### Changed
+- In previous version, the `cached` and `cachedmethod` functions caught a `KeyError` from the callback function, which led to the cached function being called again. Thanks to @AlePiccin for the issue [#20](https://github.com/awolverp/cachebox/issues/20).
+
 ## 4.5.0 - 2025-01-31
 ### Updated
 - `cached` and `cachedmethod` improved:

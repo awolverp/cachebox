@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v5.0.0 - Unreleased
+### Targets:
+- Update `hashbrown` dependency
+- Make 2x faster by changing my *`isize` to `u64` strategy* in Rust.
+- Rewrite cache classes API in Python; this help users to use classes as subclass and customize them.
+- Make benchmarks better
+- Make error handlings better
+- Make customizable and extensible: make your own strategies (If I found a good way)
+
 ## 4.5.0 - 2025-01-31
 ### Updated
 - `cached` and `cachedmethod` improved:

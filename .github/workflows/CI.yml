@@ -113,7 +113,7 @@ jobs:
           target: ${{ matrix.target }}
           manylinux: ${{ matrix.manylinux }}
           args: --release --out dist --interpreter ${{ matrix.interpreter || '3.8 3.9 3.10 3.11 3.12 3.13 pypy3.9 pypy3.10' }}
-          rust-toolchain: ${{ (matrix.os == 'windows' && '1.77') || 'stable' }}
+          rust-toolchain: stable
           docker-options: -e CI
 
       - run: ${{ (matrix.os == 'windows' && 'dir') || 'ls -lh' }} dist/

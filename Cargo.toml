@@ -22,15 +22,15 @@ panic = "abort"
 strip = "symbols"
 
 [dependencies.hashbrown]
-version = "0.15.2"
+version = "0.14.5"
 default-features = false
-features = ["inline-more"]
+features = ["inline-more", "raw"]
 
 [dependencies.fastrand]
 version = "2.3.0"
 
 [dependencies.pyo3]
-version = "0.24.0"
+version = "0.24.1"
 default-features = false
 features = ["macros", "extension-module"]
 
@@ -42,7 +42,7 @@ version = "0.12.3"
 default-features = false
 
 [build-dependencies.pyo3-build-config]
-version = "0.24.0"
+version = "0.24.1"
 features = ["resolve-config"]
 
 [lints.clippy]

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v5.0.0 - Unreleased
+### Targets:
+- Update `hashbrown` dependency
+- Make 2x faster by changing my *`isize` to `u64` strategy* in Rust.
+- Rewrite cache classes API in Python; this help users to use classes as subclass and customize them.
+- Make benchmarks better
+- Make error handlings better
+
 ## 4.5.3 - 2025-03-31
 ### Changed
 - The `cached` and `cachedmethods` decorators cached the exceptions regardless of the number of waiters. This issue has now been resolved. Thanks to @pyfreyr for the issue [#23](https://github.com/awolverp/cachebox/issues/23).

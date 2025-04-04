@@ -12,7 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rewrite cache classes API in Python; this help users to use classes as subclass and customize them.
 - Make benchmarks better
 - Make error handlings better
-- Make customizable and extensible: make your own strategies (If I found a good way)
 
 ## 4.5.3 - 2025-03-31
 ### Changed

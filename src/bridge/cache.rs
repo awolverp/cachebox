@@ -1,6 +1,6 @@
-//! implement Cache, a simple cache without any algorithms and policies
-
-use crate::common::{Entry, ObservedIterator, PreHashObject};
+use crate::common::Entry;
+use crate::common::ObservedIterator;
+use crate::common::PreHashObject;
 
 /// A simple cache that has no algorithm; this is only a hashmap.
 ///
@@ -98,19 +98,6 @@ impl Cache {
         match lock.lookup(py, &key)? {
             Some(val) => Ok(val.clone_ref(py)),
             None => Ok(default),
-        }
-    }
-
-    fn remove(&self, py: pyo3::Python<'_>, key: pyo3::PyObject) -> pyo3::PyResult<()> {
-        let key = PreHashObject::from_pyobject(py, key)?;
-        let mut lock = self.raw.lock();
-
-        match lock.entry(py, &key)? {
-            Entry::Occupied(entry) => {
-                entry.remove();
-                Ok(())
-            }
-            Entry::Absent(_) => Err(pyo3::PyErr::new::<pyo3::exceptions::PyKeyError, _>(key.obj)),
         }
     }
 

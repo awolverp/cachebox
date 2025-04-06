@@ -35,6 +35,7 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
     """
     This is the base class of all cache classes such as Cache, FIFOCache, ...
     """
+
     pass
 
 
@@ -57,13 +58,12 @@ class Cache(BaseCacheImpl[KT, VT]):
     """
     A simple cache that has no algorithm; this is only a hashmap.
 
-    Cache vs dict:
-
-    it is thread-safe and unordered, while dict isn't thread-safe and ordered (Python 3.6+).
-    it uses very lower memory than dict.
-    it supports useful and new methods for managing memory, while dict does not.
-    it does not support popitem, while dict does.
-    You can limit the size of Cache, but you cannot for dict.
+    `Cache` vs `dict`:
+    - it is thread-safe and unordered, while `dict` isn't thread-safe and ordered (Python 3.6+).
+    - it uses very lower memory than `dict`.
+    - it supports useful and new methods for managing memory, while `dict` does not.
+    - it does not support popitem, while `dict` does.
+    - You can limit the size of Cache, but you cannot for `dict`.
     """
 
     def __init__(
@@ -165,14 +165,16 @@ class Cache(BaseCacheImpl[KT, VT]):
         self.insert(key, value)
 
     def __getitem__(self, key: KT) -> VT:
-        val = self.get(key, _sential)
+        val = self._raw.get(key, _sential)
         if val is _sential:
             raise KeyError(key)
 
         return val
 
     def __delitem__(self, key: KT) -> None:
-        self._raw.remove(key)
+        val = self._raw.pop(key, _sential)
+        if val is _sential:
+            raise KeyError(key)
 
     def __eq__(self, other) -> bool:
         return self._raw == other
@@ -220,6 +222,125 @@ class Cache(BaseCacheImpl[KT, VT]):
         - You should not make any changes in cache while using this iterable object.
         - Values are not ordered.
         """
+        return IteratorView(self._raw.items(), lambda x: x[1])
+
+    def __iter__(self) -> IteratorView[KT]:
+        return self.keys()
+
+    def __repr__(self) -> str:
+        return "{}[{}/{}]({})".format(
+            type(self).__name__,
+            len(self._raw),
+            self._raw.maxsize(),
+            _items_to_str(self._raw.items(), len(self._raw)),
+        )
+
+
+class FIFOCache(BaseCacheImpl[KT, VT]):
+    def __init__(
+        self,
+        maxsize: int,
+        iterable: typing.Union["Cache", dict, tuple, typing.Generator, None] = None,
+        *,
+        capacity: int = 0,
+    ) -> None:
+        self._raw = _core.FIFOCache(maxsize, capacity=capacity)
+
+        if iterable is not None:
+            self.update(iterable)
+
+    @property
+    def maxsize(self) -> int:
+        return self._raw.maxsize()
+
+    def capacity(self) -> int:
+        return self._raw.capacity()
+
+    def __len__(self) -> int:
+        return len(self._raw)
+
+    def __sizeof__(self):
+        return self._raw.__sizeof__()
+
+    def __contains__(self, key: KT) -> bool:
+        return key in self._raw
+
+    def __bool__(self) -> bool:
+        return not self.is_empty()
+
+    def is_empty(self) -> bool:
+        return self._raw.is_empty()
+
+    def is_full(self) -> bool:
+        return self._raw.is_full()
+
+    def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
+        return self._raw.insert(key, value)
+
+    def get(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
+        return self._raw.get(key, default)
+
+    def pop(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
+        return self._raw.pop(key, default)
+
+    def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
+        return self._raw.setdefault(key, default)
+
+    def popitem(self) -> typing.Tuple[KT, VT]:
+        return self._raw.popitem()
+
+    def drain(self, n: int) -> int:
+        if n == 0:
+            return 0
+
+        for i in range(n):
+            try:
+                self._raw.popitem()
+            except KeyError:
+                return i
+
+        return i
+
+    def update(self, iterable: typing.Union["Cache", dict, tuple, typing.Generator]) -> None:
+        if hasattr(iterable, "items"):
+            iterable = iterable.items()
+
+        self._raw.update(iterable)
+
+    def __setitem__(self, key: KT, value: VT) -> None:
+        self.insert(key, value)
+
+    def __getitem__(self, key: KT) -> VT:
+        val = self._raw.get(key, _sential)
+        if val is _sential:
+            raise KeyError(key)
+
+        return val
+
+    def __delitem__(self, key: KT) -> None:
+        val = self._raw.pop(key, _sential)
+        if val is _sential:
+            raise KeyError(key)
+
+    def __eq__(self, other) -> bool:
+        return self._raw == other
+
+    def __ne__(self, other) -> bool:
+        return self._raw != other
+
+    def shrink_to_fit(self) -> None:
+        self._raw.shrink_to_fit()
+
+    def clear(self, *, reuse: bool = False) -> None:
+        self._raw.clear(reuse)
+
+    def items(self) -> IteratorView[typing.Tuple[KT, VT]]:
+        return IteratorView(self._raw.items(), lambda x: x)
+
+    def keys(self) -> IteratorView[KT]:
+        return IteratorView(self._raw.items(), lambda x: x[0])
+
+    def values(self) -> IteratorView[VT]:
         return IteratorView(self._raw.items(), lambda x: x[1])
 
     def __iter__(self) -> IteratorView[KT]:

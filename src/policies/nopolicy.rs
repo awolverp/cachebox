@@ -31,26 +31,32 @@ impl NoPolicy {
         })
     }
 
+    #[inline]
     pub fn maxsize(&self) -> usize {
         self.maxsize.get()
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         self.table.len()
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.table.is_empty()
     }
 
+    #[inline]
     pub fn is_full(&self) -> bool {
         self.table.len() == self.maxsize.get()
     }
 
+    #[inline]
     pub fn capacity(&self) -> usize {
         self.table.capacity()
     }
 
+    #[inline]
     pub fn iter(&self) -> hashbrown::raw::RawIter<(PreHashObject, pyo3::PyObject)> {
         unsafe { self.table.iter() }
     }
@@ -129,12 +135,16 @@ impl NoPolicy {
         Ok(result)
     }
 
+    #[inline]
     pub fn clear(&mut self) {
         self.table.clear();
+        self.observed.change();
     }
 
+    #[inline]
     pub fn shrink_to_fit(&mut self) {
         self.table.shrink_to(self.table.len(), |(x, _)| x.hash);
+        self.observed.change();
     }
 
     pub fn extend(&mut self, py: pyo3::Python<'_>, iterable: pyo3::PyObject) -> pyo3::PyResult<()> {
@@ -198,6 +208,7 @@ impl NoPolicy {
 }
 
 impl<'a> NoPolicyOccupied<'a> {
+    #[inline]
     pub fn update(&mut self, value: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
         unsafe {
             let old_value = std::mem::replace(&mut self.bucket.as_mut().1, value);
@@ -206,17 +217,21 @@ impl<'a> NoPolicyOccupied<'a> {
         }
     }
 
+    #[inline]
     pub fn remove(self) -> (PreHashObject, pyo3::PyObject) {
         let (x, _) = unsafe { self.instance.table.remove(self.bucket) };
+        self.instance.observed.change();
         x
     }
 
+    #[inline]
     pub fn into_value(self) -> &'a mut (PreHashObject, pyo3::PyObject) {
         unsafe { self.bucket.as_mut() }
     }
 }
 
 impl NoPolicyAbsent<'_> {
+    #[inline]
     pub fn insert(self, key: PreHashObject, value: pyo3::PyObject) -> pyo3::PyResult<()> {
         if self.instance.table.len() >= self.instance.maxsize.get() {
             // There's no algorithm for removing a key-value pair, so we raise PyOverflowError.

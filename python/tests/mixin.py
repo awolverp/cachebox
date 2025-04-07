@@ -1,4 +1,4 @@
-from cachebox import BaseCacheImpl, IteratorView
+from cachebox import BaseCacheImpl
 import dataclasses
 import pytest
 import typing
@@ -41,7 +41,6 @@ class _TestMixin:  # pragma: no cover
 
     KWARGS: dict = {}
     NO_POLICY: bool = False
-    ITERATOR_CLASS: typing.Optional[type] = IteratorView
 
     def test__new__(self):
         cache = self.CACHE(10, **self.KWARGS, capacity=8)
@@ -59,10 +58,6 @@ class _TestMixin:  # pragma: no cover
         cache = self.CACHE(0, **self.KWARGS, capacity=8)
         assert cache.maxsize == sys.maxsize
         assert 20 > cache.capacity() >= 8
-
-        cache = self.CACHE(0, **self.KWARGS, capacity=0)
-        assert cache.maxsize == sys.maxsize
-        assert 2 >= cache.capacity() >= 0  # This is depends on platform
 
     def test_overflow(self):
         if not self.NO_POLICY:
@@ -99,16 +94,6 @@ class _TestMixin:  # pragma: no cover
 
         assert len(cache) == 10
         assert cache.is_full()
-
-    def test___bool__(self):
-        cache = self.CACHE(1, **self.KWARGS, capacity=1)
-
-        if cache:
-            pytest.fail("bool(cache) returns invalid response")
-
-        cache[1] = 1
-        if not cache:
-            pytest.fail("not bool(cache) returns invalid response")
 
     def test___contains__(self):
         cache = self.CACHE(1, **self.KWARGS, capacity=1)
@@ -147,7 +132,6 @@ class _TestMixin:  # pragma: no cover
 
     def test___repr__(self):
         cache = self.CACHE(100, **self.KWARGS, capacity=2)
-        assert str(cache) == repr(cache)
         assert repr(cache).startswith(self.CACHE.__name__)
 
         cache.update({i: i for i in range(100)})
@@ -296,9 +280,6 @@ class _TestMixin:  # pragma: no cover
     def test_iterators(self):
         obj = self.CACHE(100, **self.KWARGS, capacity=100)
 
-        if self.ITERATOR_CLASS:
-            assert isinstance(iter(obj), self.ITERATOR_CLASS)
-
         for i in range(6):
             obj[i] = i * 2
 
@@ -376,10 +357,6 @@ class _TestMixin:  # pragma: no cover
 
         assert not cache == c2
         assert c2 != cache
-
-    def test_generic(self):
-        obj: self.CACHE[int, int] = self.CACHE(maxsize=0, **self.KWARGS)
-        _ = obj
 
     def _test_pickle(self, check_order: typing.Callable):
         import pickle

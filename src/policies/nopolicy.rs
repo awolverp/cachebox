@@ -16,6 +16,7 @@ pub struct NoPolicyOccupied<'a> {
 
 pub struct NoPolicyAbsent<'a> {
     instance: &'a mut NoPolicy,
+    insert_slot: Option<hashbrown::raw::InsertSlot>,
 }
 
 impl NoPolicy {
@@ -75,9 +76,29 @@ impl NoPolicy {
             },
             None => {
                 Ok(
-                    Entry::Absent(NoPolicyAbsent { instance: self })
+                    Entry::Absent(NoPolicyAbsent { instance: self, insert_slot: None })
                 )
             }
+        }
+    }
+
+    #[rustfmt::skip]
+    pub fn entry_with_slot(
+        &mut self,
+        py: pyo3::Python<'_>,
+        key: &PreHashObject,
+    ) -> pyo3::PyResult<Entry<NoPolicyOccupied, NoPolicyAbsent>> {
+        match self.table.try_find_or_find_insert_slot(
+            key.hash,
+            |(x, _)| x.equal(py, key),
+            |(x, _)| x.hash,
+        )? {
+            Ok(bucket) => Ok(
+                Entry::Occupied(NoPolicyOccupied { instance: self, bucket })
+            ),
+            Err(insert_slot) => Ok(
+                Entry::Absent(NoPolicyAbsent { instance: self, insert_slot: Some(insert_slot) })
+            ),
         }
     }
 
@@ -161,7 +182,7 @@ impl NoPolicy {
                 let hk =
                     unsafe { PreHashObject::from_pyobject(py, key.unbind()).unwrap_unchecked() };
 
-                match self.entry(py, &hk)? {
+                match self.entry_with_slot(py, &hk)? {
                     Entry::Occupied(mut entry) => {
                         entry.update(value.unbind())?;
                     }
@@ -176,7 +197,7 @@ impl NoPolicy {
 
                 let hk = PreHashObject::from_pyobject(py, key)?;
 
-                match self.entry(py, &hk)? {
+                match self.entry_with_slot(py, &hk)? {
                     Entry::Occupied(mut entry) => {
                         entry.update(value)?;
                     }
@@ -243,9 +264,18 @@ impl NoPolicyAbsent<'_> {
             ));
         }
 
-        self.instance
-            .table
-            .insert(key.hash, (key, value), |(x, _)| x.hash);
+        match self.insert_slot {
+            Some(slot) => unsafe {
+                self.instance
+                    .table
+                    .insert_in_slot(key.hash, slot, (key, value));
+            },
+            None => {
+                self.instance
+                    .table
+                    .insert(key.hash, (key, value), |(x, _)| x.hash);
+            }
+        }
 
         self.instance.observed.change();
         Ok(())

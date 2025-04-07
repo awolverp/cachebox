@@ -80,7 +80,7 @@ impl FIFOCache {
         let key = PreHashObject::from_pyobject(py, key)?;
         let mut lock = self.raw.lock();
 
-        match lock.entry(py, &key)? {
+        match lock.entry_with_slot(py, &key)? {
             Entry::Occupied(mut entry) => Ok(Some(entry.update(value)?)),
             Entry::Absent(entry) => {
                 entry.insert(py, key, value)?;

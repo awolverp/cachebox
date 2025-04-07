@@ -39,6 +39,7 @@ pub struct FIFOPolicyOccupied<'a> {
 
 pub struct FIFOPolicyAbsent<'a> {
     instance: &'a mut FIFOPolicy,
+    insert_slot: Option<hashbrown::raw::InsertSlot>,
 }
 
 pub struct FIFOIterator {
@@ -166,9 +167,29 @@ impl FIFOPolicy {
             }
             None => {
                 Ok(
-                    Entry::Absent(FIFOPolicyAbsent { instance: self })
+                    Entry::Absent(FIFOPolicyAbsent { instance: self, insert_slot: None })
                 )
             },
+        }
+    }
+
+    #[rustfmt::skip]
+    pub fn entry_with_slot(
+        &mut self,
+        py: pyo3::Python<'_>,
+        key: &PreHashObject,
+    ) -> pyo3::PyResult<Entry<FIFOPolicyOccupied, FIFOPolicyAbsent>> {
+        match self.table.try_find_or_find_insert_slot(
+            key.hash,
+            |x| self.entries[(*x) - self.n_shifts].0.equal(py, key),
+            |x| self.entries[(*x) - self.n_shifts].0.hash,
+        )? {
+            Ok(bucket) => Ok(
+                Entry::Occupied(FIFOPolicyOccupied { instance: self, bucket })
+            ),
+            Err(insert_slot) => Ok(
+                Entry::Absent(FIFOPolicyAbsent { instance: self, insert_slot: Some(insert_slot) })
+            ),
         }
     }
 
@@ -251,7 +272,7 @@ impl FIFOPolicy {
                 let hk =
                     unsafe { PreHashObject::from_pyobject(py, key.unbind()).unwrap_unchecked() };
 
-                match self.entry(py, &hk)? {
+                match self.entry_with_slot(py, &hk)? {
                     Entry::Occupied(mut entry) => {
                         entry.update(value.unbind())?;
                     }
@@ -266,7 +287,7 @@ impl FIFOPolicy {
 
                 let hk = PreHashObject::from_pyobject(py, key)?;
 
-                match self.entry(py, &hk)? {
+                match self.entry_with_slot(py, &hk)? {
                     Entry::Occupied(mut entry) => {
                         entry.update(value)?;
                     }
@@ -361,15 +382,27 @@ impl FIFOPolicyAbsent<'_> {
             self.instance.popitem(py)?;
         }
 
-        self.instance.table.insert(
-            key.hash,
-            self.instance.entries.len() + self.instance.n_shifts,
-            |index| {
-                self.instance.entries[(*index) - self.instance.n_shifts]
-                    .0
-                    .hash
+        match self.insert_slot {
+            Some(slot) => unsafe {
+                self.instance.table.insert_in_slot(
+                    key.hash,
+                    slot,
+                    self.instance.entries.len() + self.instance.n_shifts,
+                );
             },
-        );
+            None => {
+                self.instance.table.insert(
+                    key.hash,
+                    self.instance.entries.len() + self.instance.n_shifts,
+                    |index| {
+                        self.instance.entries[(*index) - self.instance.n_shifts]
+                            .0
+                            .hash
+                    },
+                );
+            }
+        }
+
         self.instance.entries.push_back((key, value));
 
         self.instance.observed.change();

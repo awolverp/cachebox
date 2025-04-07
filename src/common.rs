@@ -188,6 +188,13 @@ pub trait TryFindMethods<T> {
         hash: u64,
         compare: impl FnMut(&T) -> Result<bool, E>,
     ) -> Result<Option<hashbrown::raw::Bucket<T>>, E>;
+
+    fn try_find_or_find_insert_slot<E>(
+        &mut self,
+        hash: u64,
+        compare: impl FnMut(&T) -> Result<bool, E>,
+        hasher: impl Fn(&T) -> u64,
+    ) -> Result<Result<hashbrown::raw::Bucket<T>, hashbrown::raw::InsertSlot>, E>;
 }
 
 impl<T> TryFindMethods<T> for hashbrown::raw::RawTable<T> {
@@ -208,6 +215,32 @@ impl<T> TryFindMethods<T> for hashbrown::raw::RawTable<T> {
                 }
             }
         });
+
+        if let Some(error) = error {
+            Err(error)
+        } else {
+            Ok(found)
+        }
+    }
+
+    #[inline(always)]
+    fn try_find_or_find_insert_slot<E>(
+        &mut self,
+        hash: u64,
+        mut compare: impl FnMut(&T) -> Result<bool, E>,
+        hasher: impl Fn(&T) -> u64,
+    ) -> Result<Result<hashbrown::raw::Bucket<T>, hashbrown::raw::InsertSlot>, E> {
+        let mut error = None;
+
+        let found = self.find_or_find_insert_slot(hash, |item| {
+            match compare(item) {
+                Ok(boolean) => boolean,
+                Err(e) => {
+                    error = Some(e);
+                    true // To break checking
+                }
+            }
+        }, hasher);
 
         if let Some(error) = error {
             Err(error)

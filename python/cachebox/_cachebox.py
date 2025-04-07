@@ -53,32 +53,42 @@ class IteratorView(typing.Generic[VT]):
 
 class Cache(BaseCacheImpl[KT, VT]):
     """
-    A simple cache that has no algorithm; this is only a hashmap.
+    A thread-safe, memory-efficient hashmap-like cache with configurable maximum size.
 
-    `Cache` vs `dict`:
-    - it is thread-safe and unordered, while `dict` isn't thread-safe and ordered (Python 3.6+).
-    - it uses very lower memory than `dict`.
-    - it supports useful and new methods for managing memory, while `dict` does not.
-    - it does not support popitem, while `dict` does.
-    - You can limit the size of Cache, but you cannot for `dict`.
+    Provides a flexible key-value storage mechanism with:
+    - Configurable maximum size (zero means unlimited)
+    - Lower memory usage compared to standard dict
+    - Thread-safe operations
+    - Useful memory management methods
+
+    Differs from standard dict by:
+    - Being thread-safe
+    - Unordered storage
+    - Size limitation
+    - Memory efficiency
+    - Additional cache management methods
+
+    Supports initialization with optional initial data and capacity,
+    and provides dictionary-like access with additional cache-specific operations.
     """
 
     def __init__(
         self,
         maxsize: int,
-        iterable: typing.Union["Cache", dict, tuple, typing.Generator, None] = None,
+        iterable: typing.Union[dict, typing.Iterable[tuple]] = None,
         *,
         capacity: int = 0,
     ) -> None:
         """
-        A simple cache that has no algorithm; this is only a hashmap.
+        Initialize a new Cache instance.
 
-        :param maxsize: you can specify the limit size of the cache ( zero means infinity ); this is unchangable.
+        Args:
+            maxsize (int): Maximum number of elements the cache can hold. Zero means unlimited.
+            iterable (Union[Cache, dict, tuple, Generator, None], optional): Initial data to populate the cache. Defaults to None.
+            capacity (int, optional): Pre-allocate hash table capacity to minimize reallocations. Defaults to 0.
 
-        :param iterable: you can create cache from a dict or an iterable.
-
-        :param capacity: If `capacity` param is given, cache attempts to allocate a new hash table with at
-        least enough capacity for inserting the given number of elements without reallocating.
+        Creates a new cache with specified size constraints and optional initial data. The cache can be pre-sized
+        to improve performance when the number of expected elements is known in advance.
         """
         self._raw = _core.Cache(maxsize, capacity=capacity)
 
@@ -153,7 +163,7 @@ class Cache(BaseCacheImpl[KT, VT]):
     def drain(self) -> typing.NoReturn:  # pragma: no cover
         raise NotImplementedError()
 
-    def update(self, iterable: typing.Union["Cache", dict, tuple, typing.Generator]) -> None:
+    def update(self, iterable: typing.Union[dict, typing.Iterable[tuple]]) -> None:
         """
         Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
 
@@ -246,13 +256,39 @@ class Cache(BaseCacheImpl[KT, VT]):
 
 
 class FIFOCache(BaseCacheImpl[KT, VT]):
+    """
+    A First-In-First-Out (FIFO) cache implementation with configurable maximum size and optional initial capacity.
+
+    This cache provides a fixed-size container that automatically removes the oldest items when the maximum size is reached.
+    Supports various operations like insertion, retrieval, deletion, and iteration with O(1) complexity.
+
+    Attributes:
+        maxsize: The maximum number of items the cache can hold.
+        capacity: The initial capacity of the cache before resizing.
+
+    Key features:
+    - Deterministic item eviction order (oldest items removed first)
+    - Efficient key-value storage and retrieval
+    - Supports dictionary-like operations
+    - Allows optional initial data population
+    """
+
     def __init__(
         self,
         maxsize: int,
-        iterable: typing.Union["Cache", dict, tuple, typing.Generator, None] = None,
+        iterable: typing.Union[typing.Union[dict, typing.Iterable[tuple]], None] = None,
         *,
         capacity: int = 0,
     ) -> None:
+        """
+        Initialize a new FIFOCache instance.
+
+        Args:
+            maxsize: The maximum number of items the cache can hold.
+            iterable: Optional initial data to populate the cache. Can be another FIFOCache,
+                      a dictionary, tuple, generator, or None.
+            capacity: Optional initial capacity of the cache before resizing. Defaults to 0.
+        """
         self._raw = _core.FIFOCache(maxsize, capacity=capacity)
 
         if iterable is not None:
@@ -263,6 +299,7 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         return self._raw.maxsize()
 
     def capacity(self) -> int:
+        """Returns the number of elements the map can hold without reallocating."""
         return self._raw.capacity()
 
     def __len__(self) -> int:
@@ -284,31 +321,51 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         return self._raw.is_full()
 
     def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
+        """
+        Equals to `self[key] = value`, but returns a value:
+
+        - If the cache did not have this key present, None is returned.
+        - If the cache did have this key present, the value is updated,
+          and the old value is returned. The key is not updated, though;
+        """
         return self._raw.insert(key, value)
 
     def get(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
+        """
+        Equals to `self[key]`, but returns `default` if the cache don't have this key present.
+        """
         try:
             return self._raw.get(key)
         except _core.CoreKeyError:
             return default
 
     def pop(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
+        """
+        Removes specified key and return the corresponding value. If the key is not found, returns the `default`.
+        """
         try:
             return self._raw.remove(key)
         except _core.CoreKeyError:
             return default
 
     def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
+        """
+        Inserts key with a value of default if key is not in the cache.
+
+        Return the value for key if key is in the cache, else default.
+        """
         return self._raw.setdefault(key, default)
 
     def popitem(self) -> typing.Tuple[KT, VT]:
+        """Removes the element that has been in the cache the longest."""
         try:
             return self._raw.popitem()
         except _core.CoreKeyError:
             raise KeyError() from None
 
     def drain(self, n: int) -> int:  # pragma: no cover
-        if n == 0:
+        """Does the `popitem()` `n` times and returns count of removed items."""
+        if n <= 0:
             return 0
 
         for i in range(n):
@@ -319,7 +376,8 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
 
         return i
 
-    def update(self, iterable: typing.Union["Cache", dict, tuple, typing.Generator]) -> None:
+    def update(self, iterable: typing.Union[dict, typing.Iterable[tuple]]) -> None:
+        """Updates the cache with elements from a dictionary or an iterable object of key/value pairs."""
         if hasattr(iterable, "items"):
             iterable = iterable.items()
 
@@ -353,21 +411,50 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         return self._raw != other._raw
 
     def shrink_to_fit(self) -> None:
+        """Shrinks the cache to fit len(self) elements."""
         self._raw.shrink_to_fit()
 
     def clear(self, *, reuse: bool = False) -> None:
+        """
+        Removes all items from cache.
+
+        If reuse is True, will not free the memory for reusing in the future.
+        """
         self._raw.clear(reuse)
 
     def items(self) -> IteratorView[typing.Tuple[KT, VT]]:
+        """
+        Returns an iterable object of the cache's items (key-value pairs).
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        """
         return IteratorView(self._raw.items(), lambda x: x)
 
     def keys(self) -> IteratorView[KT]:
+        """
+        Returns an iterable object of the cache's keys.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        """
         return IteratorView(self._raw.items(), lambda x: x[0])
 
     def values(self) -> IteratorView[VT]:
+        """
+        Returns an iterable object of the cache's values.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        """
         return IteratorView(self._raw.items(), lambda x: x[1])
 
     def first(self, n: int = 0) -> typing.Optional[KT]:
+        """
+        Returns the first key in cache; this is the one which will be removed by `popitem()` (if n == 0).
+
+        By using `n` parameter, you can browse order index by index.
+        """
         if n < 0:
             n = len(self._raw) + n
 
@@ -377,6 +464,9 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         return self._raw.get_index(n)
 
     def last(self) -> typing.Optional[KT]:
+        """
+        Returns the last key in cache. Equals to `self.first(-1)`.
+        """
         return self._raw.get_index(len(self._raw) - 1)
 
     def __iter__(self) -> IteratorView[KT]:

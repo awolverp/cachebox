@@ -88,3 +88,5 @@ class TestFIFOCache(_TestMixin):
 
         assert obj.first() == 1
         assert obj.last() == 10
+        assert obj.first(-1) == obj.last()
+        assert obj.first(-10000) is None

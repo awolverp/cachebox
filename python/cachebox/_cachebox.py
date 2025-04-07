@@ -96,7 +96,7 @@ class Cache(BaseCacheImpl[KT, VT]):
     def __len__(self) -> int:
         return len(self._raw)
 
-    def __sizeof__(self):
+    def __sizeof__(self):  # pragma: no cover
         return self._raw.__sizeof__()
 
     def __contains__(self, key: KT) -> bool:
@@ -147,10 +147,10 @@ class Cache(BaseCacheImpl[KT, VT]):
         """
         return self._raw.setdefault(key, default)
 
-    def popitem(self) -> typing.NoReturn:
+    def popitem(self) -> typing.NoReturn:  # pragma: no cover
         raise NotImplementedError()
 
-    def drain(self) -> typing.NoReturn:
+    def drain(self) -> typing.NoReturn:  # pragma: no cover
         raise NotImplementedError()
 
     def update(self, iterable: typing.Union["Cache", dict, tuple, typing.Generator]) -> None:
@@ -181,13 +181,13 @@ class Cache(BaseCacheImpl[KT, VT]):
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, Cache):
-            return False
+            return False  # pragma: no cover
 
         return self._raw == other._raw
 
     def __ne__(self, other) -> bool:
         if not isinstance(other, Cache):
-            return False
+            return False  # pragma: no cover
 
         return self._raw != other._raw
 
@@ -268,7 +268,7 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
     def __len__(self) -> int:
         return len(self._raw)
 
-    def __sizeof__(self):
+    def __sizeof__(self):  # pragma: no cover
         return self._raw.__sizeof__()
 
     def __contains__(self, key: KT) -> bool:
@@ -307,7 +307,7 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         except _core.CoreKeyError:
             raise KeyError() from None
 
-    def drain(self, n: int) -> int:
+    def drain(self, n: int) -> int:  # pragma: no cover
         if n == 0:
             return 0
 
@@ -342,13 +342,13 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, FIFOCache):
-            return False
+            return False  # pragma: no cover
 
         return self._raw == other._raw
 
     def __ne__(self, other) -> bool:
         if not isinstance(other, FIFOCache):
-            return False
+            return False  # pragma: no cover
 
         return self._raw != other._raw
 

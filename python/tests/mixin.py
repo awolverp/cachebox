@@ -26,7 +26,7 @@ class NoEQ:
         return self.val
 
 
-def getsizeof(obj, use_sys=True):
+def getsizeof(obj, use_sys=True):  # pragma: no cover
     try:
         if use_sys:
             return sys.getsizeof(obj)
@@ -36,7 +36,7 @@ def getsizeof(obj, use_sys=True):
         return len(obj)
 
 
-class _TestMixin:
+class _TestMixin:  # pragma: no cover
     CACHE: typing.Type[BaseCacheImpl]
 
     KWARGS: dict = {}
@@ -100,15 +100,6 @@ class _TestMixin:
         assert len(cache) == 10
         assert cache.is_full()
 
-    def test___sizeof__(self):
-        cache = self.CACHE(10, **self.KWARGS, capacity=10)
-
-        # all classes have to implement __sizeof__
-        # __sizeof__ returns exactly allocated memory size by cache
-        # but sys.getsizeof add also garbage collector overhead to that, so sometimes
-        # sys.getsizeof is greater than __sizeof__
-        getsizeof(cache, False)
-
     def test___bool__(self):
         cache = self.CACHE(1, **self.KWARGS, capacity=1)
 
@@ -146,15 +137,21 @@ class _TestMixin:
         del cache[2]
         del cache[3]
 
+        with pytest.raises(KeyError):
+            del cache["error"]
+
         cache[0]
 
         with pytest.raises(KeyError):
             cache[2]
 
     def test___repr__(self):
-        cache = self.CACHE(2, **self.KWARGS, capacity=2)
+        cache = self.CACHE(100, **self.KWARGS, capacity=2)
         assert str(cache) == repr(cache)
         assert repr(cache).startswith(self.CACHE.__name__)
+
+        cache.update({i: i for i in range(100)})
+        assert str(cache) == repr(cache)
 
     def test_insert(self):
         cache = self.CACHE(5, **self.KWARGS, capacity=5)

@@ -2,17 +2,16 @@ use crate::common::Entry;
 use crate::common::ObservedIterator;
 use crate::common::PreHashObject;
 
-/// A simple cache that has no algorithm; this is only a hashmap.
-///
-/// `Cache` vs `dict`:
-/// - it is thread-safe and unordered, while `dict` isn't thread-safe and ordered (Python 3.6+).
-/// - it uses very lower memory than `dict`.
-/// - it supports useful and new methods for managing memory, while `dict` does not.
-/// - it does not support `popitem`, while `dict` does.
-/// - You can limit the size of [`Cache`], but you cannot for `dict`.
 #[pyo3::pyclass(module = "cachebox._core", frozen)]
 pub struct Cache {
     raw: parking_lot::Mutex<crate::policies::nopolicy::NoPolicy>,
+}
+
+#[allow(non_camel_case_types)]
+#[pyo3::pyclass(module = "cachebox._core")]
+pub struct cache_items {
+    pub ptr: ObservedIterator,
+    pub iter: parking_lot::Mutex<hashbrown::raw::RawIter<(PreHashObject, pyo3::PyObject)>>,
 }
 
 #[pyo3::pymethods]
@@ -86,18 +85,13 @@ impl Cache {
         }
     }
 
-    fn get(
-        &self,
-        py: pyo3::Python<'_>,
-        key: pyo3::PyObject,
-        default: pyo3::PyObject,
-    ) -> pyo3::PyResult<pyo3::PyObject> {
+    fn get(&self, py: pyo3::Python<'_>, key: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
         let key = PreHashObject::from_pyobject(py, key)?;
         let lock = self.raw.lock();
 
         match lock.lookup(py, &key)? {
             Some(val) => Ok(val.clone_ref(py)),
-            None => Ok(default),
+            None => Err(pyo3::PyErr::new::<super::CoreKeyError, _>(key.obj)),
         }
     }
 
@@ -119,29 +113,25 @@ impl Cache {
         other: pyo3::PyObject,
         op: pyo3::class::basic::CompareOp,
     ) -> pyo3::PyResult<bool> {
-        let other = match other.extract::<pyo3::PyRef<'_, Self>>(slf.py()) {
-            Ok(o) => o,
-            Err(_) => return Ok(false),
-        };
+        let other = other.extract::<pyo3::PyRef<'_, Self>>(slf.py())?;
 
         match op {
             pyo3::class::basic::CompareOp::Eq => {
                 if slf.as_ptr() == other.as_ptr() {
                     return Ok(true);
                 }
-
                 let t1 = slf.raw.lock();
                 let t2 = other.raw.lock();
-                t1.equal(slf.py(), &*t2)
+                t1.equal(slf.py(), &t2)
             }
             pyo3::class::basic::CompareOp::Ne => {
-                if slf.as_ptr() != other.as_ptr() {
-                    return Ok(true);
+                if slf.as_ptr() == other.as_ptr() {
+                    return Ok(false);
                 }
 
                 let t1 = slf.raw.lock();
                 let t2 = other.raw.lock();
-                t1.equal(slf.py(), &*t2).map(|r| !r)
+                t1.equal(slf.py(), &t2).map(|r| !r)
             }
             _ => Err(pyo3::PyErr::new::<pyo3::exceptions::PyTypeError, _>(
                 "only '==' or '!=' are supported",
@@ -149,12 +139,7 @@ impl Cache {
         }
     }
 
-    fn pop(
-        &self,
-        py: pyo3::Python<'_>,
-        key: pyo3::PyObject,
-        default: pyo3::PyObject,
-    ) -> pyo3::PyResult<pyo3::PyObject> {
+    fn remove(&self, py: pyo3::Python<'_>, key: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
         let key = PreHashObject::from_pyobject(py, key)?;
         let mut lock = self.raw.lock();
 
@@ -163,7 +148,7 @@ impl Cache {
                 let (_, value) = entry.remove();
                 Ok(value)
             }
-            Entry::Absent(_) => Ok(default),
+            Entry::Absent(_) => Err(pyo3::PyErr::new::<super::CoreKeyError, _>(key.obj)),
         }
     }
 
@@ -238,7 +223,6 @@ impl Cache {
                 let maxsize = pyo3::ffi::PyLong_FromSize_t(lock.maxsize());
                 let capacity = pyo3::ffi::PyLong_FromSize_t(lock.capacity());
 
-                #[allow(unused_unsafe)]
                 tuple!(
                     py,
                     3,
@@ -269,13 +253,6 @@ impl Cache {
         let mut lock = self.raw.lock();
         lock.clear()
     }
-}
-
-#[allow(non_camel_case_types)]
-#[pyo3::pyclass(module = "cachebox._core")]
-pub struct cache_items {
-    pub ptr: ObservedIterator,
-    pub iter: parking_lot::Mutex<hashbrown::raw::RawIter<(PreHashObject, pyo3::PyObject)>>,
 }
 
 #[pyo3::pymethods]

@@ -1,6 +1,7 @@
 //! The FIFO policy, This is inspired by Rust's indexmap with some changes.
 
 use crate::common::Entry;
+use crate::common::NoLifetimeSliceIter;
 use crate::common::Observed;
 use crate::common::PreHashObject;
 use crate::common::TryFindMethods;
@@ -38,6 +39,11 @@ pub struct FIFOPolicyOccupied<'a> {
 
 pub struct FIFOPolicyAbsent<'a> {
     instance: &'a mut FIFOPolicy,
+}
+
+pub struct FIFOIterator {
+    first: NoLifetimeSliceIter<(PreHashObject, pyo3::PyObject)>,
+    second: NoLifetimeSliceIter<(PreHashObject, pyo3::PyObject)>,
 }
 
 impl FIFOPolicy {
@@ -200,10 +206,111 @@ impl FIFOPolicy {
         self.observed.change();
     }
 
+    #[inline]
     pub fn entries_iter(
         &self,
     ) -> std::collections::vec_deque::Iter<'_, (PreHashObject, pyo3::PyObject)> {
         self.entries.iter()
+    }
+
+    pub fn equal(&self, py: pyo3::Python<'_>, other: &Self) -> pyo3::PyResult<bool> {
+        if self.maxsize != other.maxsize {
+            return Ok(false);
+        }
+
+        if self.entries.len() != other.entries.len() {
+            return Ok(false);
+        }
+
+        for index in 0..self.entries.len() {
+            let (key1, value1) = &self.entries[index];
+            let (key2, value2) = &other.entries[index];
+
+            if key1.hash != key2.hash
+                || !key1.equal(py, key2)?
+                || !crate::common::pyobject_equal(py, value1.as_ptr(), value2.as_ptr())?
+            {
+                return Ok(false);
+            }
+        }
+
+        Ok(true)
+    }
+
+    pub fn extend(&mut self, py: pyo3::Python<'_>, iterable: pyo3::PyObject) -> pyo3::PyResult<()> {
+        use pyo3::types::{PyAnyMethods, PyDictMethods};
+
+        if unsafe { pyo3::ffi::PyDict_CheckExact(iterable.as_ptr()) == 1 } {
+            let dict = unsafe {
+                iterable
+                    .downcast_bound::<pyo3::types::PyDict>(py)
+                    .unwrap_unchecked()
+            };
+
+            for (key, value) in dict.iter() {
+                let hk =
+                    unsafe { PreHashObject::from_pyobject(py, key.unbind()).unwrap_unchecked() };
+
+                match self.entry(py, &hk)? {
+                    Entry::Occupied(mut entry) => {
+                        entry.update(value.unbind())?;
+                    }
+                    Entry::Absent(entry) => {
+                        entry.insert(py, hk, value.unbind())?;
+                    }
+                }
+            }
+        } else {
+            for pair in iterable.bind(py).try_iter()? {
+                let (key, value) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject)>()?;
+
+                let hk = PreHashObject::from_pyobject(py, key)?;
+
+                match self.entry(py, &hk)? {
+                    Entry::Occupied(mut entry) => {
+                        entry.update(value)?;
+                    }
+                    Entry::Absent(entry) => {
+                        entry.insert(py, hk, value)?;
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    #[inline(always)]
+    pub fn iter(&self) -> FIFOIterator {
+        let (a, b) = self.entries.as_slices();
+
+        FIFOIterator {
+            first: NoLifetimeSliceIter::new(a),
+            second: NoLifetimeSliceIter::new(b),
+        }
+    }
+
+    #[allow(clippy::wrong_self_convention)]
+    pub fn from_pickle(
+        &mut self,
+        py: pyo3::Python<'_>,
+        state: *mut pyo3::ffi::PyObject,
+    ) -> pyo3::PyResult<()> {
+        unsafe {
+            tuple!(check state, size=3)?;
+            let (maxsize, iterable, capacity) = extract_pickle_tuple!(py, state);
+
+            let mut new = Self::new(maxsize, capacity)?;
+            new.extend(py, iterable)?;
+
+            *self = new;
+            Ok(())
+        }
+    }
+
+    #[inline(always)]
+    pub fn get_index(&self, n: usize) -> Option<&(PreHashObject, pyo3::PyObject)> {
+        self.entries.get(n)
     }
 }
 
@@ -213,7 +320,10 @@ impl<'a> FIFOPolicyOccupied<'a> {
         let index = unsafe { self.bucket.as_ref() };
         let item = &mut self.instance.entries[index - self.instance.n_shifts];
         let old_value = std::mem::replace(&mut item.1, value);
-        self.instance.observed.change();
+
+        // In update we don't need to change this; because this does not change the memory address ranges
+        // self.instance.observed.change();
+
         Ok(old_value)
     }
 
@@ -221,7 +331,7 @@ impl<'a> FIFOPolicyOccupied<'a> {
     pub fn remove(self) -> (PreHashObject, pyo3::PyObject) {
         // let (PreHashObject { hash, .. }, _) = &self.instance.entries[self.index - self.instance.n_shifts];
         let (mut index, _) = unsafe { self.instance.table.remove(self.bucket) };
-        index = index - self.instance.n_shifts;
+        index -= self.instance.n_shifts;
 
         self.instance
             .decrement_indexes(index + 1, self.instance.entries.len());
@@ -239,7 +349,7 @@ impl<'a> FIFOPolicyOccupied<'a> {
     }
 }
 
-impl<'a> FIFOPolicyAbsent<'a> {
+impl FIFOPolicyAbsent<'_> {
     #[inline]
     pub fn insert(
         self,
@@ -266,3 +376,19 @@ impl<'a> FIFOPolicyAbsent<'a> {
         Ok(())
     }
 }
+
+impl Iterator for FIFOIterator {
+    type Item = std::ptr::NonNull<(PreHashObject, pyo3::PyObject)>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.first.next() {
+            Some(val) => Some(val),
+            None => {
+                core::mem::swap(&mut self.first, &mut self.second);
+                self.first.next()
+            }
+        }
+    }
+}
+
+unsafe impl Send for FIFOIterator {}

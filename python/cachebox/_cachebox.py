@@ -6,29 +6,26 @@ KT = typing.TypeVar("KT")
 VT = typing.TypeVar("VT")
 DT = typing.TypeVar("DT")
 
-_sential = object()
 
-
-def _items_to_str(items, length, max_len=50):
-    if length <= max_len:
+def _items_to_str(items, length):
+    if length <= 50:
         return "{" + ", ".join(f"{k}: {v}" for k, v in items) + "}"
 
     c = 0
     left = []
-    right = []
 
     while c < length:
         k, v = next(items)
 
-        if c <= 20:
+        if c <= 50:
             left.append(f"{k}: {v}")
 
-        elif (length - c) <= 20:
-            right.append(f"{k}: {v}")
+        else:
+            break
 
         c += 1
 
-    return "{" + ", ".join(left) + " ... truncated ... " + ", ".join(right) + "}"
+    return "{%s, ... %d more ...}" % (", ".join(left), length - c)
 
 
 class BaseCacheImpl(typing.Generic[KT, VT]):
@@ -129,13 +126,19 @@ class Cache(BaseCacheImpl[KT, VT]):
 
     def get(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """Equals to `self[key]`, but returns `default` if the cache don't have this key present."""
-        return self._raw.get(key, default)
+        try:
+            return self._raw.get(key)
+        except _core.CoreKeyError:
+            return default
 
     def pop(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
         Removes specified key and return the corresponding value. If the key is not found, returns the `default`.
         """
-        return self._raw.pop(key, default)
+        try:
+            return self._raw.remove(key)
+        except _core.CoreKeyError:
+            return default
 
     def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
@@ -165,22 +168,28 @@ class Cache(BaseCacheImpl[KT, VT]):
         self.insert(key, value)
 
     def __getitem__(self, key: KT) -> VT:
-        val = self._raw.get(key, _sential)
-        if val is _sential:
-            raise KeyError(key)
-
-        return val
+        try:
+            return self._raw.get(key)
+        except _core.CoreKeyError:
+            raise KeyError(key) from None
 
     def __delitem__(self, key: KT) -> None:
-        val = self._raw.pop(key, _sential)
-        if val is _sential:
-            raise KeyError(key)
+        try:
+            self._raw.remove(key)
+        except _core.CoreKeyError:
+            raise KeyError(key) from None
 
     def __eq__(self, other) -> bool:
-        return self._raw == other
+        if not isinstance(other, Cache):
+            return False
+
+        return self._raw == other._raw
 
     def __ne__(self, other) -> bool:
-        return self._raw != other
+        if not isinstance(other, Cache):
+            return False
+
+        return self._raw != other._raw
 
     def shrink_to_fit(self) -> None:
         """Shrinks the cache to fit len(self) elements."""
@@ -278,16 +287,25 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         return self._raw.insert(key, value)
 
     def get(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
-        return self._raw.get(key, default)
+        try:
+            return self._raw.get(key)
+        except _core.CoreKeyError:
+            return default
 
     def pop(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
-        return self._raw.pop(key, default)
+        try:
+            return self._raw.remove(key)
+        except _core.CoreKeyError:
+            return default
 
     def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         return self._raw.setdefault(key, default)
 
     def popitem(self) -> typing.Tuple[KT, VT]:
-        return self._raw.popitem()
+        try:
+            return self._raw.popitem()
+        except _core.CoreKeyError:
+            raise KeyError() from None
 
     def drain(self, n: int) -> int:
         if n == 0:
@@ -296,7 +314,7 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         for i in range(n):
             try:
                 self._raw.popitem()
-            except KeyError:
+            except _core.CoreKeyError:
                 return i
 
         return i
@@ -311,22 +329,28 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         self.insert(key, value)
 
     def __getitem__(self, key: KT) -> VT:
-        val = self._raw.get(key, _sential)
-        if val is _sential:
-            raise KeyError(key)
-
-        return val
+        try:
+            return self._raw.get(key)
+        except _core.CoreKeyError:
+            raise KeyError(key) from None
 
     def __delitem__(self, key: KT) -> None:
-        val = self._raw.pop(key, _sential)
-        if val is _sential:
-            raise KeyError(key)
+        try:
+            self._raw.remove(key)
+        except _core.CoreKeyError:
+            raise KeyError(key) from None
 
     def __eq__(self, other) -> bool:
-        return self._raw == other
+        if not isinstance(other, FIFOCache):
+            return False
+
+        return self._raw == other._raw
 
     def __ne__(self, other) -> bool:
-        return self._raw != other
+        if not isinstance(other, FIFOCache):
+            return False
+
+        return self._raw != other._raw
 
     def shrink_to_fit(self) -> None:
         self._raw.shrink_to_fit()
@@ -342,6 +366,18 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
 
     def values(self) -> IteratorView[VT]:
         return IteratorView(self._raw.items(), lambda x: x[1])
+
+    def first(self, n: int = 0) -> typing.Optional[KT]:
+        if n < 0:
+            n = len(self._raw) + n
+
+        if n < 0:
+            return None
+
+        return self._raw.get_index(n)
+
+    def last(self) -> typing.Optional[KT]:
+        return self._raw.get_index(len(self._raw) - 1)
 
     def __iter__(self) -> IteratorView[KT]:
         return self.keys()

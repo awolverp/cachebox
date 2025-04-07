@@ -4,7 +4,7 @@ pub fn pyobject_equal(
     arg2: *mut pyo3::ffi::PyObject,
 ) -> pyo3::PyResult<bool> {
     unsafe {
-        if std::ptr::eq(arg1, arg2) {
+        if std::ptr::addr_eq(arg1, arg2) {
             return Ok(true);
         }
 
@@ -46,10 +46,12 @@ macro_rules! tuple {
         $len:expr,
         $($index:expr => $value:expr,)+
     ) => {{
+        #[allow(unused_unsafe)]
         let tuple = unsafe { pyo3::ffi::PyTuple_New($len) };
         if tuple.is_null() {
             Err(pyo3::PyErr::fetch($py))
         } else {
+            #[allow(unused_unsafe)]
             unsafe {
                 $(
                     pyo3::ffi::PyTuple_SetItem(tuple, $index, $value);
@@ -61,6 +63,7 @@ macro_rules! tuple {
     }};
 
     (check $tuple:expr, size=$size:expr) => {{
+        #[allow(unused_unsafe)]
         if unsafe { pyo3::ffi::PyTuple_CheckExact($tuple) } == 0 {
             Err(
                 pyo3::PyErr::new::<pyo3::exceptions::PyTypeError, _>("expected tuple, but got another type")
@@ -116,8 +119,9 @@ macro_rules! extract_pickle_tuple {
 ///
 /// This function ensures a bijective mapping between isize and u64, preserving the order of values
 /// by offsetting negative values to the upper range of u64.
+#[inline(always)]
 fn convert_isize_to_u64(v: &isize) -> u64 {
-    const OFFSET: u64 = 1 << 63;
+    const OFFSET: u64 = 0x8000000000000000; // 1 << 63
 
     if *v >= 0 {
         *v as u64
@@ -314,3 +318,36 @@ impl Drop for ObservedIterator {
 
 unsafe impl Send for ObservedIterator {}
 unsafe impl Sync for ObservedIterator {}
+
+pub struct NoLifetimeSliceIter<T> {
+    pub pointer: std::ptr::NonNull<T>,
+    pub index: usize,
+    pub len: usize,
+}
+
+impl<T> NoLifetimeSliceIter<T> {
+    #[inline]
+    pub fn new(slice: &[T]) -> Self {
+        let pointer: std::ptr::NonNull<T> = std::ptr::NonNull::from(slice).cast();
+
+        Self {
+            pointer,
+            index: 0,
+            len: slice.len(),
+        }
+    }
+}
+
+impl<T> Iterator for NoLifetimeSliceIter<T> {
+    type Item = std::ptr::NonNull<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.len {
+            None
+        } else {
+            let value = unsafe { self.pointer.add(self.index) };
+            self.index += 1;
+            Some(value)
+        }
+    }
+}

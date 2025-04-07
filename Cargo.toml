@@ -41,6 +41,9 @@ version = "1.0.0"
 version = "0.12.3"
 default-features = false
 
+[profile.release.package."*"]
+codegen-units = 1 # better optimizations
+
 [build-dependencies.pyo3-build-config]
 version = "0.24.1"
 features = ["resolve-config"]

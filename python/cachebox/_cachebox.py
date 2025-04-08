@@ -510,7 +510,7 @@ class RRCache(BaseCacheImpl[KT, VT]):
             - The cache size limit is immutable after initialization.
             - If an iterable is provided, the cache will be populated using the update method.
         """
-        self._raw = _core.FIFOCache(maxsize, capacity=capacity)
+        self._raw = _core.RRCache(maxsize, capacity=capacity)
 
         if iterable is not None:
             self.update(iterable)

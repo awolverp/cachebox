@@ -1,6 +1,7 @@
 from cachebox import (
     Cache,
     FIFOCache,
+    RRCache,
 )
 import pytest
 from .mixin import _TestMixin
@@ -90,3 +91,12 @@ class TestFIFOCache(_TestMixin):
         assert obj.last() == 10
         assert obj.first(-1) == obj.last()
         assert obj.first(-10000) is None
+
+
+
+class TestRRCache(_TestMixin):
+    CACHE = RRCache
+
+    def test_pickle(self):
+        self._test_pickle(lambda c1, c2: None)
+

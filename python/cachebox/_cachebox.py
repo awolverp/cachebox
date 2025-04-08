@@ -479,3 +479,207 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
             self._raw.maxsize(),
             _items_to_str(self._raw.items(), len(self._raw)),
         )
+
+
+class RRCache(BaseCacheImpl[KT, VT]):
+    """
+    A thread-safe cache implementation with Random Replacement (RR) policy.
+
+    This cache randomly selects and removes elements when the cache reaches its maximum size,
+    ensuring a simple and efficient caching mechanism with configurable capacity.
+
+    Supports operations like insertion, retrieval, deletion, and iteration with O(1) complexity.
+    """
+
+    def __init__(
+        self,
+        maxsize: int,
+        iterable: typing.Union[typing.Union[dict, typing.Iterable[tuple]], None] = None,
+        *,
+        capacity: int = 0,
+    ) -> None:
+        """
+        Initialize a new RRCache instance.
+
+        Args:
+            maxsize (int): Maximum size of the cache. A value of zero means unlimited capacity.
+            iterable (dict or Iterable[tuple], optional): Initial data to populate the cache. Defaults to None.
+            capacity (int, optional): Preallocated capacity for the cache to minimize reallocations. Defaults to 0.
+
+        Note:
+            - The cache size limit is immutable after initialization.
+            - If an iterable is provided, the cache will be populated using the update method.
+        """
+        self._raw = _core.FIFOCache(maxsize, capacity=capacity)
+
+        if iterable is not None:
+            self.update(iterable)
+
+    @property
+    def maxsize(self) -> int:
+        return self._raw.maxsize()
+
+    def capacity(self) -> int:
+        """Returns the number of elements the map can hold without reallocating."""
+        return self._raw.capacity()
+
+    def __len__(self) -> int:
+        return len(self._raw)
+
+    def __sizeof__(self):  # pragma: no cover
+        return self._raw.__sizeof__()
+
+    def __contains__(self, key: KT) -> bool:
+        return key in self._raw
+
+    def __bool__(self) -> bool:
+        return not self.is_empty()
+
+    def is_empty(self) -> bool:
+        return self._raw.is_empty()
+
+    def is_full(self) -> bool:
+        return self._raw.is_full()
+
+    def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
+        """
+        Equals to `self[key] = value`, but returns a value:
+
+        - If the cache did not have this key present, None is returned.
+        - If the cache did have this key present, the value is updated,
+          and the old value is returned. The key is not updated, though;
+        """
+        return self._raw.insert(key, value)
+
+    def get(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
+        """
+        Equals to `self[key]`, but returns `default` if the cache don't have this key present.
+        """
+        try:
+            return self._raw.get(key)
+        except _core.CoreKeyError:
+            return default
+
+    def pop(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
+        """
+        Removes specified key and return the corresponding value. If the key is not found, returns the `default`.
+        """
+        try:
+            return self._raw.remove(key)
+        except _core.CoreKeyError:
+            return default
+
+    def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
+        """
+        Inserts key with a value of default if key is not in the cache.
+
+        Return the value for key if key is in the cache, else default.
+        """
+        return self._raw.setdefault(key, default)
+
+    def popitem(self) -> typing.Tuple[KT, VT]:
+        """Randomly selects and removes a (key, value) pair from the cache."""
+        try:
+            return self._raw.popitem()
+        except _core.CoreKeyError:
+            raise KeyError() from None
+
+    def drain(self, n: int) -> int:  # pragma: no cover
+        """Does the `popitem()` `n` times and returns count of removed items."""
+        if n <= 0:
+            return 0
+
+        for i in range(n):
+            try:
+                self._raw.popitem()
+            except _core.CoreKeyError:
+                return i
+
+        return i
+
+    def update(self, iterable: typing.Union[dict, typing.Iterable[tuple]]) -> None:
+        """Updates the cache with elements from a dictionary or an iterable object of key/value pairs."""
+        if hasattr(iterable, "items"):
+            iterable = iterable.items()
+
+        self._raw.update(iterable)
+
+    def __setitem__(self, key: KT, value: VT) -> None:
+        self.insert(key, value)
+
+    def __getitem__(self, key: KT) -> VT:
+        try:
+            return self._raw.get(key)
+        except _core.CoreKeyError:
+            raise KeyError(key) from None
+
+    def __delitem__(self, key: KT) -> None:
+        try:
+            self._raw.remove(key)
+        except _core.CoreKeyError:
+            raise KeyError(key) from None
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, RRCache):
+            return False  # pragma: no cover
+
+        return self._raw == other._raw
+
+    def __ne__(self, other) -> bool:
+        if not isinstance(other, RRCache):
+            return False  # pragma: no cover
+
+        return self._raw != other._raw
+
+    def shrink_to_fit(self) -> None:
+        """Shrinks the cache to fit len(self) elements."""
+        self._raw.shrink_to_fit()
+
+    def clear(self, *, reuse: bool = False) -> None:
+        """
+        Removes all items from cache.
+
+        If reuse is True, will not free the memory for reusing in the future.
+        """
+        self._raw.clear(reuse)
+
+    def items(self) -> IteratorView[typing.Tuple[KT, VT]]:
+        """
+        Returns an iterable object of the cache's items (key-value pairs).
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        - Items are not ordered.
+        """
+        return IteratorView(self._raw.items(), lambda x: x)
+
+    def keys(self) -> IteratorView[KT]:
+        """
+        Returns an iterable object of the cache's keys.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        - Keys are not ordered.
+        """
+        return IteratorView(self._raw.items(), lambda x: x[0])
+
+    def values(self) -> IteratorView[VT]:
+        """
+        Returns an iterable object of the cache's values.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        - Values are not ordered.
+        """
+        return IteratorView(self._raw.items(), lambda x: x[1])
+
+    def __iter__(self) -> IteratorView[KT]:
+        return self.keys()
+
+    def __repr__(self) -> str:
+        return "{}[{}/{}]({})".format(
+            type(self).__name__,
+            len(self._raw),
+            self._raw.maxsize(),
+            _items_to_str(self._raw.items(), len(self._raw)),
+        )

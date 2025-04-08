@@ -232,15 +232,19 @@ impl<T> TryFindMethods<T> for hashbrown::raw::RawTable<T> {
     ) -> Result<Result<hashbrown::raw::Bucket<T>, hashbrown::raw::InsertSlot>, E> {
         let mut error = None;
 
-        let found = self.find_or_find_insert_slot(hash, |item| {
-            match compare(item) {
-                Ok(boolean) => boolean,
-                Err(e) => {
-                    error = Some(e);
-                    true // To break checking
+        let found = self.find_or_find_insert_slot(
+            hash,
+            |item| {
+                match compare(item) {
+                    Ok(boolean) => boolean,
+                    Err(e) => {
+                        error = Some(e);
+                        true // To break checking
+                    }
                 }
-            }
-        }, hasher);
+            },
+            hasher,
+        );
 
         if let Some(error) = error {
             Err(error)
@@ -252,19 +256,23 @@ impl<T> TryFindMethods<T> for hashbrown::raw::RawTable<T> {
 
 /// Observe caches' changes
 #[derive(Debug)]
-pub struct Observed(u16);
+pub struct Observed(std::num::NonZeroU16);
 
 impl Observed {
     pub fn new() -> Self {
-        Self(0)
+        Self(unsafe { std::num::NonZeroU16::new_unchecked(1) })
     }
 
     pub fn change(&mut self) {
-        self.0 = self.0.saturating_add(1);
+        self.0 = self
+            .0
+            .checked_add(1)
+            .or_else(|| Some(unsafe { std::num::NonZeroU16::new_unchecked(1) }))
+            .unwrap();
     }
 
     pub fn get(&self) -> u16 {
-        self.0
+        self.0.get()
     }
 }
 

@@ -42,11 +42,6 @@ dynamic = [
 Homepage = 'https://github.com/awolverp/cachebox'
 
 [project.optional-dependencies]
-tests = [
-    "pytest",
-    "pytest-asyncio",
-    "coverage",
-]
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"

@@ -67,7 +67,7 @@ impl RandomPolicy {
         if self.table.is_empty() {
             Ok(None)
         } else {
-            let nth = fastrand::usize(0..self.table.buckets());
+            let nth = fastrand::usize(0..self.table.len());
 
             let bucket = unsafe { self.table.iter().nth(nth).unwrap_unchecked() };
             let (x, _) = unsafe { self.table.remove(bucket) };

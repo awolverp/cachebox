@@ -37,12 +37,13 @@ features = ["macros", "extension-module"]
 [dependencies.cfg-if]
 version = "1.0.0"
 
-[dependencies.parking_lot]
-version = "0.12.3"
+[dependencies.parking_lot_core]
+version = "0.9.10"
 default-features = false
 
-[profile.release.package."*"]
-codegen-units = 1 # better optimizations
+[dependencies.lock_api]
+version = "0.4.12"
+default-features = false
 
 [build-dependencies.pyo3-build-config]
 version = "0.24.1"

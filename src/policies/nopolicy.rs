@@ -232,12 +232,10 @@ impl<'a> NoPolicyOccupied<'a> {
     #[inline]
     pub fn update(&mut self, value: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
         unsafe {
-            let old_value = std::mem::replace(&mut self.bucket.as_mut().1, value);
-
             // In update we don't need to change this; because this does not change the memory address ranges
             // self.instance.observed.change();
 
-            Ok(old_value)
+            Ok(std::mem::replace(&mut self.bucket.as_mut().1, value))
         }
     }
 

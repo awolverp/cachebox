@@ -1,10 +1,11 @@
+#[inline(always)]
 pub fn pyobject_equal(
     py: pyo3::Python<'_>,
     arg1: *mut pyo3::ffi::PyObject,
     arg2: *mut pyo3::ffi::PyObject,
 ) -> pyo3::PyResult<bool> {
     unsafe {
-        if std::ptr::addr_eq(arg1, arg2) {
+        if std::ptr::eq(arg1, arg2) {
             return Ok(true);
         }
 

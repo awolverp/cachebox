@@ -4,14 +4,14 @@ use crate::common::PreHashObject;
 
 #[pyo3::pyclass(module = "cachebox._core", frozen)]
 pub struct Cache {
-    raw: parking_lot::Mutex<crate::policies::nopolicy::NoPolicy>,
+    raw: crate::mutex::Mutex<crate::policies::nopolicy::NoPolicy>,
 }
 
 #[allow(non_camel_case_types)]
 #[pyo3::pyclass(module = "cachebox._core")]
 pub struct cache_items {
     pub ptr: ObservedIterator,
-    pub iter: parking_lot::Mutex<hashbrown::raw::RawIter<(PreHashObject, pyo3::PyObject)>>,
+    pub iter: crate::mutex::Mutex<hashbrown::raw::RawIter<(PreHashObject, pyo3::PyObject)>>,
 }
 
 #[pyo3::pymethods]
@@ -22,7 +22,7 @@ impl Cache {
         let raw = crate::policies::nopolicy::NoPolicy::new(maxsize, capacity)?;
 
         let self_ = Self {
-            raw: parking_lot::Mutex::new(raw),
+            raw: crate::mutex::Mutex::new(raw),
         };
         Ok(self_)
     }
@@ -194,7 +194,7 @@ impl Cache {
 
         let result = cache_items {
             ptr: ObservedIterator::new(slf.as_ptr(), state),
-            iter: parking_lot::Mutex::new(iter),
+            iter: crate::mutex::Mutex::new(iter),
         };
 
         pyo3::Py::new(slf.py(), result)

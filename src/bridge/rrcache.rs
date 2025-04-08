@@ -5,7 +5,7 @@ use crate::common::PreHashObject;
 
 #[pyo3::pyclass(module = "cachebox._core", frozen)]
 pub struct RRCache {
-    raw: parking_lot::Mutex<crate::policies::random::RandomPolicy>,
+    raw: crate::mutex::Mutex<crate::policies::random::RandomPolicy>,
 }
 
 #[pyo3::pymethods]
@@ -16,7 +16,7 @@ impl RRCache {
         let raw = crate::policies::random::RandomPolicy::new(maxsize, capacity)?;
 
         let self_ = Self {
-            raw: parking_lot::Mutex::new(raw),
+            raw: crate::mutex::Mutex::new(raw),
         };
         Ok(self_)
     }
@@ -197,7 +197,7 @@ impl RRCache {
 
         let result = cache_items {
             ptr: ObservedIterator::new(slf.as_ptr(), state),
-            iter: parking_lot::Mutex::new(iter),
+            iter: crate::mutex::Mutex::new(iter),
         };
 
         pyo3::Py::new(slf.py(), result)

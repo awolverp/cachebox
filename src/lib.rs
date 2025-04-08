@@ -1,5 +1,7 @@
 use pyo3::prelude::*;
 
+mod mutex;
+
 #[macro_use]
 mod common;
 

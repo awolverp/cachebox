@@ -1,5 +1,3 @@
-//! The FIFO policy, This is inspired by Rust's indexmap with some changes.
-
 use crate::common::Entry;
 use crate::common::NoLifetimeSliceIter;
 use crate::common::Observed;
@@ -86,11 +84,6 @@ impl FIFOPolicy {
     pub fn capacity(&self) -> (usize, usize) {
         (self.table.capacity(), self.entries.capacity())
     }
-
-    // #[inline]
-    // pub fn iter(&self) -> hashbrown::raw::RawIter<(PreHashObject, pyo3::PyObject)> {
-    //     unsafe { self.table.iter() }
-    // }
 
     #[inline]
     fn decrement_indexes(&mut self, start: usize, end: usize) {
@@ -239,19 +232,26 @@ impl FIFOPolicy {
             return Ok(false);
         }
 
-        if self.entries.len() != other.entries.len() {
+        if self.table.len() != other.table.len() {
             return Ok(false);
         }
 
-        for index in 0..self.entries.len() {
-            let (key1, value1) = &self.entries[index];
-            let (key2, value2) = &other.entries[index];
+        unsafe {
+            for index1 in self.table.iter().map(|x| x.as_ref()) {
+                let (key1, value1) = &self.entries[(*index1) - self.n_shifts];
 
-            if key1.hash != key2.hash
-                || !key1.equal(py, key2)?
-                || !crate::common::pyobject_equal(py, value1.as_ptr(), value2.as_ptr())?
-            {
-                return Ok(false);
+                match other.table.try_find(key1.hash, |x| {
+                    key1.equal(py, &other.entries[(*x) - other.n_shifts].0)
+                })? {
+                    Some(bucket) => {
+                        let (_, value2) = &other.entries[(*bucket.as_ref()) - other.n_shifts];
+
+                        if !crate::common::pyobject_equal(py, value1.as_ptr(), value2.as_ptr())? {
+                            return Ok(false);
+                        }
+                    }
+                    None => return Ok(false),
+                }
             }
         }
 

@@ -4,4 +4,5 @@ create_exception!(_core, CoreKeyError, pyo3::exceptions::PyException);
 
 pub mod cache;
 pub mod fifocache;
+pub mod lrucache;
 pub mod rrcache;

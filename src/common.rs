@@ -1,4 +1,4 @@
-#[inline(always)]
+#[inline]
 pub fn pyobject_equal(
     py: pyo3::Python<'_>,
     arg1: *mut pyo3::ffi::PyObject,
@@ -181,6 +181,15 @@ pub enum Entry<O, V> {
     Absent(V),
 }
 
+impl<O, V> Entry<O, V> {
+    pub fn map<T>(self, f: impl FnOnce(O) -> T) -> Option<T> {
+        match self {
+            Entry::Occupied(c) => Some(f(c)),
+            Entry::Absent(_) => None,
+        }
+    }
+}
+
 /// A trait for adding `try_find` and `try_find_entry` methods to [`hashbrown::HashTable`]
 pub trait TryFindMethods<T> {
     /// Searches for an element in the table.
@@ -257,23 +266,23 @@ impl<T> TryFindMethods<T> for hashbrown::raw::RawTable<T> {
 
 /// Observe caches' changes
 #[derive(Debug)]
-pub struct Observed(std::num::NonZeroU16);
+pub struct Observed(u16);
 
 impl Observed {
     pub fn new() -> Self {
-        Self(unsafe { std::num::NonZeroU16::new_unchecked(1) })
+        Self(0)
     }
 
     pub fn change(&mut self) {
-        self.0 = self
-            .0
-            .checked_add(1)
-            .or_else(|| Some(unsafe { std::num::NonZeroU16::new_unchecked(1) }))
-            .unwrap();
+        if self.0 == u16::MAX {
+            self.0 = 0;
+        } else {
+            self.0 = unsafe { self.0.unchecked_add(1) };
+        }
     }
 
     pub fn get(&self) -> u16 {
-        self.0.get()
+        self.0
     }
 }
 

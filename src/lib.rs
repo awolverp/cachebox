@@ -1,5 +1,6 @@
 use pyo3::prelude::*;
 
+mod linked_list;
 mod mutex;
 
 #[macro_use]
@@ -20,6 +21,7 @@ fn _core(py: pyo3::Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<bridge::cache::Cache>()?;
     m.add_class::<bridge::fifocache::FIFOCache>()?;
     m.add_class::<bridge::rrcache::RRCache>()?;
+    m.add_class::<bridge::lrucache::LRUCache>()?;
 
     Ok(())
 }

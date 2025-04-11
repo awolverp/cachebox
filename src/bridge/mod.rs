@@ -1,10 +1,8 @@
-//! bridge Rust cache implementations to Python.
+use pyo3::create_exception;
 
-pub mod baseimpl;
+create_exception!(_core, CoreKeyError, pyo3::exceptions::PyException);
+
 pub mod cache;
 pub mod fifocache;
-pub mod lfucache;
 pub mod lrucache;
 pub mod rrcache;
-pub mod ttlcache;
-pub mod vttlcache;

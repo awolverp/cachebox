@@ -1,16 +1,26 @@
-use crate::hashedkey::HashedKey;
+use crate::common::PreHashObject;
 use std::ptr::NonNull;
 
+/// A doubly-linked list implementation with optional head and tail nodes.
+///
+/// This list maintains references to the first and last nodes, and tracks the total number of elements.
+/// Uses `NonNull` pointers for efficient memory management and allows for constant-time
+/// insertion and deletion at both ends of the list.
 pub struct LinkedList {
     pub head: Option<NonNull<Node>>, // front
     pub tail: Option<NonNull<Node>>, // back
     len: usize,
 }
 
+/// A node in a doubly-linked list, containing a reference to the previous and next nodes,
+/// and storing a key-value pair as its element.
+///
+/// The node uses `NonNull` pointers for efficient memory management and allows for
+/// constant-time insertion and deletion in the linked list.
 pub struct Node {
     pub prev: Option<NonNull<Node>>,
     pub next: Option<NonNull<Node>>,
-    pub element: (HashedKey, pyo3::PyObject),
+    pub element: (PreHashObject, pyo3::PyObject),
 }
 
 impl LinkedList {
@@ -23,12 +33,7 @@ impl LinkedList {
         }
     }
 
-    #[inline]
-    pub fn len(&self) -> usize {
-        self.len
-    }
-
-    pub fn push_back(&mut self, key: HashedKey, val: pyo3::PyObject) -> NonNull<Node> {
+    pub fn push_back(&mut self, key: PreHashObject, val: pyo3::PyObject) -> NonNull<Node> {
         unsafe {
             let node = NonNull::new_unchecked(Box::into_raw(Box::new(Node {
                 prev: None,
@@ -51,7 +56,7 @@ impl LinkedList {
         }
     }
 
-    pub fn pop_front(&mut self) -> Option<(HashedKey, pyo3::PyObject)> {
+    pub fn pop_front(&mut self) -> Option<(PreHashObject, pyo3::PyObject)> {
         unsafe {
             self.head.map(|node| {
                 let boxed_node = Box::from_raw(node.as_ptr());
@@ -77,7 +82,7 @@ impl LinkedList {
         while self.pop_front().is_some() {}
     }
 
-    pub unsafe fn remove(&mut self, node: NonNull<Node>) -> (HashedKey, pyo3::PyObject) {
+    pub unsafe fn remove(&mut self, node: NonNull<Node>) -> (PreHashObject, pyo3::PyObject) {
         let node = Box::from_raw(node.as_ptr());
         let result = node.element;
 
@@ -171,7 +176,7 @@ impl Drop for LinkedList {
     fn drop(&mut self) {
         struct DropGuard<'a>(&'a mut LinkedList);
 
-        impl<'a> Drop for DropGuard<'a> {
+        impl Drop for DropGuard<'_> {
             fn drop(&mut self) {
                 // Continue the same loop we do below. This only runs when a destructor has
                 // panicked. If another one panics this will abort.
@@ -186,8 +191,5 @@ impl Drop for LinkedList {
     }
 }
 
-// because we use it in Mutex
 unsafe impl Sync for Iter {}
-
-// because we use it in Mutex
 unsafe impl Send for Iter {}

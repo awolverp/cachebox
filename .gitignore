@@ -2,4 +2,6 @@
 /target
 __pycache__
 *.so
-/.caches.rs
+/.coverage
+/.pytest_cache
+/htmlcov

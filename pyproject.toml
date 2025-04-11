@@ -1,5 +1,5 @@
 [build-system]
-requires = ["maturin>=1.6,<2.0"]
+requires = ["maturin>=1.8,<2.0"]
 build-backend = "maturin"
 
 [project]
@@ -41,7 +41,12 @@ dynamic = [
 [project.urls]
 Homepage = 'https://github.com/awolverp/cachebox'
 
+[project.optional-dependencies]
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
+
 [tool.maturin]
+python-source = "python"
 features = ["pyo3/extension-module"]
-bindings = 'pyo3'
-module-name = "cachebox._cachebox"
+module-name = "cachebox._core"

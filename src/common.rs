@@ -181,14 +181,14 @@ pub enum Entry<O, V> {
     Absent(V),
 }
 
-impl<O, V> Entry<O, V> {
-    pub fn map<T>(self, f: impl FnOnce(O) -> T) -> Option<T> {
-        match self {
-            Entry::Occupied(c) => Some(f(c)),
-            Entry::Absent(_) => None,
-        }
-    }
-}
+// impl<O, V> Entry<O, V> {
+//     pub fn map<T>(self, f: impl FnOnce(O) -> T) -> Option<T> {
+//         match self {
+//             Entry::Occupied(c) => Some(f(c)),
+//             Entry::Absent(_) => None,
+//         }
+//     }
+// }
 
 /// A trait for adding `try_find` and `try_find_entry` methods to [`hashbrown::HashTable`]
 pub trait TryFindMethods<T> {

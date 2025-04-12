@@ -2,28 +2,29 @@ use crate::common::Entry;
 use crate::common::Observed;
 use crate::common::PreHashObject;
 use crate::common::TryFindMethods;
-use crate::linked_list;
+use crate::lazyheap;
+use std::ptr::NonNull;
 
-type NotNullNode = std::ptr::NonNull<linked_list::Node>;
+type TupleValue = (PreHashObject, pyo3::PyObject, usize);
 
-pub struct LRUPolicy {
-    table: hashbrown::raw::RawTable<NotNullNode>,
-    list: linked_list::LinkedList,
+pub struct LFUPolicy {
+    table: hashbrown::raw::RawTable<NonNull<TupleValue>>,
+    heap: lazyheap::LazyHeap<TupleValue>,
     maxsize: std::num::NonZeroUsize,
     pub observed: Observed,
 }
 
-pub struct LRUPolicyOccupied<'a> {
-    instance: &'a mut LRUPolicy,
-    bucket: hashbrown::raw::Bucket<NotNullNode>,
+pub struct LFUPolicyOccupied<'a> {
+    instance: &'a mut LFUPolicy,
+    bucket: hashbrown::raw::Bucket<NonNull<TupleValue>>,
 }
 
-pub struct LRUPolicyAbsent<'a> {
-    instance: &'a mut LRUPolicy,
+pub struct LFUPolicyAbsent<'a> {
+    instance: &'a mut LFUPolicy,
     insert_slot: Option<hashbrown::raw::InsertSlot>,
 }
 
-impl LRUPolicy {
+impl LFUPolicy {
     #[inline]
     pub fn new(maxsize: usize, mut capacity: usize) -> pyo3::PyResult<Self> {
         let maxsize = non_zero_or!(maxsize, isize::MAX as usize);
@@ -31,7 +32,7 @@ impl LRUPolicy {
 
         Ok(Self {
             table: new_table!(capacity)?,
-            list: linked_list::LinkedList::new(),
+            heap: lazyheap::LazyHeap::new(),
             maxsize,
             observed: Observed::new(),
         })
@@ -62,19 +63,20 @@ impl LRUPolicy {
         self.table.capacity()
     }
 
-    pub fn popitem(&mut self) -> Option<(PreHashObject, pyo3::PyObject)> {
-        let ret = self.list.head?;
+    pub fn popitem(&mut self) -> Option<TupleValue> {
+        self.heap.sort_by(|a, b| a.2.cmp(&b.2));
+        let front = self.heap.front()?;
 
         unsafe {
             self.table
-                .remove_entry((*ret.as_ptr()).element.0.hash, |node| {
-                    core::ptr::eq(node.as_ptr(), ret.as_ptr())
+                .remove_entry(front.as_ref().0.hash, |x| {
+                    std::ptr::eq(x.as_ptr(), front.as_ptr())
                 })
-                .expect("popitem key not found.");
+                .unwrap();
         }
 
         self.observed.change();
-        Some(self.list.pop_front().unwrap())
+        Some(self.heap.pop_front(|a, b| a.2.cmp(&b.2)).unwrap())
     }
 
     #[rustfmt::skip]
@@ -82,21 +84,21 @@ impl LRUPolicy {
         &mut self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Entry<LRUPolicyOccupied, LRUPolicyAbsent>> {
+    ) -> pyo3::PyResult<Entry<LFUPolicyOccupied, LFUPolicyAbsent>> {
         match self
             .table
-            .try_find(key.hash, |x| unsafe { x.as_ref().element.0.equal(py, key) })?
+            .try_find(key.hash, |ptr| unsafe { ptr.as_ref().0.equal(py, key) })?
         {
             Some(bucket) => {
                 Ok(
-                    Entry::Occupied(LRUPolicyOccupied { instance: self, bucket })
-                )
-            }
-            None => {
-                Ok(
-                    Entry::Absent(LRUPolicyAbsent { instance: self, insert_slot: None })
+                    Entry::Occupied(LFUPolicyOccupied { instance: self, bucket })
                 )
             },
+            None => {
+                Ok(
+                    Entry::Absent(LFUPolicyAbsent { instance: self, insert_slot: None })
+                )
+            }
         }
     }
 
@@ -105,24 +107,22 @@ impl LRUPolicy {
         &mut self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Entry<LRUPolicyOccupied, LRUPolicyAbsent>> {
-        match self
-            .table
-            .try_find_or_find_insert_slot(
+    ) -> pyo3::PyResult<Entry<LFUPolicyOccupied, LFUPolicyAbsent>> {
+        match self.table.try_find_or_find_insert_slot(
                 key.hash,
-                |x| unsafe { x.as_ref().element.0.equal(py, key) },
-                |x| unsafe { x.as_ref().element.0.hash }
+                |ptr| unsafe { ptr.as_ref().0.equal(py, key) },
+                |ptr| unsafe { ptr.as_ref().0.hash },
         )? {
             Ok(bucket) => {
                 Ok(
-                    Entry::Occupied(LRUPolicyOccupied { instance: self, bucket })
-                )
-            }
-            Err(slot) => {
-                Ok(
-                    Entry::Absent(LRUPolicyAbsent { instance: self, insert_slot: Some(slot) })
+                    Entry::Occupied(LFUPolicyOccupied { instance: self, bucket })
                 )
             },
+            Err(slot) => {
+                Ok(
+                    Entry::Absent(LFUPolicyAbsent { instance: self, insert_slot: Some(slot) })
+                )
+            }
         }
     }
 
@@ -133,9 +133,10 @@ impl LRUPolicy {
     ) -> pyo3::PyResult<Option<&pyo3::PyObject>> {
         match self.entry(py, key)? {
             Entry::Occupied(x) => unsafe {
-                x.instance.list.move_back(*x.bucket.as_ptr());
+                x.bucket.as_mut().as_mut().2 += 1;
+                x.instance.heap.queue_sort();
 
-                Ok(Some(&x.bucket.as_ref().as_ref().element.1))
+                Ok(Some(&x.bucket.as_ref().as_ref().1))
             },
             Entry::Absent(_) => Ok(None),
         }
@@ -148,8 +149,8 @@ impl LRUPolicy {
     ) -> pyo3::PyResult<Option<&pyo3::PyObject>> {
         let result = self
             .table
-            .try_find(key.hash, |x| unsafe { x.as_ref().element.0.equal(py, key) })?
-            .map(|x| unsafe { &x.as_ref().as_ref().element.1 });
+            .try_find(key.hash, |x| unsafe { x.as_ref().0.equal(py, key) })?
+            .map(|x| unsafe { &x.as_ref().as_ref().1 });
 
         Ok(result)
     }
@@ -157,15 +158,16 @@ impl LRUPolicy {
     #[inline]
     pub fn clear(&mut self) {
         self.table.clear();
-        self.list.clear();
+        self.heap.clear();
         self.observed.change();
     }
 
     #[inline]
     pub fn shrink_to_fit(&mut self) {
         self.table
-            .shrink_to(self.table.len(), |x| unsafe { x.as_ref().element.0.hash });
+            .shrink_to(self.table.len(), |x| unsafe { x.as_ref().0.hash });
 
+        self.heap.shrink_to_fit();
         self.observed.change();
     }
 
@@ -180,14 +182,14 @@ impl LRUPolicy {
 
         unsafe {
             for node in self.table.iter().map(|x| x.as_ref()) {
-                let (key1, value1) = &node.as_ref().element;
+                let (key1, value1, _) = node.as_ref();
 
                 match other
                     .table
-                    .try_find(key1.hash, |x| key1.equal(py, &x.as_ref().element.0))?
+                    .try_find(key1.hash, |x| key1.equal(py, &x.as_ref().0))?
                 {
                     Some(bucket) => {
-                        let (_, value2) = &bucket.as_ref().as_ref().element;
+                        let (_, value2, _) = bucket.as_ref().as_ref();
 
                         if !crate::common::pyobject_equal(py, value1.as_ptr(), value2.as_ptr())? {
                             return Ok(false);
@@ -220,7 +222,7 @@ impl LRUPolicy {
                         entry.update(value.unbind())?;
                     }
                     Entry::Absent(entry) => {
-                        entry.insert(hk, value.unbind())?;
+                        entry.insert(hk, value.unbind(), 0)?;
                     }
                 }
             }
@@ -235,7 +237,7 @@ impl LRUPolicy {
                         entry.update(value)?;
                     }
                     Entry::Absent(entry) => {
-                        entry.insert(hk, value)?;
+                        entry.insert(hk, value, 0)?;
                     }
                 }
             }
@@ -243,83 +245,54 @@ impl LRUPolicy {
 
         Ok(())
     }
-
-    pub fn iter(&self) -> linked_list::Iter {
-        self.list.iter()
-    }
-
-    pub fn least_recently_used(&self) -> Option<&(PreHashObject, pyo3::PyObject)> {
-        self.list.head.map(|x| unsafe { &x.as_ref().element })
-    }
-
-    pub fn most_recently_used(&self) -> Option<&(PreHashObject, pyo3::PyObject)> {
-        self.list.tail.map(|x| unsafe { &x.as_ref().element })
-    }
-
-    #[allow(clippy::wrong_self_convention)]
-    #[inline]
-    pub fn from_pickle(
-        &mut self,
-        py: pyo3::Python<'_>,
-        state: *mut pyo3::ffi::PyObject,
-    ) -> pyo3::PyResult<()> {
-        unsafe {
-            tuple!(check state, size=3)?;
-            let (maxsize, iterable, capacity) = extract_pickle_tuple!(py, state);
-
-            let mut new = Self::new(maxsize, capacity)?;
-            new.extend(py, iterable)?;
-
-            *self = new;
-            Ok(())
-        }
-    }
 }
 
-impl<'a> LRUPolicyOccupied<'a> {
+impl LFUPolicyOccupied<'_> {
     #[inline]
     pub fn update(&mut self, value: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
         let item = unsafe { self.bucket.as_mut() };
         unsafe {
-            self.instance.list.move_back(*item);
+            item.as_mut().2 += 1;
         }
+
+        self.instance.heap.queue_sort();
 
         // In update we don't need to change this; because this does not change the memory address ranges
         // self.instance.observed.change();
 
-        Ok(unsafe { std::mem::replace(&mut item.as_mut().element.1, value) })
+        Ok(unsafe { std::mem::replace(&mut item.as_mut().1, value) })
     }
 
     #[inline]
-    pub fn remove(self) -> (PreHashObject, pyo3::PyObject) {
-        // let (PreHashObject { hash, .. }, _) = &self.instance.entries[self.index - self.instance.n_shifts];
+    pub fn remove(self) -> TupleValue {
         let (item, _) = unsafe { self.instance.table.remove(self.bucket) };
-        let item = unsafe { self.instance.list.remove(item) };
+        let item = self.instance.heap.remove(item, |a, b| a.2.cmp(&b.2));
 
         self.instance.observed.change();
         item
     }
 
     #[inline]
-    pub fn into_value(self) -> &'a mut (PreHashObject, pyo3::PyObject) {
-        unsafe {
-            self.instance.list.move_back(*self.bucket.as_ptr());
-        }
-
+    pub fn into_value(self) -> NonNull<TupleValue> {
         let item = unsafe { self.bucket.as_mut() };
-        unsafe { &mut item.as_mut().element }
+        *item
     }
 }
 
-impl LRUPolicyAbsent<'_> {
+impl LFUPolicyAbsent<'_> {
     #[inline]
-    pub fn insert(self, key: PreHashObject, value: pyo3::PyObject) -> pyo3::PyResult<()> {
+    pub fn insert(
+        self,
+        key: PreHashObject,
+        value: pyo3::PyObject,
+        freq: usize,
+    ) -> pyo3::PyResult<()> {
         if self.instance.table.len() >= self.instance.maxsize.get() {
             self.instance.popitem();
         }
 
         let hash = key.hash;
-        let node = self.instance.list.push_back(key, value);
+        let node = self.instance.heap.push((key, value, freq));
 
         match self.insert_slot {
             Some(slot) => unsafe {
@@ -328,7 +301,7 @@ impl LRUPolicyAbsent<'_> {
             None => {
                 self.instance
                     .table
-                    .insert(hash, node, |x| unsafe { x.as_ref().element.0.hash });
+                    .insert(hash, node, |x| unsafe { x.as_ref().0.hash });
             }
         }
 
@@ -337,4 +310,4 @@ impl LRUPolicyAbsent<'_> {
     }
 }
 
-unsafe impl Send for LRUPolicy {}
+unsafe impl Send for LFUPolicy {}

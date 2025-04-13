@@ -262,6 +262,20 @@ impl RandomPolicy {
         *self = new;
         Ok(())
     }
+
+    #[inline]
+    pub fn random_key(&self) -> Option<&PreHashObject> {
+        if self.table.is_empty() {
+            None
+        } else {
+            let nth = fastrand::usize(0..self.table.len());
+
+            let bucket = unsafe { self.table.iter().nth(nth).unwrap_unchecked() };
+            let (key, _) = unsafe { bucket.as_ref() };
+
+            Some(key)
+        }
+    }
 }
 
 impl<'a> RandomPolicyOccupied<'a> {

@@ -613,6 +613,16 @@ class RRCache(BaseCacheImpl[KT, VT]):
 
         self._raw.update(iterable)
 
+    def random_key(self) -> KT:
+        """
+        Randomly selects and returns a key from the cache.
+        Raises `KeyError` If the cache is empty.
+        """
+        try:
+            return self._raw.random_key()
+        except _core.CoreKeyError:
+            raise KeyError() from None
+
     def __setitem__(self, key: KT, value: VT) -> None:
         self.insert(key, value)
 

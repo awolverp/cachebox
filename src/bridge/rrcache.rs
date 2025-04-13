@@ -203,6 +203,14 @@ impl RRCache {
         pyo3::Py::new(slf.py(), result)
     }
 
+    fn random_key(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<pyo3::PyObject> {
+        let lock = self.raw.lock();
+        match lock.random_key() {
+            Some(x) => Ok(x.obj.clone_ref(py)),
+            None => Err(pyo3::PyErr::new::<super::CoreKeyError, _>(())),
+        }
+    }
+
     fn __getnewargs__(&self) -> (usize,) {
         (0,)
     }

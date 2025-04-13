@@ -317,12 +317,26 @@ impl FIFOPolicy {
         py: pyo3::Python<'_>,
         state: *mut pyo3::ffi::PyObject,
     ) -> pyo3::PyResult<()> {
+        use pyo3::types::PyAnyMethods;
+
         unsafe {
             tuple!(check state, size=3)?;
-            let (maxsize, iterable, capacity) = extract_pickle_tuple!(py, state);
+            let (maxsize, iterable, capacity) = extract_pickle_tuple!(py, state => list);
 
             let mut new = Self::new(maxsize, capacity)?;
-            new.extend(py, iterable)?;
+            
+            for pair in iterable.bind(py).try_iter()? {
+                let (key, value) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject)>()?;
+
+                let hk = PreHashObject::from_pyobject(py, key)?;
+
+                match new.entry_with_slot(py, &hk)? {
+                    Entry::Absent(entry) => {
+                        entry.insert(py, hk, value)?;
+                    }
+                    _ => std::hint::unreachable_unchecked(),
+                }
+            }
 
             *self = new;
             Ok(())

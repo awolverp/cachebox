@@ -80,7 +80,7 @@ macro_rules! tuple {
 }
 
 macro_rules! extract_pickle_tuple {
-    ($py:expr, $state:expr) => {{
+    ($py:expr, $state:expr => list) => {{
         let maxsize = {
             let obj = pyo3::ffi::PyTuple_GetItem($state, 0);
             pyo3::ffi::PyLong_AsSize_t(obj)
@@ -93,7 +93,42 @@ macro_rules! extract_pickle_tuple {
         let iterable = {
             let obj = pyo3::ffi::PyTuple_GetItem($state, 1);
 
-            if pyo3::ffi::PyDict_CheckExact(obj) != 1 && pyo3::ffi::PyList_CheckExact(obj) != 1 {
+            if pyo3::ffi::PyList_CheckExact(obj) != 1 {
+                return Err(pyo3::PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+                    "the iterable object is not an dict or list",
+                ));
+            }
+
+            // Tuple returns borrowed reference
+            pyo3::PyObject::from_borrowed_ptr($py, obj)
+        };
+
+        let capacity = {
+            let obj = pyo3::ffi::PyTuple_GetItem($state, 2);
+            pyo3::ffi::PyLong_AsSize_t(obj)
+        };
+
+        if let Some(e) = pyo3::PyErr::take($py) {
+            return Err(e);
+        }
+
+        (maxsize, iterable, capacity)
+    }};
+
+    ($py:expr, $state:expr => dict) => {{
+        let maxsize = {
+            let obj = pyo3::ffi::PyTuple_GetItem($state, 0);
+            pyo3::ffi::PyLong_AsSize_t(obj)
+        };
+
+        if let Some(e) = pyo3::PyErr::take($py) {
+            return Err(e);
+        }
+
+        let iterable = {
+            let obj = pyo3::ffi::PyTuple_GetItem($state, 1);
+
+            if pyo3::ffi::PyDict_CheckExact(obj) != 1 {
                 return Err(pyo3::PyErr::new::<pyo3::exceptions::PyTypeError, _>(
                     "the iterable object is not an dict or list",
                 ));

@@ -232,11 +232,32 @@ impl RandomPolicy {
         py: pyo3::Python<'_>,
         state: *mut pyo3::ffi::PyObject,
     ) -> pyo3::PyResult<()> {
+        use pyo3::types::PyDictMethods;
+
         tuple!(check state, size=3)?;
-        let (maxsize, iterable, capacity) = unsafe { extract_pickle_tuple!(py, state) };
+        let (maxsize, iterable, capacity) = unsafe { extract_pickle_tuple!(py, state => dict) };
 
         let mut new = Self::new(maxsize, capacity)?;
-        new.extend(py, iterable)?;
+
+        // SAFETY: we checked that the iterable is a dict in extract_pickle_tuple! macro
+        let dict = unsafe {
+            iterable
+                .downcast_bound::<pyo3::types::PyDict>(py)
+                .unwrap_unchecked()
+        };
+
+        unsafe {
+            for (key, value) in dict.iter() {
+                let hk = PreHashObject::from_pyobject(py, key.unbind()).unwrap_unchecked();
+
+                match new.entry_with_slot(py, &hk)? {
+                    Entry::Absent(entry) => {
+                        entry.insert(hk, value.unbind())?;
+                    }
+                    _ => std::hint::unreachable_unchecked(),
+                }
+            }
+        }
 
         *self = new;
         Ok(())

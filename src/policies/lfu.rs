@@ -24,6 +24,8 @@ pub struct LFUPolicyAbsent<'a> {
     insert_slot: Option<hashbrown::raw::InsertSlot>,
 }
 
+pub type LFUIterator = lazyheap::Iter<(PreHashObject, pyo3::Py<pyo3::PyAny>, usize)>;
+
 impl LFUPolicy {
     #[inline]
     pub fn new(maxsize: usize, mut capacity: usize) -> pyo3::PyResult<Self> {
@@ -244,6 +246,59 @@ impl LFUPolicy {
         }
 
         Ok(())
+    }
+
+    pub fn iter(&mut self) -> LFUIterator {
+        self.heap.iter(|a, b| a.2.cmp(&b.2))
+    }
+
+    pub fn least_frequently_used(&mut self, n: usize) -> Option<NonNull<TupleValue>> {
+        self.heap.sort_by(|a, b| a.2.cmp(&b.2));
+        let node = self.heap.get(n)?;
+
+        Some(*node)
+    }
+
+    #[allow(clippy::wrong_self_convention)]
+    #[inline]
+    pub fn from_pickle(
+        &mut self,
+        py: pyo3::Python<'_>,
+        state: *mut pyo3::ffi::PyObject,
+    ) -> pyo3::PyResult<()> {
+        use pyo3::types::PyAnyMethods;
+        
+        unsafe {
+            tuple!(check state, size=3)?;
+            let (maxsize, iterable, capacity) = extract_pickle_tuple!(py, state => list);
+
+            // SAFETY: we check `iterable` type in `extract_pickle_tuple` macro
+            if maxsize < (pyo3::ffi::PyObject_Size(iterable.as_ptr()) as usize) {
+                return Err(pyo3::PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                    "iterable object size is greater than maxsize",
+                ));
+            }
+
+            let mut new = Self::new(maxsize, capacity)?;
+
+            for pair in iterable.bind(py).try_iter()? {
+                let (key, value, freq) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject, usize)>()?;
+
+                let hk = PreHashObject::from_pyobject(py, key)?;
+
+                match new.entry_with_slot(py, &hk)? {
+                    Entry::Absent(entry) => {
+                        entry.insert(hk, value, freq)?;
+                    }
+                    _ => std::hint::unreachable_unchecked(),
+                }
+            }
+            
+            new.heap.sort_by(|a, b| a.2.cmp(&b.2));
+
+            *self = new;
+            Ok(())
+        }
     }
 }
 

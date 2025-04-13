@@ -1,9 +1,17 @@
 use crate::common::Entry;
+use crate::common::ObservedIterator;
 use crate::common::PreHashObject;
 
 #[pyo3::pyclass(module = "cachebox._core", frozen)]
 pub struct LFUCache {
     raw: crate::mutex::Mutex<crate::policies::lfu::LFUPolicy>,
+}
+
+#[allow(non_camel_case_types)]
+#[pyo3::pyclass(module = "cachebox._core")]
+pub struct lfucache_items {
+    pub ptr: ObservedIterator,
+    pub iter: crate::mutex::Mutex<crate::policies::lfu::LFUIterator>,
 }
 
 #[pyo3::pymethods]
@@ -204,95 +212,128 @@ impl LFUCache {
         }
     }
 
-    // fn items(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyResult<pyo3::Py<lrucache_items>> {
-    //     let lock = slf.raw.lock();
-    //     let state = lock.observed.get();
-    //     let iter = lock.iter();
+    fn items(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyResult<pyo3::Py<lfucache_items>> {
+        let mut lock = slf.raw.lock();
+        let state = lock.observed.get();
+        let iter = lock.iter();
 
-    //     let result = lrucache_items {
-    //         ptr: ObservedIterator::new(slf.as_ptr(), state),
-    //         iter: crate::mutex::Mutex::new(iter),
-    //     };
+        let result = lfucache_items {
+            ptr: ObservedIterator::new(slf.as_ptr(), state),
+            iter: crate::mutex::Mutex::new(iter),
+        };
 
-    //     pyo3::Py::new(slf.py(), result)
-    // }
+        pyo3::Py::new(slf.py(), result)
+    }
 
-    // fn least_recently_used(&self, py: pyo3::Python<'_>) -> Option<pyo3::PyObject> {
-    //     let lock = self.raw.lock();
-    //     lock.least_recently_used().map(|x| x.0.obj.clone_ref(py))
-    // }
+    pub fn least_frequently_used(&self, py: pyo3::Python<'_>, n: usize) -> Option<pyo3::PyObject> {
+        let mut lock = self.raw.lock();
+        lock.least_frequently_used(n)
+            .map(|x| unsafe { x.as_ref().0.obj.clone_ref(py) })
+    }
 
-    // fn most_recently_used(&self, py: pyo3::Python<'_>) -> Option<pyo3::PyObject> {
-    //     let lock = self.raw.lock();
-    //     lock.most_recently_used().map(|x| x.0.obj.clone_ref(py))
-    // }
+    fn __getnewargs__(&self) -> (usize,) {
+        (0,)
+    }
 
-    // fn __getnewargs__(&self) -> (usize,) {
-    //     (0,)
-    // }
+    fn __getstate__(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<pyo3::PyObject> {
+        let mut lock = self.raw.lock();
 
-    // fn __getstate__(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<pyo3::PyObject> {
-    //     let lock = self.raw.lock();
+        let state = unsafe {
+            let list = pyo3::ffi::PyList_New(0);
+            if list.is_null() {
+                return Err(pyo3::PyErr::fetch(py));
+            }
 
-    //     let state = unsafe {
-    //         let list = pyo3::ffi::PyList_New(0);
-    //         if list.is_null() {
-    //             return Err(pyo3::PyErr::fetch(py));
-    //         }
+            for ptr in lock.iter() {
+                let node = &(*ptr.as_ptr());
 
-    //         for node in lock.iter() {
-    //             let (hk, val) = &(*node.as_ptr()).element;
+                let frequency = pyo3::ffi::PyLong_FromSize_t(node.2);
+                if frequency.is_null() {
+                    pyo3::ffi::Py_DECREF(list);
+                    return Err(pyo3::PyErr::fetch(py));
+                }
 
-    //             let tp = tuple!(
-    //                 py,
-    //                 2,
-    //                 0 => hk.obj.clone_ref(py).as_ptr(),
-    //                 1 => val.clone_ref(py).as_ptr(),
-    //             );
+                let tp = tuple!(
+                    py,
+                    3,
+                    0 => node.0.obj.clone_ref(py).into_ptr(),
+                    1 => node.1.clone_ref(py).into_ptr(),
+                    2 => frequency,
+                );
 
-    //             if let Err(x) = tp {
-    //                 pyo3::ffi::Py_DECREF(list);
-    //                 return Err(x);
-    //             }
+                if let Err(x) = tp {
+                    pyo3::ffi::Py_DECREF(list);
+                    return Err(x);
+                }
 
-    //             if pyo3::ffi::PyList_Append(list, tp.unwrap_unchecked()) == -1 {
-    //                 pyo3::ffi::Py_DECREF(list);
-    //                 return Err(pyo3::PyErr::fetch(py));
-    //             }
-    //         }
+                if pyo3::ffi::PyList_Append(list, tp.unwrap_unchecked()) == -1 {
+                    pyo3::ffi::Py_DECREF(list);
+                    return Err(pyo3::PyErr::fetch(py));
+                }
+            }
 
-    //         let maxsize = pyo3::ffi::PyLong_FromSize_t(lock.maxsize());
-    //         let capacity = pyo3::ffi::PyLong_FromSize_t(lock.capacity());
+            let maxsize = pyo3::ffi::PyLong_FromSize_t(lock.maxsize());
+            let capacity = pyo3::ffi::PyLong_FromSize_t(lock.capacity());
 
-    //         tuple!(
-    //             py,
-    //             3,
-    //             0 => maxsize,
-    //             1 => list,
-    //             2 => capacity,
-    //         )?
-    //     };
+            tuple!(
+                py,
+                3,
+                0 => maxsize,
+                1 => list,
+                2 => capacity,
+            )?
+        };
 
-    //     Ok(unsafe { pyo3::Py::from_owned_ptr(py, state) })
-    // }
+        Ok(unsafe { pyo3::Py::from_owned_ptr(py, state) })
+    }
 
-    // pub fn __setstate__(&self, py: pyo3::Python<'_>, state: pyo3::PyObject) -> pyo3::PyResult<()> {
-    //     let mut lock = self.raw.lock();
-    //     lock.from_pickle(py, state.as_ptr())
-    // }
+    pub fn __setstate__(&self, py: pyo3::Python<'_>, state: pyo3::PyObject) -> pyo3::PyResult<()> {
+        let mut lock = self.raw.lock();
+        lock.from_pickle(py, state.as_ptr())
+    }
 
-    // pub fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
-    //     for node in self.raw.lock().iter() {
-    //         let value = unsafe { node.as_ref() };
+    pub fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
+        for node in self.raw.lock().iter() {
+            let value = unsafe { node.as_ref() };
 
-    //         visit.call(&value.element.0.obj)?;
-    //         visit.call(&value.element.1)?;
-    //     }
-    //     Ok(())
-    // }
+            visit.call(&value.0.obj)?;
+            visit.call(&value.1)?;
+        }
+        Ok(())
+    }
 
-    // pub fn __clear__(&self) {
-    //     let mut lock = self.raw.lock();
-    //     lock.clear()
-    // }
+    pub fn __clear__(&self) {
+        let mut lock = self.raw.lock();
+        lock.clear()
+    }
+}
+
+#[pyo3::pymethods]
+impl lfucache_items {
+    fn __iter__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyRef<'_, Self> {
+        slf
+    }
+
+    #[allow(unused_mut)]
+    fn __next__(mut slf: pyo3::PyRefMut<'_, Self>) -> pyo3::PyResult<*mut pyo3::ffi::PyObject> {
+        let mut iter = slf.iter.lock();
+
+        slf.ptr.proceed(slf.py())?;
+
+        if let Some(x) = iter.next() {
+            let (key, val, freq) = unsafe { x.as_ref() };
+
+            let freq = unsafe { pyo3::ffi::PyLong_FromSize_t(*freq) };
+
+            tuple!(
+                slf.py(),
+                3,
+                0 => key.obj.clone_ref(slf.py()).into_ptr(),
+                1 => val.clone_ref(slf.py()).into_ptr(),
+                2 => freq,
+            )
+        } else {
+            Err(pyo3::PyErr::new::<pyo3::exceptions::PyStopIteration, _>(()))
+        }
+    }
 }

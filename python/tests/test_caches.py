@@ -3,6 +3,7 @@ from cachebox import (
     FIFOCache,
     RRCache,
     LRUCache,
+    LFUCache,
 )
 import pytest
 from .mixin import _TestMixin
@@ -153,6 +154,94 @@ class TestLRUCache(_TestMixin):
 
         assert obj.most_recently_used() == 3
         assert obj.least_recently_used() == 0
+
+    def test_pickle(self):
+        def inner(c1, c2):
+            assert list(c1.items()) == list(c2.items())
+
+        self._test_pickle(inner)
+
+
+class TestLFUCache(_TestMixin):
+    CACHE = LFUCache
+
+    def test_policy(self):
+        obj = self.CACHE(5, {i: i for i in range(5)})
+
+        for i in range(5):
+            obj[i] = i
+
+        for i in range(10):
+            assert 0 == obj[0]
+        for i in range(7):
+            assert 1 == obj[1]
+        for i in range(3):
+            assert 2 == obj[2]
+        for i in range(4):
+            assert 3 == obj[3]
+        for i in range(6):
+            assert 4 == obj[4]
+
+        assert (2, 2) == obj.popitem()
+        assert (3, 3) == obj.popitem()
+
+        for i in range(10):
+            assert 4 == obj.get(4)
+
+        assert (1, 1) == obj.popitem()
+
+        assert 2 == len(obj)
+        obj.clear()
+
+        for i in range(5):
+            obj[i] = i
+
+        assert [0, 1, 2, 3, 4] == list(obj.keys())
+
+        for i in range(10):
+            obj[0] += 1
+        for i in range(7):
+            obj[1] += 1
+        for i in range(3):
+            obj[2] += 1
+        for i in range(4):
+            obj[3] += 1
+        for i in range(6):
+            obj[4] += 1
+
+        obj[5] = 4
+        assert [5, 3, 4, 1, 0] == list(obj.keys())
+
+    def test_items_with_frequency(self):
+        # no need to test completely items_with_frequency
+        # because it's tested in test_iterators
+        obj = LFUCache(10, {1:2, 3:4})
+        for key, val, freq in obj.items_with_frequency():
+            assert key in obj
+            assert val == obj[key]
+            assert isinstance(freq, int)
+
+    def test_least_frequently_used(self):
+        obj = LFUCache(10)
+
+        for i in range(5):
+            obj[i] = i * 2
+
+        for i in range(10):
+            obj[0] += 1
+        for i in range(7):
+            obj[1] += 1
+        for i in range(3):
+            obj[2] += 1
+        for i in range(4):
+            obj[3] += 1
+        for i in range(6):
+            obj[4] += 1
+
+        assert obj.least_frequently_used() == 2
+        assert obj.least_frequently_used(1) == 3
+        assert obj.least_frequently_used(4) == 0
+        assert obj.least_frequently_used(5) is None
 
     def test_pickle(self):
         def inner(c1, c2):

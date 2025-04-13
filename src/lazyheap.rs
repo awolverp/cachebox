@@ -1,3 +1,4 @@
+use crate::common::NoLifetimeSliceIter;
 use std::ptr::NonNull;
 
 /// A heap data structure that lazily maintains sorting order.
@@ -5,7 +6,7 @@ use std::ptr::NonNull;
 /// `LazyHeap` allows for efficient insertion of elements without immediately sorting,
 /// with the ability to defer sorting until necessary. This can improve performance
 /// in scenarios where sorting is not immediately required.
-/// 
+///
 /// ```
 /// let mut heap = LazyHeap::new();
 /// heap.push(5);
@@ -25,9 +26,8 @@ pub struct LazyHeap<T> {
 /// This iterator uses raw pointers and requires careful management to ensure
 /// memory safety and prevent use-after-free or dangling pointer scenarios.
 pub struct Iter<T> {
-    slice: *const NonNull<T>,
-    index: usize,
-    len: usize,
+    first: NoLifetimeSliceIter<NonNull<T>>,
+    second: NoLifetimeSliceIter<NonNull<T>>,
 }
 
 impl<T> LazyHeap<T> {
@@ -102,10 +102,10 @@ impl<T> LazyHeap<T> {
         self.unlink_back()
     }
 
-    // #[inline]
-    // pub fn get(&self, index: usize) -> Option<&NonNull<T>> {
-    //     self.data.get(index)
-    // }
+    #[inline]
+    pub fn get(&self, index: usize) -> Option<&NonNull<T>> {
+        self.data.get(index)
+    }
 
     pub fn remove<F>(&mut self, node: NonNull<T>, compare: F) -> T
     where
@@ -132,8 +132,21 @@ impl<T> LazyHeap<T> {
         self.is_sorted = true;
     }
 
+    #[inline]
     pub fn shrink_to_fit(&mut self) {
         self.data.shrink_to_fit();
+    }
+
+    #[inline]
+    pub fn iter(&mut self, compare: impl Fn(&T, &T) -> std::cmp::Ordering) -> Iter<T> {
+        self.sort_by(compare);
+
+        let (a, b) = self.data.as_slices();
+
+        Iter {
+            first: NoLifetimeSliceIter::new(a),
+            second: NoLifetimeSliceIter::new(b),
+        }
     }
 }
 
@@ -160,12 +173,12 @@ impl<T> Iterator for Iter<T> {
     type Item = NonNull<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.index == self.len {
-            None
-        } else {
-            let value = unsafe { self.slice.add(self.index) };
-            self.index += 1;
-            Some(unsafe { *value })
+        match self.first.next() {
+            Some(val) => Some(unsafe { *val.as_ptr() }),
+            None => {
+                core::mem::swap(&mut self.first, &mut self.second);
+                self.first.next().map(|x| unsafe { *x.as_ptr() })
+            }
         }
     }
 }

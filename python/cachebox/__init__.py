@@ -9,6 +9,7 @@ from ._cachebox import (
     RRCache as RRCache,
     LRUCache as LRUCache,
     LFUCache as LFUCache,
+    TTLCache as TTLCache,
     BaseCacheImpl as BaseCacheImpl,
     IteratorView as IteratorView,
 )

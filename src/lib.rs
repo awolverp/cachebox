@@ -24,6 +24,8 @@ fn _core(py: pyo3::Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<bridge::rrcache::RRCache>()?;
     m.add_class::<bridge::lrucache::LRUCache>()?;
     m.add_class::<bridge::lfucache::LFUCache>()?;
+    m.add_class::<bridge::ttlcache::TTLCache>()?;
+    m.add_class::<bridge::ttlcache::TTLPair>()?;
 
     Ok(())
 }

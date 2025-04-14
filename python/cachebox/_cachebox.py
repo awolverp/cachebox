@@ -31,11 +31,12 @@ def _items_to_str(items, length):
 class BaseCacheImpl(typing.Generic[KT, VT]):
     """
     Base implementation for cache classes in the cachebox library.
-    
+
     This abstract base class defines the generic structure for cache implementations,
     supporting different key and value types through generic type parameters.
     Serves as a foundation for specific cache variants like Cache and FIFOCache.
     """
+
     pass
 
 
@@ -1130,7 +1131,7 @@ class LFUCache(BaseCacheImpl[KT, VT]):
     def items_with_frequency(self) -> IteratorView[typing.Tuple[KT, VT, int]]:
         """
         Returns an iterable view - containing tuples of `(key, value, frequency)` - of the cache's items along with their access frequency.
-        
+
         Notes:
             - The returned iterator should not be used to modify the cache.
             - Frequency represents how many times the item has been accessed.
@@ -1158,9 +1159,9 @@ class LFUCache(BaseCacheImpl[KT, VT]):
     def least_frequently_used(self, n: int = 0) -> typing.Optional[KT]:
         """
         Returns the key in the cache that has been accessed the least, regardless of time.
-        
+
         If n is given, returns the nth least frequently used key.
-        
+
         Notes:
             - This method may re-sort the cache which can cause iterators to be stopped.
             - Do not use this method while using iterators.
@@ -1170,7 +1171,7 @@ class LFUCache(BaseCacheImpl[KT, VT]):
 
         if n < 0:
             return None
-        
+
         return self._raw.least_frequently_used(n)
 
     def __iter__(self) -> IteratorView[KT]:
@@ -1185,5 +1186,202 @@ class LFUCache(BaseCacheImpl[KT, VT]):
             len(self._raw),
             self._raw.maxsize(),
             # NOTE: we cannot use self._raw.items() here because iterables a tuples of (key, value, frequency)
+            _items_to_str(self.items(), len(self._raw)),
+        )
+
+
+class TTLCache(BaseCacheImpl[KT, VT]):
+    """
+    TTL Cache implementation - Time-To-Live Policy (thread-safe).
+
+    In simple terms, the TTL cache will automatically remove the element in the cache that has expired.
+    """
+
+    def __init__(
+        self,
+        maxsize: int,
+        ttl: float,
+        iterable: typing.Union[typing.Union[dict, typing.Iterable[tuple]], None] = None,
+        *,
+        capacity: int = 0,
+    ) -> None:
+        self._raw = _core.TTLCache(maxsize, ttl, capacity=capacity)
+
+        if iterable is not None:
+            self.update(iterable)
+
+    @property
+    def maxsize(self) -> int:
+        return self._raw.maxsize()
+
+    @property
+    def ttl(self) -> float:
+        return self._raw.ttl()
+
+    def capacity(self) -> int:
+        """Returns the number of elements the map can hold without reallocating."""
+        return self._raw.capacity()
+
+    def __len__(self) -> int:
+        return len(self._raw)
+
+    def __sizeof__(self):  # pragma: no cover
+        return self._raw.__sizeof__()
+
+    def __contains__(self, key: KT) -> bool:
+        return key in self._raw
+
+    def __bool__(self) -> bool:
+        return not self.is_empty()
+
+    def is_empty(self) -> bool:
+        return self._raw.is_empty()
+
+    def is_full(self) -> bool:
+        return self._raw.is_full()
+
+    def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
+        """
+        Equals to `self[key] = value`, but returns a value:
+
+        - If the cache did not have this key present, None is returned.
+        - If the cache did have this key present, the value is updated,
+          and the old value is returned. The key is not updated, though;
+        """
+        return self._raw.insert(key, value)
+
+    def get(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
+        """
+        Equals to `self[key]`, but returns `default` if the cache don't have this key present.
+        """
+        try:
+            return self._raw.get(key).value()
+        except _core.CoreKeyError:
+            return default
+
+    def pop(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
+        """
+        Removes specified key and return the corresponding value. If the key is not found, returns the `default`.
+        """
+        try:
+            return self._raw.remove(key).value()
+        except _core.CoreKeyError:
+            return default
+
+    def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
+        """
+        Inserts key with a value of default if key is not in the cache.
+
+        Return the value for key if key is in the cache, else default.
+        """
+        return self._raw.setdefault(key, default)
+
+    def popitem(self) -> typing.Tuple[KT, VT]:
+        """Removes the element that has been in the cache the longest."""
+        try:
+            val = self._raw.popitem()
+        except _core.CoreKeyError:
+            raise KeyError() from None
+        else:
+            return (val.key(), val.value())
+
+    def drain(self, n: int) -> int:  # pragma: no cover
+        """Does the `popitem()` `n` times and returns count of removed items."""
+        if n <= 0:
+            return 0
+
+        for i in range(n):
+            try:
+                self._raw.popitem()
+            except _core.CoreKeyError:
+                return i
+
+        return i
+
+    def update(self, iterable: typing.Union[dict, typing.Iterable[tuple]]) -> None:
+        """Updates the cache with elements from a dictionary or an iterable object of key/value pairs."""
+        if hasattr(iterable, "items"):
+            iterable = iterable.items()
+
+        self._raw.update(iterable)
+
+    def __setitem__(self, key: KT, value: VT) -> None:
+        self.insert(key, value)
+
+    def __getitem__(self, key: KT) -> VT:
+        try:
+            return self._raw.get(key).value()
+        except _core.CoreKeyError:
+            raise KeyError(key) from None
+
+    def __delitem__(self, key: KT) -> None:
+        try:
+            self._raw.remove(key)
+        except _core.CoreKeyError:
+            raise KeyError(key) from None
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, TTLCache):
+            return False  # pragma: no cover
+
+        return self._raw == other._raw
+
+    def __ne__(self, other) -> bool:
+        if not isinstance(other, TTLCache):
+            return False  # pragma: no cover
+
+        return self._raw != other._raw
+
+    def shrink_to_fit(self) -> None:
+        """Shrinks the cache to fit len(self) elements."""
+        self._raw.shrink_to_fit()
+
+    def clear(self, *, reuse: bool = False) -> None:
+        """
+        Removes all items from cache.
+
+        If reuse is True, will not free the memory for reusing in the future.
+        """
+        self._raw.clear(reuse)
+
+    def items(self) -> IteratorView[typing.Tuple[KT, VT]]:
+        """
+        Returns an iterable object of the cache's items (key-value pairs).
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        """
+        return IteratorView(self._raw.items(), lambda x: (x.key(), x.value()))
+
+    def keys(self) -> IteratorView[KT]:
+        """
+        Returns an iterable object of the cache's keys.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        """
+        return IteratorView(self._raw.items(), lambda x: x.key())
+
+    def values(self) -> IteratorView[VT]:
+        """
+        Returns an iterable object of the cache's values.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        """
+        return IteratorView(self._raw.items(), lambda x: x.value())
+
+    def __iter__(self) -> IteratorView[KT]:
+        return self.keys()
+
+    def __repr__(self) -> str:
+        cls = type(self)
+
+        return "%s.%s[%d/%d, ttl=%f](%s)" % (
+            cls.__module__,
+            cls.__name__,
+            len(self._raw),
+            self._raw.maxsize(),
+            self._raw.ttl(),
             _items_to_str(self.items(), len(self._raw)),
         )

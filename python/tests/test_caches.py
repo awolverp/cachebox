@@ -215,7 +215,7 @@ class TestLFUCache(_TestMixin):
     def test_items_with_frequency(self):
         # no need to test completely items_with_frequency
         # because it's tested in test_iterators
-        obj = LFUCache(10, {1:2, 3:4})
+        obj = LFUCache(10, {1: 2, 3: 4})
         for key, val, freq in obj.items_with_frequency():
             assert key in obj
             assert val == obj[key]

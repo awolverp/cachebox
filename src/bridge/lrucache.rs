@@ -2,7 +2,7 @@ use crate::common::Entry;
 use crate::common::ObservedIterator;
 use crate::common::PreHashObject;
 
-#[pyo3::pyclass(module = "cachebox._core", frozen)]
+#[pyo3::pyclass(module = "cachebox._core", frozen, subclass)]
 pub struct LRUCache {
     raw: crate::mutex::Mutex<crate::policies::lru::LRUPolicy>,
 }

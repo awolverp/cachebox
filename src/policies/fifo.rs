@@ -6,7 +6,7 @@ use crate::common::TryFindMethods;
 
 use std::collections::VecDeque;
 
-const MAX_N_SHIFT: usize = usize::MAX - (isize::MAX as usize);
+pub const MAX_N_SHIFT: usize = usize::MAX - (isize::MAX as usize);
 
 pub struct FIFOPolicy {
     /// We set [Vec] objects indexes in hashtable to make search O(1). hashtable is unordered,
@@ -301,7 +301,7 @@ impl FIFOPolicy {
         Ok(())
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn iter(&self) -> FIFOIterator {
         let (a, b) = self.entries.as_slices();
 
@@ -324,7 +324,7 @@ impl FIFOPolicy {
             let (maxsize, iterable, capacity) = extract_pickle_tuple!(py, state => list);
 
             let mut new = Self::new(maxsize, capacity)?;
-            
+
             for pair in iterable.bind(py).try_iter()? {
                 let (key, value) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject)>()?;
 
@@ -364,7 +364,6 @@ impl<'a> FIFOPolicyOccupied<'a> {
 
     #[inline]
     pub fn remove(self) -> (PreHashObject, pyo3::PyObject) {
-        // let (PreHashObject { hash, .. }, _) = &self.instance.entries[self.index - self.instance.n_shifts];
         let (mut index, _) = unsafe { self.instance.table.remove(self.bucket) };
         index -= self.instance.n_shifts;
 

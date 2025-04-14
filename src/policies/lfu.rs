@@ -267,7 +267,7 @@ impl LFUPolicy {
         state: *mut pyo3::ffi::PyObject,
     ) -> pyo3::PyResult<()> {
         use pyo3::types::PyAnyMethods;
-        
+
         unsafe {
             tuple!(check state, size=3)?;
             let (maxsize, iterable, capacity) = extract_pickle_tuple!(py, state => list);
@@ -282,7 +282,8 @@ impl LFUPolicy {
             let mut new = Self::new(maxsize, capacity)?;
 
             for pair in iterable.bind(py).try_iter()? {
-                let (key, value, freq) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject, usize)>()?;
+                let (key, value, freq) =
+                    pair?.extract::<(pyo3::PyObject, pyo3::PyObject, usize)>()?;
 
                 let hk = PreHashObject::from_pyobject(py, key)?;
 
@@ -293,7 +294,7 @@ impl LFUPolicy {
                     _ => std::hint::unreachable_unchecked(),
                 }
             }
-            
+
             new.heap.sort_by(|a, b| a.2.cmp(&b.2));
 
             *self = new;

@@ -3,23 +3,31 @@ use crate::common::ObservedIterator;
 use crate::common::PreHashObject;
 
 #[pyo3::pyclass(module = "cachebox._core", frozen, subclass)]
-pub struct FIFOCache {
-    raw: crate::mutex::Mutex<crate::policies::fifo::FIFOPolicy>,
+pub struct TTLCache {
+    raw: crate::mutex::Mutex<crate::policies::ttl::TTLPolicy>,
+}
+
+#[pyo3::pyclass(module = "cachebox._core", frozen)]
+pub struct TTLPair {
+    key: pyo3::PyObject,
+    value: pyo3::PyObject,
+    duration: std::time::Duration,
 }
 
 #[allow(non_camel_case_types)]
 #[pyo3::pyclass(module = "cachebox._core")]
-pub struct fifocache_items {
+pub struct ttlcache_items {
     pub ptr: ObservedIterator,
-    pub iter: crate::mutex::Mutex<crate::policies::fifo::FIFOIterator>,
+    pub iter: crate::mutex::Mutex<crate::policies::ttl::TTLIterator>,
+    pub now: std::time::SystemTime,
 }
 
 #[pyo3::pymethods]
-impl FIFOCache {
+impl TTLCache {
     #[new]
-    #[pyo3(signature=(maxsize, *, capacity=0))]
-    fn __new__(maxsize: usize, capacity: usize) -> pyo3::PyResult<Self> {
-        let raw = crate::policies::fifo::FIFOPolicy::new(maxsize, capacity)?;
+    #[pyo3(signature=(maxsize, ttl, *, capacity=0))]
+    fn __new__(maxsize: usize, ttl: f64, capacity: usize) -> pyo3::PyResult<Self> {
+        let raw = crate::policies::ttl::TTLPolicy::new(maxsize, capacity, ttl)?;
 
         let self_ = Self {
             raw: crate::mutex::Mutex::new(raw),
@@ -35,12 +43,16 @@ impl FIFOCache {
         self.raw.lock().maxsize()
     }
 
+    fn ttl(&self) -> f64 {
+        self.raw.lock().ttl().as_secs_f64()
+    }
+
     fn capacity(&self) -> usize {
         self.raw.lock().capacity().0
     }
 
     fn __len__(&self) -> usize {
-        self.raw.lock().len()
+        self.raw.lock().real_len()
     }
 
     fn __sizeof__(&self) -> usize {
@@ -89,12 +101,12 @@ impl FIFOCache {
         }
     }
 
-    fn get(&self, py: pyo3::Python<'_>, key: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
+    fn get(&self, py: pyo3::Python<'_>, key: pyo3::PyObject) -> pyo3::PyResult<TTLPair> {
         let key = PreHashObject::from_pyobject(py, key)?;
         let lock = self.raw.lock();
 
         match lock.lookup(py, &key)? {
-            Some(val) => Ok(val.clone_ref(py)),
+            Some(val) => Ok(TTLPair::clone_from_pair(py, val)),
             None => Err(pyo3::PyErr::new::<super::CoreKeyError, _>(key.obj)),
         }
     }
@@ -144,40 +156,40 @@ impl FIFOCache {
         }
     }
 
-    fn remove(&self, py: pyo3::Python<'_>, key: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
+    fn remove(&self, py: pyo3::Python<'_>, key: pyo3::PyObject) -> pyo3::PyResult<TTLPair> {
         let key = PreHashObject::from_pyobject(py, key)?;
         let mut lock = self.raw.lock();
 
         match lock.entry(py, &key)? {
             Entry::Occupied(entry) => {
-                let (_, value) = entry.remove();
-                Ok(value)
+                let val = entry.remove();
+                Ok(TTLPair::from(val))
             }
             Entry::Absent(_) => Err(pyo3::PyErr::new::<super::CoreKeyError, _>(key.obj)),
         }
     }
 
-    fn popitem(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<(pyo3::PyObject, pyo3::PyObject)> {
+    fn popitem(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<TTLPair> {
         let mut lock = self.raw.lock();
 
         match lock.popitem(py)? {
-            Some((key, val)) => Ok((key.obj, val)),
+            Some(val) => Ok(TTLPair::from(val)),
             None => Err(pyo3::PyErr::new::<super::CoreKeyError, _>(())),
         }
     }
 
-    fn clear(&self, reuse: bool) {
+    fn clear(&self, py: pyo3::Python<'_>, reuse: bool) {
         let mut lock = self.raw.lock();
         lock.clear();
 
         if !reuse {
-            lock.shrink_to_fit();
+            lock.shrink_to_fit(py);
         }
     }
 
-    fn shrink_to_fit(&self) {
+    fn shrink_to_fit(&self, py: pyo3::Python<'_>) {
         let mut lock = self.raw.lock();
-        lock.shrink_to_fit();
+        lock.shrink_to_fit(py);
     }
 
     fn setdefault(
@@ -191,8 +203,8 @@ impl FIFOCache {
 
         match lock.entry(py, &key)? {
             Entry::Occupied(entry) => {
-                let (_, ref value) = entry.into_value();
-                Ok(value.clone_ref(py))
+                let val = entry.into_value();
+                Ok(val.value.clone_ref(py))
             }
             Entry::Absent(entry) => {
                 entry.insert(py, key, default.clone_ref(py))?;
@@ -201,81 +213,82 @@ impl FIFOCache {
         }
     }
 
-    fn items(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyResult<pyo3::Py<fifocache_items>> {
-        let lock = slf.raw.lock();
+    fn items(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyResult<pyo3::Py<ttlcache_items>> {
+        let mut lock = slf.raw.lock();
         let state = lock.observed.get();
-        let iter = lock.iter();
+        let iter = lock.iter(slf.py());
 
-        let result = fifocache_items {
+        let result = ttlcache_items {
             ptr: ObservedIterator::new(slf.as_ptr(), state),
             iter: crate::mutex::Mutex::new(iter),
+            now: std::time::SystemTime::now(),
         };
 
         pyo3::Py::new(slf.py(), result)
     }
 
-    fn get_index(&self, py: pyo3::Python<'_>, index: usize) -> Option<pyo3::PyObject> {
-        let lock = self.raw.lock();
+    // fn get_index(&self, py: pyo3::Python<'_>, index: usize) -> Option<pyo3::PyObject> {
+    //     let lock = self.raw.lock();
 
-        lock.get_index(index).map(|(key, _)| key.obj.clone_ref(py))
-    }
+    //     lock.get_index(index).map(|(key, _)| key.obj.clone_ref(py))
+    // }
 
     fn __getnewargs__(&self) -> (usize,) {
         (0,)
     }
 
-    fn __getstate__(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<pyo3::PyObject> {
-        let lock = self.raw.lock();
+    // fn __getstate__(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<pyo3::PyObject> {
+    //     let lock = self.raw.lock();
 
-        let state = unsafe {
-            let list = pyo3::ffi::PyList_New(0);
-            if list.is_null() {
-                return Err(pyo3::PyErr::fetch(py));
-            }
+    //     let state = unsafe {
+    //         let list = pyo3::ffi::PyList_New(0);
+    //         if list.is_null() {
+    //             return Err(pyo3::PyErr::fetch(py));
+    //         }
 
-            for (hk, val) in lock.entries_iter() {
-                let tp = tuple!(
-                    py,
-                    2,
-                    0 => hk.obj.clone_ref(py).as_ptr(),
-                    1 => val.clone_ref(py).as_ptr(),
-                );
+    //         for (hk, val) in lock.entries_iter() {
+    //             let tp = tuple!(
+    //                 py,
+    //                 2,
+    //                 0 => hk.obj.clone_ref(py).as_ptr(),
+    //                 1 => val.clone_ref(py).as_ptr(),
+    //             );
 
-                if let Err(x) = tp {
-                    pyo3::ffi::Py_DECREF(list);
-                    return Err(x);
-                }
+    //             if let Err(x) = tp {
+    //                 pyo3::ffi::Py_DECREF(list);
+    //                 return Err(x);
+    //             }
 
-                if pyo3::ffi::PyList_Append(list, tp.unwrap_unchecked()) == -1 {
-                    pyo3::ffi::Py_DECREF(list);
-                    return Err(pyo3::PyErr::fetch(py));
-                }
-            }
+    //             if pyo3::ffi::PyList_Append(list, tp.unwrap_unchecked()) == -1 {
+    //                 pyo3::ffi::Py_DECREF(list);
+    //                 return Err(pyo3::PyErr::fetch(py));
+    //             }
+    //         }
 
-            let maxsize = pyo3::ffi::PyLong_FromSize_t(lock.maxsize());
-            let capacity = pyo3::ffi::PyLong_FromSize_t(lock.capacity().0);
+    //         let maxsize = pyo3::ffi::PyLong_FromSize_t(lock.maxsize());
+    //         let capacity = pyo3::ffi::PyLong_FromSize_t(lock.capacity().0);
 
-            tuple!(
-                py,
-                3,
-                0 => maxsize,
-                1 => list,
-                2 => capacity,
-            )?
-        };
+    //         tuple!(
+    //             py,
+    //             3,
+    //             0 => maxsize,
+    //             1 => list,
+    //             2 => capacity,
+    //         )?
+    //     };
 
-        Ok(unsafe { pyo3::Py::from_owned_ptr(py, state) })
-    }
+    //     Ok(unsafe { pyo3::Py::from_owned_ptr(py, state) })
+    // }
 
-    pub fn __setstate__(&self, py: pyo3::Python<'_>, state: pyo3::PyObject) -> pyo3::PyResult<()> {
-        let mut lock = self.raw.lock();
-        lock.from_pickle(py, state.as_ptr())
-    }
+    // pub fn __setstate__(&self, py: pyo3::Python<'_>, state: pyo3::PyObject) -> pyo3::PyResult<()> {
+    //     let mut lock = self.raw.lock();
+    //     lock.from_pickle(py, state.as_ptr())
+    // }
 
     pub fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
         for value in self.raw.lock().entries_iter() {
-            visit.call(&value.0.obj)?;
-            visit.call(&value.1)?;
+            visit.call(&value.key.obj)?;
+            visit.call(&value.value)?;
         }
         Ok(())
     }
@@ -286,29 +299,72 @@ impl FIFOCache {
     }
 }
 
+impl TTLPair {
+    fn clone_from_pair(py: pyo3::Python<'_>, pair: &crate::policies::ttl::TimeToLivePair) -> Self {
+        TTLPair {
+            key: pair.key.obj.clone_ref(py),
+            value: pair.value.clone_ref(py),
+            duration: pair.duration(),
+        }
+    }
+}
+
+impl From<crate::policies::ttl::TimeToLivePair> for TTLPair {
+    fn from(value: crate::policies::ttl::TimeToLivePair) -> Self {
+        let duration = value.duration();
+
+        TTLPair {
+            key: value.key.obj,
+            value: value.value,
+            duration,
+        }
+    }
+}
+
 #[pyo3::pymethods]
-impl fifocache_items {
+impl TTLPair {
+    fn key(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyObject {
+        slf.key.clone_ref(slf.py())
+    }
+
+    fn value(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyObject {
+        slf.value.clone_ref(slf.py())
+    }
+
+    fn duration(slf: pyo3::PyRef<'_, Self>) -> f64 {
+        slf.duration.as_secs_f64()
+    }
+}
+
+#[pyo3::pymethods]
+impl ttlcache_items {
     fn __iter__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyRef<'_, Self> {
         slf
     }
 
     #[allow(unused_mut)]
-    fn __next__(mut slf: pyo3::PyRefMut<'_, Self>) -> pyo3::PyResult<*mut pyo3::ffi::PyObject> {
+    fn __next__(mut slf: pyo3::PyRefMut<'_, Self>) -> pyo3::PyResult<TTLPair> {
         let mut iter = slf.iter.lock();
 
         slf.ptr.proceed(slf.py())?;
 
-        if let Some(x) = iter.next() {
-            let (key, val) = unsafe { x.as_ref() };
+        let mut element: std::ptr::NonNull<crate::policies::ttl::TimeToLivePair>;
+        loop {
+            element = {
+                if let Some(x) = iter.next() {
+                    x
+                } else {
+                    return Err(pyo3::PyErr::new::<pyo3::exceptions::PyStopIteration, _>(()));
+                }
+            };
 
-            tuple!(
-                slf.py(),
-                2,
-                0 => key.obj.clone_ref(slf.py()).into_ptr(),
-                1 => val.clone_ref(slf.py()).into_ptr(),
-            )
-        } else {
-            Err(pyo3::PyErr::new::<pyo3::exceptions::PyStopIteration, _>(()))
+            if unsafe { element.as_ref().expire_at } > slf.now {
+                break;
+            }
         }
+
+        Ok(TTLPair::clone_from_pair(slf.py(), unsafe {
+            element.as_ref()
+        }))
     }
 }

@@ -1,4 +1,5 @@
 from . import _core
+from datetime import timedelta
 import typing
 
 
@@ -1200,11 +1201,17 @@ class TTLCache(BaseCacheImpl[KT, VT]):
     def __init__(
         self,
         maxsize: int,
-        ttl: float,
+        ttl: typing.Union[float, timedelta],
         iterable: typing.Union[typing.Union[dict, typing.Iterable[tuple]], None] = None,
         *,
         capacity: int = 0,
     ) -> None:
+        if isinstance(ttl, timedelta):
+            ttl = ttl.total_seconds()
+
+        if ttl <= 0:
+            raise ValueError("ttl must be a positive number and non-zero")
+
         self._raw = _core.TTLCache(maxsize, ttl, capacity=capacity)
 
         if iterable is not None:

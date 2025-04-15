@@ -237,53 +237,58 @@ impl TTLCache {
         (0, 0.0f64)
     }
 
-    // fn __getstate__(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<pyo3::PyObject> {
-    //     let lock = self.raw.lock();
+    fn __getstate__(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<pyo3::PyObject> {
+        let lock = self.raw.lock();
 
-    //     let state = unsafe {
-    //         let list = pyo3::ffi::PyList_New(0);
-    //         if list.is_null() {
-    //             return Err(pyo3::PyErr::fetch(py));
-    //         }
+        let state = unsafe {
+            let list = pyo3::ffi::PyList_New(0);
+            if list.is_null() {
+                return Err(pyo3::PyErr::fetch(py));
+            }
 
-    //         for (hk, val) in lock.entries_iter() {
-    //             let tp = tuple!(
-    //                 py,
-    //                 2,
-    //                 0 => hk.obj.clone_ref(py).as_ptr(),
-    //                 1 => val.clone_ref(py).as_ptr(),
-    //             );
+            for element in lock.entries_iter() {
+                let tp = tuple!(
+                    py,
+                    3,
+                    0 => element.key.obj.clone_ref(py).as_ptr(),
+                    1 => element.value.clone_ref(py).as_ptr(),
+                    2 => pyo3::ffi::PyFloat_FromDouble(
+                        element.expire_at.duration_since(std::time::UNIX_EPOCH).unwrap_unchecked().as_secs_f64()
+                    ),
+                );
 
-    //             if let Err(x) = tp {
-    //                 pyo3::ffi::Py_DECREF(list);
-    //                 return Err(x);
-    //             }
+                if let Err(x) = tp {
+                    pyo3::ffi::Py_DECREF(list);
+                    return Err(x);
+                }
 
-    //             if pyo3::ffi::PyList_Append(list, tp.unwrap_unchecked()) == -1 {
-    //                 pyo3::ffi::Py_DECREF(list);
-    //                 return Err(pyo3::PyErr::fetch(py));
-    //             }
-    //         }
+                if pyo3::ffi::PyList_Append(list, tp.unwrap_unchecked()) == -1 {
+                    pyo3::ffi::Py_DECREF(list);
+                    return Err(pyo3::PyErr::fetch(py));
+                }
+            }
 
-    //         let maxsize = pyo3::ffi::PyLong_FromSize_t(lock.maxsize());
-    //         let capacity = pyo3::ffi::PyLong_FromSize_t(lock.capacity().0);
+            let maxsize = pyo3::ffi::PyLong_FromSize_t(lock.maxsize());
+            let capacity = pyo3::ffi::PyLong_FromSize_t(lock.capacity().0);
+            let ttl = pyo3::ffi::PyFloat_FromDouble(lock.ttl().as_secs_f64());
 
-    //         tuple!(
-    //             py,
-    //             3,
-    //             0 => maxsize,
-    //             1 => list,
-    //             2 => capacity,
-    //         )?
-    //     };
+            tuple!(
+                py,
+                4,
+                0 => maxsize,
+                1 => list,
+                2 => capacity,
+                3 => ttl,
+            )?
+        };
 
-    //     Ok(unsafe { pyo3::Py::from_owned_ptr(py, state) })
-    // }
+        Ok(unsafe { pyo3::Py::from_owned_ptr(py, state) })
+    }
 
-    // pub fn __setstate__(&self, py: pyo3::Python<'_>, state: pyo3::PyObject) -> pyo3::PyResult<()> {
-    //     let mut lock = self.raw.lock();
-    //     lock.from_pickle(py, state.as_ptr())
-    // }
+    pub fn __setstate__(&self, py: pyo3::Python<'_>, state: pyo3::PyObject) -> pyo3::PyResult<()> {
+        let mut lock = self.raw.lock();
+        lock.from_pickle(py, state.as_ptr())
+    }
 
     pub fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
         for value in self.raw.lock().entries_iter() {

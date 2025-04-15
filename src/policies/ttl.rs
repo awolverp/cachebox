@@ -387,6 +387,83 @@ impl TTLPolicy {
     pub fn get_index(&self, n: usize) -> Option<&TimeToLivePair> {
         self.entries.get(n)
     }
+
+    #[allow(clippy::wrong_self_convention)]
+    pub fn from_pickle(
+        &mut self,
+        py: pyo3::Python<'_>,
+        state: *mut pyo3::ffi::PyObject,
+    ) -> pyo3::PyResult<()> {
+        use pyo3::types::PyAnyMethods;
+
+        unsafe {
+            tuple!(check state, size=4)?;
+            let (maxsize, iterable, capacity) = extract_pickle_tuple!(py, state => list);
+
+            // SAFETY: we check `iterable` type in `extract_pickle_tuple` macro
+            if maxsize < (pyo3::ffi::PyObject_Size(iterable.as_ptr()) as usize) {
+                return Err(pyo3::PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                    "the iterable object size is more than maxsize!",
+                ));
+            }
+
+            let ttl = {
+                let obj = pyo3::ffi::PyTuple_GetItem(state, 3);
+                pyo3::ffi::PyFloat_AsDouble(obj)
+            };
+
+            let mut new = Self::new(maxsize, capacity, ttl)?;
+
+            for pair in iterable.bind(py).try_iter()? {
+                let (key, value, timestamp) =
+                    pair?.extract::<(pyo3::PyObject, pyo3::PyObject, f64)>()?;
+
+                let hk = PreHashObject::from_pyobject(py, key)?;
+
+                match new.entry_with_slot(py, &hk)? {
+                    Entry::Absent(entry) => {
+                        entry.pickle_insert(
+                            hk,
+                            value,
+                            std::time::UNIX_EPOCH + std::time::Duration::from_secs_f64(timestamp),
+                        )?;
+                    }
+                    _ => std::hint::unreachable_unchecked(),
+                }
+            }
+
+            new.expire(py);
+            new.shrink_to_fit(py);
+
+            *self = new;
+            Ok(())
+        }
+
+        // use pyo3::types::PyAnyMethods;
+
+        // unsafe {
+        //     tuple!(check state, size=3)?;
+        //     let (maxsize, iterable, capacity) = extract_pickle_tuple!(py, state => list);
+
+        //     let mut new = Self::new(maxsize, capacity)?;
+
+        //     for pair in iterable.bind(py).try_iter()? {
+        //         let (key, value) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject)>()?;
+
+        //         let hk = PreHashObject::from_pyobject(py, key)?;
+
+        //         match new.entry_with_slot(py, &hk)? {
+        //             Entry::Absent(entry) => {
+        //                 entry.insert(py, hk, value)?;
+        //             }
+        //             _ => std::hint::unreachable_unchecked(),
+        //         }
+        //     }
+
+        //     *self = new;
+        //     Ok(())
+        // }
+    }
 }
 
 impl TimeToLivePair {
@@ -464,6 +541,43 @@ impl<'a> TTLPolicyOccupied<'a> {
 }
 
 impl TTLPolicyAbsent<'_> {
+    #[inline]
+    unsafe fn pickle_insert(
+        self,
+        key: PreHashObject,
+        value: pyo3::PyObject,
+        expire_at: std::time::SystemTime,
+    ) -> pyo3::PyResult<()> {
+        match self.situation {
+            AbsentSituation::Expired(_) => {
+                return Err(pyo3::PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                    "pikcle object is suspicious!",
+                ))
+            }
+            AbsentSituation::Slot(slot) => unsafe {
+                // This means the key is not available and we have insert_slot
+                // for inserting it
+
+                // We don't need to check maxsize, we sure `len(iterable) <= maxsize` in loading pickle
+
+                self.instance.table.insert_in_slot(
+                    key.hash,
+                    slot,
+                    self.instance.entries.len() + self.instance.n_shifts,
+                );
+
+                self.instance
+                    .entries
+                    .push_back(TimeToLivePair::new(key, value, expire_at));
+            },
+            AbsentSituation::None => unreachable!("this should never happen"),
+        }
+
+        // We don't need change observed value here
+        // self.instance.observed.change();
+        Ok(())
+    }
+
     #[inline]
     pub fn insert(
         self,

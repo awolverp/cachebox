@@ -227,14 +227,14 @@ impl TTLCache {
         pyo3::Py::new(slf.py(), result)
     }
 
-    // fn get_index(&self, py: pyo3::Python<'_>, index: usize) -> Option<pyo3::PyObject> {
-    //     let lock = self.raw.lock();
+    fn get_index(&self, py: pyo3::Python<'_>, index: usize) -> Option<pyo3::PyObject> {
+        let lock = self.raw.lock();
 
-    //     lock.get_index(index).map(|(key, _)| key.obj.clone_ref(py))
-    // }
+        lock.get_index(index).map(|pair| pair.key.obj.clone_ref(py))
+    }
 
-    fn __getnewargs__(&self) -> (usize,) {
-        (0,)
+    fn __getnewargs__(&self) -> (usize, f64) {
+        (0, 0.0f64)
     }
 
     // fn __getstate__(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<pyo3::PyObject> {

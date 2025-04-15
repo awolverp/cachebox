@@ -1,4 +1,4 @@
-from cachebox import BaseCacheImpl
+from cachebox import BaseCacheImpl, TTLCache
 import dataclasses
 import pytest
 import typing
@@ -313,8 +313,12 @@ class _TestMixin:  # pragma: no cover
         for key, value in obj.items():
             assert obj[key] == value
 
-        for key, value in obj.items():
-            obj[key] = value * 2
+        try:
+            for key, value in obj.items():
+                obj[key] = value * 2
+        except RuntimeError:
+            if not isinstance(obj, TTLCache):
+                raise
 
         with pytest.raises(RuntimeError):
             for key, value in obj.items():

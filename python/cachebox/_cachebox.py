@@ -140,7 +140,19 @@ class Cache(BaseCacheImpl[KT, VT]):
         return self._raw.insert(key, value)
 
     def get(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
-        """Equals to `self[key]`, but returns `default` if the cache don't have this key present."""
+        """
+        Retrieves the value for a given key from the cache.
+
+        Returns the value associated with the key if present, otherwise returns the specified default value.
+        Equivalent to `self[key]`, but provides a fallback default if the key is not found.
+
+        Args:
+            key: The key to look up in the cache.
+            default: The value to return if the key is not present in the cache. Defaults to None.
+
+        Returns:
+            The value associated with the key, or the default value if the key is not found.
+        """
         try:
             return self._raw.get(key)
         except _core.CoreKeyError:
@@ -330,17 +342,36 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
 
     def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
         """
-        Equals to `self[key] = value`, but returns a value:
+        Inserts a key-value pair into the cache, returning the previous value if the key existed.
 
-        - If the cache did not have this key present, None is returned.
-        - If the cache did have this key present, the value is updated,
-          and the old value is returned. The key is not updated, though;
+        Equivalent to `self[key] = value`, but with additional return value semantics:
+
+        - If the key was not previously in the cache, returns None.
+        - If the key was already present, updates the value and returns the old value.
+          The key itself is not modified.
+
+        Args:
+            key: The key to insert.
+            value: The value to associate with the key.
+
+        Returns:
+            The previous value associated with the key, or None if the key was not present.
         """
         return self._raw.insert(key, value)
 
     def get(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
-        """
-        Equals to `self[key]`, but returns `default` if the cache don't have this key present.
+        """ "
+        Retrieves the value for a given key from the cache.
+
+        Returns the value associated with the key if present, otherwise returns the specified default value.
+        Equivalent to `self[key]`, but provides a fallback default if the key is not found.
+
+        Args:
+            key: The key to look up in the cache.
+            default: The value to return if the key is not present in the cache. Defaults to None.
+
+        Returns:
+            The value associated with the key, or the default value if the key is not found.
         """
         try:
             return self._raw.get(key)
@@ -554,17 +585,36 @@ class RRCache(BaseCacheImpl[KT, VT]):
 
     def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
         """
-        Equals to `self[key] = value`, but returns a value:
+        Inserts a key-value pair into the cache, returning the previous value if the key existed.
 
-        - If the cache did not have this key present, None is returned.
-        - If the cache did have this key present, the value is updated,
-          and the old value is returned. The key is not updated, though;
+        Equivalent to `self[key] = value`, but with additional return value semantics:
+
+        - If the key was not previously in the cache, returns None.
+        - If the key was already present, updates the value and returns the old value.
+          The key itself is not modified.
+
+        Args:
+            key: The key to insert.
+            value: The value to associate with the key.
+
+        Returns:
+            The previous value associated with the key, or None if the key was not present.
         """
         return self._raw.insert(key, value)
 
     def get(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
-        Equals to `self[key]`, but returns `default` if the cache don't have this key present.
+        Retrieves the value for a given key from the cache.
+
+        Returns the value associated with the key if present, otherwise returns the specified default value.
+        Equivalent to `self[key]`, but provides a fallback default if the key is not found.
+
+        Args:
+            key: The key to look up in the cache.
+            default: The value to return if the key is not present in the cache. Defaults to None.
+
+        Returns:
+            The value associated with the key, or the default value if the key is not found.
         """
         try:
             return self._raw.get(key)
@@ -778,11 +828,20 @@ class LRUCache(BaseCacheImpl[KT, VT]):
 
     def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
         """
-        Equals to `self[key] = value`, but returns a value:
+        Inserts a key-value pair into the cache, returning the previous value if the key existed.
 
-        - If the cache did not have this key present, None is returned.
-        - If the cache did have this key present, the value is updated,
-          and the old value is returned. The key is not updated, though;
+        Equivalent to `self[key] = value`, but with additional return value semantics:
+
+        - If the key was not previously in the cache, returns None.
+        - If the key was already present, updates the value and returns the old value.
+          The key itself is not modified.
+
+        Args:
+            key: The key to insert.
+            value: The value to associate with the key.
+
+        Returns:
+            The previous value associated with the key, or None if the key was not present.
         """
         return self._raw.insert(key, value)
 
@@ -797,7 +856,17 @@ class LRUCache(BaseCacheImpl[KT, VT]):
 
     def get(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
-        Equals to `self[key]`, but returns `default` if the cache don't have this key present.
+        Retrieves the value for a given key from the cache.
+
+        Returns the value associated with the key if present, otherwise returns the specified default value.
+        Equivalent to `self[key]`, but provides a fallback default if the key is not found.
+
+        Args:
+            key: The key to look up in the cache.
+            default: The value to return if the key is not present in the cache. Defaults to None.
+
+        Returns:
+            The value associated with the key, or the default value if the key is not found.
         """
         try:
             return self._raw.get(key)
@@ -1009,11 +1078,20 @@ class LFUCache(BaseCacheImpl[KT, VT]):
 
     def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
         """
-        Equals to `self[key] = value`, but returns a value:
+        Inserts a key-value pair into the cache, returning the previous value if the key existed.
 
-        - If the cache did not have this key present, None is returned.
-        - If the cache did have this key present, the value is updated,
-          and the old value is returned. The key is not updated, though;
+        Equivalent to `self[key] = value`, but with additional return value semantics:
+
+        - If the key was not previously in the cache, returns None.
+        - If the key was already present, updates the value and returns the old value.
+          The key itself is not modified.
+
+        Args:
+            key: The key to insert.
+            value: The value to associate with the key.
+
+        Returns:
+            The previous value associated with the key, or None if the key was not present.
         """
         return self._raw.insert(key, value)
 
@@ -1028,7 +1106,17 @@ class LFUCache(BaseCacheImpl[KT, VT]):
 
     def get(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
-        Equals to `self[key]`, but returns `default` if the cache don't have this key present.
+        Retrieves the value for a given key from the cache.
+
+        Returns the value associated with the key if present, otherwise returns the specified default value.
+        Equivalent to `self[key]`, but provides a fallback default if the key is not found.
+
+        Args:
+            key: The key to look up in the cache.
+            default: The value to return if the key is not present in the cache. Defaults to None.
+
+        Returns:
+            The value associated with the key, or the default value if the key is not found.
         """
         try:
             return self._raw.get(key)
@@ -1193,9 +1281,10 @@ class LFUCache(BaseCacheImpl[KT, VT]):
 
 class TTLCache(BaseCacheImpl[KT, VT]):
     """
-    TTL Cache implementation - Time-To-Live Policy (thread-safe).
+    A thread-safe Time-To-Live (TTL) cache implementation with configurable maximum size and expiration.
 
-    In simple terms, the TTL cache will automatically remove the element in the cache that has expired.
+    This cache automatically removes elements that have expired based on their time-to-live setting.
+    Supports various operations like insertion, retrieval, and iteration with O(1) complexity.
     """
 
     def __init__(
@@ -1206,6 +1295,18 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         *,
         capacity: int = 0,
     ) -> None:
+        """
+        Initialize a new TTL cache instance.
+
+        Args:
+            maxsize: Maximum number of elements the cache can hold.
+            ttl: Time-to-live for cache entries, either as seconds or a timedelta.
+            iterable: Optional initial items to populate the cache, can be a dict or iterable of tuples.
+            capacity: Optional initial capacity for the underlying cache storage. Defaults to 0.
+
+        Raises:
+            ValueError: If the time-to-live (ttl) is not a positive number.
+        """
         if isinstance(ttl, timedelta):
             ttl = ttl.total_seconds()
 
@@ -1249,22 +1350,65 @@ class TTLCache(BaseCacheImpl[KT, VT]):
 
     def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
         """
-        Equals to `self[key] = value`, but returns a value:
+        Inserts a key-value pair into the cache, returning the previous value if the key existed.
 
-        - If the cache did not have this key present, None is returned.
-        - If the cache did have this key present, the value is updated,
-          and the old value is returned. The key is not updated, though;
+        Equivalent to `self[key] = value`, but with additional return value semantics:
+
+        - If the key was not previously in the cache, returns None.
+        - If the key was already present, updates the value and returns the old value.
+          The key itself is not modified.
+
+        Args:
+            key: The key to insert.
+            value: The value to associate with the key.
+
+        Returns:
+            The previous value associated with the key, or None if the key was not present.
         """
         return self._raw.insert(key, value)
 
     def get(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
-        Equals to `self[key]`, but returns `default` if the cache don't have this key present.
+        Retrieves the value for a given key from the cache.
+
+        Returns the value associated with the key if present, otherwise returns the specified default value.
+        Equivalent to `self[key]`, but provides a fallback default if the key is not found.
+
+        Args:
+            key: The key to look up in the cache.
+            default: The value to return if the key is not present in the cache. Defaults to None.
+
+        Returns:
+            The value associated with the key, or the default value if the key is not found.
         """
         try:
             return self._raw.get(key).value()
         except _core.CoreKeyError:
             return default
+
+    def get_with_expire(
+        self, key: KT, default: typing.Optional[DT] = None
+    ) -> typing.Tuple[typing.Union[VT, DT], float]:
+        """
+        Retrieves the value and expiration duration for a given key from the cache.
+
+        Returns a tuple containing the value associated with the key and its duration.
+        If the key is not found, returns the default value and 0.0 duration.
+
+        Args:
+            key: The key to look up in the cache.
+            default: The value to return if the key is not present in the cache. Defaults to None.
+
+        Returns:
+            A tuple of (value, duration), where value is the cached value or default,
+            and duration is the time-to-live for the key (or 0.0 if not found).
+        """
+        try:
+            pair = self._raw.get(key)
+        except _core.CoreKeyError:
+            return default, 0.0
+        else:
+            return (pair.value(), pair.duration())
 
     def pop(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
@@ -1274,6 +1418,29 @@ class TTLCache(BaseCacheImpl[KT, VT]):
             return self._raw.remove(key).value()
         except _core.CoreKeyError:
             return default
+
+    def pop_with_expire(
+        self, key: KT, default: typing.Optional[DT] = None
+    ) -> typing.Tuple[typing.Union[VT, DT], float]:
+        """
+        Removes the specified key from the cache and returns its value and expiration duration.
+
+        If the key is not found, returns the default value and 0.0 duration.
+
+        Args:
+            key: The key to remove from the cache.
+            default: The value to return if the key is not present in the cache. Defaults to None.
+
+        Returns:
+            A tuple of (value, duration), where value is the cached value or default,
+            and duration is the time-to-live for the key (or 0.0 if not found).
+        """
+        try:
+            pair = self._raw.remove(key)
+        except _core.CoreKeyError:
+            return default, 0.0
+        else:
+            return (pair.value(), pair.duration())
 
     def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
@@ -1291,6 +1458,25 @@ class TTLCache(BaseCacheImpl[KT, VT]):
             raise KeyError() from None
         else:
             return (val.key(), val.value())
+
+    def popitem_with_expire(self) -> typing.Tuple[KT, VT, float]:
+        """
+        Removes and returns the element that has been in the cache the longest, along with its key and expiration duration.
+
+        If the cache is empty, raises a KeyError.
+
+        Returns:
+            A tuple of (key, value, duration), where:
+            - key is the key of the removed item
+            - value is the value of the removed item
+            - duration is the time-to-live for the removed item
+        """
+        try:
+            val = self._raw.popitem()
+        except _core.CoreKeyError:
+            raise KeyError() from None
+        else:
+            return (val.key(), val.value(), val.duration())
 
     def drain(self, n: int) -> int:  # pragma: no cover
         """Does the `popitem()` `n` times and returns count of removed items."""
@@ -1351,6 +1537,15 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         """
         self._raw.clear(reuse)
 
+    def items_with_expire(self) -> IteratorView[typing.Tuple[KT, VT, float]]:
+        """
+        Returns an iterable object of the cache's items (key-value pairs along with their expiration duration).
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        """
+        return IteratorView(self._raw.items(), lambda x: (x.key(), x.value(), x.duration()))
+
     def items(self) -> IteratorView[typing.Tuple[KT, VT]]:
         """
         Returns an iterable object of the cache's items (key-value pairs).
@@ -1377,6 +1572,26 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         - You should not make any changes in cache while using this iterable object.
         """
         return IteratorView(self._raw.items(), lambda x: x.value())
+
+    def first(self, n: int = 0) -> typing.Optional[KT]:
+        """
+        Returns the first key in cache; this is the one which will be removed by `popitem()` (if n == 0).
+
+        By using `n` parameter, you can browse order index by index.
+        """
+        if n < 0:
+            n = len(self._raw) + n
+
+        if n < 0:
+            return None
+
+        return self._raw.get_index(n)
+
+    def last(self) -> typing.Optional[KT]:
+        """
+        Returns the last key in cache. Equals to `self.first(-1)`.
+        """
+        return self._raw.get_index(len(self._raw) - 1)
 
     def __iter__(self) -> IteratorView[KT]:
         return self.keys()

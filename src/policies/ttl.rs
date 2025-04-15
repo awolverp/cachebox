@@ -382,6 +382,11 @@ impl TTLPolicy {
             second: NoLifetimeSliceIter::new(b),
         }
     }
+
+    #[inline(always)]
+    pub fn get_index(&self, n: usize) -> Option<&TimeToLivePair> {
+        self.entries.get(n)
+    }
 }
 
 impl TimeToLivePair {
@@ -410,28 +415,27 @@ impl<'a> TTLPolicyOccupied<'a> {
     #[inline]
     pub fn update(&mut self, value: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
         // We have to move the value to the end of the vector
-        let mut item = self
-            .instance
-            .entries
-            .remove(unsafe { *self.bucket.as_ptr() } - self.instance.n_shifts)
-            .unwrap();
+        let (mut index, slot) = unsafe { self.instance.table.remove(self.bucket.clone()) };
+        index -= self.instance.n_shifts;
 
-        self.instance.decrement_indexes(
-            unsafe { *self.bucket.as_ptr() } + 1 - self.instance.n_shifts,
-            self.instance.entries.len(),
-        );
+        self.instance
+            .decrement_indexes(index + 1, self.instance.entries.len());
 
-        unsafe {
-            *self.bucket.as_mut() = self.instance.entries.len() + self.instance.n_shifts;
-        }
+        let mut item = self.instance.entries.remove(index).unwrap();
 
         item.expire_at = std::time::SystemTime::now() + self.instance.ttl;
         let old_value = std::mem::replace(&mut item.value, value);
 
-        self.instance.entries.push_back(item);
+        unsafe {
+            self.instance.table.insert_in_slot(
+                item.key.hash,
+                slot,
+                self.instance.entries.len() + self.instance.n_shifts,
+            );
 
-        // In contrast to all algorithms, in this algorithm we need to change the observed value
-        // because we moved an element
+            self.instance.entries.push_back(item);
+        }
+
         self.instance.observed.change();
 
         Ok(old_value)
@@ -474,27 +478,26 @@ impl TTLPolicyAbsent<'_> {
                 // This means the key is available but expired
                 // So we have to move the value to the end of the vector
                 // and update the bucket ( like TTLPolicyOccupied::update )
-                let mut item = self
-                    .instance
-                    .entries
-                    .remove(unsafe { *bucket.as_ptr() } - self.instance.n_shifts)
-                    .unwrap();
+                let (mut index, slot) = unsafe { self.instance.table.remove(bucket) };
+                index -= self.instance.n_shifts;
 
-                self.instance.decrement_indexes(
-                    unsafe { *bucket.as_ptr() } + 1 - self.instance.n_shifts,
-                    self.instance.entries.len(),
-                );
+                self.instance
+                    .decrement_indexes(index + 1, self.instance.entries.len());
+
+                let mut item = self.instance.entries.remove(index).unwrap();
+
+                item.expire_at = std::time::SystemTime::now() + self.instance.ttl;
+                item.value = value;
 
                 unsafe {
-                    *bucket.as_mut() = self.instance.entries.len() + self.instance.n_shifts;
+                    self.instance.table.insert_in_slot(
+                        item.key.hash,
+                        slot,
+                        self.instance.entries.len() + self.instance.n_shifts,
+                    );
+
+                    self.instance.entries.push_back(item);
                 }
-
-                // Actually we don't need to update the key in this situation
-                item.key = key;
-                item.value = value;
-                item.expire_at = expire_at;
-
-                self.instance.entries.push_back(item);
             }
             AbsentSituation::Slot(slot) => unsafe {
                 // This means the key is not available and we have insert_slot

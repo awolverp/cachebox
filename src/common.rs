@@ -1,32 +1,6 @@
-#[inline]
-pub fn pyobject_equal(
-    py: pyo3::Python<'_>,
-    arg1: *mut pyo3::ffi::PyObject,
-    arg2: *mut pyo3::ffi::PyObject,
-) -> pyo3::PyResult<bool> {
-    unsafe {
-        if std::ptr::eq(arg1, arg2) {
-            return Ok(true);
-        }
-
-        let boolean = pyo3::ffi::PyObject_RichCompareBool(arg1, arg2, pyo3::ffi::Py_EQ);
-
-        if boolean < 0 {
-            Err(pyo3::PyErr::take(py).unwrap_unchecked())
-        } else {
-            Ok(boolean == 1)
-        }
-    }
-}
-
-#[rustfmt::skip]
 macro_rules! non_zero_or {
     ($num:expr, $_else:expr) => {
-        unsafe {
-            core::num::NonZeroUsize::new_unchecked(
-                if $num == 0 { $_else } else { $num }
-            )
-        }
+        unsafe { core::num::NonZeroUsize::new_unchecked(if $num == 0 { $_else } else { $num }) }
     };
 }
 
@@ -151,6 +125,27 @@ macro_rules! extract_pickle_tuple {
     }};
 }
 
+#[inline]
+pub fn pyobject_equal(
+    py: pyo3::Python<'_>,
+    arg1: *mut pyo3::ffi::PyObject,
+    arg2: *mut pyo3::ffi::PyObject,
+) -> pyo3::PyResult<bool> {
+    unsafe {
+        if std::ptr::eq(arg1, arg2) {
+            return Ok(true);
+        }
+
+        let boolean = pyo3::ffi::PyObject_RichCompareBool(arg1, arg2, pyo3::ffi::Py_EQ);
+
+        if boolean < 0 {
+            Err(pyo3::PyErr::take(py).unwrap_unchecked())
+        } else {
+            Ok(boolean == 1)
+        }
+    }
+}
+
 /// Converts an isize value to a u64 value, mapping negative values to the upper half of the u64 range.
 ///
 /// This function ensures a bijective mapping between isize and u64, preserving the order of values
@@ -173,6 +168,38 @@ fn convert_isize_to_u64(v: &isize) -> u64 {
 pub struct PreHashObject {
     pub obj: pyo3::PyObject,
     pub hash: u64,
+}
+
+/// A view into a single entry in a table, which may either be absent or occupied.
+///
+/// This is common in policies and will be used by `entry(...)` methods of them.
+pub enum Entry<O, V> {
+    Occupied(O),
+    Absent(V),
+}
+
+/// Observe caches' changes
+#[derive(Debug)]
+pub struct Observed(u16);
+
+/// Checks the [`Observed`] on iterators
+#[derive(Debug)]
+pub struct ObservedIterator {
+    pub ptr: core::ptr::NonNull<pyo3::ffi::PyObject>,
+    pub statepoint: u16,
+}
+
+pub struct NoLifetimeSliceIter<T> {
+    pub pointer: std::ptr::NonNull<T>,
+    pub index: usize,
+    pub len: usize,
+}
+
+/// A pair representing a key-value entry with a time-to-live (TTL) expiration.
+pub struct TimeToLivePair {
+    pub key: PreHashObject,
+    pub value: pyo3::PyObject,
+    pub expire_at: Option<std::time::SystemTime>,
 }
 
 impl PreHashObject {
@@ -207,23 +234,6 @@ impl std::fmt::Debug for PreHashObject {
         write!(f, "PreHashObject({})", self.hash)
     }
 }
-
-/// A view into a single entry in a table, which may either be absent or occupied.
-///
-/// This is common in policies and will be used by `entry(...)` methods of them.
-pub enum Entry<O, V> {
-    Occupied(O),
-    Absent(V),
-}
-
-// impl<O, V> Entry<O, V> {
-//     pub fn map<T>(self, f: impl FnOnce(O) -> T) -> Option<T> {
-//         match self {
-//             Entry::Occupied(c) => Some(f(c)),
-//             Entry::Absent(_) => None,
-//         }
-//     }
-// }
 
 /// A trait for adding `try_find` and `try_find_entry` methods to [`hashbrown::HashTable`]
 pub trait TryFindMethods<T> {
@@ -299,10 +309,6 @@ impl<T> TryFindMethods<T> for hashbrown::raw::RawTable<T> {
     }
 }
 
-/// Observe caches' changes
-#[derive(Debug)]
-pub struct Observed(u16);
-
 impl Observed {
     pub fn new() -> Self {
         Self(0)
@@ -362,13 +368,6 @@ unsafe fn _get_state(py: pyo3::Python<'_>, ptr: *mut pyo3::ffi::PyObject) -> pyo
     Ok(c as u16)
 }
 
-/// Checks the [`Observed`] on iterators
-#[derive(Debug)]
-pub struct ObservedIterator {
-    pub ptr: core::ptr::NonNull<pyo3::ffi::PyObject>,
-    pub statepoint: u16,
-}
-
 impl ObservedIterator {
     pub fn new(ptr: *mut pyo3::ffi::PyObject, state: u16) -> Self {
         unsafe {
@@ -405,12 +404,6 @@ impl Drop for ObservedIterator {
 unsafe impl Send for ObservedIterator {}
 unsafe impl Sync for ObservedIterator {}
 
-pub struct NoLifetimeSliceIter<T> {
-    pub pointer: std::ptr::NonNull<T>,
-    pub index: usize,
-    pub len: usize,
-}
-
 impl<T> NoLifetimeSliceIter<T> {
     #[inline]
     pub fn new(slice: &[T]) -> Self {
@@ -434,6 +427,37 @@ impl<T> Iterator for NoLifetimeSliceIter<T> {
             let value = unsafe { self.pointer.add(self.index) };
             self.index += 1;
             Some(value)
+        }
+    }
+}
+
+impl TimeToLivePair {
+    #[inline]
+    pub fn new(
+        key: PreHashObject,
+        value: pyo3::PyObject,
+        expire_at: Option<std::time::SystemTime>,
+    ) -> Self {
+        Self {
+            key,
+            value,
+            expire_at,
+        }
+    }
+
+    #[inline]
+    pub fn duration(&self) -> Option<std::time::Duration> {
+        self.expire_at.map(|x| {
+            x.duration_since(std::time::SystemTime::now())
+                .unwrap_or_default()
+        })
+    }
+
+    #[inline(always)]
+    pub fn is_expired(&self, now: std::time::SystemTime) -> bool {
+        match self.expire_at {
+            Some(x) => x < now,
+            None => false,
         }
     }
 }

@@ -396,7 +396,7 @@ class _TestMixin:  # pragma: no cover
             c1[9]
 
         c2 = pickle.loads(pickle.dumps(c1))
-        assert c1 == c2
+        assert c1 == c2, f"{c1} - {c2}"
         assert c1.capacity() == c2.capacity()
         check_order(c1, c2)
 

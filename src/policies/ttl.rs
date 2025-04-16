@@ -3,6 +3,7 @@ use crate::common::Entry;
 use crate::common::NoLifetimeSliceIter;
 use crate::common::Observed;
 use crate::common::PreHashObject;
+use crate::common::TimeToLivePair;
 use crate::common::TryFindMethods;
 
 use std::collections::VecDeque;
@@ -15,13 +16,6 @@ pub struct TTLPolicy {
     ttl: std::time::Duration,
     n_shifts: usize,
     pub observed: Observed,
-}
-
-/// A pair representing a key-value entry with a time-to-live (TTL) expiration.
-pub struct TimeToLivePair {
-    pub key: PreHashObject,
-    pub value: pyo3::PyObject,
-    pub expire_at: std::time::SystemTime,
 }
 
 pub struct TTLPolicyOccupied<'a> {
@@ -81,10 +75,11 @@ impl TTLPolicy {
 
     #[inline]
     pub fn real_len(&self) -> usize {
+        let now = std::time::SystemTime::now();
         let mut c = 0usize;
 
         for item in &self.entries {
-            if item.expire_at > std::time::SystemTime::now() {
+            if !item.is_expired(now) {
                 break;
             }
 
@@ -140,8 +135,10 @@ impl TTLPolicy {
 
     #[inline]
     pub fn expire(&mut self, py: pyo3::Python<'_>) {
+        let now = std::time::SystemTime::now();
+
         while !self.entries.is_empty() {
-            if self.entries[0].expire_at > std::time::SystemTime::now() {
+            if !self.entries[0].is_expired(now) {
                 break;
             }
 
@@ -190,7 +187,7 @@ impl TTLPolicy {
             Some(bucket) => {
                 let pair = &self.entries[unsafe { *bucket.as_ptr() } - self.n_shifts];
 
-                if pair.expire_at > std::time::SystemTime::now() {
+                if !pair.is_expired(std::time::SystemTime::now()) {
                     Ok(Entry::Occupied(TTLPolicyOccupied { instance: self, bucket }))
                 } else {
                     Ok(Entry::Absent(TTLPolicyAbsent { instance: self, situation: AbsentSituation::Expired(bucket) }))
@@ -218,7 +215,7 @@ impl TTLPolicy {
             Ok(bucket) => {
                 let pair = &self.entries[unsafe { *bucket.as_ptr() } - self.n_shifts];
 
-                if pair.expire_at > std::time::SystemTime::now() {
+                if !pair.is_expired(std::time::SystemTime::now()) {
                     Ok(Entry::Occupied(TTLPolicyOccupied { instance: self, bucket }))
                 } else {
                     Ok(Entry::Absent(TTLPolicyAbsent { instance: self, situation: AbsentSituation::Expired(bucket) }))
@@ -247,7 +244,7 @@ impl TTLPolicy {
             Some(index) => {
                 let pair = &self.entries[(*index) - self.n_shifts];
 
-                if pair.expire_at > std::time::SystemTime::now() {
+                if !pair.is_expired(std::time::SystemTime::now()) {
                     Ok(Some(pair))
                 } else {
                     Ok(None)
@@ -339,7 +336,7 @@ impl TTLPolicy {
             for index1 in self.table.iter().map(|x| x.as_ref()) {
                 let pair1 = &self.entries[(*index1) - self.n_shifts];
 
-                if pair1.expire_at < now {
+                if pair1.is_expired(now) {
                     continue;
                 }
 
@@ -351,7 +348,7 @@ impl TTLPolicy {
                     Some(bucket) => {
                         let pair2 = &other.entries[(*bucket.as_ref()) - other.n_shifts];
 
-                        if pair1.expire_at < now {
+                        if pair2.is_expired(now) {
                             return Ok(false);
                         }
 
@@ -466,28 +463,6 @@ impl TTLPolicy {
     }
 }
 
-impl TimeToLivePair {
-    #[inline]
-    pub fn new(
-        key: PreHashObject,
-        value: pyo3::PyObject,
-        expire_at: std::time::SystemTime,
-    ) -> Self {
-        Self {
-            key,
-            value,
-            expire_at,
-        }
-    }
-
-    #[inline]
-    pub fn duration(&self) -> std::time::Duration {
-        self.expire_at
-            .duration_since(std::time::SystemTime::now())
-            .unwrap_or_default()
-    }
-}
-
 impl<'a> TTLPolicyOccupied<'a> {
     #[inline]
     pub fn update(&mut self, value: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
@@ -500,7 +475,7 @@ impl<'a> TTLPolicyOccupied<'a> {
 
         let mut item = self.instance.entries.remove(index).unwrap();
 
-        item.expire_at = std::time::SystemTime::now() + self.instance.ttl;
+        item.expire_at = Some(std::time::SystemTime::now() + self.instance.ttl);
         let old_value = std::mem::replace(&mut item.value, value);
 
         unsafe {
@@ -568,7 +543,7 @@ impl TTLPolicyAbsent<'_> {
 
                 self.instance
                     .entries
-                    .push_back(TimeToLivePair::new(key, value, expire_at));
+                    .push_back(TimeToLivePair::new(key, value, Some(expire_at)));
             },
             AbsentSituation::None => unreachable!("this should never happen"),
         }
@@ -600,7 +575,7 @@ impl TTLPolicyAbsent<'_> {
 
                 let mut item = self.instance.entries.remove(index).unwrap();
 
-                item.expire_at = std::time::SystemTime::now() + self.instance.ttl;
+                item.expire_at = Some(expire_at);
                 item.value = value;
 
                 unsafe {
@@ -631,7 +606,7 @@ impl TTLPolicyAbsent<'_> {
 
                 self.instance
                     .entries
-                    .push_back(TimeToLivePair::new(key, value, expire_at));
+                    .push_back(TimeToLivePair::new(key, value, Some(expire_at)));
             },
             AbsentSituation::None => {
                 // This is same as AbsentSituation::Slot but we don't have any slot
@@ -654,7 +629,7 @@ impl TTLPolicyAbsent<'_> {
 
                 self.instance
                     .entries
-                    .push_back(TimeToLivePair::new(key, value, expire_at));
+                    .push_back(TimeToLivePair::new(key, value, Some(expire_at)));
             }
         }
 

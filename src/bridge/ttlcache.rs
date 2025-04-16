@@ -1,6 +1,7 @@
 use crate::common::Entry;
 use crate::common::ObservedIterator;
 use crate::common::PreHashObject;
+use crate::common::TimeToLivePair;
 
 #[pyo3::pyclass(module = "cachebox._core", frozen, subclass)]
 pub struct TTLCache {
@@ -253,7 +254,8 @@ impl TTLCache {
                     0 => element.key.obj.clone_ref(py).as_ptr(),
                     1 => element.value.clone_ref(py).as_ptr(),
                     2 => pyo3::ffi::PyFloat_FromDouble(
-                        element.expire_at.duration_since(std::time::UNIX_EPOCH).unwrap_unchecked().as_secs_f64()
+                        element.expire_at.unwrap_unchecked()
+                            .duration_since(std::time::UNIX_EPOCH).unwrap_unchecked().as_secs_f64()
                     ),
                 );
 
@@ -305,18 +307,18 @@ impl TTLCache {
 }
 
 impl TTLPair {
-    fn clone_from_pair(py: pyo3::Python<'_>, pair: &crate::policies::ttl::TimeToLivePair) -> Self {
+    fn clone_from_pair(py: pyo3::Python<'_>, pair: &TimeToLivePair) -> Self {
         TTLPair {
             key: pair.key.obj.clone_ref(py),
             value: pair.value.clone_ref(py),
-            duration: pair.duration(),
+            duration: unsafe { pair.duration().unwrap_unchecked() },
         }
     }
 }
 
-impl From<crate::policies::ttl::TimeToLivePair> for TTLPair {
-    fn from(value: crate::policies::ttl::TimeToLivePair) -> Self {
-        let duration = value.duration();
+impl From<TimeToLivePair> for TTLPair {
+    fn from(value: TimeToLivePair) -> Self {
+        let duration = unsafe { value.duration().unwrap_unchecked() };
 
         TTLPair {
             key: value.key.obj,
@@ -345,7 +347,11 @@ impl TTLPair {
     }
 
     fn pack3(slf: pyo3::PyRef<'_, Self>) -> (pyo3::PyObject, pyo3::PyObject, f64) {
-        (slf.key.clone_ref(slf.py()), slf.value.clone_ref(slf.py()), slf.duration.as_secs_f64())
+        (
+            slf.key.clone_ref(slf.py()),
+            slf.value.clone_ref(slf.py()),
+            slf.duration.as_secs_f64(),
+        )
     }
 }
 
@@ -361,7 +367,7 @@ impl ttlcache_items {
 
         slf.ptr.proceed(slf.py())?;
 
-        let mut element: std::ptr::NonNull<crate::policies::ttl::TimeToLivePair>;
+        let mut element: std::ptr::NonNull<TimeToLivePair>;
         loop {
             element = {
                 if let Some(x) = iter.next() {
@@ -371,7 +377,7 @@ impl ttlcache_items {
                 }
             };
 
-            if unsafe { element.as_ref().expire_at } > slf.now {
+            if unsafe { !element.as_ref().is_expired(slf.now) } {
                 break;
             }
         }

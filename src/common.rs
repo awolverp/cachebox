@@ -202,6 +202,20 @@ pub struct TimeToLivePair {
     pub expire_at: Option<std::time::SystemTime>,
 }
 
+/// Represents the possible situations when a key is absent in VTTL or TTL policy's data structure.
+///
+/// This enum helps track different scenarios during key insertion.
+pub enum AbsentSituation<T> {
+    /// A valid insertion slot is available
+    Slot(hashbrown::raw::InsertSlot),
+
+    /// An expired entry's bucket is found
+    Expired(hashbrown::raw::Bucket<T>),
+
+    /// No suitable slot or expired entry is found
+    None,
+}
+
 impl PreHashObject {
     /// Creates a new [`PreHashObject`]
     pub fn new(obj: pyo3::PyObject, hash: u64) -> Self {

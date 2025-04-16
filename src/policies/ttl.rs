@@ -5,6 +5,7 @@ use crate::common::Observed;
 use crate::common::PreHashObject;
 use crate::common::TimeToLivePair;
 use crate::common::TryFindMethods;
+use crate::common::AbsentSituation;
 
 use std::collections::VecDeque;
 
@@ -23,23 +24,9 @@ pub struct TTLPolicyOccupied<'a> {
     bucket: hashbrown::raw::Bucket<usize>,
 }
 
-/// Represents the possible situations when a key is absent from the TTL policy's data structure.
-///
-/// This enum helps track different scenarios during key insertion.
-enum AbsentSituation {
-    /// A valid insertion slot is available
-    Slot(hashbrown::raw::InsertSlot),
-
-    /// An expired entry's bucket is found
-    Expired(hashbrown::raw::Bucket<usize>),
-
-    /// No suitable slot or expired entry is found
-    None,
-}
-
 pub struct TTLPolicyAbsent<'a> {
     instance: &'a mut TTLPolicy,
-    situation: AbsentSituation,
+    situation: AbsentSituation<usize>,
 }
 
 pub struct TTLIterator {
@@ -137,8 +124,8 @@ impl TTLPolicy {
     pub fn expire(&mut self, py: pyo3::Python<'_>) {
         let now = std::time::SystemTime::now();
 
-        while !self.entries.is_empty() {
-            if !self.entries[0].is_expired(now) {
+        while let Some(e) = self.entries.front() {
+            if !e.is_expired(now) {
                 break;
             }
 

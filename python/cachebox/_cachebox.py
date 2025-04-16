@@ -1593,6 +1593,15 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         """
         return self._raw.get_index(len(self._raw) - 1)
 
+    def expire(self) -> None:
+        """
+        Manually removes expired key-value pairs from memory and releases their memory.
+        
+        Notes:
+            - This operation is typically automatic and does not require manual invocation.
+        """
+        self._raw.expire()
+
     def __iter__(self) -> IteratorView[KT]:
         return self.keys()
 

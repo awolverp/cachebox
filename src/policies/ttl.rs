@@ -1,11 +1,11 @@
 use super::fifo::MAX_N_SHIFT;
+use crate::common::AbsentSituation;
 use crate::common::Entry;
 use crate::common::NoLifetimeSliceIter;
 use crate::common::Observed;
 use crate::common::PreHashObject;
 use crate::common::TimeToLivePair;
 use crate::common::TryFindMethods;
-use crate::common::AbsentSituation;
 
 use std::collections::VecDeque;
 
@@ -482,7 +482,6 @@ impl<'a> TTLPolicyOccupied<'a> {
 
     #[inline]
     pub fn remove(self) -> TimeToLivePair {
-        // let (PreHashObject { hash, .. }, _) = &self.instance.entries[self.index - self.instance.n_shifts];
         let (mut index, _) = unsafe { self.instance.table.remove(self.bucket) };
         index -= self.instance.n_shifts;
 

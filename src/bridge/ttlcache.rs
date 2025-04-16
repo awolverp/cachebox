@@ -3,7 +3,7 @@ use crate::common::ObservedIterator;
 use crate::common::PreHashObject;
 use crate::common::TimeToLivePair;
 
-#[pyo3::pyclass(module = "cachebox._core", frozen, subclass)]
+#[pyo3::pyclass(module = "cachebox._core", frozen)]
 pub struct TTLCache {
     raw: crate::mutex::Mutex<crate::policies::ttl::TTLPolicy>,
 }
@@ -230,8 +230,13 @@ impl TTLCache {
 
     fn get_index(&self, py: pyo3::Python<'_>, index: usize) -> Option<pyo3::PyObject> {
         let lock = self.raw.lock();
-
         lock.get_index(index).map(|pair| pair.key.obj.clone_ref(py))
+    }
+
+    fn expire(&self, py: pyo3::Python<'_>) {
+        let mut lock = self.raw.lock();
+        lock.expire(py);
+        lock.shrink_to_fit(py);
     }
 
     fn __getnewargs__(&self) -> (usize, f64) {

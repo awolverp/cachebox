@@ -3,7 +3,7 @@ use crate::common::Entry;
 use crate::common::ObservedIterator;
 use crate::common::PreHashObject;
 
-#[pyo3::pyclass(module = "cachebox._core", frozen, subclass)]
+#[pyo3::pyclass(module = "cachebox._core", frozen)]
 pub struct RRCache {
     raw: crate::mutex::Mutex<crate::policies::random::RandomPolicy>,
 }

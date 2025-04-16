@@ -248,6 +248,7 @@ impl LFUPolicy {
         Ok(())
     }
 
+    #[inline]
     pub fn iter(&mut self) -> LFUIterator {
         self.heap.iter(|a, b| a.2.cmp(&b.2))
     }

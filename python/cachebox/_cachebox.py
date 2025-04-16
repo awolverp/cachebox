@@ -77,6 +77,8 @@ class Cache(BaseCacheImpl[KT, VT]):
     and provides dictionary-like access with additional cache-specific operations.
     """
 
+    __slots__ = ("_raw",)
+
     def __init__(
         self,
         maxsize: int,
@@ -292,6 +294,8 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
     - Supports dictionary-like operations
     - Allows optional initial data population
     """
+
+    __slots__ = ("_raw",)
 
     def __init__(
         self,
@@ -532,6 +536,8 @@ class RRCache(BaseCacheImpl[KT, VT]):
 
     Supports operations like insertion, retrieval, deletion, and iteration with O(1) complexity.
     """
+
+    __slots__ = ("_raw",)
 
     def __init__(
         self,
@@ -775,6 +781,8 @@ class LRUCache(BaseCacheImpl[KT, VT]):
     - Efficient key-value pair management
     - Supports initialization from dictionaries or iterables
     """
+
+    __slots__ = ("_raw",)
 
     def __init__(
         self,
@@ -1027,6 +1035,8 @@ class LFUCache(BaseCacheImpl[KT, VT]):
     - Supports initialization from dictionaries or iterables
     - Provides methods for key-value management similar to dict
     """
+
+    __slots__ = ("_raw",)
 
     def __init__(
         self,
@@ -1286,6 +1296,8 @@ class TTLCache(BaseCacheImpl[KT, VT]):
     This cache automatically removes elements that have expired based on their time-to-live setting.
     Supports various operations like insertion, retrieval, and iteration with O(1) complexity.
     """
+
+    __slots__ = ("_raw",)
 
     def __init__(
         self,
@@ -1596,7 +1608,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
     def expire(self) -> None:
         """
         Manually removes expired key-value pairs from memory and releases their memory.
-        
+
         Notes:
             - This operation is typically automatic and does not require manual invocation.
         """

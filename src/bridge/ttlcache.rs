@@ -339,6 +339,14 @@ impl TTLPair {
     fn duration(slf: pyo3::PyRef<'_, Self>) -> f64 {
         slf.duration.as_secs_f64()
     }
+
+    fn pack2(slf: pyo3::PyRef<'_, Self>) -> (pyo3::PyObject, pyo3::PyObject) {
+        (slf.key.clone_ref(slf.py()), slf.value.clone_ref(slf.py()))
+    }
+
+    fn pack3(slf: pyo3::PyRef<'_, Self>) -> (pyo3::PyObject, pyo3::PyObject, f64) {
+        (slf.key.clone_ref(slf.py()), slf.value.clone_ref(slf.py()), slf.duration.as_secs_f64())
+    }
 }
 
 #[pyo3::pymethods]

@@ -1457,7 +1457,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         except _core.CoreKeyError:
             raise KeyError() from None
         else:
-            return (val.key(), val.value())
+            return val.pack2()
 
     def popitem_with_expire(self) -> typing.Tuple[KT, VT, float]:
         """
@@ -1476,7 +1476,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         except _core.CoreKeyError:
             raise KeyError() from None
         else:
-            return (val.key(), val.value(), val.duration())
+            return val.pack3()
 
     def drain(self, n: int) -> int:  # pragma: no cover
         """Does the `popitem()` `n` times and returns count of removed items."""
@@ -1544,7 +1544,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         Notes:
         - You should not make any changes in cache while using this iterable object.
         """
-        return IteratorView(self._raw.items(), lambda x: (x.key(), x.value(), x.duration()))
+        return IteratorView(self._raw.items(), lambda x: x.pack3())
 
     def items(self) -> IteratorView[typing.Tuple[KT, VT]]:
         """
@@ -1553,7 +1553,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         Notes:
         - You should not make any changes in cache while using this iterable object.
         """
-        return IteratorView(self._raw.items(), lambda x: (x.key(), x.value()))
+        return IteratorView(self._raw.items(), lambda x: x.pack2())
 
     def keys(self) -> IteratorView[KT]:
         """

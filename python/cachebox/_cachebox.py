@@ -1718,7 +1718,7 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         Raises:
             ValueError: If the provided TTL is zero or negative.
         """
-        if ttl is not None: # pragma: no cover
+        if ttl is not None:  # pragma: no cover
             if isinstance(ttl, timedelta):
                 ttl = ttl.total_seconds()
 

@@ -7,6 +7,7 @@ from cachebox import (
     TTLCache,
     VTTLCache,
 )
+from datetime import timedelta
 import pytest
 from .mixin import _TestMixin
 import time
@@ -101,6 +102,17 @@ class TestFIFOCache(_TestMixin):
 class TestRRCache(_TestMixin):
     CACHE = RRCache
 
+    def test_popitem(self):
+        obj = RRCache(3)
+        with pytest.raises(KeyError):
+            obj.popitem()
+        with pytest.raises(KeyError):
+            obj.random_key()
+
+        obj[1] = 1
+        assert obj.random_key() == 1
+        assert obj.popitem() == (1, 1)
+
     def test_pickle(self):
         self._test_pickle(lambda c1, c2: None)
 
@@ -154,6 +166,8 @@ class TestLRUCache(_TestMixin):
         obj[5]
         obj[3] = 7
         obj.peek(4)
+
+        assert obj.peek(6) is None
 
         assert obj.most_recently_used() == 3
         assert obj.least_recently_used() == 0
@@ -245,6 +259,9 @@ class TestLFUCache(_TestMixin):
         assert obj.least_frequently_used(1) == 3
         assert obj.least_frequently_used(4) == 0
         assert obj.least_frequently_used(5) is None
+        assert obj.least_frequently_used(5) is None
+        assert obj.least_frequently_used(-len(obj)) == obj.least_frequently_used()
+        assert obj.least_frequently_used(-1000) is None
 
     def test_pickle(self):
         def inner(c1, c2):
@@ -256,6 +273,15 @@ class TestLFUCache(_TestMixin):
 class TestTTLCache(_TestMixin):
     CACHE = TTLCache
     KWARGS = {"ttl": 10}
+
+    def test__new__(self):
+        super().test__new__()
+
+        cache = TTLCache(0, timedelta(minutes=2, seconds=20))
+        assert cache.ttl == (2 * 60) + 20
+
+        with pytest.raises(ValueError):
+            TTLCache(0, -10)
 
     def test_policy(self):
         obj = self.CACHE(2, 0.5)

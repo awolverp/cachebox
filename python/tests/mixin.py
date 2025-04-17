@@ -75,7 +75,7 @@ class _TestMixin:  # pragma: no cover
         cache = self.CACHE(10, **self.KWARGS, capacity=10)
 
         assert len(cache) == 0
-        assert cache.is_empty()
+        assert cache.is_empty() ^ bool(cache)
 
         cache[0] = 0
         assert len(cache) == 1

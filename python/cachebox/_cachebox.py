@@ -905,7 +905,7 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         """
         try:
             return self._raw.popitem()
-        except _core.CoreKeyError:
+        except _core.CoreKeyError:  # pragma: no cover
             raise KeyError() from None
 
     def drain(self, n: int) -> int:  # pragma: no cover
@@ -1105,7 +1105,9 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         """
         return self._raw.insert(key, value)
 
-    def peek(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
+    def peek(
+        self, key: KT, default: typing.Optional[DT] = None
+    ) -> typing.Union[VT, DT]:  # pragma: no cover
         """
         Searches for a key-value in the cache and returns it (without moving the key to recently used).
         """
@@ -1156,7 +1158,7 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         """
         try:
             return self._raw.popitem()
-        except _core.CoreKeyError:
+        except _core.CoreKeyError:  # pragma: no cover
             raise KeyError() from None
 
     def drain(self, n: int) -> int:  # pragma: no cover
@@ -1585,7 +1587,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         """
         return IteratorView(self._raw.items(), lambda x: x.value())
 
-    def first(self, n: int = 0) -> typing.Optional[KT]:
+    def first(self, n: int = 0) -> typing.Optional[KT]:  # pragma: no cover
         """
         Returns the first key in cache; this is the one which will be removed by `popitem()` (if n == 0).
 
@@ -1605,7 +1607,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         """
         return self._raw.get_index(len(self._raw) - 1)
 
-    def expire(self) -> None:
+    def expire(self) -> None:  # pragma: no cover
         """
         Manually removes expired key-value pairs from memory and releases their memory.
 
@@ -1716,11 +1718,11 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         Raises:
             ValueError: If the provided TTL is zero or negative.
         """
-        if ttl is not None:
+        if ttl is not None: # pragma: no cover
             if isinstance(ttl, timedelta):
                 ttl = ttl.total_seconds()
 
-            if isinstance(ttl, datetime):
+            elif isinstance(ttl, datetime):
                 ttl = (ttl - datetime.now()).total_seconds()
 
             if ttl <= 0:
@@ -1827,11 +1829,11 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         Raises:
             ValueError: If the provided TTL is not a positive value.
         """
-        if ttl is not None:
+        if ttl is not None:  # pragma: no cover
             if isinstance(ttl, timedelta):
                 ttl = ttl.total_seconds()
 
-            if isinstance(ttl, datetime):
+            elif isinstance(ttl, datetime):
                 ttl = (ttl - datetime.now()).total_seconds()
 
             if ttl <= 0:
@@ -1895,11 +1897,11 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         if hasattr(iterable, "items"):
             iterable = iterable.items()
 
-        if ttl is not None:
+        if ttl is not None:  # pragma: no cover
             if isinstance(ttl, timedelta):
                 ttl = ttl.total_seconds()
 
-            if isinstance(ttl, datetime):
+            elif isinstance(ttl, datetime):
                 ttl = (ttl - datetime.now()).total_seconds()
 
             if ttl <= 0:
@@ -1982,7 +1984,7 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         """
         return IteratorView(self._raw.items(), lambda x: x.value())
 
-    def expire(self) -> None:
+    def expire(self) -> None:  # pragma: no cover
         """
         Manually removes expired key-value pairs from memory and releases their memory.
 

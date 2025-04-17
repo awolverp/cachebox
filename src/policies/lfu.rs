@@ -27,7 +27,6 @@ pub struct LFUPolicyAbsent<'a> {
 pub type LFUIterator = lazyheap::Iter<(PreHashObject, pyo3::Py<pyo3::PyAny>, usize)>;
 
 impl LFUPolicy {
-    #[inline]
     pub fn new(maxsize: usize, mut capacity: usize) -> pyo3::PyResult<Self> {
         let maxsize = non_zero_or!(maxsize, isize::MAX as usize);
         capacity = capacity.min(maxsize.get());
@@ -40,7 +39,6 @@ impl LFUPolicy {
         })
     }
 
-    #[inline]
     pub fn maxsize(&self) -> usize {
         self.maxsize.get()
     }
@@ -55,16 +53,15 @@ impl LFUPolicy {
         self.table.is_empty()
     }
 
-    #[inline]
     pub fn is_full(&self) -> bool {
         self.table.len() == self.maxsize.get()
     }
 
-    #[inline]
     pub fn capacity(&self) -> usize {
         self.table.capacity()
     }
 
+    #[inline]
     pub fn popitem(&mut self) -> Option<TupleValue> {
         self.heap.sort_by(|a, b| a.2.cmp(&b.2));
         let front = self.heap.front()?;
@@ -81,6 +78,7 @@ impl LFUPolicy {
         Some(self.heap.pop_front(|a, b| a.2.cmp(&b.2)).unwrap())
     }
 
+    #[inline]
     #[rustfmt::skip]
     pub fn entry(
         &mut self,
@@ -104,6 +102,7 @@ impl LFUPolicy {
         }
     }
 
+    #[inline]
     #[rustfmt::skip]
     pub fn entry_with_slot(
         &mut self,
@@ -128,6 +127,7 @@ impl LFUPolicy {
         }
     }
 
+    #[inline]
     pub fn lookup(
         &mut self,
         py: pyo3::Python<'_>,
@@ -157,14 +157,12 @@ impl LFUPolicy {
         Ok(result)
     }
 
-    #[inline]
     pub fn clear(&mut self) {
         self.table.clear();
         self.heap.clear();
         self.observed.change();
     }
 
-    #[inline]
     pub fn shrink_to_fit(&mut self) {
         self.table
             .shrink_to(self.table.len(), |x| unsafe { x.as_ref().0.hash });
@@ -205,6 +203,7 @@ impl LFUPolicy {
         Ok(true)
     }
 
+    #[inline]
     pub fn extend(&mut self, py: pyo3::Python<'_>, iterable: pyo3::PyObject) -> pyo3::PyResult<()> {
         use pyo3::types::{PyAnyMethods, PyDictMethods};
 
@@ -220,7 +219,7 @@ impl LFUPolicy {
                     unsafe { PreHashObject::from_pyobject(py, key.unbind()).unwrap_unchecked() };
 
                 match self.entry_with_slot(py, &hk)? {
-                    Entry::Occupied(mut entry) => {
+                    Entry::Occupied(entry) => {
                         entry.update(value.unbind())?;
                     }
                     Entry::Absent(entry) => {
@@ -235,7 +234,7 @@ impl LFUPolicy {
                 let hk = PreHashObject::from_pyobject(py, key)?;
 
                 match self.entry_with_slot(py, &hk)? {
-                    Entry::Occupied(mut entry) => {
+                    Entry::Occupied(entry) => {
                         entry.update(value)?;
                     }
                     Entry::Absent(entry) => {
@@ -248,7 +247,6 @@ impl LFUPolicy {
         Ok(())
     }
 
-    #[inline]
     pub fn iter(&mut self) -> LFUIterator {
         self.heap.iter(|a, b| a.2.cmp(&b.2))
     }
@@ -261,7 +259,6 @@ impl LFUPolicy {
     }
 
     #[allow(clippy::wrong_self_convention)]
-    #[inline]
     pub fn from_pickle(
         &mut self,
         py: pyo3::Python<'_>,
@@ -306,7 +303,7 @@ impl LFUPolicy {
 
 impl LFUPolicyOccupied<'_> {
     #[inline]
-    pub fn update(&mut self, value: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
+    pub fn update(self, value: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
         let item = unsafe { self.bucket.as_mut() };
         unsafe {
             item.as_mut().2 += 1;
@@ -329,7 +326,6 @@ impl LFUPolicyOccupied<'_> {
         item
     }
 
-    #[inline]
     pub fn into_value(self) -> NonNull<TupleValue> {
         let item = unsafe { self.bucket.as_mut() };
         *item

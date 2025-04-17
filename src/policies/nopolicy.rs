@@ -20,7 +20,6 @@ pub struct NoPolicyAbsent<'a> {
 }
 
 impl NoPolicy {
-    #[inline]
     pub fn new(maxsize: usize, mut capacity: usize) -> pyo3::PyResult<Self> {
         let maxsize = non_zero_or!(maxsize, isize::MAX as usize);
         capacity = capacity.min(maxsize.get());
@@ -32,7 +31,6 @@ impl NoPolicy {
         })
     }
 
-    #[inline]
     pub fn maxsize(&self) -> usize {
         self.maxsize.get()
     }
@@ -47,21 +45,19 @@ impl NoPolicy {
         self.table.is_empty()
     }
 
-    #[inline]
     pub fn is_full(&self) -> bool {
         self.table.len() == self.maxsize.get()
     }
 
-    #[inline]
     pub fn capacity(&self) -> usize {
         self.table.capacity()
     }
 
-    #[inline]
     pub fn iter(&self) -> hashbrown::raw::RawIter<(PreHashObject, pyo3::PyObject)> {
         unsafe { self.table.iter() }
     }
 
+    #[inline]
     #[rustfmt::skip]
     pub fn entry(
         &mut self,
@@ -82,6 +78,7 @@ impl NoPolicy {
         }
     }
 
+    #[inline]
     #[rustfmt::skip]
     pub fn entry_with_slot(
         &mut self,
@@ -102,6 +99,7 @@ impl NoPolicy {
         }
     }
 
+    #[inline]
     pub fn lookup(
         &self,
         py: pyo3::Python<'_>,
@@ -156,18 +154,17 @@ impl NoPolicy {
         Ok(result)
     }
 
-    #[inline]
     pub fn clear(&mut self) {
         self.table.clear();
         self.observed.change();
     }
 
-    #[inline]
     pub fn shrink_to_fit(&mut self) {
         self.table.shrink_to(self.table.len(), |(x, _)| x.hash);
         self.observed.change();
     }
 
+    #[inline]
     pub fn extend(&mut self, py: pyo3::Python<'_>, iterable: pyo3::PyObject) -> pyo3::PyResult<()> {
         use pyo3::types::{PyAnyMethods, PyDictMethods};
 
@@ -183,7 +180,7 @@ impl NoPolicy {
                     unsafe { PreHashObject::from_pyobject(py, key.unbind()).unwrap_unchecked() };
 
                 match self.entry_with_slot(py, &hk)? {
-                    Entry::Occupied(mut entry) => {
+                    Entry::Occupied(entry) => {
                         entry.update(value.unbind())?;
                     }
                     Entry::Absent(entry) => {
@@ -198,7 +195,7 @@ impl NoPolicy {
                 let hk = PreHashObject::from_pyobject(py, key)?;
 
                 match self.entry_with_slot(py, &hk)? {
-                    Entry::Occupied(mut entry) => {
+                    Entry::Occupied(entry) => {
                         entry.update(value)?;
                     }
                     Entry::Absent(entry) => {
@@ -251,7 +248,7 @@ impl NoPolicy {
 
 impl<'a> NoPolicyOccupied<'a> {
     #[inline]
-    pub fn update(&mut self, value: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
+    pub fn update(self, value: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
         unsafe {
             // In update we don't need to change this; because this does not change the memory address ranges
             // self.instance.observed.change();
@@ -267,7 +264,6 @@ impl<'a> NoPolicyOccupied<'a> {
         x
     }
 
-    #[inline]
     pub fn into_value(self) -> &'a mut (PreHashObject, pyo3::PyObject) {
         unsafe { self.bucket.as_mut() }
     }

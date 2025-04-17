@@ -24,7 +24,6 @@ pub struct Node {
 }
 
 impl LinkedList {
-    #[inline]
     pub fn new() -> Self {
         Self {
             head: None,
@@ -33,6 +32,7 @@ impl LinkedList {
         }
     }
 
+    #[inline]
     pub fn push_back(&mut self, key: PreHashObject, val: pyo3::PyObject) -> NonNull<Node> {
         unsafe {
             let node = NonNull::new_unchecked(Box::into_raw(Box::new(Node {
@@ -56,6 +56,7 @@ impl LinkedList {
         }
     }
 
+    #[inline]
     pub fn pop_front(&mut self) -> Option<(PreHashObject, pyo3::PyObject)> {
         unsafe {
             self.head.map(|node| {
@@ -77,11 +78,11 @@ impl LinkedList {
         }
     }
 
-    #[inline]
     pub fn clear(&mut self) {
         while self.pop_front().is_some() {}
     }
 
+    #[inline]
     pub unsafe fn remove(&mut self, node: NonNull<Node>) -> (PreHashObject, pyo3::PyObject) {
         let node = Box::from_raw(node.as_ptr());
         let result = node.element;
@@ -106,6 +107,7 @@ impl LinkedList {
         result
     }
 
+    #[inline]
     pub unsafe fn move_back(&mut self, node: NonNull<Node>) {
         if (*node.as_ptr()).next.is_none() {
             // Means this node is our self.tail
@@ -142,7 +144,6 @@ impl LinkedList {
         self.tail = Some(node);
     }
 
-    #[inline]
     pub fn iter(&self) -> Iter {
         Iter {
             head: self.head,

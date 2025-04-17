@@ -5,6 +5,7 @@ from cachebox import (
     LRUCache,
     LFUCache,
     TTLCache,
+    VTTLCache,
 )
 import pytest
 from .mixin import _TestMixin
@@ -402,3 +403,147 @@ class TestTTLCache(_TestMixin):
 
         with pytest.raises(KeyError):
             obj.popitem_with_expire()
+
+
+class TestVTTLCache(_TestMixin):
+    CACHE = VTTLCache
+
+    def test_policy(self):
+        obj = VTTLCache(2)
+
+        obj.insert(0, 1, 0.5)
+        time.sleep(0.501)
+
+        with pytest.raises(KeyError):
+            obj[0]
+
+        obj.insert("name", "nick", 0.3)
+        obj.insert("age", 18, None)
+        time.sleep(0.301)
+
+        with pytest.raises(KeyError):
+            obj["name"]
+
+        del obj["age"]
+
+        obj.insert(0, 0, 70)
+        obj.insert(1, 1, 60)
+        obj.insert(2, 2, 90)
+
+        assert 1 not in obj
+        assert (0, 0) == obj.popitem()
+
+    def test_update_with_ttl(self):
+        obj = VTTLCache(3)
+
+        obj.update({1: 1, 2: 2, 3: 3}, 0.5)
+        time.sleep(0.501)
+
+        with pytest.raises(KeyError):
+            obj[1]
+
+        with pytest.raises(KeyError):
+            obj[2]
+
+        with pytest.raises(KeyError):
+            obj[3]
+
+    def test_get_with_expire(self):
+        obj = VTTLCache(2)
+
+        obj.insert(1, 1, 10)
+        time.sleep(0.1)
+        value, dur = obj.get_with_expire(1)
+        assert 1 == value
+        assert 10 > dur > 9, "10 > dur > 9 failed [dur: %f]" % dur
+
+        value, dur = obj.get_with_expire("no-exists")
+        assert value is None
+        assert 0 == dur
+
+        value, dur = obj.get_with_expire("no-exists", "value")
+        assert "value" == value
+        assert 0 == dur
+
+    def test_pop_with_expire(self):
+        obj = VTTLCache(2)
+
+        obj.insert(1, 1, 10)
+        time.sleep(0.1)
+        value, dur = obj.pop_with_expire(1)
+        assert 1 == value
+        assert 10 > dur > 9, "10 > dur > 9 failed [dur: %f]" % dur
+
+        value, dur = obj.pop_with_expire("no-exists")
+        assert value is None
+        assert 0 == dur
+
+        value, dur = obj.pop_with_expire("no-exists", "value")
+        assert "value" == value
+        assert 0 == dur
+
+    def test_popitem_with_expire(self):
+        obj = VTTLCache(2)
+
+        obj.insert(1, 1, 10)
+        obj.insert(2, 2, 6)
+        time.sleep(0.1)
+        key, value, dur = obj.popitem_with_expire()
+        assert (2, 2) == (key, value)
+        assert 6 > dur > 5, "6 > dur > 5 failed [dur: %f]" % dur
+
+        key, value, dur = obj.popitem_with_expire()
+        assert (1, 1) == (key, value)
+        assert 10 > dur > 9, "10 > dur > 9 failed [dur: %f]" % dur
+
+        with pytest.raises(KeyError):
+            obj.popitem_with_expire()
+
+    def test_pickle(self):
+        def inner(c1, c2):
+            assert list(c1.items()) == list(c2.items())
+
+        import pickle
+        import tempfile
+
+        c1 = self.CACHE(maxsize=0, **self.KWARGS)
+        c2 = pickle.loads(pickle.dumps(c1))
+        assert c1 == c2
+        assert c1.capacity() == c2.capacity()
+
+        c1 = self.CACHE(maxsize=100, **self.KWARGS)
+
+        for i in range(10):
+            c1.insert(i, i * 2, i + 2)
+
+        c2 = pickle.loads(pickle.dumps(c1))
+        assert c1 == c2
+        assert c1.capacity() == c2.capacity()
+        inner(c1, c2)
+
+        with tempfile.TemporaryFile("w+b") as fd:
+            c1 = self.CACHE(maxsize=100, **self.KWARGS)
+            c1.update({i: i for i in range(10)})
+
+            for i in range(10):
+                c1.insert(i, i * 2, i + 2)
+
+            pickle.dump(c1, fd)
+            fd.seek(0)
+            c2 = pickle.load(fd)
+            assert c1 == c2
+            assert c1.capacity() == c2.capacity()
+            inner(c1, c2)
+
+        c1 = self.CACHE(maxsize=100, **self.KWARGS)
+
+        for i in range(10):
+            c1.insert(i, i * 2, i + 0.5)
+
+        time.sleep(0.51)
+
+        c2 = pickle.loads(pickle.dumps(c1))
+
+        assert len(c2) == len(c1)
+        assert c1.capacity() == c2.capacity()
+        inner(c1, c2)

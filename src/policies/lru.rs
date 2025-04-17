@@ -24,7 +24,6 @@ pub struct LRUPolicyAbsent<'a> {
 }
 
 impl LRUPolicy {
-    #[inline]
     pub fn new(maxsize: usize, mut capacity: usize) -> pyo3::PyResult<Self> {
         let maxsize = non_zero_or!(maxsize, isize::MAX as usize);
         capacity = capacity.min(maxsize.get());
@@ -37,7 +36,6 @@ impl LRUPolicy {
         })
     }
 
-    #[inline]
     pub fn maxsize(&self) -> usize {
         self.maxsize.get()
     }
@@ -52,16 +50,15 @@ impl LRUPolicy {
         self.table.is_empty()
     }
 
-    #[inline]
     pub fn is_full(&self) -> bool {
         self.table.len() == self.maxsize.get()
     }
 
-    #[inline]
     pub fn capacity(&self) -> usize {
         self.table.capacity()
     }
 
+    #[inline]
     pub fn popitem(&mut self) -> Option<(PreHashObject, pyo3::PyObject)> {
         let ret = self.list.head?;
 
@@ -77,6 +74,7 @@ impl LRUPolicy {
         Some(self.list.pop_front().unwrap())
     }
 
+    #[inline]
     #[rustfmt::skip]
     pub fn entry(
         &mut self,
@@ -100,6 +98,7 @@ impl LRUPolicy {
         }
     }
 
+    #[inline]
     #[rustfmt::skip]
     pub fn entry_with_slot(
         &mut self,
@@ -126,6 +125,7 @@ impl LRUPolicy {
         }
     }
 
+    #[inline]
     pub fn lookup(
         &mut self,
         py: pyo3::Python<'_>,
@@ -154,14 +154,12 @@ impl LRUPolicy {
         Ok(result)
     }
 
-    #[inline]
     pub fn clear(&mut self) {
         self.table.clear();
         self.list.clear();
         self.observed.change();
     }
 
-    #[inline]
     pub fn shrink_to_fit(&mut self) {
         self.table
             .shrink_to(self.table.len(), |x| unsafe { x.as_ref().element.0.hash });
@@ -201,6 +199,7 @@ impl LRUPolicy {
         Ok(true)
     }
 
+    #[inline]
     pub fn extend(&mut self, py: pyo3::Python<'_>, iterable: pyo3::PyObject) -> pyo3::PyResult<()> {
         use pyo3::types::{PyAnyMethods, PyDictMethods};
 
@@ -216,7 +215,7 @@ impl LRUPolicy {
                     unsafe { PreHashObject::from_pyobject(py, key.unbind()).unwrap_unchecked() };
 
                 match self.entry_with_slot(py, &hk)? {
-                    Entry::Occupied(mut entry) => {
+                    Entry::Occupied(entry) => {
                         entry.update(value.unbind())?;
                     }
                     Entry::Absent(entry) => {
@@ -231,7 +230,7 @@ impl LRUPolicy {
                 let hk = PreHashObject::from_pyobject(py, key)?;
 
                 match self.entry_with_slot(py, &hk)? {
-                    Entry::Occupied(mut entry) => {
+                    Entry::Occupied(entry) => {
                         entry.update(value)?;
                     }
                     Entry::Absent(entry) => {
@@ -257,7 +256,6 @@ impl LRUPolicy {
     }
 
     #[allow(clippy::wrong_self_convention)]
-    #[inline]
     pub fn from_pickle(
         &mut self,
         py: pyo3::Python<'_>,
@@ -291,7 +289,7 @@ impl LRUPolicy {
 
 impl<'a> LRUPolicyOccupied<'a> {
     #[inline]
-    pub fn update(&mut self, value: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
+    pub fn update(self, value: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
         let item = unsafe { self.bucket.as_mut() };
         unsafe {
             self.instance.list.move_back(*item);
@@ -313,7 +311,6 @@ impl<'a> LRUPolicyOccupied<'a> {
         item
     }
 
-    #[inline]
     pub fn into_value(self) -> &'a mut (PreHashObject, pyo3::PyObject) {
         unsafe {
             self.instance.list.move_back(*self.bucket.as_ptr());

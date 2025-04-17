@@ -31,7 +31,6 @@ pub struct Iter<T> {
 }
 
 impl<T> LazyHeap<T> {
-    #[inline]
     pub fn new() -> Self {
         Self {
             data: std::collections::VecDeque::new(),
@@ -50,6 +49,7 @@ impl<T> LazyHeap<T> {
         self.data.front()
     }
 
+    #[inline]
     pub fn push(&mut self, value: T) -> NonNull<T> {
         unsafe {
             let node: NonNull<T> = NonNull::new_unchecked(Box::into_raw(Box::new(value))).cast();
@@ -78,6 +78,7 @@ impl<T> LazyHeap<T> {
         self.is_sorted = true;
     }
 
+    #[inline]
     fn unlink_front(&mut self) -> Option<T> {
         let node = self.data.pop_front()?;
         let node = unsafe { Box::from_raw(node.as_ptr()) };
@@ -90,23 +91,23 @@ impl<T> LazyHeap<T> {
         self.unlink_front()
     }
 
+    #[inline]
     fn unlink_back(&mut self) -> Option<T> {
         let node = self.data.pop_back()?;
         let node = unsafe { Box::from_raw(node.as_ptr()) };
         Some(*node)
     }
 
-    #[inline]
     pub fn pop_back(&mut self, compare: impl Fn(&T, &T) -> std::cmp::Ordering) -> Option<T> {
         self.sort_by(compare);
         self.unlink_back()
     }
 
-    #[inline]
     pub fn get(&self, index: usize) -> Option<&NonNull<T>> {
         self.data.get(index)
     }
 
+    #[inline]
     pub fn remove<F>(&mut self, node: NonNull<T>, compare: F) -> T
     where
         F: Fn(&T, &T) -> std::cmp::Ordering,
@@ -126,18 +127,15 @@ impl<T> LazyHeap<T> {
         *boxed_node
     }
 
-    #[inline]
     pub fn clear(&mut self) {
         while self.unlink_back().is_some() {}
         self.is_sorted = true;
     }
 
-    #[inline]
     pub fn shrink_to_fit(&mut self) {
         self.data.shrink_to_fit();
     }
 
-    #[inline]
     pub fn iter(&mut self, compare: impl Fn(&T, &T) -> std::cmp::Ordering) -> Iter<T> {
         self.sort_by(compare);
 
@@ -172,6 +170,7 @@ impl<T> Drop for LazyHeap<T> {
 impl<T> Iterator for Iter<T> {
     type Item = NonNull<T>;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         match self.first.next() {
             Some(val) => Some(unsafe { *val.as_ptr() }),

@@ -35,7 +35,6 @@ pub struct TTLIterator {
 }
 
 impl TTLPolicy {
-    #[inline]
     pub fn new(maxsize: usize, mut capacity: usize, secs: f64) -> pyo3::PyResult<Self> {
         let maxsize = non_zero_or!(maxsize, isize::MAX as usize);
         capacity = capacity.min(maxsize.get());
@@ -50,12 +49,10 @@ impl TTLPolicy {
         })
     }
 
-    #[inline]
     pub fn maxsize(&self) -> usize {
         self.maxsize.get()
     }
 
-    #[inline]
     pub fn ttl(&self) -> std::time::Duration {
         self.ttl
     }
@@ -81,12 +78,10 @@ impl TTLPolicy {
         self.real_len() == 0
     }
 
-    #[inline]
     pub fn is_full(&self) -> bool {
         self.real_len() == self.maxsize.get()
     }
 
-    #[inline]
     pub fn capacity(&self) -> (usize, usize) {
         (self.table.capacity(), self.entries.capacity())
     }
@@ -161,6 +156,7 @@ impl TTLPolicy {
         Ok(Some(ret))
     }
 
+    #[inline]
     #[rustfmt::skip]
     pub fn entry(
         &mut self,
@@ -188,6 +184,7 @@ impl TTLPolicy {
         }
     }
 
+    #[inline]
     #[rustfmt::skip]
     pub fn entry_with_slot(
         &mut self,
@@ -216,6 +213,7 @@ impl TTLPolicy {
         }
     }
 
+    #[inline]
     pub fn lookup(
         &self,
         py: pyo3::Python<'_>,
@@ -241,7 +239,6 @@ impl TTLPolicy {
         }
     }
 
-    #[inline]
     pub fn clear(&mut self) {
         self.table.clear();
         self.entries.clear();
@@ -249,7 +246,6 @@ impl TTLPolicy {
         self.observed.change();
     }
 
-    #[inline]
     pub fn shrink_to_fit(&mut self, py: pyo3::Python<'_>) {
         self.expire(py);
 
@@ -260,6 +256,7 @@ impl TTLPolicy {
         self.observed.change();
     }
 
+    #[inline]
     pub fn extend(&mut self, py: pyo3::Python<'_>, iterable: pyo3::PyObject) -> pyo3::PyResult<()> {
         use pyo3::types::{PyAnyMethods, PyDictMethods};
 
@@ -275,7 +272,7 @@ impl TTLPolicy {
                     unsafe { PreHashObject::from_pyobject(py, key.unbind()).unwrap_unchecked() };
 
                 match self.entry_with_slot(py, &hk)? {
-                    Entry::Occupied(mut entry) => {
+                    Entry::Occupied(entry) => {
                         entry.update(value.unbind())?;
                     }
                     Entry::Absent(entry) => {
@@ -290,7 +287,7 @@ impl TTLPolicy {
                 let hk = PreHashObject::from_pyobject(py, key)?;
 
                 match self.entry_with_slot(py, &hk)? {
-                    Entry::Occupied(mut entry) => {
+                    Entry::Occupied(entry) => {
                         entry.update(value)?;
                     }
                     Entry::Absent(entry) => {
@@ -303,7 +300,6 @@ impl TTLPolicy {
         Ok(())
     }
 
-    #[inline]
     pub fn entries_iter(&self) -> std::collections::vec_deque::Iter<'_, TimeToLivePair> {
         self.entries.iter()
     }
@@ -355,7 +351,6 @@ impl TTLPolicy {
         Ok(true)
     }
 
-    #[inline]
     pub fn iter(&mut self, py: pyo3::Python<'_>) -> TTLIterator {
         self.expire(py);
 
@@ -367,7 +362,6 @@ impl TTLPolicy {
         }
     }
 
-    #[inline(always)]
     pub fn get_index(&self, n: usize) -> Option<&TimeToLivePair> {
         self.entries.get(n)
     }
@@ -422,37 +416,12 @@ impl TTLPolicy {
             *self = new;
             Ok(())
         }
-
-        // use pyo3::types::PyAnyMethods;
-
-        // unsafe {
-        //     tuple!(check state, size=3)?;
-        //     let (maxsize, iterable, capacity) = extract_pickle_tuple!(py, state => list);
-
-        //     let mut new = Self::new(maxsize, capacity)?;
-
-        //     for pair in iterable.bind(py).try_iter()? {
-        //         let (key, value) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject)>()?;
-
-        //         let hk = PreHashObject::from_pyobject(py, key)?;
-
-        //         match new.entry_with_slot(py, &hk)? {
-        //             Entry::Absent(entry) => {
-        //                 entry.insert(py, hk, value)?;
-        //             }
-        //             _ => std::hint::unreachable_unchecked(),
-        //         }
-        //     }
-
-        //     *self = new;
-        //     Ok(())
-        // }
     }
 }
 
 impl<'a> TTLPolicyOccupied<'a> {
     #[inline]
-    pub fn update(&mut self, value: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
+    pub fn update(self, value: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
         // We have to move the value to the end of the vector
         let (mut index, slot) = unsafe { self.instance.table.remove(self.bucket.clone()) };
         index -= self.instance.n_shifts;
@@ -494,7 +463,6 @@ impl<'a> TTLPolicyOccupied<'a> {
         m
     }
 
-    #[inline]
     pub fn into_value(self) -> &'a mut TimeToLivePair {
         let index = unsafe { self.bucket.as_ref() };
         &mut self.instance.entries[index - self.instance.n_shifts]
@@ -502,7 +470,6 @@ impl<'a> TTLPolicyOccupied<'a> {
 }
 
 impl TTLPolicyAbsent<'_> {
-    #[inline]
     unsafe fn pickle_insert(
         self,
         key: PreHashObject,
@@ -531,11 +498,9 @@ impl TTLPolicyAbsent<'_> {
                     .entries
                     .push_back(TimeToLivePair::new(key, value, Some(expire_at)));
             },
-            AbsentSituation::None => unreachable!("this should never happen"),
+            AbsentSituation::None => unsafe { std::hint::unreachable_unchecked() },
         }
 
-        // We don't need change observed value here
-        // self.instance.observed.change();
         Ok(())
     }
 

@@ -1,5 +1,5 @@
 from . import _core
-from datetime import timedelta
+from datetime import timedelta, datetime
 import typing
 
 
@@ -1626,5 +1626,381 @@ class TTLCache(BaseCacheImpl[KT, VT]):
             len(self._raw),
             self._raw.maxsize(),
             self._raw.ttl(),
+            _items_to_str(self.items(), len(self._raw)),
+        )
+
+
+class VTTLCache(BaseCacheImpl[KT, VT]):
+    """
+    A thread-safe, time-to-live (TTL) cache implementation with per-key expiration policy.
+
+    This cache allows storing key-value pairs with optional expiration times. When an item expires,
+    it is automatically removed from the cache. The cache supports a maximum size and provides
+    various methods for inserting, retrieving, and managing cached items.
+
+    Key features:
+    - Per-key time-to-live (TTL) support
+    - Configurable maximum cache size
+    - Thread-safe operations
+    - Automatic expiration of items
+
+    Supports dictionary-like operations such as get, insert, update, and iteration.
+    """
+
+    __slots__ = ("_raw",)
+
+    def __init__(
+        self,
+        maxsize: int,
+        iterable: typing.Union[typing.Union[dict, typing.Iterable[tuple]], None] = None,
+        ttl: typing.Union[float, timedelta, datetime, None] = None,  # This is not a global TTL!
+        *,
+        capacity: int = 0,
+    ) -> None:
+        """
+        Initialize a new VTTLCache instance.
+
+        Args:
+            maxsize (int): Maximum size of the cache. Zero indicates unlimited size.
+            iterable (dict or Iterable[tuple], optional): Initial data to populate the cache.
+            ttl (float or timedelta or datetime, optional): Time-to-live duration for `iterable` items.
+            capacity (int, optional): Preallocated capacity for the cache to minimize reallocations.
+
+        Raises:
+            ValueError: If provided TTL is zero or negative.
+        """
+        self._raw = _core.VTTLCache(maxsize, capacity=capacity)
+
+        if iterable is not None:
+            self.update(iterable, ttl)
+
+    @property
+    def maxsize(self) -> int:
+        return self._raw.maxsize()
+
+    def capacity(self) -> int:
+        """Returns the number of elements the map can hold without reallocating."""
+        return self._raw.capacity()
+
+    def __len__(self) -> int:
+        return len(self._raw)
+
+    def __sizeof__(self):  # pragma: no cover
+        return self._raw.__sizeof__()
+
+    def __contains__(self, key: KT) -> bool:
+        return key in self._raw
+
+    def __bool__(self) -> bool:
+        return not self.is_empty()
+
+    def is_empty(self) -> bool:
+        return self._raw.is_empty()
+
+    def is_full(self) -> bool:
+        return self._raw.is_full()
+
+    def insert(
+        self, key: KT, value: VT, ttl: typing.Union[float, timedelta, datetime, None] = None
+    ) -> typing.Optional[VT]:
+        """
+        Insert a key-value pair into the cache with an optional time-to-live (TTL).
+        Returns the previous value associated with the key, if it existed.
+
+        Args:
+            key (KT): The key to insert.
+            value (VT): The value to associate with the key.
+            ttl (float or timedelta or datetime, optional): Time-to-live duration for the item.
+                If a timedelta or datetime is provided, it will be converted to seconds.
+
+        Raises:
+            ValueError: If the provided TTL is zero or negative.
+        """
+        if ttl is not None:
+            if isinstance(ttl, timedelta):
+                ttl = ttl.total_seconds()
+
+            if isinstance(ttl, datetime):
+                ttl = (ttl - datetime.now()).total_seconds()
+
+            if ttl <= 0:
+                raise ValueError("ttl must be positive and non-zero")
+
+        return self._raw.insert(key, value, ttl)
+
+    def get(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
+        """
+        Retrieves the value for a given key from the cache.
+
+        Returns the value associated with the key if present, otherwise returns the specified default value.
+        Equivalent to `self[key]`, but provides a fallback default if the key is not found.
+
+        Args:
+            key: The key to look up in the cache.
+            default: The value to return if the key is not present in the cache. Defaults to None.
+
+        Returns:
+            The value associated with the key, or the default value if the key is not found.
+        """
+        try:
+            return self._raw.get(key).value()
+        except _core.CoreKeyError:
+            return default
+
+    def get_with_expire(
+        self, key: KT, default: typing.Optional[DT] = None
+    ) -> typing.Tuple[typing.Union[VT, DT], float]:
+        """
+        Retrieves the value and expiration duration for a given key from the cache.
+
+        Returns a tuple containing the value associated with the key and its duration.
+        If the key is not found, returns the default value and 0.0 duration.
+
+        Args:
+            key: The key to look up in the cache.
+            default: The value to return if the key is not present in the cache. Defaults to None.
+
+        Returns:
+            A tuple of (value, duration), where value is the cached value or default,
+            and duration is the time-to-live for the key (or 0.0 if not found).
+        """
+        try:
+            pair = self._raw.get(key)
+        except _core.CoreKeyError:
+            return default, 0.0
+        else:
+            return (pair.value(), pair.duration())
+
+    def pop(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
+        """
+        Removes specified key and return the corresponding value. If the key is not found, returns the `default`.
+        """
+        try:
+            return self._raw.remove(key).value()
+        except _core.CoreKeyError:
+            return default
+
+    def pop_with_expire(
+        self, key: KT, default: typing.Optional[DT] = None
+    ) -> typing.Tuple[typing.Union[VT, DT], float]:
+        """
+        Removes the specified key from the cache and returns its value and expiration duration.
+
+        If the key is not found, returns the default value and 0.0 duration.
+
+        Args:
+            key: The key to remove from the cache.
+            default: The value to return if the key is not present in the cache. Defaults to None.
+
+        Returns:
+            A tuple of (value, duration), where value is the cached value or default,
+            and duration is the time-to-live for the key (or 0.0 if not found).
+        """
+        try:
+            pair = self._raw.remove(key)
+        except _core.CoreKeyError:
+            return default, 0.0
+        else:
+            return (pair.value(), pair.duration())
+
+    def setdefault(
+        self,
+        key: KT,
+        default: typing.Optional[DT] = None,
+        ttl: typing.Union[float, timedelta, datetime, None] = None,
+    ) -> typing.Union[VT, DT]:
+        """
+        Inserts a key-value pair into the cache with an optional time-to-live (TTL).
+
+        If the key is not in the cache, it will be inserted with the default value.
+        If the key already exists, its current value is returned.
+
+        Args:
+            key: The key to insert or retrieve from the cache.
+            default: The value to insert if the key is not present. Defaults to None.
+            ttl: Optional time-to-live for the key. Can be a float (seconds), timedelta, or datetime.
+                 If not specified, the key will not expire.
+
+        Returns:
+            The value associated with the key, either existing or the default value.
+
+        Raises:
+            ValueError: If the provided TTL is not a positive value.
+        """
+        if ttl is not None:
+            if isinstance(ttl, timedelta):
+                ttl = ttl.total_seconds()
+
+            if isinstance(ttl, datetime):
+                ttl = (ttl - datetime.now()).total_seconds()
+
+            if ttl <= 0:
+                raise ValueError("ttl must be positive and non-zero")
+
+        return self._raw.setdefault(key, default, ttl)
+
+    def popitem(self) -> typing.Tuple[KT, VT]:
+        """
+        Removes and returns the key-value pair that is closest to expiration.
+
+        Returns:
+            A tuple containing the key and value of the removed item.
+
+        Raises:
+            KeyError: If the cache is empty.
+        """
+        try:
+            val = self._raw.popitem()
+        except _core.CoreKeyError:
+            raise KeyError() from None
+        else:
+            return val.pack2()
+
+    def popitem_with_expire(self) -> typing.Tuple[KT, VT, float]:
+        """
+        Removes and returns the key-value pair that is closest to expiration, along with its expiration duration.
+
+        Returns:
+            A tuple containing the key, value, and expiration duration of the removed item.
+
+        Raises:
+            KeyError: If the cache is empty.
+        """
+        try:
+            val = self._raw.popitem()
+        except _core.CoreKeyError:
+            raise KeyError() from None
+        else:
+            return val.pack3()
+
+    def drain(self, n: int) -> int:  # pragma: no cover
+        """Does the `popitem()` `n` times and returns count of removed items."""
+        if n <= 0:
+            return 0
+
+        for i in range(n):
+            try:
+                self._raw.popitem()
+            except _core.CoreKeyError:
+                return i
+
+        return i
+
+    def update(
+        self,
+        iterable: typing.Union[dict, typing.Iterable[tuple]],
+        ttl: typing.Union[float, timedelta, datetime, None] = None,
+    ) -> None:
+        """Updates the cache with elements from a dictionary or an iterable object of key/value pairs."""
+        if hasattr(iterable, "items"):
+            iterable = iterable.items()
+
+        if ttl is not None:
+            if isinstance(ttl, timedelta):
+                ttl = ttl.total_seconds()
+
+            if isinstance(ttl, datetime):
+                ttl = (ttl - datetime.now()).total_seconds()
+
+            if ttl <= 0:
+                raise ValueError("ttl must be positive and non-zero")
+
+        self._raw.update(iterable, ttl)
+
+    def __setitem__(self, key: KT, value: VT) -> None:
+        self.insert(key, value, None)
+
+    def __getitem__(self, key: KT) -> VT:
+        try:
+            return self._raw.get(key).value()
+        except _core.CoreKeyError:
+            raise KeyError(key) from None
+
+    def __delitem__(self, key: KT) -> None:
+        try:
+            self._raw.remove(key)
+        except _core.CoreKeyError:
+            raise KeyError(key) from None
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, VTTLCache):
+            return False  # pragma: no cover
+
+        return self._raw == other._raw
+
+    def __ne__(self, other) -> bool:
+        if not isinstance(other, VTTLCache):
+            return False  # pragma: no cover
+
+        return self._raw != other._raw
+
+    def shrink_to_fit(self) -> None:
+        """Shrinks the cache to fit len(self) elements."""
+        self._raw.shrink_to_fit()
+
+    def clear(self, *, reuse: bool = False) -> None:
+        """
+        Removes all items from cache.
+
+        If reuse is True, will not free the memory for reusing in the future.
+        """
+        self._raw.clear(reuse)
+
+    def items_with_expire(self) -> IteratorView[typing.Tuple[KT, VT, float]]:
+        """
+        Returns an iterable object of the cache's items (key-value pairs along with their expiration duration).
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        """
+        return IteratorView(self._raw.items(), lambda x: x.pack3())
+
+    def items(self) -> IteratorView[typing.Tuple[KT, VT]]:
+        """
+        Returns an iterable object of the cache's items (key-value pairs).
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        """
+        return IteratorView(self._raw.items(), lambda x: x.pack2())
+
+    def keys(self) -> IteratorView[KT]:
+        """
+        Returns an iterable object of the cache's keys.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        """
+        return IteratorView(self._raw.items(), lambda x: x.key())
+
+    def values(self) -> IteratorView[VT]:
+        """
+        Returns an iterable object of the cache's values.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        """
+        return IteratorView(self._raw.items(), lambda x: x.value())
+
+    def expire(self) -> None:
+        """
+        Manually removes expired key-value pairs from memory and releases their memory.
+
+        Notes:
+            - This operation is typically automatic and does not require manual invocation.
+        """
+        self._raw.expire()
+
+    def __iter__(self) -> IteratorView[KT]:
+        return self.keys()
+
+    def __repr__(self) -> str:
+        cls = type(self)
+
+        return "%s.%s[%d/%d](%s)" % (
+            cls.__module__,
+            cls.__name__,
+            len(self._raw),
+            self._raw.maxsize(),
             _items_to_str(self.items(), len(self._raw)),
         )

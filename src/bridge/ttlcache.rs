@@ -8,13 +8,6 @@ pub struct TTLCache {
     raw: crate::mutex::Mutex<crate::policies::ttl::TTLPolicy>,
 }
 
-#[pyo3::pyclass(module = "cachebox._core", frozen)]
-pub struct TTLPair {
-    key: pyo3::PyObject,
-    value: pyo3::PyObject,
-    duration: std::time::Duration,
-}
-
 #[allow(non_camel_case_types)]
 #[pyo3::pyclass(module = "cachebox._core")]
 pub struct ttlcache_items {
@@ -94,7 +87,7 @@ impl TTLCache {
         let mut lock = self.raw.lock();
 
         match lock.entry_with_slot(py, &key)? {
-            Entry::Occupied(mut entry) => Ok(Some(entry.update(value)?)),
+            Entry::Occupied(entry) => Ok(Some(entry.update(value)?)),
             Entry::Absent(entry) => {
                 entry.insert(py, key, value)?;
                 Ok(None)
@@ -102,12 +95,12 @@ impl TTLCache {
         }
     }
 
-    fn get(&self, py: pyo3::Python<'_>, key: pyo3::PyObject) -> pyo3::PyResult<TTLPair> {
+    fn get(&self, py: pyo3::Python<'_>, key: pyo3::PyObject) -> pyo3::PyResult<super::TTLPair> {
         let key = PreHashObject::from_pyobject(py, key)?;
         let lock = self.raw.lock();
 
         match lock.lookup(py, &key)? {
-            Some(val) => Ok(TTLPair::clone_from_pair(py, val)),
+            Some(val) => Ok(super::TTLPair::clone_from_pair(py, val)),
             None => Err(pyo3::PyErr::new::<super::CoreKeyError, _>(key.obj)),
         }
     }
@@ -157,24 +150,24 @@ impl TTLCache {
         }
     }
 
-    fn remove(&self, py: pyo3::Python<'_>, key: pyo3::PyObject) -> pyo3::PyResult<TTLPair> {
+    fn remove(&self, py: pyo3::Python<'_>, key: pyo3::PyObject) -> pyo3::PyResult<super::TTLPair> {
         let key = PreHashObject::from_pyobject(py, key)?;
         let mut lock = self.raw.lock();
 
         match lock.entry(py, &key)? {
             Entry::Occupied(entry) => {
                 let val = entry.remove();
-                Ok(TTLPair::from(val))
+                Ok(super::TTLPair::from(val))
             }
             Entry::Absent(_) => Err(pyo3::PyErr::new::<super::CoreKeyError, _>(key.obj)),
         }
     }
 
-    fn popitem(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<TTLPair> {
+    fn popitem(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<super::TTLPair> {
         let mut lock = self.raw.lock();
 
         match lock.popitem(py)? {
-            Some(val) => Ok(TTLPair::from(val)),
+            Some(val) => Ok(super::TTLPair::from(val)),
             None => Err(pyo3::PyErr::new::<super::CoreKeyError, _>(())),
         }
     }
@@ -311,55 +304,6 @@ impl TTLCache {
     }
 }
 
-impl TTLPair {
-    fn clone_from_pair(py: pyo3::Python<'_>, pair: &TimeToLivePair) -> Self {
-        TTLPair {
-            key: pair.key.obj.clone_ref(py),
-            value: pair.value.clone_ref(py),
-            duration: unsafe { pair.duration().unwrap_unchecked() },
-        }
-    }
-}
-
-impl From<TimeToLivePair> for TTLPair {
-    fn from(value: TimeToLivePair) -> Self {
-        let duration = unsafe { value.duration().unwrap_unchecked() };
-
-        TTLPair {
-            key: value.key.obj,
-            value: value.value,
-            duration,
-        }
-    }
-}
-
-#[pyo3::pymethods]
-impl TTLPair {
-    fn key(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyObject {
-        slf.key.clone_ref(slf.py())
-    }
-
-    fn value(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyObject {
-        slf.value.clone_ref(slf.py())
-    }
-
-    fn duration(slf: pyo3::PyRef<'_, Self>) -> f64 {
-        slf.duration.as_secs_f64()
-    }
-
-    fn pack2(slf: pyo3::PyRef<'_, Self>) -> (pyo3::PyObject, pyo3::PyObject) {
-        (slf.key.clone_ref(slf.py()), slf.value.clone_ref(slf.py()))
-    }
-
-    fn pack3(slf: pyo3::PyRef<'_, Self>) -> (pyo3::PyObject, pyo3::PyObject, f64) {
-        (
-            slf.key.clone_ref(slf.py()),
-            slf.value.clone_ref(slf.py()),
-            slf.duration.as_secs_f64(),
-        )
-    }
-}
-
 #[pyo3::pymethods]
 impl ttlcache_items {
     fn __iter__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyRef<'_, Self> {
@@ -367,7 +311,7 @@ impl ttlcache_items {
     }
 
     #[allow(unused_mut)]
-    fn __next__(mut slf: pyo3::PyRefMut<'_, Self>) -> pyo3::PyResult<TTLPair> {
+    fn __next__(mut slf: pyo3::PyRefMut<'_, Self>) -> pyo3::PyResult<super::TTLPair> {
         let mut iter = slf.iter.lock();
 
         slf.ptr.proceed(slf.py())?;
@@ -387,7 +331,7 @@ impl ttlcache_items {
             }
         }
 
-        Ok(TTLPair::clone_from_pair(slf.py(), unsafe {
+        Ok(super::TTLPair::clone_from_pair(slf.py(), unsafe {
             element.as_ref()
         }))
     }

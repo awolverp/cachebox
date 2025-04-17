@@ -78,7 +78,7 @@ impl LRUCache {
         let mut lock = self.raw.lock();
 
         match lock.entry_with_slot(py, &key)? {
-            Entry::Occupied(mut entry) => Ok(Some(entry.update(value)?)),
+            Entry::Occupied(entry) => Ok(Some(entry.update(value)?)),
             Entry::Absent(entry) => {
                 entry.insert(key, value)?;
                 Ok(None)

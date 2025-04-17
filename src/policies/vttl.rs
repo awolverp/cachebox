@@ -44,7 +44,6 @@ pub struct VTTLPolicyAbsent<'a> {
 pub type VTTLIterator = lazyheap::Iter<TimeToLivePair>;
 
 impl VTTLPolicy {
-    #[inline]
     pub fn new(maxsize: usize, mut capacity: usize) -> pyo3::PyResult<Self> {
         let maxsize = non_zero_or!(maxsize, isize::MAX as usize);
         capacity = capacity.min(maxsize.get());
@@ -57,7 +56,6 @@ impl VTTLPolicy {
         })
     }
 
-    #[inline]
     pub fn maxsize(&self) -> usize {
         self.maxsize.get()
     }
@@ -73,12 +71,10 @@ impl VTTLPolicy {
         self.table.is_empty()
     }
 
-    #[inline]
     pub fn is_full(&self) -> bool {
         self.table.len() == self.maxsize.get()
     }
 
-    #[inline]
     pub fn capacity(&self) -> usize {
         self.table.capacity()
     }
@@ -107,6 +103,7 @@ impl VTTLPolicy {
         }
     }
 
+    #[inline]
     pub fn popitem(&mut self) -> Option<TimeToLivePair> {
         self.heap.sort_by(compare_fn!());
 
@@ -124,6 +121,7 @@ impl VTTLPolicy {
         Some(self.heap.pop_front(compare_fn!()).unwrap())
     }
 
+    #[inline]
     #[rustfmt::skip]
     pub fn entry(
         &mut self,
@@ -151,6 +149,7 @@ impl VTTLPolicy {
         }
     }
 
+    #[inline]
     #[rustfmt::skip]
     pub fn entry_with_slot(
         &mut self,
@@ -181,6 +180,7 @@ impl VTTLPolicy {
         }
     }
 
+    #[inline]
     pub fn lookup(
         &self,
         py: pyo3::Python<'_>,
@@ -202,14 +202,12 @@ impl VTTLPolicy {
         }
     }
 
-    #[inline]
     pub fn clear(&mut self) {
         self.table.clear();
         self.heap.clear();
         self.observed.change();
     }
 
-    #[inline]
     pub fn shrink_to_fit(&mut self) {
         self.table
             .shrink_to(self.table.len(), |x| unsafe { x.as_ref().key.hash });
@@ -218,7 +216,6 @@ impl VTTLPolicy {
         self.observed.change();
     }
 
-    #[inline]
     pub fn iter(&mut self) -> VTTLIterator {
         self.heap.iter(compare_fn!())
     }
@@ -261,15 +258,111 @@ impl VTTLPolicy {
 
         Ok(true)
     }
+
+    #[inline]
+    pub fn extend(
+        &mut self,
+        py: pyo3::Python<'_>,
+        iterable: pyo3::PyObject,
+        ttl: Option<f64>,
+    ) -> pyo3::PyResult<()> {
+        use pyo3::types::{PyAnyMethods, PyDictMethods};
+
+        if unsafe { pyo3::ffi::PyDict_CheckExact(iterable.as_ptr()) == 1 } {
+            let dict = unsafe {
+                iterable
+                    .downcast_bound::<pyo3::types::PyDict>(py)
+                    .unwrap_unchecked()
+            };
+
+            for (key, value) in dict.iter() {
+                let hk =
+                    unsafe { PreHashObject::from_pyobject(py, key.unbind()).unwrap_unchecked() };
+
+                match self.entry_with_slot(py, &hk)? {
+                    Entry::Occupied(entry) => {
+                        entry.update(value.unbind(), ttl)?;
+                    }
+                    Entry::Absent(entry) => {
+                        entry.insert(hk, value.unbind(), ttl)?;
+                    }
+                }
+            }
+        } else {
+            for pair in iterable.bind(py).try_iter()? {
+                let (key, value) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject)>()?;
+
+                let hk = PreHashObject::from_pyobject(py, key)?;
+
+                match self.entry_with_slot(py, &hk)? {
+                    Entry::Occupied(entry) => {
+                        entry.update(value, ttl)?;
+                    }
+                    Entry::Absent(entry) => {
+                        entry.insert(hk, value, ttl)?;
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    #[allow(clippy::wrong_self_convention)]
+    pub fn from_pickle(
+        &mut self,
+        py: pyo3::Python<'_>,
+        state: *mut pyo3::ffi::PyObject,
+    ) -> pyo3::PyResult<()> {
+        use pyo3::types::PyAnyMethods;
+
+        unsafe {
+            tuple!(check state, size=3)?;
+            let (maxsize, iterable, capacity) = extract_pickle_tuple!(py, state => list);
+
+            // SAFETY: we check `iterable` type in `extract_pickle_tuple` macro
+            if maxsize < (pyo3::ffi::PyObject_Size(iterable.as_ptr()) as usize) {
+                return Err(pyo3::PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                    "iterable object size is greater than maxsize",
+                ));
+            }
+
+            let mut new = Self::new(maxsize, capacity)?;
+
+            for pair in iterable.bind(py).try_iter()? {
+                let (key, value, timestamp) =
+                    pair?.extract::<(pyo3::PyObject, pyo3::PyObject, f64)>()?;
+
+                let hk = PreHashObject::from_pyobject(py, key)?;
+
+                let ttl = {
+                    if timestamp == 0.0 {
+                        None
+                    } else {
+                        Some(std::time::UNIX_EPOCH + std::time::Duration::from_secs_f64(timestamp))
+                    }
+                };
+
+                match new.entry_with_slot(py, &hk)? {
+                    Entry::Absent(entry) => {
+                        entry.pickle_insert(hk, value, ttl)?;
+                    }
+                    _ => std::hint::unreachable_unchecked(),
+                }
+            }
+
+            new.expire();
+            new.shrink_to_fit();
+
+            *self = new;
+            Ok(())
+        }
+    }
 }
 
 impl VTTLPolicyOccupied<'_> {
     #[inline]
-    pub fn update(
-        &mut self,
-        value: pyo3::PyObject,
-        ttl: Option<f64>,
-    ) -> pyo3::PyResult<pyo3::PyObject> {
+    pub fn update(self, value: pyo3::PyObject, ttl: Option<f64>) -> pyo3::PyResult<pyo3::PyObject> {
         let item = unsafe { self.bucket.as_mut() };
 
         unsafe {
@@ -293,7 +386,6 @@ impl VTTLPolicyOccupied<'_> {
         item
     }
 
-    #[inline]
     pub fn into_value(self) -> NonNull<TimeToLivePair> {
         let item = unsafe { self.bucket.as_mut() };
         *item
@@ -301,6 +393,40 @@ impl VTTLPolicyOccupied<'_> {
 }
 
 impl VTTLPolicyAbsent<'_> {
+    unsafe fn pickle_insert(
+        self,
+        key: PreHashObject,
+        value: pyo3::PyObject,
+        expire_at: Option<std::time::SystemTime>,
+    ) -> pyo3::PyResult<()> {
+        match self.situation {
+            AbsentSituation::Expired(_) => {
+                return Err(pyo3::PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                    "pikcle object is suspicious!",
+                ))
+            }
+            AbsentSituation::Slot(slot) => {
+                // This means the key is not available and we have insert_slot
+                // for inserting it
+
+                // We don't need to check maxsize, we sure `len(iterable) <= maxsize` in loading pickle
+
+                let hash = key.hash;
+                let node = self
+                    .instance
+                    .heap
+                    .push(TimeToLivePair::new(key, value, expire_at));
+
+                unsafe {
+                    self.instance.table.insert_in_slot(hash, slot, node);
+                }
+            }
+            AbsentSituation::None => unsafe { std::hint::unreachable_unchecked() },
+        }
+
+        Ok(())
+    }
+
     #[inline]
     pub fn insert(
         self,

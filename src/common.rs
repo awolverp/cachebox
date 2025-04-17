@@ -218,11 +218,13 @@ pub enum AbsentSituation<T> {
 
 impl PreHashObject {
     /// Creates a new [`PreHashObject`]
+    #[inline]
     pub fn new(obj: pyo3::PyObject, hash: u64) -> Self {
         Self { obj, hash }
     }
 
     /// Calculates the hash of `object` and creates a new [`PreHashObject`]
+    #[inline]
     pub fn from_pyobject(py: pyo3::Python<'_>, object: pyo3::PyObject) -> pyo3::PyResult<Self> {
         unsafe {
             let py_hash = pyo3::ffi::PyObject_Hash(object.as_ptr());
@@ -238,6 +240,7 @@ impl PreHashObject {
     }
 
     /// Check equality of two objects by using [`pyo3::ffi::PyObject_RichCompareBool`]
+    #[inline]
     pub fn equal(&self, py: pyo3::Python<'_>, other: &Self) -> pyo3::PyResult<bool> {
         pyobject_equal(py, self.obj.as_ptr(), other.obj.as_ptr())
     }
@@ -267,7 +270,7 @@ pub trait TryFindMethods<T> {
 }
 
 impl<T> TryFindMethods<T> for hashbrown::raw::RawTable<T> {
-    #[inline(always)]
+    #[inline]
     fn try_find<E>(
         &self,
         hash: u64,
@@ -292,7 +295,7 @@ impl<T> TryFindMethods<T> for hashbrown::raw::RawTable<T> {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn try_find_or_find_insert_slot<E>(
         &mut self,
         hash: u64,
@@ -324,10 +327,12 @@ impl<T> TryFindMethods<T> for hashbrown::raw::RawTable<T> {
 }
 
 impl Observed {
+    #[cold]
     pub fn new() -> Self {
         Self(0)
     }
 
+    #[inline(always)]
     pub fn change(&mut self) {
         if self.0 == u16::MAX {
             self.0 = 0;
@@ -341,6 +346,7 @@ impl Observed {
     }
 }
 
+#[inline]
 unsafe fn _get_state(py: pyo3::Python<'_>, ptr: *mut pyo3::ffi::PyObject) -> pyo3::PyResult<u16> {
     unsafe fn inner(
         py: pyo3::Python<'_>,
@@ -394,6 +400,7 @@ impl ObservedIterator {
         }
     }
 
+    #[inline]
     pub fn proceed(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<()> {
         let state = unsafe { _get_state(py, self.ptr.as_ptr())? };
 
@@ -419,7 +426,6 @@ unsafe impl Send for ObservedIterator {}
 unsafe impl Sync for ObservedIterator {}
 
 impl<T> NoLifetimeSliceIter<T> {
-    #[inline]
     pub fn new(slice: &[T]) -> Self {
         let pointer: std::ptr::NonNull<T> = std::ptr::NonNull::from(slice).cast();
 
@@ -434,6 +440,7 @@ impl<T> NoLifetimeSliceIter<T> {
 impl<T> Iterator for NoLifetimeSliceIter<T> {
     type Item = std::ptr::NonNull<T>;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         if self.index >= self.len {
             None
@@ -459,7 +466,6 @@ impl TimeToLivePair {
         }
     }
 
-    #[inline]
     pub fn duration(&self) -> Option<std::time::Duration> {
         self.expire_at.map(|x| {
             x.duration_since(std::time::SystemTime::now())
@@ -467,7 +473,7 @@ impl TimeToLivePair {
         })
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn is_expired(&self, now: std::time::SystemTime) -> bool {
         match self.expire_at {
             Some(x) => x < now,

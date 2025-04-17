@@ -17,7 +17,7 @@ crate-type = ["cdylib"]
 codegen-units = 1
 debug = false
 incremental = false
-lto = "fat"
+lto = true
 panic = "abort"
 strip = "symbols"
 

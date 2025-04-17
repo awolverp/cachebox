@@ -13,15 +13,22 @@ DT = typing.TypeVar("DT")
 
 
 class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):  # pragma: no cover
+    """
+    A wrapper class that prevents modifications to an underlying cache implementation.
+    
+    This class provides a read-only view of a cache, optionally allowing silent 
+    suppression of modification attempts instead of raising exceptions.
+    """
     __slots__ = ("__cache", "ignore")
 
     def __init__(self, cls: BaseCacheImpl[KT, VT], ignore: bool = False) -> None:
         """
-        **This is not a cache.** this class can freeze your caches and prevents changes.
-
-        :param cls: your cache
-
-        :param ignore: If False, will raise TypeError if anyone try to change cache. will do nothing otherwise.
+        Initialize a frozen cache wrapper.
+    
+        :param cls: The underlying cache implementation to be frozen
+        :type cls: BaseCacheImpl[KT, VT]
+        :param ignore: If True, silently ignores modification attempts; if False, raises TypeError when modification is attempted
+        :type ignore: bool, optional
         """
         assert isinstance(cls, BaseCacheImpl)
         assert type(cls) is not Frozen
@@ -152,7 +159,10 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):  # pragma: no cover
 
 class _LockWithCounter:
     """
-    A threading/asyncio lock which count the waiters
+    A lock with a counter to track the number of waiters.
+    
+    This class provides a lock mechanism that supports both synchronous and asynchronous contexts,
+    with the ability to track the number of threads or coroutines waiting to acquire the lock.
     """
 
     __slots__ = ("lock", "waiters")
@@ -191,6 +201,17 @@ def _copy_if_need(obj, tocopy=(dict, list, set), level: int = 1):
 
 
 def make_key(args: tuple, kwds: dict, fasttype=(int, str)):
+    """
+    Create a hashable key from function arguments for caching purposes.
+    
+    Args:
+        args (tuple): Positional arguments to be used in key generation.
+        kwds (dict): Keyword arguments to be used in key generation.
+        fasttype (tuple, optional): Types that can be directly used as keys. Defaults to (int, str).
+    
+    Returns:
+        A hashable key representing the function arguments, optimized for simple single-argument cases.
+    """
     key = args
     if kwds:
         key += (object,)
@@ -204,10 +225,30 @@ def make_key(args: tuple, kwds: dict, fasttype=(int, str)):
 
 
 def make_hash_key(args: tuple, kwds: dict):
+    """
+    Create a hashable hash key from function arguments for caching purposes.
+    
+    Args:
+        args (tuple): Positional arguments to be used in key generation.
+        kwds (dict): Keyword arguments to be used in key generation.
+    
+    Returns:
+        int: A hash value representing the function arguments.
+    """
     return hash(make_key(args, kwds))
 
 
 def make_typed_key(args: tuple, kwds: dict):
+    """
+    Create a hashable key from function arguments that includes type information.
+    
+    Args:
+        args (tuple): Positional arguments to be used in key generation.
+        kwds (dict): Keyword arguments to be used in key generation.
+    
+    Returns:
+        A hashable key representing the function arguments, including the types of the arguments.
+    """
     key = make_key(args, kwds, fasttype=())
 
     key += tuple(type(v) for v in args)  # type: ignore
@@ -217,7 +258,7 @@ def make_typed_key(args: tuple, kwds: dict):
     return key
 
 
-CacheInfo = namedtuple("CacheInfo", ["hits", "misses", "maxsize", "length", "cachememory"])
+CacheInfo = namedtuple("CacheInfo", ["hits", "misses", "maxsize", "length", "memory"])
 EVENT_MISS = 1
 EVENT_HIT = 2
 
@@ -406,27 +447,22 @@ def cached(
     copy_level: int = 1,
 ):
     """
-    Decorator to wrap a function with a memoizing callable that saves results in a cache.
-
-    :param cache: Specifies a cache that handles and stores the results. if `None` or `dict`, `FIFOCache` will be used.
-
-    :param key_maker: Specifies a function that will be called with the same positional and keyword
-                      arguments as the wrapped function itself, and which has to return a suitable
-                      cache key (must be hashable).
-
-    :param clear_reuse: The wrapped function has a function named `clear_cache` that uses `cache.clear`
-                        method to clear the cache. This parameter will be passed to cache's `clear` method.
-
-    :param callback: Every time the `cache` is used, callback is also called.
-                     The callback arguments are: event number (see `EVENT_MISS` or `EVENT_HIT` variables), key, and then result.
-
-    :param copy_level: The wrapped function always copies the result of your function and then returns it.
-                       This parameter specifies that the wrapped function has to copy which type of results.
-                       `0` means "never copy", `1` means "only copy `dict`, `list`, and `set` results" and
-                       `2` means "always copy the results".
-
+    Decorator to create a memoized cache for function results.
+    
+    Wraps a function to automatically cache and retrieve its results based on input parameters.
+    
+    Args:
+        cache (BaseCacheImpl, dict, optional): Cache implementation to store results. Defaults to FIFOCache.
+        key_maker (Callable, optional): Function to generate cache keys from function arguments. Defaults to make_key.
+        clear_reuse (bool, optional): Whether to reuse cache during clearing. Defaults to False.
+        callback (Callable, optional): Function called on cache hit/miss events. Defaults to None.
+        copy_level (int, optional): Level of result copying. Defaults to 1.
+    
+    Returns:
+        Callable: Decorated function with caching capabilities.
+    
     Example::
-
+    
         @cachebox.cached(cachebox.LRUCache(128))
         def sum_as_string(a, b):
             return str(a+b)
@@ -436,8 +472,6 @@ def cached(
         assert len(sum_as_string.cache) == 1
         sum_as_string.cache_clear()
         assert len(sum_as_string.cache) == 0
-
-    See more: [documentation](https://github.com/awolverp/cachebox#function-cached)
     """
     if cache is None:
         cache = FIFOCache(0)
@@ -471,7 +505,19 @@ def cachedmethod(
     copy_level: int = 1,
 ):
     """
-    this is excatly works like `cached()`, but ignores `self` parameters in hashing and key making.
+    Decorator to create a method-specific memoized cache for function results.
+    
+    Similar to `cached()`, but ignores `self` parameter when generating cache keys.
+    
+    Args:
+        cache (BaseCacheImpl, dict, optional): Cache implementation to store results. Defaults to FIFOCache.
+        key_maker (Callable, optional): Function to generate cache keys from function arguments. Defaults to make_key.
+        clear_reuse (bool, optional): Whether to reuse cache during clearing. Defaults to False.
+        callback (Callable, optional): Function called on cache hit/miss events. Defaults to None.
+        copy_level (int, optional): Level of result copying. Defaults to 1.
+    
+    Returns:
+        Callable: Decorated method with method-specific caching capabilities.
     """
     if cache is None:
         cache = FIFOCache(0)

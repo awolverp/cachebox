@@ -19,7 +19,7 @@
         <img src="https://img.shields.io/pypi/pyversions/cachebox.svg?style=flat-square" alt="Python Versions">
     </a>
     <a href="https://pepy.tech/projects/cachebox">
-        <img src="https://static.pepy.tech/badge/cachebox" alt="Downloads">
+        <img src="https://img.shields.io/pypi/dm/cachebox?style=flat-square&color=%23314bb5" alt="Downloads">
     </a>
 </p>    
 

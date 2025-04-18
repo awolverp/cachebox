@@ -271,7 +271,7 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
     A First-In-First-Out (FIFO) cache implementation with configurable maximum size and optional initial capacity.
 
     This cache provides a fixed-size container that automatically removes the oldest items when the maximum size is reached.
-    Supports various operations like insertion, retrieval, deletion, and iteration with O(1) complexity.
+    Supports various operations like insertion, retrieval, deletion, and iteration.
 
     Attributes:
         maxsize: The maximum number of items the cache can hold.
@@ -523,7 +523,7 @@ class RRCache(BaseCacheImpl[KT, VT]):
     This cache randomly selects and removes elements when the cache reaches its maximum size,
     ensuring a simple and efficient caching mechanism with configurable capacity.
 
-    Supports operations like insertion, retrieval, deletion, and iteration with O(1) complexity.
+    Supports operations like insertion, retrieval, deletion, and iteration.
     """
 
     __slots__ = ("_raw",)
@@ -1285,7 +1285,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
     A thread-safe Time-To-Live (TTL) cache implementation with configurable maximum size and expiration.
 
     This cache automatically removes elements that have expired based on their time-to-live setting.
-    Supports various operations like insertion, retrieval, and iteration with O(1) complexity.
+    Supports various operations like insertion, retrieval, and iteration.
     """
 
     __slots__ = ("_raw",)

@@ -6,12 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## v5.0.0 - Unreleased
-### Targets:
-- Update `hashbrown` dependency
-- Make 2x faster by changing my *`isize` to `u64` strategy* in Rust.
-- Rewrite cache classes API in Python; this help users to use classes as subclass and customize them.
-- Make benchmarks better
-- Make error handlings better
+### Added
+- A new method named `random_key` added to `RRCache`.
+- A new method named `expire` added to `TTLCache`.
+- Some new methods added to `VTTLCache`: `expire`, `items_with_expire`.
+- `TTLCache` now supports `timedelta` as ttl.
+- `VTTLCache` now supports `timedelta` and `datetime` as ttl.
+- A new method `copy` added to all caches.
+
+### Changed
+- The core codes (rust code) renamed from `_cachebox` to `_core`. Instead of that, all of classes
+  implemented in Python which are using the core's classes. This change can help to customize the alghoritms.
+- Now the errors which occurred while doing `__eq__` operations will not be ignored.
+- Docstrings is now more complete.
+- The strictness in `__eq__` methods was reduced.
+- Add more strictness for loading pickle objects.
+- `LFUCache` now uses `VecDeque` instead of `Vec` (improves performance).
+- The `CacheInfo.cachememory` renamed to `CacheInfo.memory`.
+- *`isize` to `u64` strategy* changed in Rust.
+- `__repr__` methods refactored.
+
+### Removed
+- The `n` parameter of the `LRUCache.least_recently_used` method has been removed.
+- The deprecated `always_copy` parameter of the `cached` and `cachedmethod` decorators has been removed.
 
 ## 4.5.3 - 2025-03-31
 ### Changed

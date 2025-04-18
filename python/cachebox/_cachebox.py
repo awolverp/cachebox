@@ -1,6 +1,7 @@
 from . import _core
 from ._core import BaseCacheImpl
 from datetime import timedelta, datetime
+import copy as _std_copy
 import typing
 
 
@@ -11,7 +12,7 @@ DT = typing.TypeVar("DT")
 
 def _items_to_str(items, length):
     if length <= 50:
-        return "{" + ", ".join(f"{k}: {v}" for k, v in items) + "}"
+        return "{" + ", ".join(f"{k!r}: {v!r}" for k, v in items) + "}"
 
     c = 0
     left = []
@@ -20,7 +21,7 @@ def _items_to_str(items, length):
         k, v = next(items)
 
         if c <= 50:
-            left.append(f"{k}: {v}")
+            left.append(f"{k!r}: {v!r}")
 
         else:
             break
@@ -250,6 +251,22 @@ class Cache(BaseCacheImpl[KT, VT]):
         - Values are not ordered.
         """
         return IteratorView(self._raw.items(), lambda x: x[1])
+
+    def copy(self) -> "Cache[KT, VT]":
+        """Returns a shallow copy of the cache"""
+        return self.__copy__()
+
+    def __copy__(self) -> "Cache[KT, VT]":
+        cls = type(self)
+        copied = cls.__new__(cls)
+        copied._raw = _std_copy.copy(self._raw)
+        return copied
+
+    def __deepcopy__(self, memo) -> "Cache[KT, VT]":
+        cls = type(self)
+        copied = cls.__new__(cls)
+        copied._raw = _std_copy.deepcopy(self._raw, memo)
+        return copied
 
     def __iter__(self) -> IteratorView[KT]:
         return self.keys()
@@ -501,6 +518,22 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         """
         return self._raw.get_index(len(self._raw) - 1)
 
+    def copy(self) -> "FIFOCache[KT, VT]":
+        """Returns a shallow copy of the cache"""
+        return self.__copy__()
+
+    def __copy__(self) -> "FIFOCache[KT, VT]":
+        cls = type(self)
+        copied = cls.__new__(cls)
+        copied._raw = _std_copy.copy(self._raw)
+        return copied
+
+    def __deepcopy__(self, memo) -> "FIFOCache[KT, VT]":
+        cls = type(self)
+        copied = cls.__new__(cls)
+        copied._raw = _std_copy.deepcopy(self._raw, memo)
+        return copied
+
     def __iter__(self) -> IteratorView[KT]:
         return self.keys()
 
@@ -738,6 +771,22 @@ class RRCache(BaseCacheImpl[KT, VT]):
         - Values are not ordered.
         """
         return IteratorView(self._raw.items(), lambda x: x[1])
+
+    def copy(self) -> "RRCache[KT, VT]":
+        """Returns a shallow copy of the cache"""
+        return self.__copy__()
+
+    def __copy__(self) -> "RRCache[KT, VT]":
+        cls = type(self)
+        copied = cls.__new__(cls)
+        copied._raw = _std_copy.copy(self._raw)
+        return copied
+
+    def __deepcopy__(self, memo) -> "RRCache[KT, VT]":
+        cls = type(self)
+        copied = cls.__new__(cls)
+        copied._raw = _std_copy.deepcopy(self._raw, memo)
+        return copied
 
     def __iter__(self) -> IteratorView[KT]:
         return self.keys()
@@ -994,6 +1043,22 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         Returns the key in the cache that has been accessed in the shortest time.
         """
         return self._raw.most_recently_used()
+
+    def copy(self) -> "LRUCache[KT, VT]":
+        """Returns a shallow copy of the cache"""
+        return self.__copy__()
+
+    def __copy__(self) -> "LRUCache[KT, VT]":
+        cls = type(self)
+        copied = cls.__new__(cls)
+        copied._raw = _std_copy.copy(self._raw)
+        return copied
+
+    def __deepcopy__(self, memo) -> "LRUCache[KT, VT]":
+        cls = type(self)
+        copied = cls.__new__(cls)
+        copied._raw = _std_copy.deepcopy(self._raw, memo)
+        return copied
 
     def __iter__(self) -> IteratorView[KT]:
         return self.keys()
@@ -1263,6 +1328,22 @@ class LFUCache(BaseCacheImpl[KT, VT]):
             return None
 
         return self._raw.least_frequently_used(n)
+
+    def copy(self) -> "LFUCache[KT, VT]":
+        """Returns a shallow copy of the cache"""
+        return self.__copy__()
+
+    def __copy__(self) -> "LFUCache[KT, VT]":
+        cls = type(self)
+        copied = cls.__new__(cls)
+        copied._raw = _std_copy.copy(self._raw)
+        return copied
+
+    def __deepcopy__(self, memo) -> "LFUCache[KT, VT]":
+        cls = type(self)
+        copied = cls.__new__(cls)
+        copied._raw = _std_copy.deepcopy(self._raw, memo)
+        return copied
 
     def __iter__(self) -> IteratorView[KT]:
         return self.keys()
@@ -1604,6 +1685,22 @@ class TTLCache(BaseCacheImpl[KT, VT]):
             - This operation is typically automatic and does not require manual invocation.
         """
         self._raw.expire()
+
+    def copy(self) -> "TTLCache[KT, VT]":
+        """Returns a shallow copy of the cache"""
+        return self.__copy__()
+
+    def __copy__(self) -> "TTLCache[KT, VT]":
+        cls = type(self)
+        copied = cls.__new__(cls)
+        copied._raw = _std_copy.copy(self._raw)
+        return copied
+
+    def __deepcopy__(self, memo) -> "TTLCache[KT, VT]":
+        cls = type(self)
+        copied = cls.__new__(cls)
+        copied._raw = _std_copy.deepcopy(self._raw, memo)
+        return copied
 
     def __iter__(self) -> IteratorView[KT]:
         return self.keys()
@@ -1981,6 +2078,22 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
             - This operation is typically automatic and does not require manual invocation.
         """
         self._raw.expire()
+
+    def copy(self) -> "VTTLCache[KT, VT]":
+        """Returns a shallow copy of the cache"""
+        return self.__copy__()
+
+    def __copy__(self) -> "VTTLCache[KT, VT]":
+        cls = type(self)
+        copied = cls.__new__(cls)
+        copied._raw = _std_copy.copy(self._raw)
+        return copied
+
+    def __deepcopy__(self, memo) -> "VTTLCache[KT, VT]":
+        cls = type(self)
+        copied = cls.__new__(cls)
+        copied._raw = _std_copy.deepcopy(self._raw, memo)
+        return copied
 
     def __iter__(self) -> IteratorView[KT]:
         return self.keys()

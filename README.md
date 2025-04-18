@@ -840,15 +840,17 @@ assert c.capacity() == loaded.capacity()
 * * *
 
 #### How to copy the caches?
-Use `copy.deepcopy` or `copy.copy` for copying caches. For example:
+You can use `copy.deepcopy` or `cache.copy` for copying caches. For example:
 ```python
-import cachebox, copy
-c = cachebox.LRUCache(100, {i:i for i in range(78)})
+import cachebox
+cache = cachebox.LRUCache(100, {i:i for i in range(78)})
 
-copied = copy.copy(c)
+# shallow copy
+shallow = cache.copy()
 
-assert c == copied
-assert c.capacity() == copied.capacity()
+# deep copy
+import copy
+deep = copy.deepcopy(cache)
 ```
 
 ## License

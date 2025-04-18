@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## v5.0.0 - Unreleased
+## v5.0.0 - 2025-04-18
 ### Added
 - A new method named `random_key` added to `RRCache`.
 - A new method named `expire` added to `TTLCache`.

@@ -46,7 +46,7 @@ This can make your application very faster and it's a good choice in big applica
 - 🔧 [**Installation**](#installation)
 - 💡 [**Preview**](#examples)
 - 🎓 [**Getting started**](#getting-started)
-- ✏️ [**Incompatible changes**](#incompatible-changes)
+- ✏️ [**Incompatible changes**](#%EF%B8%8F-incompatible-changes)
 - 📌 [**Tips & Notes**](#tips-and-notes)
 
 ### When i need caching and cachebox

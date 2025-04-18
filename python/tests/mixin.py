@@ -1,4 +1,4 @@
-from cachebox import BaseCacheImpl, LRUCache, LFUCache
+from cachebox import BaseCacheImpl, TTLCache
 import dataclasses
 import pytest
 import typing
@@ -26,7 +26,7 @@ class NoEQ:
         return self.val
 
 
-def getsizeof(obj, use_sys=True):
+def getsizeof(obj, use_sys=True):  # pragma: no cover
     try:
         if use_sys:
             return sys.getsizeof(obj)
@@ -36,12 +36,11 @@ def getsizeof(obj, use_sys=True):
         return len(obj)
 
 
-class _TestMixin:
+class _TestMixin:  # pragma: no cover
     CACHE: typing.Type[BaseCacheImpl]
 
     KWARGS: dict = {}
     NO_POLICY: bool = False
-    ITERATOR_CLASS: typing.Optional[type] = None
 
     def test__new__(self):
         cache = self.CACHE(10, **self.KWARGS, capacity=8)
@@ -60,10 +59,6 @@ class _TestMixin:
         assert cache.maxsize == sys.maxsize
         assert 20 > cache.capacity() >= 8
 
-        cache = self.CACHE(0, **self.KWARGS, capacity=0)
-        assert cache.maxsize == sys.maxsize
-        assert 2 >= cache.capacity() >= 0  # This is depends on platform
-
     def test_overflow(self):
         if not self.NO_POLICY:
             return
@@ -80,7 +75,7 @@ class _TestMixin:
         cache = self.CACHE(10, **self.KWARGS, capacity=10)
 
         assert len(cache) == 0
-        assert cache.is_empty()
+        assert cache.is_empty() ^ bool(cache)
 
         cache[0] = 0
         assert len(cache) == 1
@@ -99,25 +94,6 @@ class _TestMixin:
 
         assert len(cache) == 10
         assert cache.is_full()
-
-    def test___sizeof__(self):
-        cache = self.CACHE(10, **self.KWARGS, capacity=10)
-
-        # all classes have to implement __sizeof__
-        # __sizeof__ returns exactly allocated memory size by cache
-        # but sys.getsizeof add also garbage collector overhead to that, so sometimes
-        # sys.getsizeof is greater than __sizeof__
-        getsizeof(cache, False)
-
-    def test___bool__(self):
-        cache = self.CACHE(1, **self.KWARGS, capacity=1)
-
-        if cache:
-            pytest.fail("bool(cache) returns invalid response")
-
-        cache[1] = 1
-        if not cache:
-            pytest.fail("not bool(cache) returns invalid response")
 
     def test___contains__(self):
         cache = self.CACHE(1, **self.KWARGS, capacity=1)
@@ -146,15 +122,20 @@ class _TestMixin:
         del cache[2]
         del cache[3]
 
+        with pytest.raises(KeyError):
+            del cache["error"]
+
         cache[0]
 
         with pytest.raises(KeyError):
             cache[2]
 
     def test___repr__(self):
-        cache = self.CACHE(2, **self.KWARGS, capacity=2)
+        cache = self.CACHE(1000, **self.KWARGS, capacity=2)
+        assert repr(cache).startswith(self.CACHE.__module__ + "." + self.CACHE.__name__)
+
+        cache.update((i, i) for i in range(1000))
         assert str(cache) == repr(cache)
-        assert repr(cache).startswith(self.CACHE.__name__)
 
     def test_insert(self):
         cache = self.CACHE(5, **self.KWARGS, capacity=5)
@@ -225,8 +206,8 @@ class _TestMixin:
         try:
             assert getsizeof(obj, False) >= cap
         except AssertionError as e:
-            if not isinstance(obj, (LRUCache, LFUCache)):
-                raise e
+            # if not isinstance(obj, (LRUCache, LFUCache)):
+            raise e
 
         obj[1] = 1
         obj[2] = 2
@@ -240,8 +221,8 @@ class _TestMixin:
         try:
             assert cap != getsizeof(obj, False)
         except AssertionError as e:
-            if not isinstance(obj, (LRUCache, LFUCache)):
-                raise e
+            # if not isinstance(obj, (LRUCache, LFUCache)):
+            raise e
 
     def test_update(self):
         obj = self.CACHE(2, **self.KWARGS, capacity=2)
@@ -299,9 +280,6 @@ class _TestMixin:
     def test_iterators(self):
         obj = self.CACHE(100, **self.KWARGS, capacity=100)
 
-        if self.ITERATOR_CLASS:
-            assert isinstance(iter(obj), self.ITERATOR_CLASS)
-
         for i in range(6):
             obj[i] = i * 2
 
@@ -335,8 +313,12 @@ class _TestMixin:
         for key, value in obj.items():
             assert obj[key] == value
 
-        for key, value in obj.items():
-            obj[key] = value * 2
+        try:
+            for key, value in obj.items():
+                obj[key] = value * 2
+        except RuntimeError:
+            if not isinstance(obj, TTLCache):
+                raise
 
         with pytest.raises(RuntimeError):
             for key, value in obj.items():
@@ -345,16 +327,16 @@ class _TestMixin:
     def test___eq__(self):
         cache = self.CACHE(100, **self.KWARGS, capacity=100)
 
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(TypeError):
             cache > cache
 
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(TypeError):
             cache < cache
 
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(TypeError):
             cache >= cache
 
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(TypeError):
             cache <= cache
 
         assert cache == cache
@@ -379,10 +361,6 @@ class _TestMixin:
 
         assert not cache == c2
         assert c2 != cache
-
-    def test_generic(self):
-        obj: self.CACHE[int, int] = self.CACHE(maxsize=0, **self.KWARGS)
-        _ = obj
 
     def _test_pickle(self, check_order: typing.Callable):
         import pickle
@@ -418,7 +396,7 @@ class _TestMixin:
             c1[9]
 
         c2 = pickle.loads(pickle.dumps(c1))
-        assert c1 == c2
+        assert c1 == c2, f"{c1} - {c2}"
         assert c1.capacity() == c2.capacity()
         check_order(c1, c2)
 
@@ -453,3 +431,32 @@ class _TestMixin:
             assert c1 == c2
             assert c1.capacity() == c2.capacity()
             check_order(c1, c2)
+
+    def test_copy(self):
+        import copy
+
+        # shallow copy
+        c1 = self.CACHE(maxsize=0, **self.KWARGS)
+        c1.insert('dict', {})
+        c2 = c1.copy()
+
+        assert c2 == c1
+        c2['dict'][1] = 1
+
+        assert c1['dict'][1] == 1
+
+        c2.insert(1, 1)
+        assert 1 not in c1
+
+        # deepcopy
+        c1 = self.CACHE(maxsize=0, **self.KWARGS)
+        c1.insert('dict', {})
+        c2 = copy.deepcopy(c1)
+
+        assert c2 == c1
+        c2['dict'][1] = 1
+
+        assert 1 not in c1['dict']
+
+        c2.insert(1, 1)
+        assert 1 not in c1

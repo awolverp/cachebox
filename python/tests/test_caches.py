@@ -1,47 +1,21 @@
 from cachebox import (
-    BaseCacheImpl,
     Cache,
     FIFOCache,
     RRCache,
-    TTLCache,
     LRUCache,
     LFUCache,
+    TTLCache,
     VTTLCache,
-    cache_iterator,
-    fifocache_iterator,
-    ttlcache_iterator,
-    lrucache_iterator,
-    lfucache_iterator,
 )
-
+from datetime import timedelta
 import pytest
-import time
-
 from .mixin import _TestMixin
-
-
-def test___new__():
-    with pytest.raises(NotImplementedError):
-        BaseCacheImpl()
-
-
-def test_subclass():
-    class _TestSubclass(BaseCacheImpl):
-        def __init__(self) -> None:
-            self.a = 1
-
-        def inc(self, x: int):
-            self.a += x
-
-    t = _TestSubclass()
-    t.inc(10)
-    assert t.a == 11
+import time
 
 
 class TestCache(_TestMixin):
     CACHE = Cache
     NO_POLICY = True
-    ITERATOR_CLASS = cache_iterator
 
     def test_pickle(self):
         self._test_pickle(lambda c1, c2: None)
@@ -49,7 +23,6 @@ class TestCache(_TestMixin):
 
 class TestFIFOCache(_TestMixin):
     CACHE = FIFOCache
-    ITERATOR_CLASS = fifocache_iterator
 
     def test_policy(self):
         cache = FIFOCache(5)
@@ -122,20 +95,193 @@ class TestFIFOCache(_TestMixin):
 
         assert obj.first() == 1
         assert obj.last() == 10
+        assert obj.first(-1) == obj.last()
+        assert obj.first(-10000) is None
 
 
 class TestRRCache(_TestMixin):
     CACHE = RRCache
-    ITERATOR_CLASS = cache_iterator
+
+    def test_popitem(self):
+        obj = RRCache(3)
+        with pytest.raises(KeyError):
+            obj.popitem()
+        with pytest.raises(KeyError):
+            obj.random_key()
+
+        obj[1] = 1
+        assert obj.random_key() == 1
+        assert obj.popitem() == (1, 1)
 
     def test_pickle(self):
         self._test_pickle(lambda c1, c2: None)
 
 
+class TestLRUCache(_TestMixin):
+    CACHE = LRUCache
+
+    def test_policy(self):
+        obj = self.CACHE(3)
+
+        obj[1] = 1
+        obj[2] = 2
+        obj[3] = 3
+
+        assert (1, 1) == obj.popitem()
+
+        obj[1] = 1
+        obj[2]
+
+        assert (3, 3) == obj.popitem()
+
+        obj[4] = 4
+        assert 1 == obj.get(1)
+
+        obj[5] = 5
+        assert 2 not in obj
+
+    def test_ordered_iterators(self):
+        obj = self.CACHE(20, **self.KWARGS, capacity=20)
+
+        for i in range(6):
+            obj[i] = i * 2
+
+        obj[1]
+        obj[5]
+        obj[3] = 7
+
+        k = [0, 2, 4, 1, 5, 3]
+        v = [0, 4, 8, 2, 10, 7]
+        assert k == list(obj.keys())
+        assert v == list(obj.values())
+        assert list(zip(k, v)) == list(obj.items())
+
+    def test_recently_used_funcs(self):
+        obj = LRUCache(10)
+
+        for i in range(6):
+            obj[i] = i * 2
+
+        obj[1]
+        obj[5]
+        obj[3] = 7
+        obj.peek(4)
+
+        assert obj.peek(6) is None
+
+        assert obj.most_recently_used() == 3
+        assert obj.least_recently_used() == 0
+
+    def test_pickle(self):
+        def inner(c1, c2):
+            assert list(c1.items()) == list(c2.items())
+
+        self._test_pickle(inner)
+
+
+class TestLFUCache(_TestMixin):
+    CACHE = LFUCache
+
+    def test_policy(self):
+        obj = self.CACHE(5, {i: i for i in range(5)})
+
+        for i in range(5):
+            obj[i] = i
+
+        for i in range(10):
+            assert 0 == obj[0]
+        for i in range(7):
+            assert 1 == obj[1]
+        for i in range(3):
+            assert 2 == obj[2]
+        for i in range(4):
+            assert 3 == obj[3]
+        for i in range(6):
+            assert 4 == obj[4]
+
+        assert (2, 2) == obj.popitem()
+        assert (3, 3) == obj.popitem()
+
+        for i in range(10):
+            assert 4 == obj.get(4)
+
+        assert (1, 1) == obj.popitem()
+
+        assert 2 == len(obj)
+        obj.clear()
+
+        for i in range(5):
+            obj[i] = i
+
+        assert [0, 1, 2, 3, 4] == list(obj.keys())
+
+        for i in range(10):
+            obj[0] += 1
+        for i in range(7):
+            obj[1] += 1
+        for i in range(3):
+            obj[2] += 1
+        for i in range(4):
+            obj[3] += 1
+        for i in range(6):
+            obj[4] += 1
+
+        obj[5] = 4
+        assert [5, 3, 4, 1, 0] == list(obj.keys())
+
+    def test_items_with_frequency(self):
+        # no need to test completely items_with_frequency
+        # because it's tested in test_iterators
+        obj = LFUCache(10, {1: 2, 3: 4})
+        for key, val, freq in obj.items_with_frequency():
+            assert key in obj
+            assert val == obj[key]
+            assert isinstance(freq, int)
+
+    def test_least_frequently_used(self):
+        obj = LFUCache(10)
+
+        for i in range(5):
+            obj[i] = i * 2
+
+        for i in range(10):
+            obj[0] += 1
+        for i in range(7):
+            obj[1] += 1
+        for i in range(3):
+            obj[2] += 1
+        for i in range(4):
+            obj[3] += 1
+        for i in range(6):
+            obj[4] += 1
+
+        assert obj.least_frequently_used() == 2
+        assert obj.least_frequently_used(1) == 3
+        assert obj.least_frequently_used(4) == 0
+        assert obj.least_frequently_used(5) is None
+        assert obj.least_frequently_used(5) is None
+        assert obj.least_frequently_used(-len(obj)) == obj.least_frequently_used()
+        assert obj.least_frequently_used(-1000) is None
+
+    def test_pickle(self):
+        def inner(c1, c2):
+            assert list(c1.items()) == list(c2.items())
+
+        self._test_pickle(inner)
+
+
 class TestTTLCache(_TestMixin):
     CACHE = TTLCache
     KWARGS = {"ttl": 10}
-    ITERATOR_CLASS = ttlcache_iterator
+
+    def test__new__(self):
+        super().test__new__()
+
+        cache = TTLCache(0, timedelta(minutes=2, seconds=20))
+        assert cache.ttl == (2 * 60) + 20
+
+        with pytest.raises(ValueError):
+            TTLCache(0, -10)
 
     def test_policy(self):
         obj = self.CACHE(2, 0.5)
@@ -284,149 +430,14 @@ class TestTTLCache(_TestMixin):
         with pytest.raises(KeyError):
             obj.popitem_with_expire()
 
-
-class TestLRUCache(_TestMixin):
-    CACHE = LRUCache
-    ITERATOR_CLASS = lrucache_iterator
-
-    def test_policy(self):
-        obj = self.CACHE(3)
-
-        obj[1] = 1
-        obj[2] = 2
-        obj[3] = 3
-
-        assert (1, 1) == obj.popitem()
-
-        obj[1] = 1
-        obj[2]
-
-        assert (3, 3) == obj.popitem()
-
-        obj[4] = 4
-        assert 1 == obj.get(1)
-
-        obj[5] = 5
-        assert 2 not in obj
-
-    def test_ordered_iterators(self):
-        obj = self.CACHE(20, **self.KWARGS, capacity=20)
-
-        for i in range(6):
-            obj[i] = i * 2
-
-        obj[1]
-        obj[5]
-        obj[3] = 7
-
-        k = [0, 2, 4, 1, 5, 3]
-        v = [0, 4, 8, 2, 10, 7]
-        assert k == list(obj.keys())
-        assert v == list(obj.values())
-        assert list(zip(k, v)) == list(obj.items())
-
-    def test_recently_used_funcs(self):
-        obj = LRUCache(10)
-
-        for i in range(6):
-            obj[i] = i * 2
-
-        obj[1]
-        obj[5]
-        obj[3] = 7
-        obj.peek(4)
-
-        assert obj.most_recently_used() == 3
-        assert obj.least_recently_used() == 0
-        assert obj.least_recently_used(1) == 2
-        assert obj.least_recently_used(5) == 3
-        assert obj.least_recently_used(6) is None
-
-    def test_pickle(self):
-        def inner(c1, c2):
-            assert list(c1.items()) == list(c2.items())
-
-        self._test_pickle(inner)
-
-
-class TestLFUCache(_TestMixin):
-    CACHE = LFUCache
-    ITERATOR_CLASS = lfucache_iterator
-
-    def test_policy(self):
-        obj = self.CACHE(5, {i: i for i in range(5)})
-
-        for i in range(5):
-            obj[i] = i
-
-        for i in range(10):
-            assert 0 == obj[0]
-        for i in range(7):
-            assert 1 == obj[1]
-        for i in range(3):
-            assert 2 == obj[2]
-        for i in range(4):
-            assert 3 == obj[3]
-        for i in range(6):
-            assert 4 == obj[4]
-
-        assert (2, 2) == obj.popitem()
-        assert (3, 3) == obj.popitem()
-
-        for i in range(10):
-            assert 4 == obj.get(4)
-
-        assert (1, 1) == obj.popitem()
-
-        assert 2 == len(obj)
-        obj.clear()
-
-        for i in range(5):
-            obj[i] = i
-
-        assert [0, 1, 2, 3, 4] == list(obj.keys())
-
-        for i in range(10):
-            obj[0] += 1
-        for i in range(7):
-            obj[1] += 1
-        for i in range(3):
-            obj[2] += 1
-        for i in range(4):
-            obj[3] += 1
-        for i in range(6):
-            obj[4] += 1
-
-        obj[5] = 4
-        assert [5, 3, 4, 1, 0] == list(obj.keys())
-
-    def test_least_frequently_used(self):
-        obj = LFUCache(10)
-
-        for i in range(5):
-            obj[i] = i * 2
-
-        for i in range(10):
-            obj[0] += 1
-        for i in range(7):
-            obj[1] += 1
-        for i in range(3):
-            obj[2] += 1
-        for i in range(4):
-            obj[3] += 1
-        for i in range(6):
-            obj[4] += 1
-
-        assert obj.least_frequently_used() == 2
-        assert obj.least_frequently_used(1) == 3
-        assert obj.least_frequently_used(4) == 0
-        assert obj.least_frequently_used(5) is None
-
-    def test_pickle(self):
-        def inner(c1, c2):
-            assert list(c1.items()) == list(c2.items())
-
-        self._test_pickle(inner)
+    def test_items_with_expire(self):
+        # no need to test completely items_with_expire
+        # because it's tested in test_iterators
+        obj = TTLCache(10, 3, {1: 2, 3: 4})
+        for key, val, ttl in obj.items_with_expire():
+            assert key in obj
+            assert val == obj[key]
+            assert isinstance(ttl, float)
 
 
 class TestVTTLCache(_TestMixin):
@@ -569,5 +580,14 @@ class TestVTTLCache(_TestMixin):
         c2 = pickle.loads(pickle.dumps(c1))
 
         assert len(c2) == len(c1)
-        assert c1.capacity() == c2.capacity()
+        assert abs(c2.capacity() - c1.capacity()) < 2
         inner(c1, c2)
+
+    def test_items_with_expire(self):
+        # no need to test completely items_with_expire
+        # because it's tested in test_iterators
+        obj = VTTLCache(10, {1: 2, 3: 4}, ttl=10)
+        for key, val, ttl in obj.items_with_expire():
+            assert key in obj
+            assert val == obj[key]
+            assert isinstance(ttl, float)

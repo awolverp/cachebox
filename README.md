@@ -1,79 +1,95 @@
-# cachebox
 
-![image](https://img.shields.io/pypi/v/cachebox.svg)
-![image](https://img.shields.io/pypi/l/cachebox.svg)
-![image](https://img.shields.io/pypi/pyversions/cachebox.svg)
-![image](https://static.pepy.tech/badge/cachebox)
-![python-test](https://github.com/awolverp/cachebox/actions/workflows/python-test.yml/badge.svg)
+<h1 align=center>
+  Cachebox
+</h1>
+<p align="center">
+    <em>The fastest caching Python library written in Rust</em>
+</p>
+<p align="center">
+    <a href="https://github.com/awolverp/cachebox/releases"><b>Releases</b></a> | <a href="https://github.com/awolverp/cachebox-benchmark" target="_blank"><b>Benchmarks</b></a> | <a href="https://github.com/awolverp/cachebox/issues/new"><b>Issues</b></a>
+</p>
+<p align="center">
+    <a href="https://github.com/awolverp/cachebox/blob/main/LICENSE">
+        <img src="https://img.shields.io/github/license/awolverp/cachebox.svg?style=flat-square" alt="License">
+    </a>
+    <a href="https://github.com/awolverp/cachebox/releases">
+        <img src="https://img.shields.io/github/v/release/awolverp/cachebox.svg?style=flat-square" alt="Release">
+    </a>
+    <a href="https://pypi.org/project/cachebox/">
+        <img src="https://img.shields.io/pypi/pyversions/cachebox.svg?style=flat-square" alt="Python Versions">
+    </a>
+    <a href="https://pepy.tech/projects/cachebox">
+        <img src="https://static.pepy.tech/badge/cachebox" alt="Downloads">
+    </a>
+</p>    
 
-[**Releases**](https://github.com/awolverp/cachebox/releases) | [**Benchmarks**](https://github.com/awolverp/cachebox-benchmark) | [**Issues**](https://github.com/awolverp/cachebox/issues/new)
-
-**The fastest caching Python library written in Rust**
+-------
 
 ### What does it do?
 You can easily and powerfully perform caching operations in Python as fast as possible.
 This can make your application very faster and it's a good choice in big applications.
+**Ideal for optimizing large-scale applications** with efficient, low-overhead caching.
 
-- 🚀 10-50x faster than other caching libraries.
-- 📊 Very low memory usage (1/2 of dictionary).
-- 🔥 Full-feature and easy-to-use
+**Key Features:**
+- 🚀 Extremely fast (10-50x faster than other caching libraries -- [*benchmarks*](https://github.com/awolverp/cachebox-benchmark))
+- 📊 Minimal memory footprint (50% of standard dictionary memory usage)
+- 🔥 Full-featured and user-friendly
 - 🧶 Completely thread-safe
 - 🔧 Tested and correct
-- **\[R\]** written in Rust that has high-performance
-- 🤝 Support Python 3.8+ (PyPy & CPython)
-- 📦 Over 7 cache algorithms are supported
+- **\[R\]** written in Rust for maximum performance
+- 🤝 Compatible with Python 3.8+ (PyPy and CPython)
+- 📦 Supports 7 advanced caching algorithms
 
-## Page Content
-- [**When i need caching and cachebox?**](#when-i-need-caching-and-cachebox)
-- [**Why `cachebox`?**](#why-cachebox)
-- [**Installation**](#installation)
-- [**Example**](#example)
-- [**Learn**](#learn)
-- [**Incompatible changes**](#incompatible-changes)
-- [**Tips & Notes**](#tips-and-notes)
+### Page Contents
+- ❓ [**When i need caching and cachebox**](#when-i-need-caching-and-cachebox)
+- 🌟 [**Why `cachebox`**](#why-cachebox)
+- 🔧 [**Installation**](#installation)
+- 💡 [**Preview**](#examples)
+- 🎓 [**Getting started**](#getting-started)
+- ✏️ [**Incompatible changes**](#incompatible-changes)
+- 📌 [**Tips & Notes**](#tips-and-notes)
 
-## When i need caching and cachebox?
-**📈 Frequent Data Access** \
-If your application frequently accesses the same data, caching can helps you.
+### When i need caching and cachebox
+- 📈 **Frequently Data Access** \
+  If you need to access the same data multiple times, caching can help reduce the number of database queries or API calls, improving performance.
 
-**💎 Expensive Operations** \
-When data retrieval involves costly operations such as database queries or API calls, caching can save time and resources.
+- 💎 **Expensive Operations** \
+  If you have operations that are computationally expensive, caching can help reduce the number of times these operations need to be performed.
 
-**🚗 High Traffic Scenarios** \
-In big applications with high user traffic caching can help by reducing the number of operations.
+- 🚗 **High Traffic Scenarios** \
+  If your application has high user traffic, caching can help reduce the load on your server by reducing the number of requests that need to be processed.
 
-**#️⃣ Web Page Rendering** \
-Caching HTML pages can speed up the delivery of static content.
+- #️⃣ **Web Page Rendring** \
+  If you are rendering web pages, caching can help reduce the time it takes to generate the page by caching the results of expensive operations. Caching HTML pages can speed up the delivery of static content.
 
-**🚧 Rate Limiting** \
-Caching can help you to manage rate limits imposed by third-party APIs by reducing the number of requests sent.
+- 🚧 **Rate Limiting** \
+  If you have a rate limiting system in place, caching can help reduce the number of requests that need to be processed by the rate limiter. Also, caching can help you to manage rate limits imposed by third-party APIs by reducing the number of requests sent.
 
-**🤖 Machine Learning Models** \
-If your application frequently makes predictions using the same input data, caching the results can save computation time.
+- 🤖 **Machine Learning Models** \
+  If your application frequently makes predictions using the same input data, caching the results can save computation time.
 
-**And a lot of other situations ...**
-
-## Why cachebox?
-**⚡ Rust** \
+### Why cachebox?
+- **⚡ Rust** \
 It uses *Rust* language to has high-performance.
 
-**🧮 SwissTable** \
+- **🧮 SwissTable** \
 It uses Google's high-performance SwissTable hash map. thanks to [hashbrown](https://github.com/rust-lang/hashbrown).
 
-**✨ Low memory usage** \
+- **✨ Low memory usage** \
 It has very low memory usage.
 
-**⭐ Zero Dependency** \
+- **⭐ Zero Dependency** \
 As we said, `cachebox` written in Rust so you don't have to install any other dependecies.
 
-**🧶 Thread safe** \
+- **🧶 Thread safe** \
 It's completely thread-safe and uses locks to prevent problems.
 
-**👌 Easy To Use** \
+- **👌 Easy To Use** \
 You only need to import it and choice your implementation to use and behave with it like a dictionary.
 
-**🚫 Avoids Cache Stampede** \
-It avoids [cache stampede](https://en.wikipedia.org/wiki/Cache_stampede) to have better performance.
+- **🚫 Avoids Cache Stampede** \
+It avoids [cache stampede](https://en.wikipedia.org/wiki/Cache_stampede) by using a distributed lock system.
+
 
 ## Installation
 cachebox is installable by `pip`:
@@ -82,9 +98,9 @@ pip3 install -U cachebox
 ```
 
 > [!WARNING]\
-> The new version v4 has some incompatible with v3, for more info please see [Incompatible changes](#incompatible-changes)
+> The new version v5 has some incompatible with v4, for more info please see [Incompatible changes](#incompatible-changes)
 
-## Example
+## Examples
 The simplest example of **cachebox** could look like this:
 ```python
 import cachebox
@@ -93,7 +109,7 @@ import cachebox
 @cachebox.cached(cachebox.FIFOCache(maxsize=128))
 def factorial(number: int) -> int:
     fact = 1
-    for num in range(2, n + 1):
+    for num in range(2, number + 1):
         fact *= num
     return fact
 
@@ -107,48 +123,58 @@ async def make_request(method: str, url: str) -> dict:
     return response.json()
 ```
 
-> [!NOTE]\
-> Unlike functools.lru_cache and other caching libraries, cachebox will copy `dict`, `list`, and `set`.
-> ```python
-> @cachebox.cached(cachebox.LRUCache(maxsize=128))
-> def make_dict(name: str, age: int) -> dict:
->    return {"name": name, "age": age}
+Also, unlike functools.lru_cache and other caching libraries, cachebox can copy `dict`, `list`, and `set` objects.
+```python
+@cachebox.cached(cachebox.LRUCache(maxsize=128))
+def make_dict(name: str, age: int) -> dict:
+   return {"name": name, "age": age}
 >
-> d = make_dict("cachebox", 10)
-> assert d == {"name": "cachebox", "age": 10}
-> d["new-key"] = "new-value"
-> 
-> d2 = make_dict("cachebox", 10)
-> # `d2` will be `{"name": "cachebox", "age": 10, "new-key": "new-value"}` if you use other libraries
-> assert d2 == {"name": "cachebox", "age": 10}
-> ```
+d = make_dict("cachebox", 10)
+assert d == {"name": "cachebox", "age": 10}
+d["new-key"] = "new-value"
 
-## Learn
-There are 2 decorators:
-- [**cached**](#function-cached): a decorator that helps you to cache your functions and calculations with a lot of options.
-- [**cachedmethod**](#function-cachedmethod): this is excatly works like `cached()`, but ignores `self` parameters in hashing and key making.
-- [**is_cached**](#function-is_cached): check if a function/method cached by cachebox or not
+d2 = make_dict("cachebox", 10)
+# `d2` will be `{"name": "cachebox", "age": 10, "new-key": "new-value"}` if you use other libraries
+assert d2 == {"name": "cachebox", "age": 10}
+```
 
-There are 9 classes:
-- [**BaseCacheImpl**](#class-basecacheimpl): base-class for all classes.
-- [**Cache**](#class-cache): A simple cache that has no algorithm; this is only a hashmap.
-- [**FIFOCache**](#class-fifocache): the FIFO cache will remove the element that has been in the cache the longest.
-- [**RRCache**](#class-rrcache): the RR cache will choice randomly element to remove it to make space when necessary.
-- [**TTLCache**](#class-ttlcache): the TTL cache will automatically remove the element in the cache that has expired.
-- [**LRUCache**](#class-lrucache): the LRU cache will remove the element in the cache that has not been accessed in the longest time.
-- [**LFUCache**](#class-lfucache): the LFU cache will remove the element in the cache that has been accessed the least, regardless of time.
-- [**VTTLCache**](#class-vttlcache): the TTL cache will automatically remove the element in the cache that has expired when need.
-- [**Frozen**](#class-frozen): you can use this class for freezing your caches.
+You can use cache alghoritms without `cached` decorator -- just import what cache alghoritms you want and use it like a dictionary.
+```python
+from cachebox import FIFOCache
 
-Using this library is very easy and you only need to import cachebox and then use these classes like a dictionary (or use its decorator such as `cached` and `cachedmethod`).
+cache = FIFOCache(maxsize=128)
+cache["key"] = "value"
+assert cache["key"] == "value"
 
-There are some examples for you with different methods for introducing those. \
+# You can also use `cache.get(key, default)`
+assert cache.get("key") == "value"
+```
+
+## Getting started
+There are 3 useful functions:
+- [**cached**](#cached--decorator): a decorator that helps you to cache your functions and calculations with a lot of options.
+- [**cachedmethod**](#cachedmethod--decorator): this is excatly works like `cached()`, but ignores `self` parameters in hashing and key making.
+- [**is_cached**](#is_cached--function): check if a function/method cached by cachebox or not
+
+And 9 classes:
+- [**BaseCacheImpl**](#basecacheimpl-️-class): base-class for all classes.
+- [**Cache**](#cache-️-class): A simple cache that has no algorithm; this is only a hashmap.
+- [**FIFOCache**](#fifocache-️-class): the FIFO cache will remove the element that has been in the cache the longest.
+- [**RRCache**](#rrcache-️-class): the RR cache will choice randomly element to remove it to make space when necessary.
+- [**LRUCache**](#lrucache-️-class): the LRU cache will remove the element in the cache that has not been accessed in the longest time.
+- [**LFUCache**](#lfucache-️-class): the LFU cache will remove the element in the cache that has been accessed the least, regardless of time.
+- [**TTLCache**](#ttlcache-️-class): the TTL cache will automatically remove the element in the cache that has expired.
+- [**VTTLCache**](#vttlcache-️-class): the TTL cache will automatically remove the element in the cache that has expired when need.
+- [**Frozen**](#frozen-️-class): you can use this class for freezing your caches.
+
+You only need to import the class which you want, and behave with it like a dictionary (except for [VTTLCache](#vttlcache-️-class), this have some differences)
+
+There are some examples for you with different methods for introducing those.
 **All the methods you will see in the examples are common across all classes (except for a few of them).**
 
 * * *
 
-### *function* cached
-
+### `cached` (🎀 decorator)
 Decorator to wrap a function with a memoizing callable that saves results in a cache.
 
 **Parameters:**
@@ -169,7 +195,11 @@ Decorator to wrap a function with a memoizing callable that saves results in a c
                 `0` means "never copy", `1` means "only copy `dict`, `list`, and `set` results" and
                 `2` means "always copy the results".
 
-**A simple example:**
+<details>
+<summary><b>Examples</b></summary>
+
+
+A simple example:
 ```python
 import cachebox
 
@@ -184,7 +214,7 @@ sum_as_string.cache_clear()
 assert len(sum_as_string.cache) == 0
 ```
 
-**A key_maker example:**
+A key_maker example:
 ```python
 import cachebox
 
@@ -197,7 +227,7 @@ async def request_handler(request: Request):
     return Response("hello man")
 ```
 
-**A typed key_maker example:**
+A typed key_maker example:
 ```python
 import cachebox
 
@@ -223,13 +253,13 @@ print(sum_as_string.cache)
 # LRUCache(0 / 9223372036854775807, capacity=0)
 
 print(sum_as_string.cache_info())
-# CacheInfo(hits=0, misses=0, maxsize=9223372036854775807, length=0, cachememory=8)
+# CacheInfo(hits=0, misses=0, maxsize=9223372036854775807, length=0, memory=8)
 
 # `.cache_clear()` clears the cache
 sum_as_string.cache_clear()
 ```
 
-**callback example:** (Added in v4.2.0)
+callback example: *(Added in v4.2.0)*
 ```python
 import cachebox
 
@@ -259,6 +289,9 @@ assert func(5, 4) == 9
 # callback_func: miss event (5, 4) 9
 ```
 
+</details>
+
+
 > [!NOTE]\
 > Recommended use `cached` method for **@staticmethod**s and use [`cachedmethod`](#function-cachedmethod) for **@classmethod**s;
 > And set `copy_level` parameter to `2` on **@classmethod**s.
@@ -285,14 +318,13 @@ assert func(5, 4) == 9
 > sum_as_string(10, 20, cachebox__ignore=True)
 > ```
 
-> [!NOTE]\
-> You can see [LRUCache here](#class-lrucache).
-
 * * *
 
-### *function* cachedmethod
-
+### `cachedmethod` (🎀 decorator)
 this is excatly works like `cached()`, but ignores `self` parameters in hashing and key making.
+
+<details>
+<summary><b>Example</b></summary>
 
 ```python
 import cachebox
@@ -306,14 +338,18 @@ c = MyClass()
 c.my_method()
 ```
 
-> [!NOTE]\
-> You can see [TTLCache here](#class-ttlcache).
+</details>
 
 * * *
 
-### *function* is_cached
+### `is_cached` (📦 function)
+Checks that a function/method is cached by cachebox or not.
 
-Check if a function/method cached by cachebox or not
+**Parameters:**
+- `func`: The function/method to check.
+
+<details>
+<summary><b>Example</b></summary>
 
 ```python
 import cachebox
@@ -325,44 +361,66 @@ def func():
 assert cachebox.is_cached(func)
 ```
 
-> [!NOTE]\
-> You can see [TTLCache here](#class-ttlcache).
+</details>
 
 * * *
 
-### *class* BaseCacheImpl
-This is the base class of all cache classes such as Cache, FIFOCache, ... \
-Do not try to call its constructor, this is only for type-hint.
+### `BaseCacheImpl` (🏗️ class)
+Base implementation for cache classes in the cachebox library.
+
+This abstract base class defines the generic structure for cache implementations,
+supporting different key and value types through generic type parameters.
+Serves as a foundation for specific cache variants like Cache and FIFOCache.
+
+<details>
+<summary><b>Example</b></summary>
 
 ```python
 import cachebox
 
+# subclass
 class ClassName(cachebox.BaseCacheImpl):
-    # ...
+    ...
 
+# type-hint
 def func(cache: BaseCacheImpl):
-    # ...
+    ...
 
+# isinstance
 cache = cachebox.LFUCache(0)
 assert isinstance(cache, cachebox.BaseCacheImpl)
 ```
 
+</details>
+
 * * *
 
-### *class* Cache
-A simple cache that has no algorithm; this is only a hashmap.
+### `Cache` (🏗️ class)
+A thread-safe, memory-efficient hashmap-like cache with configurable maximum size.
+
+Provides a flexible key-value storage mechanism with:
+- Configurable maximum size (zero means unlimited)
+- Lower memory usage compared to standard dict
+- Thread-safe operations
+- Useful memory management methods
+
+Supports initialization with optional initial data and capacity,
+and provides dictionary-like access with additional cache-specific operations.
 
 > [!TIP]\
-> **`Cache` vs `dict`**:
-> - it is thread-safe and unordered, while `dict` isn't thread-safe and ordered (Python 3.6+).
-> - it uses very lower memory than `dict`.
-> - it supports useful and new methods for managing memory, while `dict` does not.
-> - it does not support `popitem`, while `dict` does.
-> - You can limit the size of `Cache`, but you cannot for `dict`.
+> Differs from standard `dict` by:
+> - it is thread-safe and unordered, while dict isn't thread-safe and ordered (Python 3.6+).
+> - it uses very lower memory than dict.
+> - it supports useful and new methods for managing memory, while dict does not.
+> - it does not support popitem, while dict does.
+> - You can limit the size of Cache, but you cannot for dict.
 
 |              | get   | insert  | delete | popitem |
 | ------------ | ----- | ------- | ------ | ------- |
 | Worse-case   | O(1)  | O(1)    | O(1)   | N/A     |
+
+<details>
+<summary><b>Example</b></summary>
 
 ```python
 from cachebox import Cache
@@ -389,16 +447,27 @@ cache.update({i:i for i in range(200)})
 # OverflowError: The cache has reached the bound.
 ```
 
+</details>
+
 * * *
 
-### *class* FIFOCache
-FIFO Cache implementation - First-In First-Out Policy (thread-safe).
+### `FIFOCache` (🏗️ class)
+A First-In-First-Out (FIFO) cache implementation with configurable maximum size and optional initial capacity.
 
-In simple terms, the FIFO cache will remove the element that has been in the cache the longest.
+This cache provides a fixed-size container that automatically removes the oldest items when the maximum size is reached.
 
-|              | get   | insert  | delete(i) | popitem |
-| ------------ | ----- | ------- | --------- | ------- |
-| Worse-case   | O(1)  | O(1)    | O(min(i, n-i))    | O(1)    |
+**Key features**:
+- Deterministic item eviction order (oldest items removed first)
+- Efficient key-value storage and retrieval
+- Supports dictionary-like operations
+- Allows optional initial data population
+
+|              | get   | insert  | delete       | popitem |
+| ------------ | ----- | ------- | ------------- | ------- |
+| Worse-case   | O(1)  | O(1) | O(min(i, n-i)) | O(1)  |
+
+<details>
+<summary><b>Example</b></summary>
 
 ```python
 from cachebox import FIFOCache
@@ -424,16 +493,24 @@ print(cache.insert("new-key", "val")) # None
 print(cache.first())
 ```
 
+</details>
+
 * * *
 
-### *class* RRCache
-RRCache implementation - Random Replacement policy (thread-safe).
+### `RRCache` (🏗️ class)
+A thread-safe cache implementation with Random Replacement (RR) policy.
 
-In simple terms, the RR cache will choice randomly element to remove it to make space when necessary.
+This cache randomly selects and removes elements when the cache reaches its maximum size,
+ensuring a simple and efficient caching mechanism with configurable capacity.
+
+Supports operations like insertion, retrieval, deletion, and iteration with O(1) complexity.
 
 |              | get   | insert  | delete | popitem |
 | ------------ | ----- | ------- | ------ | ------- |
-| Worse-case   | O(1)  | O(1)    | O(1)   | O(1)~   |
+| Worse-case   | O(1)  | O(1)    | O(1)   | O(1)    |
+
+<details>
+<summary><b>Example</b></summary>
 
 ```python
 from cachebox import RRCache
@@ -449,21 +526,104 @@ print(cache.capacity()) # 28
 cache.shrink_to_fit()
 print(cache.capacity()) # 10
 
-print(len(cache)) # 10
-cache.clear()
-print(len(cache)) # 0
+# Returns a random key
+print(cache.random_key()) # 4
 ```
+
+</details>
 
 * * *
 
-### *class* TTLCache
-TTL Cache implementation - Time-To-Live Policy (thread-safe).
+### `LRUCache` (🏗️ class)
+Thread-safe Least Recently Used (LRU) cache implementation.
 
-In simple terms, the TTL cache will automatically remove the element in the cache that has expired.
+Provides a cache that automatically removes the least recently used items when
+the cache reaches its maximum size. Supports various operations like insertion,
+retrieval, and management of cached items with configurable maximum size and
+initial capacity.
+
+|              | get   | insert  | delete(i) | popitem |
+| ------------ | ----- | ------- | --------- | ------- |
+| Worse-case   | O(1)~ | O(1)~   | O(1)~ | O(1)~ |
+
+<details>
+<summary><b>Example</b></summary>
+
+```python
+from cachebox import LRUCache
+
+cache = LRUCache(0, {i:i*2 for i in range(10)})
+
+# access `1`
+print(cache[0]) # 0
+print(cache.least_recently_used()) # 1
+print(cache.popitem()) # (1, 2)
+
+# .peek() searches for a key-value in the cache and returns it without moving the key to recently used.
+print(cache.peek(2)) # 4
+print(cache.popitem()) # (3, 6)
+
+# Does the `popitem()` `n` times and returns count of removed items.
+print(cache.drain(5)) # 5
+```
+
+</details>
+
+* * *
+
+### `LFUCache` (🏗️ class)
+A thread-safe Least Frequently Used (LFU) cache implementation.
+
+This cache removes elements that have been accessed the least number of times,
+regardless of their access time. It provides methods for inserting, retrieving,
+and managing cache entries with configurable maximum size and initial capacity.
+
+|              | get   | insert  | delete(i) | popitem |
+| ------------ | ----- | ------- | --------- | ------- |
+| Worse-case   | O(1)~ | O(1)~   | O(min(i, n-i)) | O(1)~ |
+
+<details>
+<summary><b>Example</b></summary>
+
+```python
+from cachebox import LFUCache
+
+cache = cachebox.LFUCache(5)
+cache.insert('first', 'A')
+cache.insert('second', 'B')
+
+# access 'first' twice
+cache['first']
+cache['first']
+
+# access 'second' once
+cache['second']
+
+assert cache.least_frequently_used() == 'second'
+assert cache.least_frequently_used(2) is None # 2 is out of range
+
+for item in cache.items_with_frequency():
+    print(item)
+# ('second', 'B', 1)
+# ('first', 'A', 2)
+```
+
+</details>
+
+* * *
+
+### `TTLCache` (🏗️ class)
+A thread-safe Time-To-Live (TTL) cache implementation with configurable maximum size and expiration.
+
+This cache automatically removes elements that have expired based on their time-to-live setting.
+Supports various operations like insertion, retrieval, and iteration.
 
 |              | get   | insert  | delete(i) | popitem |
 | ------------ | ----- | ------- | --------- | ------- |
 | Worse-case   | O(1)~ | O(1)~   | O(min(i, n-i)) | O(n) |
+
+<details>
+<summary><b>Example</b></summary>
 
 ```python
 from cachebox import TTLCache
@@ -483,81 +643,36 @@ time.sleep(2)
 cache["mykey"] # KeyError
 ```
 
-* * *
-
-### *class* LRUCache
-LRU Cache implementation - Least recently used policy (thread-safe).
-
-In simple terms, the LRU cache will remove the element in the cache that has not been accessed in the longest time.
-
-|              | get   | insert  | delete(i) | popitem |
-| ------------ | ----- | ------- | --------- | ------- |
-| Worse-case   | O(1)~ | O(1)~   | O(1)~ | O(1)~ |
-
-```python
-from cachebox import LRUCache
-
-cache = LRUCache(0, {i:i*2 for i in range(10)})
-
-# access `1`
-print(cache[0]) # 0
-print(cache.popitem()) # (1, 2)
-
-# .peek() searches for a key-value in the cache and returns it without moving the key to recently used.
-print(cache.peek(2)) # 4
-print(cache.popitem()) # (3, 6)
-
-# Does the `popitem()` `n` times and returns count of removed items.
-print(cache.drain(5)) # 5
-```
+</details>
 
 * * *
 
-### *class* LFUCache
-LFU Cache implementation - Least frequantly used policy (thread-safe).
+### `VTTLCache` (🏗️ class)
+A thread-safe, time-to-live (TTL) cache implementation with per-key expiration policy.
 
-In simple terms, the LFU cache will remove the element in the cache that has been accessed the least, regardless of time.
+This cache allows storing key-value pairs with optional expiration times. When an item expires,
+it is automatically removed from the cache. The cache supports a maximum size and provides
+various methods for inserting, retrieving, and managing cached items.
+
+Key features:
+- Per-key time-to-live (TTL) support
+- Configurable maximum cache size
+- Thread-safe operations
+- Automatic expiration of items
+
+Supports dictionary-like operations such as get, insert, update, and iteration.
 
 |              | get   | insert  | delete(i) | popitem |
 | ------------ | ----- | ------- | --------- | ------- |
-| Worse-case   | O(1)~ | O(1)~   | O(n) | O(n) |
-
-```python
-from cachebox import LFUCache
-
-cache = cachebox.LFUCache(5)
-cache.insert(1, 1)
-cache.insert(2, 2)
-
-# access 1 twice
-cache[1]
-cache[1]
-
-# access 2 once
-cache[2]
-
-assert cache.least_frequently_used() == 2
-assert cache.least_frequently_used(2) is None # 2 is out of range
-
-for item in cache.items():
-    print(item)
-# (2, '2')
-# (1, '1')
-```
+| Worse-case   | O(1)~ | O(1)~   | O(min(i, n-i)) | O(1)~ |
 
 > [!TIP]\
-> `.items()`, `.keys()`, and `.values()` are ordered (v4.0+)
+> `VTTLCache` vs `TTLCache`:
+> - In `VTTLCache` each item has its own unique time-to-live, unlike `TTLCache`.
+> - `VTTLCache` is generally slower than `TTLCache`.
 
-* * *
-
-### *class* VTTLCache
-VTTL Cache implementation - Time-To-Live Per-Key Policy (thread-safe).
-
-In simple terms, the TTL cache will automatically remove the element in the cache that has expired when need.
-
-|              | get   | insert  | delete(i) | popitem |
-| ------------ | ----- | ------- | --------- | ------- |
-| Worse-case   | O(1)~ | O(1)~   | O(n) | O(n) |
+<details>
+<summary><b>Example</b></summary>
 
 ```python
 from cachebox import VTTLCache
@@ -582,15 +697,18 @@ print(cache.get("key1")) # value
 print(cache.get("key2")) # None
 ```
 
-> [!TIP]
-> **`VTTLCache` vs `TTLCache`:**
-> - In `VTTLCache` each item has its own unique time-to-live, unlike `TTLCache`.
-> - `VTTLCache` is generally slower than `TTLCache`.
+</details>
 
 * * *
 
-### *class* Frozen
-**This is not a cache.** this class can freeze your caches and prevents changes ❄️.
+### `Frozen` (🏗️ class)
+**This is not a cache**; This is a wrapper class that prevents modifications to an underlying cache implementation.
+
+This class provides a read-only view of a cache, optionally allowing silent
+suppression of modification attempts instead of raising exceptions.
+
+<details>
+<summary><b>Example</b></summary>
 
 ```python
 from cachebox import Frozen, FIFOCache
@@ -615,6 +733,8 @@ frozen.insert("key", "value")
 # TypeError: This cache is frozen.
 ```
 
+</details>
+
 > [!NOTE]\
 > The **Frozen** class can't prevent expiring in [TTLCache](#ttlcache) or [VTTLCache](#vttlcache).
 >
@@ -627,64 +747,73 @@ frozen.insert("key", "value")
 > print(len(frozen)) # 0
 > ```
 
-## Incompatible changes
+## ⚠️ Incompatible Changes
 These are changes that are not compatible with the previous version:
 
 **You can see more info about changes in [Changelog](CHANGELOG.md).**
 
-* * *
-
-#### Pickle serializing changed!
-If you try to load bytes that has dumped by pickle in previous version, you will get `TypeError` exception.
-There's no way to fix that 💔, but it's worth it.
+#### CacheInfo's cachememory attribute renamed!
+The `CacheInfo.cachememory` was renamed to `CacheInfo.memory`.
 
 ```python
-import pickle
+@cachebox.cached({})
+def func(a: int, b: int) -> str:
+    ...
 
-with open("old-version.pickle", "rb") as fd:
-    pickle.load(fd) # TypeError: ...
+info = func.cache_info()
+
+# Older versions
+print(info.cachememory)
+
+# New version
+print(info.memory)
 ```
 
-* * *
+#### Errors in the `__eq__` method will not be ignored!
+Now the errors which occurred while doing `__eq__` operations will not be ignored.
 
-#### Iterators changed!
-In previous versions, the iterators are not ordered; but now all of iterators are ordered.
-this means all of `.keys()`, `.values()`, `.items()`, and `iter(cache)` methods are ordered now.
-
-For example:
 ```python
-from cachebox import FIFOCache
+class A:
+    def __hash__(self):
+        return 1
 
-cache = FIFOCache(maxsize=4)
-for i in range(4):
-    cache[i] = str(i)
+    def __eq__(self, other):
+        raise NotImplementedError("not implemeneted")
 
-for key in cache:
-    print(key)
-# 0
-# 1
-# 2
-# 3
+cache = cachebox.FIFOCache(0, {A(): 10})
+
+# Older versions:
+cache[A()] # => KeyError
+
+# New version:
+cache[A()]
+# Traceback (most recent call last):
+# File "script.py", line 11, in <module>
+#    cache[A()]
+#    ~~~~~^^^^^
+#  File "script.py", line 7, in __eq__
+#   raise NotImplementedError("not implemeneted")
+# NotImplementedError: not implemeneted
 ```
 
-* * *
+#### Cache comparisons will not be strict!
+In older versions, cache comparisons depended on the caching algorithm. Now, they work just like dictionary comparisons.
 
-#### `.insert()` method changed!
-In new version, the `.insert()` method has a small change that can help you in coding.
-
-`.insert()` equals to `self[key] = value`, but:
-- If the cache did not have this key present, **None is returned**.
-- If the cache did have this key present, the value is updated,
-and **the old value is returned**. The key is not updated, though;
-
-For example:
 ```python
-from cachebox import LRUCache
+cache1 = cachebox.FIFOCache(10)
+cache2 = cachebox.FIFOCache(10)
 
-lru = LRUCache(10, {"a": "b", "c": "d"})
+cache1.insert(1, 'first')
+cache1.insert(2, 'second')
 
-print(lru.insert("a", "new-key")) # "b"
-print(lru.insert("no-exists", "val")) # None
+cache2.insert(2, 'second')
+cache2.insert(1, 'first')
+
+# Older versions:
+cache1 == cache2 # False
+
+# New version:
+cache1 == cache2 # True
 ```
 
 ## Tips and Notes
@@ -708,25 +837,21 @@ assert c.capacity() == loaded.capacity()
 > [!TIP]\
 > For more, see this [issue](https://github.com/awolverp/cachebox/issues/8).
 
-> [!NOTE]\
-> Supported since version 3.1.0
-
 * * *
 
 #### How to copy the caches?
-Use `copy.deepcopy` or `copy.copy` for copying caches. For example:
+You can use `copy.deepcopy` or `cache.copy` for copying caches. For example:
 ```python
-import cachebox, copy
-c = cachebox.LRUCache(100, {i:i for i in range(78)})
+import cachebox
+cache = cachebox.LRUCache(100, {i:i for i in range(78)})
 
-copied = copy.copy(c)
+# shallow copy
+shallow = cache.copy()
 
-assert c == copied
-assert c.capacity() == copied.capacity()
+# deep copy
+import copy
+deep = copy.deepcopy(cache)
 ```
-
-> [!NOTE]\
-> Supported since version 3.1.0
 
 ## License
 This repository is licensed under the [MIT License](LICENSE)

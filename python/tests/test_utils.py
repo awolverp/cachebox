@@ -35,6 +35,9 @@ def test_frozen():
     assert len(f) == 9
     assert len(f) == len(cache)
 
+    f = Frozen(cache, ignore=True)
+    f.popitem()
+
 
 def test_cached():
     obj = LRUCache(3)  # type: LRUCache[int, int]

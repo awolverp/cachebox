@@ -131,10 +131,10 @@ class _TestMixin:  # pragma: no cover
             cache[2]
 
     def test___repr__(self):
-        cache = self.CACHE(100, **self.KWARGS, capacity=2)
+        cache = self.CACHE(1000, **self.KWARGS, capacity=2)
         assert repr(cache).startswith(self.CACHE.__module__ + "." + self.CACHE.__name__)
 
-        cache.update({i: i for i in range(100)})
+        cache.update((i, i) for i in range(1000))
         assert str(cache) == repr(cache)
 
     def test_insert(self):

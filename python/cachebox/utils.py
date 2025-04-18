@@ -15,16 +15,17 @@ DT = typing.TypeVar("DT")
 class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):  # pragma: no cover
     """
     A wrapper class that prevents modifications to an underlying cache implementation.
-    
-    This class provides a read-only view of a cache, optionally allowing silent 
+
+    This class provides a read-only view of a cache, optionally allowing silent
     suppression of modification attempts instead of raising exceptions.
     """
+
     __slots__ = ("__cache", "ignore")
 
     def __init__(self, cls: BaseCacheImpl[KT, VT], ignore: bool = False) -> None:
         """
         Initialize a frozen cache wrapper.
-    
+
         :param cls: The underlying cache implementation to be frozen
         :type cls: BaseCacheImpl[KT, VT]
         :param ignore: If True, silently ignores modification attempts; if False, raises TypeError when modification is attempted
@@ -160,7 +161,7 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):  # pragma: no cover
 class _LockWithCounter:
     """
     A lock with a counter to track the number of waiters.
-    
+
     This class provides a lock mechanism that supports both synchronous and asynchronous contexts,
     with the ability to track the number of threads or coroutines waiting to acquire the lock.
     """
@@ -203,12 +204,12 @@ def _copy_if_need(obj, tocopy=(dict, list, set), level: int = 1):
 def make_key(args: tuple, kwds: dict, fasttype=(int, str)):
     """
     Create a hashable key from function arguments for caching purposes.
-    
+
     Args:
         args (tuple): Positional arguments to be used in key generation.
         kwds (dict): Keyword arguments to be used in key generation.
         fasttype (tuple, optional): Types that can be directly used as keys. Defaults to (int, str).
-    
+
     Returns:
         A hashable key representing the function arguments, optimized for simple single-argument cases.
     """
@@ -227,11 +228,11 @@ def make_key(args: tuple, kwds: dict, fasttype=(int, str)):
 def make_hash_key(args: tuple, kwds: dict):
     """
     Create a hashable hash key from function arguments for caching purposes.
-    
+
     Args:
         args (tuple): Positional arguments to be used in key generation.
         kwds (dict): Keyword arguments to be used in key generation.
-    
+
     Returns:
         int: A hash value representing the function arguments.
     """
@@ -241,11 +242,11 @@ def make_hash_key(args: tuple, kwds: dict):
 def make_typed_key(args: tuple, kwds: dict):
     """
     Create a hashable key from function arguments that includes type information.
-    
+
     Args:
         args (tuple): Positional arguments to be used in key generation.
         kwds (dict): Keyword arguments to be used in key generation.
-    
+
     Returns:
         A hashable key representing the function arguments, including the types of the arguments.
     """
@@ -448,21 +449,21 @@ def cached(
 ):
     """
     Decorator to create a memoized cache for function results.
-    
+
     Wraps a function to automatically cache and retrieve its results based on input parameters.
-    
+
     Args:
         cache (BaseCacheImpl, dict, optional): Cache implementation to store results. Defaults to FIFOCache.
         key_maker (Callable, optional): Function to generate cache keys from function arguments. Defaults to make_key.
         clear_reuse (bool, optional): Whether to reuse cache during clearing. Defaults to False.
         callback (Callable, optional): Function called on cache hit/miss events. Defaults to None.
         copy_level (int, optional): Level of result copying. Defaults to 1.
-    
+
     Returns:
         Callable: Decorated function with caching capabilities.
-    
+
     Example::
-    
+
         @cachebox.cached(cachebox.LRUCache(128))
         def sum_as_string(a, b):
             return str(a+b)
@@ -506,16 +507,16 @@ def cachedmethod(
 ):
     """
     Decorator to create a method-specific memoized cache for function results.
-    
+
     Similar to `cached()`, but ignores `self` parameter when generating cache keys.
-    
+
     Args:
         cache (BaseCacheImpl, dict, optional): Cache implementation to store results. Defaults to FIFOCache.
         key_maker (Callable, optional): Function to generate cache keys from function arguments. Defaults to make_key.
         clear_reuse (bool, optional): Whether to reuse cache during clearing. Defaults to False.
         callback (Callable, optional): Function called on cache hit/miss events. Defaults to None.
         copy_level (int, optional): Level of result copying. Defaults to 1.
-    
+
     Returns:
         Callable: Decorated method with method-specific caching capabilities.
     """

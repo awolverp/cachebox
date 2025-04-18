@@ -27,6 +27,7 @@ fn _core(py: pyo3::Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<bridge::ttlcache::TTLCache>()?;
     m.add_class::<bridge::vttlcache::VTTLCache>()?;
     m.add_class::<bridge::TTLPair>()?;
+    m.add_class::<bridge::BaseCacheImpl>()?;
 
     Ok(())
 }

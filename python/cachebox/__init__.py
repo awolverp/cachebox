@@ -3,6 +3,7 @@ from ._core import (
     __version__ as __version__,
 )
 from ._cachebox import (
+    BaseCacheImpl as BaseCacheImpl,
     Cache as Cache,
     FIFOCache as FIFOCache,
     RRCache as RRCache,
@@ -10,7 +11,6 @@ from ._cachebox import (
     LFUCache as LFUCache,
     TTLCache as TTLCache,
     VTTLCache as VTTLCache,
-    BaseCacheImpl as BaseCacheImpl,
     IteratorView as IteratorView,
 )
 from .utils import (

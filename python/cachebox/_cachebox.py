@@ -1,4 +1,5 @@
 from . import _core
+from ._core import BaseCacheImpl
 from datetime import timedelta, datetime
 import typing
 
@@ -27,18 +28,6 @@ def _items_to_str(items, length):
         c += 1
 
     return "{%s, ... %d more ...}" % (", ".join(left), length - c)
-
-
-class BaseCacheImpl(typing.Generic[KT, VT]):
-    """
-    Base implementation for cache classes in the cachebox library.
-
-    This abstract base class defines the generic structure for cache implementations,
-    supporting different key and value types through generic type parameters.
-    Serves as a foundation for specific cache variants like Cache and FIFOCache.
-    """
-
-    pass
 
 
 class IteratorView(typing.Generic[VT]):

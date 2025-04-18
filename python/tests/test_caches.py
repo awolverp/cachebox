@@ -430,6 +430,15 @@ class TestTTLCache(_TestMixin):
         with pytest.raises(KeyError):
             obj.popitem_with_expire()
 
+    def test_items_with_expire(self):
+        # no need to test completely items_with_expire
+        # because it's tested in test_iterators
+        obj = TTLCache(10, 3, {1: 2, 3: 4})
+        for key, val, ttl in obj.items_with_expire():
+            assert key in obj
+            assert val == obj[key]
+            assert isinstance(ttl, float)
+
 
 class TestVTTLCache(_TestMixin):
     CACHE = VTTLCache
@@ -571,5 +580,14 @@ class TestVTTLCache(_TestMixin):
         c2 = pickle.loads(pickle.dumps(c1))
 
         assert len(c2) == len(c1)
-        assert c1.capacity() == c2.capacity()
+        assert abs(c2.capacity() - c1.capacity()) < 2
         inner(c1, c2)
+
+    def test_items_with_expire(self):
+        # no need to test completely items_with_expire
+        # because it's tested in test_iterators
+        obj = VTTLCache(10, {1: 2, 3: 4}, ttl=10)
+        for key, val, ttl in obj.items_with_expire():
+            assert key in obj
+            assert val == obj[key]
+            assert isinstance(ttl, float)

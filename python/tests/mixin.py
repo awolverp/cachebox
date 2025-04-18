@@ -431,3 +431,32 @@ class _TestMixin:  # pragma: no cover
             assert c1 == c2
             assert c1.capacity() == c2.capacity()
             check_order(c1, c2)
+
+    def test_copy(self):
+        import copy
+
+        # shallow copy
+        c1 = self.CACHE(maxsize=0, **self.KWARGS)
+        c1.insert('dict', {})
+        c2 = c1.copy()
+
+        assert c2 == c1
+        c2['dict'][1] = 1
+
+        assert c1['dict'][1] == 1
+
+        c2.insert(1, 1)
+        assert 1 not in c1
+
+        # deepcopy
+        c1 = self.CACHE(maxsize=0, **self.KWARGS)
+        c1.insert('dict', {})
+        c2 = copy.deepcopy(c1)
+
+        assert c2 == c1
+        c2['dict'][1] = 1
+
+        assert 1 not in c1['dict']
+
+        c2.insert(1, 1)
+        assert 1 not in c1

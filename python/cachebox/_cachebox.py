@@ -1939,7 +1939,7 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         """
         try:
             val = self._raw.popitem()
-        except _core.CoreKeyError:
+        except _core.CoreKeyError: # pragma: no cover
             raise KeyError() from None
         else:
             return val.pack2()

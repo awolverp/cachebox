@@ -10,9 +10,10 @@ import typing
 KT = typing.TypeVar("KT")
 VT = typing.TypeVar("VT")
 DT = typing.TypeVar("DT")
+FT = typing.TypeVar("FT", bound=typing.Callable[..., typing.Any])
 
 
-class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):  # pragma: no cover
+class Frozen(BaseCacheImpl[KT, VT]):  # pragma: no cover
     """
     A wrapper class that prevents modifications to an underlying cache implementation.
 
@@ -66,9 +67,9 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):  # pragma: no cover
     def __getitem__(self, key: KT) -> VT:
         return self.__cache[key]
 
-    def __delitem__(self, key: KT) -> VT:
+    def __delitem__(self, key: KT) -> None:
         if self.ignore:
-            return  # type: ignore
+            return None
 
         raise TypeError("This cache is frozen.")
 
@@ -78,7 +79,7 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):  # pragma: no cover
     def __iter__(self) -> typing.Iterator[KT]:
         return iter(self.__cache)
 
-    def __richcmp__(self, other, op: int) -> bool:
+    def __richcmp__(self, other: typing.Any, op: int) -> bool:
         return self.__cache.__richcmp__(other, op)
 
     def capacity(self) -> int:
@@ -92,16 +93,16 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):  # pragma: no cover
 
     def insert(self, key: KT, value: VT, *args, **kwargs) -> typing.Optional[VT]:
         if self.ignore:
-            return
+            return None
 
         raise TypeError("This cache is frozen.")
 
-    def get(self, key: KT, default: DT = None) -> typing.Union[VT, DT]:
+    def get(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         return self.__cache.get(key, default)
 
-    def pop(self, key: KT, default: DT = None) -> typing.Union[VT, DT]:
+    def pop(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         if self.ignore:
-            return  # type: ignore
+            return None  # type: ignore[return-value]
 
         raise TypeError("This cache is frozen.")
 
@@ -109,7 +110,7 @@ class Frozen(BaseCacheImpl, typing.Generic[KT, VT]):  # pragma: no cover
         self, key: KT, default: typing.Optional[DT] = None, *args, **kwargs
     ) -> typing.Optional[typing.Union[VT, DT]]:
         if self.ignore:
-            return
+            return None
 
         raise TypeError("This cache is frozen.")
 
@@ -174,7 +175,7 @@ class _LockWithCounter:
 
     async def __aenter__(self) -> None:
         self.waiters += 1
-        await self.lock.acquire()
+        await self.lock.acquire()  # type: ignore[misc]
 
     async def __aexit__(self, *args, **kwds) -> None:
         self.waiters -= 1
@@ -189,7 +190,7 @@ class _LockWithCounter:
         self.lock.release()
 
 
-def _copy_if_need(obj, tocopy=(dict, list, set), level: int = 1):
+def _copy_if_need(obj: VT, tocopy=(dict, list, set), level: int = 1) -> VT:
     from copy import copy
 
     if level == 0:
@@ -252,7 +253,7 @@ def make_typed_key(args: tuple, kwds: dict):
     """
     key = make_key(args, kwds, fasttype=())
 
-    key += tuple(type(v) for v in args)  # type: ignore
+    key += tuple(type(v) for v in args)
     if kwds:
         key += tuple(type(v) for v in kwds.values())
 
@@ -272,13 +273,13 @@ def _cached_wrapper(
     callback: typing.Optional[typing.Callable[[int, typing.Any, typing.Any], typing.Any]],
     copy_level: int,
     is_method: bool,
-) -> None:
+):
     _key_maker = (lambda args, kwds: key_maker(args[1:], kwds)) if is_method else key_maker
 
     hits = 0
     misses = 0
-    locks = defaultdict(_LockWithCounter)
-    exceptions = {}
+    locks: defaultdict[typing.Hashable, _LockWithCounter] = defaultdict(_LockWithCounter)
+    exceptions: typing.Dict[typing.Hashable, BaseException] = {}
 
     def _wrapped(*args, **kwds):
         nonlocal hits, misses, locks, exceptions
@@ -337,7 +338,7 @@ def _cached_wrapper(
         hits, misses, cache.maxsize, len(cache), cache.capacity()
     )
 
-    def cache_clear():
+    def cache_clear() -> None:
         nonlocal misses, hits, locks, exceptions
         cache.clear(reuse=clear_reuse)
         misses = 0
@@ -358,13 +359,13 @@ def _async_cached_wrapper(
     callback: typing.Optional[typing.Callable[[int, typing.Any, typing.Any], typing.Any]],
     copy_level: int,
     is_method: bool,
-) -> None:
+):
     _key_maker = (lambda args, kwds: key_maker(args[1:], kwds)) if is_method else key_maker
 
     hits = 0
     misses = 0
-    locks = defaultdict(lambda: _LockWithCounter(True))
-    exceptions = {}
+    locks: defaultdict[typing.Hashable, _LockWithCounter] = defaultdict(_LockWithCounter)
+    exceptions: typing.Dict[typing.Hashable, BaseException] = {}
 
     async def _wrapped(*args, **kwds):
         nonlocal hits, misses, locks, exceptions
@@ -427,7 +428,7 @@ def _async_cached_wrapper(
         hits, misses, cache.maxsize, len(cache), cache.capacity()
     )
 
-    def cache_clear():
+    def cache_clear() -> None:
         nonlocal misses, hits, locks, exceptions
         cache.clear(reuse=clear_reuse)
         misses = 0
@@ -446,7 +447,7 @@ def cached(
     clear_reuse: bool = False,
     callback: typing.Optional[typing.Callable[[int, typing.Any, typing.Any], typing.Any]] = None,
     copy_level: int = 1,
-):
+) -> typing.Callable[[FT], FT]:
     """
     Decorator to create a memoized cache for function results.
 
@@ -483,7 +484,7 @@ def cached(
     if not isinstance(cache, BaseCacheImpl):
         raise TypeError("we expected cachebox caches, got %r" % (cache,))
 
-    def decorator(func):
+    def decorator(func: FT) -> FT:
         if inspect.iscoroutinefunction(func):
             wrapper = _async_cached_wrapper(
                 func, cache, key_maker, clear_reuse, callback, copy_level, False
@@ -493,7 +494,7 @@ def cached(
                 func, cache, key_maker, clear_reuse, callback, copy_level, False
             )
 
-        return functools.update_wrapper(wrapper, func)
+        return functools.update_wrapper(wrapper, func)  # type: ignore[return-value]
 
     return decorator
 
@@ -504,7 +505,7 @@ def cachedmethod(
     clear_reuse: bool = False,
     callback: typing.Optional[typing.Callable[[int, typing.Any, typing.Any], typing.Any]] = None,
     copy_level: int = 1,
-):
+) -> typing.Callable[[FT], FT]:
     """
     Decorator to create a method-specific memoized cache for function results.
 
@@ -529,7 +530,7 @@ def cachedmethod(
     if not isinstance(cache, BaseCacheImpl):
         raise TypeError("we expected cachebox caches, got %r" % (cache,))
 
-    def decorator(func):
+    def decorator(func: FT) -> FT:
         if inspect.iscoroutinefunction(func):
             wrapper = _async_cached_wrapper(
                 func, cache, key_maker, clear_reuse, callback, copy_level, True
@@ -539,7 +540,7 @@ def cachedmethod(
                 func, cache, key_maker, clear_reuse, callback, copy_level, True
             )
 
-        return functools.update_wrapper(wrapper, func)
+        return functools.update_wrapper(wrapper, func)  # type: ignore[return-value]
 
     return decorator
 

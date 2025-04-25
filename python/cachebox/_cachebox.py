@@ -10,7 +10,7 @@ VT = typing.TypeVar("VT")
 DT = typing.TypeVar("DT")
 
 
-def _items_to_str(items, length):
+def _items_to_str(items: typing.Iterable[typing.Any], length) -> str:
     if length <= 50:
         return "{" + ", ".join(f"{k!r}: {v!r}" for k, v in items) + "}"
 
@@ -18,7 +18,7 @@ def _items_to_str(items, length):
     left = []
 
     while c < length:
-        k, v = next(items)
+        k, v = next(items)  # type: ignore[call-overload]
 
         if c <= 50:
             left.append(f"{k!r}: {v!r}")
@@ -72,7 +72,7 @@ class Cache(BaseCacheImpl[KT, VT]):
     def __init__(
         self,
         maxsize: int,
-        iterable: typing.Union[dict, typing.Iterable[tuple]] = None,
+        iterable: typing.Union[dict, typing.Iterable[tuple], None] = None,
         *,
         capacity: int = 0,
     ) -> None:
@@ -148,7 +148,7 @@ class Cache(BaseCacheImpl[KT, VT]):
         try:
             return self._raw.get(key)
         except _core.CoreKeyError:
-            return default
+            return default  # type: ignore[return-value]
 
     def pop(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
@@ -157,7 +157,7 @@ class Cache(BaseCacheImpl[KT, VT]):
         try:
             return self._raw.remove(key)
         except _core.CoreKeyError:
-            return default
+            return default  # type: ignore[return-value]
 
     def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
@@ -169,7 +169,7 @@ class Cache(BaseCacheImpl[KT, VT]):
     def popitem(self) -> typing.NoReturn:  # pragma: no cover
         raise NotImplementedError()
 
-    def drain(self) -> typing.NoReturn:  # pragma: no cover
+    def drain(self, n: int) -> typing.NoReturn:  # pragma: no cover
         raise NotImplementedError()
 
     def update(self, iterable: typing.Union[dict, typing.Iterable[tuple]]) -> None:
@@ -370,7 +370,7 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         return self._raw.insert(key, value)
 
     def get(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
-        """ "
+        """
         Retrieves the value for a given key from the cache.
 
         Returns the value associated with the key if present, otherwise returns the specified default value.
@@ -386,7 +386,7 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         try:
             return self._raw.get(key)
         except _core.CoreKeyError:
-            return default
+            return default  # type: ignore[return-value]
 
     def pop(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
@@ -395,7 +395,7 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         try:
             return self._raw.remove(key)
         except _core.CoreKeyError:
-            return default
+            return default  # type: ignore[return-value] # type: ignore[return-value]
 
     def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
@@ -647,7 +647,7 @@ class RRCache(BaseCacheImpl[KT, VT]):
         try:
             return self._raw.get(key)
         except _core.CoreKeyError:
-            return default
+            return default  # type: ignore[return-value]
 
     def pop(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
@@ -656,7 +656,7 @@ class RRCache(BaseCacheImpl[KT, VT]):
         try:
             return self._raw.remove(key)
         except _core.CoreKeyError:
-            return default
+            return default  # type: ignore[return-value]
 
     def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
@@ -898,7 +898,7 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         try:
             return self._raw.peek(key)
         except _core.CoreKeyError:
-            return default
+            return default  # type: ignore[return-value]
 
     def get(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
@@ -917,7 +917,7 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         try:
             return self._raw.get(key)
         except _core.CoreKeyError:
-            return default
+            return default  # type: ignore[return-value]
 
     def pop(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
@@ -926,7 +926,7 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         try:
             return self._raw.remove(key)
         except _core.CoreKeyError:
-            return default
+            return default  # type: ignore[return-value]
 
     def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
@@ -1168,7 +1168,7 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         try:
             return self._raw.peek(key)
         except _core.CoreKeyError:
-            return default
+            return default  # type: ignore[return-value]
 
     def get(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
@@ -1187,7 +1187,7 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         try:
             return self._raw.get(key)
         except _core.CoreKeyError:
-            return default
+            return default  # type: ignore[return-value]
 
     def pop(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
@@ -1196,7 +1196,7 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         try:
             return self._raw.remove(key)
         except _core.CoreKeyError:
-            return default
+            return default  # type: ignore[return-value]
 
     def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
@@ -1468,7 +1468,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         try:
             return self._raw.get(key).value()
         except _core.CoreKeyError:
-            return default
+            return default  # type: ignore[return-value]
 
     def get_with_expire(
         self, key: KT, default: typing.Optional[DT] = None
@@ -1490,7 +1490,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         try:
             pair = self._raw.get(key)
         except _core.CoreKeyError:
-            return default, 0.0
+            return default, 0.0  # type: ignore[return-value]
         else:
             return (pair.value(), pair.duration())
 
@@ -1501,7 +1501,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         try:
             return self._raw.remove(key).value()
         except _core.CoreKeyError:
-            return default
+            return default  # type: ignore[return-value]
 
     def pop_with_expire(
         self, key: KT, default: typing.Optional[DT] = None
@@ -1522,7 +1522,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         try:
             pair = self._raw.remove(key)
         except _core.CoreKeyError:
-            return default, 0.0
+            return default, 0.0  # type: ignore[return-value]
         else:
             return (pair.value(), pair.duration())
 
@@ -1833,7 +1833,7 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         try:
             return self._raw.get(key).value()
         except _core.CoreKeyError:
-            return default
+            return default  # type: ignore[return-value]
 
     def get_with_expire(
         self, key: KT, default: typing.Optional[DT] = None
@@ -1855,7 +1855,7 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         try:
             pair = self._raw.get(key)
         except _core.CoreKeyError:
-            return default, 0.0
+            return default, 0.0  # type: ignore[return-value]
         else:
             return (pair.value(), pair.duration())
 
@@ -1866,7 +1866,7 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         try:
             return self._raw.remove(key).value()
         except _core.CoreKeyError:
-            return default
+            return default  # type: ignore[return-value]
 
     def pop_with_expire(
         self, key: KT, default: typing.Optional[DT] = None
@@ -1887,7 +1887,7 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         try:
             pair = self._raw.remove(key)
         except _core.CoreKeyError:
-            return default, 0.0
+            return default, 0.0  # type: ignore[return-value]
         else:
             return (pair.value(), pair.duration())
 
@@ -1939,7 +1939,7 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         """
         try:
             val = self._raw.popitem()
-        except _core.CoreKeyError: # pragma: no cover
+        except _core.CoreKeyError:  # pragma: no cover
             raise KeyError() from None
         else:
             return val.pack2()

@@ -50,3 +50,6 @@ asyncio_default_fixture_loop_scope = "function"
 python-source = "python"
 features = ["pyo3/extension-module"]
 module-name = "cachebox._core"
+
+[tool.mypy]
+disable_error_code = "attr-defined, type-arg, no-untyped-def, no-any-return"

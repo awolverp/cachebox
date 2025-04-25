@@ -437,26 +437,26 @@ class _TestMixin:  # pragma: no cover
 
         # shallow copy
         c1 = self.CACHE(maxsize=0, **self.KWARGS)
-        c1.insert('dict', {})
+        c1.insert("dict", {})
         c2 = c1.copy()
 
         assert c2 == c1
-        c2['dict'][1] = 1
+        c2["dict"][1] = 1
 
-        assert c1['dict'][1] == 1
+        assert c1["dict"][1] == 1
 
         c2.insert(1, 1)
         assert 1 not in c1
 
         # deepcopy
         c1 = self.CACHE(maxsize=0, **self.KWARGS)
-        c1.insert('dict', {})
+        c1.insert("dict", {})
         c2 = copy.deepcopy(c1)
 
         assert c2 == c1
-        c2['dict'][1] = 1
+        c2["dict"][1] = 1
 
-        assert 1 not in c1['dict']
+        assert 1 not in c1["dict"]
 
         c2.insert(1, 1)
         assert 1 not in c1

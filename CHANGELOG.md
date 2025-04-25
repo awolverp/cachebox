@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v5.0.1 - 2025-04-25
+### Changed
+- The issue [#25](https://github.com/awolverp/cachebox/issues/25) fixed - thanks to @Techcable
+- Type-hint improved
+- `FIFOCache.get` docstring fixed
+
 ## v5.0.0 - 2025-04-18
 ### Added
 - A new method named `random_key` added to `RRCache`.

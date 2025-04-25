@@ -364,7 +364,7 @@ def _async_cached_wrapper(
 
     hits = 0
     misses = 0
-    locks: defaultdict[typing.Hashable, _LockWithCounter] = defaultdict(_LockWithCounter)
+    locks: defaultdict[typing.Hashable, _LockWithCounter] = defaultdict(lambda: _LockWithCounter(True))
     exceptions: typing.Dict[typing.Hashable, BaseException] = {}
 
     async def _wrapped(*args, **kwds):

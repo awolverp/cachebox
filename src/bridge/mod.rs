@@ -32,16 +32,16 @@ impl BaseCacheImpl {
     #[classmethod]
     pub fn __class_getitem__(
         cls: &pyo3::Bound<'_, pyo3::types::PyType>,
-        args: pyo3::PyObject,
-    ) -> pyo3::PyObject {
+        args: pyo3::Py<pyo3::PyAny>,
+    ) -> pyo3::Py<pyo3::PyAny> {
         cls.clone().into()
     }
 }
 
 #[pyo3::pyclass(module = "cachebox._core", frozen)]
 pub struct TTLPair {
-    key: pyo3::PyObject,
-    value: pyo3::PyObject,
+    key: pyo3::Py<pyo3::PyAny>,
+    value: pyo3::Py<pyo3::PyAny>,
     duration: std::time::Duration,
 }
 
@@ -69,11 +69,11 @@ impl From<crate::common::TimeToLivePair> for TTLPair {
 
 #[pyo3::pymethods]
 impl TTLPair {
-    fn key(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyObject {
+    fn key(slf: pyo3::PyRef<'_, Self>) -> pyo3::Py<pyo3::PyAny> {
         slf.key.clone_ref(slf.py())
     }
 
-    fn value(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyObject {
+    fn value(slf: pyo3::PyRef<'_, Self>) -> pyo3::Py<pyo3::PyAny> {
         slf.value.clone_ref(slf.py())
     }
 
@@ -81,11 +81,11 @@ impl TTLPair {
         slf.duration.as_secs_f64()
     }
 
-    fn pack2(slf: pyo3::PyRef<'_, Self>) -> (pyo3::PyObject, pyo3::PyObject) {
+    fn pack2(slf: pyo3::PyRef<'_, Self>) -> (pyo3::Py<pyo3::PyAny>, pyo3::Py<pyo3::PyAny>) {
         (slf.key.clone_ref(slf.py()), slf.value.clone_ref(slf.py()))
     }
 
-    fn pack3(slf: pyo3::PyRef<'_, Self>) -> (pyo3::PyObject, pyo3::PyObject, f64) {
+    fn pack3(slf: pyo3::PyRef<'_, Self>) -> (pyo3::Py<pyo3::PyAny>, pyo3::Py<pyo3::PyAny>, f64) {
         (
             slf.key.clone_ref(slf.py()),
             slf.value.clone_ref(slf.py()),

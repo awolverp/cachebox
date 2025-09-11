@@ -11,7 +11,7 @@ pub struct Cache {
 #[pyo3::pyclass(module = "cachebox._core")]
 pub struct cache_items {
     pub ptr: ObservedIterator,
-    pub iter: crate::mutex::Mutex<hashbrown::raw::RawIter<(PreHashObject, pyo3::PyObject)>>,
+    pub iter: crate::mutex::Mutex<hashbrown::raw::RawIter<(PreHashObject, pyo3::Py<pyo3::PyAny>)>>,
 }
 
 #[pyo3::pymethods]
@@ -45,11 +45,14 @@ impl Cache {
 
     fn __sizeof__(&self) -> usize {
         let lock = self.raw.lock();
-        lock.capacity()
-            * (std::mem::size_of::<PreHashObject>() + std::mem::size_of::<pyo3::ffi::PyObject>())
+        lock.capacity() * (size_of::<PreHashObject>() + size_of::<pyo3::ffi::PyObject>())
     }
 
-    fn __contains__(&self, py: pyo3::Python<'_>, key: pyo3::PyObject) -> pyo3::PyResult<bool> {
+    fn __contains__(
+        &self,
+        py: pyo3::Python<'_>,
+        key: pyo3::Py<pyo3::PyAny>,
+    ) -> pyo3::PyResult<bool> {
         let key = PreHashObject::from_pyobject(py, key)?;
         let lock = self.raw.lock();
 
@@ -70,9 +73,9 @@ impl Cache {
     fn insert(
         &self,
         py: pyo3::Python<'_>,
-        key: pyo3::PyObject,
-        value: pyo3::PyObject,
-    ) -> pyo3::PyResult<Option<pyo3::PyObject>> {
+        key: pyo3::Py<pyo3::PyAny>,
+        value: pyo3::Py<pyo3::PyAny>,
+    ) -> pyo3::PyResult<Option<pyo3::Py<pyo3::PyAny>>> {
         let key = PreHashObject::from_pyobject(py, key)?;
         let mut lock = self.raw.lock();
 
@@ -85,7 +88,11 @@ impl Cache {
         }
     }
 
-    fn get(&self, py: pyo3::Python<'_>, key: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
+    fn get(
+        &self,
+        py: pyo3::Python<'_>,
+        key: pyo3::Py<pyo3::PyAny>,
+    ) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
         let key = PreHashObject::from_pyobject(py, key)?;
         let lock = self.raw.lock();
 
@@ -98,7 +105,7 @@ impl Cache {
     fn update(
         slf: pyo3::PyRef<'_, Self>,
         py: pyo3::Python<'_>,
-        iterable: pyo3::PyObject,
+        iterable: pyo3::Py<pyo3::PyAny>,
     ) -> pyo3::PyResult<()> {
         if slf.as_ptr() == iterable.as_ptr() {
             return Ok(());
@@ -110,7 +117,7 @@ impl Cache {
 
     fn __richcmp__(
         slf: pyo3::PyRef<'_, Self>,
-        other: pyo3::PyObject,
+        other: pyo3::Py<pyo3::PyAny>,
         op: pyo3::class::basic::CompareOp,
     ) -> pyo3::PyResult<bool> {
         let other = other.extract::<pyo3::PyRef<'_, Self>>(slf.py())?;
@@ -139,7 +146,11 @@ impl Cache {
         }
     }
 
-    fn remove(&self, py: pyo3::Python<'_>, key: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
+    fn remove(
+        &self,
+        py: pyo3::Python<'_>,
+        key: pyo3::Py<pyo3::PyAny>,
+    ) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
         let key = PreHashObject::from_pyobject(py, key)?;
         let mut lock = self.raw.lock();
 
@@ -169,9 +180,9 @@ impl Cache {
     fn setdefault(
         &self,
         py: pyo3::Python<'_>,
-        key: pyo3::PyObject,
-        default: pyo3::PyObject,
-    ) -> pyo3::PyResult<pyo3::PyObject> {
+        key: pyo3::Py<pyo3::PyAny>,
+        default: pyo3::Py<pyo3::PyAny>,
+    ) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
         let key = PreHashObject::from_pyobject(py, key)?;
         let mut lock = self.raw.lock();
 
@@ -204,7 +215,7 @@ impl Cache {
         (0,)
     }
 
-    fn __getstate__(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<pyo3::PyObject> {
+    fn __getstate__(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
         let lock = self.raw.lock();
         unsafe {
             let state = {
@@ -235,7 +246,11 @@ impl Cache {
         }
     }
 
-    pub fn __setstate__(&self, py: pyo3::Python<'_>, state: pyo3::PyObject) -> pyo3::PyResult<()> {
+    pub fn __setstate__(
+        &self,
+        py: pyo3::Python<'_>,
+        state: pyo3::Py<pyo3::PyAny>,
+    ) -> pyo3::PyResult<()> {
         let mut lock = self.raw.lock();
         lock.from_pickle(py, state.as_ptr())
     }

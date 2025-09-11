@@ -4,14 +4,14 @@ use crate::common::PreHashObject;
 use crate::common::TryFindMethods;
 
 pub struct RandomPolicy {
-    table: hashbrown::raw::RawTable<(PreHashObject, pyo3::PyObject)>,
+    table: hashbrown::raw::RawTable<(PreHashObject, pyo3::Py<pyo3::PyAny>)>,
     maxsize: std::num::NonZeroUsize,
     pub observed: Observed,
 }
 
 pub struct RandomPolicyOccupied<'a> {
     instance: &'a mut RandomPolicy,
-    bucket: hashbrown::raw::Bucket<(PreHashObject, pyo3::PyObject)>,
+    bucket: hashbrown::raw::Bucket<(PreHashObject, pyo3::Py<pyo3::PyAny>)>,
 }
 
 pub struct RandomPolicyAbsent<'a> {
@@ -53,12 +53,12 @@ impl RandomPolicy {
         self.table.capacity()
     }
 
-    pub fn iter(&self) -> hashbrown::raw::RawIter<(PreHashObject, pyo3::PyObject)> {
+    pub fn iter(&self) -> hashbrown::raw::RawIter<(PreHashObject, pyo3::Py<pyo3::PyAny>)> {
         unsafe { self.table.iter() }
     }
 
     #[inline]
-    pub fn popitem(&mut self) -> pyo3::PyResult<Option<(PreHashObject, pyo3::PyObject)>> {
+    pub fn popitem(&mut self) -> pyo3::PyResult<Option<(PreHashObject, pyo3::Py<pyo3::PyAny>)>> {
         if self.table.is_empty() {
             Ok(None)
         } else {
@@ -119,7 +119,7 @@ impl RandomPolicy {
         &self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Option<&pyo3::PyObject>> {
+    ) -> pyo3::PyResult<Option<&pyo3::Py<pyo3::PyAny>>> {
         match self.table.try_find(key.hash, |(x, _)| x.equal(py, key))? {
             Some(x) => Ok(Some(unsafe { &x.as_ref().1 })),
             None => Ok(None),
@@ -180,7 +180,11 @@ impl RandomPolicy {
     }
 
     #[inline]
-    pub fn extend(&mut self, py: pyo3::Python<'_>, iterable: pyo3::PyObject) -> pyo3::PyResult<()> {
+    pub fn extend(
+        &mut self,
+        py: pyo3::Python<'_>,
+        iterable: pyo3::Py<pyo3::PyAny>,
+    ) -> pyo3::PyResult<()> {
         use pyo3::types::{PyAnyMethods, PyDictMethods};
 
         if unsafe { pyo3::ffi::PyDict_CheckExact(iterable.as_ptr()) == 1 } {
@@ -205,7 +209,8 @@ impl RandomPolicy {
             }
         } else {
             for pair in iterable.bind(py).try_iter()? {
-                let (key, value) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject)>()?;
+                let (key, value) =
+                    pair?.extract::<(pyo3::Py<pyo3::PyAny>, pyo3::Py<pyo3::PyAny>)>()?;
 
                 let hk = PreHashObject::from_pyobject(py, key)?;
 
@@ -276,7 +281,7 @@ impl RandomPolicy {
 
 impl<'a> RandomPolicyOccupied<'a> {
     #[inline]
-    pub fn update(self, value: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
+    pub fn update(self, value: pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
         unsafe {
             let old_value = std::mem::replace(&mut self.bucket.as_mut().1, value);
 
@@ -288,20 +293,20 @@ impl<'a> RandomPolicyOccupied<'a> {
     }
 
     #[inline]
-    pub fn remove(self) -> (PreHashObject, pyo3::PyObject) {
+    pub fn remove(self) -> (PreHashObject, pyo3::Py<pyo3::PyAny>) {
         let (x, _) = unsafe { self.instance.table.remove(self.bucket) };
         self.instance.observed.change();
         x
     }
 
-    pub fn into_value(self) -> &'a mut (PreHashObject, pyo3::PyObject) {
+    pub fn into_value(self) -> &'a mut (PreHashObject, pyo3::Py<pyo3::PyAny>) {
         unsafe { self.bucket.as_mut() }
     }
 }
 
 impl RandomPolicyAbsent<'_> {
     #[inline]
-    pub fn insert(self, key: PreHashObject, value: pyo3::PyObject) -> pyo3::PyResult<()> {
+    pub fn insert(self, key: PreHashObject, value: pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<()> {
         if self.instance.table.len() >= self.instance.maxsize.get() {
             self.instance.popitem()?;
         }

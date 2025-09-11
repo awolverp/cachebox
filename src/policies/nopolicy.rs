@@ -4,14 +4,14 @@ use crate::common::PreHashObject;
 use crate::common::TryFindMethods;
 
 pub struct NoPolicy {
-    table: hashbrown::raw::RawTable<(PreHashObject, pyo3::PyObject)>,
+    table: hashbrown::raw::RawTable<(PreHashObject, pyo3::Py<pyo3::PyAny>)>,
     maxsize: std::num::NonZeroUsize,
     pub observed: Observed,
 }
 
 pub struct NoPolicyOccupied<'a> {
     instance: &'a mut NoPolicy,
-    bucket: hashbrown::raw::Bucket<(PreHashObject, pyo3::PyObject)>,
+    bucket: hashbrown::raw::Bucket<(PreHashObject, pyo3::Py<pyo3::PyAny>)>,
 }
 
 pub struct NoPolicyAbsent<'a> {
@@ -53,7 +53,7 @@ impl NoPolicy {
         self.table.capacity()
     }
 
-    pub fn iter(&self) -> hashbrown::raw::RawIter<(PreHashObject, pyo3::PyObject)> {
+    pub fn iter(&self) -> hashbrown::raw::RawIter<(PreHashObject, pyo3::Py<pyo3::PyAny>)> {
         unsafe { self.table.iter() }
     }
 
@@ -104,7 +104,7 @@ impl NoPolicy {
         &self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Option<&pyo3::PyObject>> {
+    ) -> pyo3::PyResult<Option<&pyo3::Py<pyo3::PyAny>>> {
         match self.table.try_find(key.hash, |(x, _)| x.equal(py, key))? {
             Some(x) => Ok(Some(unsafe { &x.as_ref().1 })),
             None => Ok(None),
@@ -165,7 +165,11 @@ impl NoPolicy {
     }
 
     #[inline]
-    pub fn extend(&mut self, py: pyo3::Python<'_>, iterable: pyo3::PyObject) -> pyo3::PyResult<()> {
+    pub fn extend(
+        &mut self,
+        py: pyo3::Python<'_>,
+        iterable: pyo3::Py<pyo3::PyAny>,
+    ) -> pyo3::PyResult<()> {
         use pyo3::types::{PyAnyMethods, PyDictMethods};
 
         if unsafe { pyo3::ffi::PyDict_CheckExact(iterable.as_ptr()) == 1 } {
@@ -190,7 +194,8 @@ impl NoPolicy {
             }
         } else {
             for pair in iterable.bind(py).try_iter()? {
-                let (key, value) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject)>()?;
+                let (key, value) =
+                    pair?.extract::<(pyo3::Py<pyo3::PyAny>, pyo3::Py<pyo3::PyAny>)>()?;
 
                 let hk = PreHashObject::from_pyobject(py, key)?;
 
@@ -248,7 +253,7 @@ impl NoPolicy {
 
 impl<'a> NoPolicyOccupied<'a> {
     #[inline]
-    pub fn update(self, value: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
+    pub fn update(self, value: pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
         unsafe {
             // In update we don't need to change this; because this does not change the memory address ranges
             // self.instance.observed.change();
@@ -258,20 +263,20 @@ impl<'a> NoPolicyOccupied<'a> {
     }
 
     #[inline]
-    pub fn remove(self) -> (PreHashObject, pyo3::PyObject) {
+    pub fn remove(self) -> (PreHashObject, pyo3::Py<pyo3::PyAny>) {
         let (x, _) = unsafe { self.instance.table.remove(self.bucket) };
         self.instance.observed.change();
         x
     }
 
-    pub fn into_value(self) -> &'a mut (PreHashObject, pyo3::PyObject) {
+    pub fn into_value(self) -> &'a mut (PreHashObject, pyo3::Py<pyo3::PyAny>) {
         unsafe { self.bucket.as_mut() }
     }
 }
 
 impl NoPolicyAbsent<'_> {
     #[inline]
-    pub fn insert(self, key: PreHashObject, value: pyo3::PyObject) -> pyo3::PyResult<()> {
+    pub fn insert(self, key: PreHashObject, value: pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<()> {
         if self.instance.table.len() >= self.instance.maxsize.get() {
             // There's no algorithm for removing a key-value pair, so we raise PyOverflowError.
             return Err(pyo3::PyErr::new::<pyo3::exceptions::PyOverflowError, _>(

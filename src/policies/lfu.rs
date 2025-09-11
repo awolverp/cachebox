@@ -5,7 +5,7 @@ use crate::common::TryFindMethods;
 use crate::lazyheap;
 use std::ptr::NonNull;
 
-type TupleValue = (PreHashObject, pyo3::PyObject, usize);
+type TupleValue = (PreHashObject, pyo3::Py<pyo3::PyAny>, usize);
 
 pub struct LFUPolicy {
     table: hashbrown::raw::RawTable<NonNull<TupleValue>>,
@@ -132,7 +132,7 @@ impl LFUPolicy {
         &mut self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Option<&pyo3::PyObject>> {
+    ) -> pyo3::PyResult<Option<&pyo3::Py<pyo3::PyAny>>> {
         match self.entry(py, key)? {
             Entry::Occupied(x) => unsafe {
                 x.bucket.as_mut().as_mut().2 += 1;
@@ -148,7 +148,7 @@ impl LFUPolicy {
         &self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Option<&pyo3::PyObject>> {
+    ) -> pyo3::PyResult<Option<&pyo3::Py<pyo3::PyAny>>> {
         let result = self
             .table
             .try_find(key.hash, |x| unsafe { x.as_ref().0.equal(py, key) })?
@@ -204,7 +204,11 @@ impl LFUPolicy {
     }
 
     #[inline]
-    pub fn extend(&mut self, py: pyo3::Python<'_>, iterable: pyo3::PyObject) -> pyo3::PyResult<()> {
+    pub fn extend(
+        &mut self,
+        py: pyo3::Python<'_>,
+        iterable: pyo3::Py<pyo3::PyAny>,
+    ) -> pyo3::PyResult<()> {
         use pyo3::types::{PyAnyMethods, PyDictMethods};
 
         if unsafe { pyo3::ffi::PyDict_CheckExact(iterable.as_ptr()) == 1 } {
@@ -229,7 +233,8 @@ impl LFUPolicy {
             }
         } else {
             for pair in iterable.bind(py).try_iter()? {
-                let (key, value) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject)>()?;
+                let (key, value) =
+                    pair?.extract::<(pyo3::Py<pyo3::PyAny>, pyo3::Py<pyo3::PyAny>)>()?;
 
                 let hk = PreHashObject::from_pyobject(py, key)?;
 
@@ -281,7 +286,7 @@ impl LFUPolicy {
 
             for pair in iterable.bind(py).try_iter()? {
                 let (key, value, freq) =
-                    pair?.extract::<(pyo3::PyObject, pyo3::PyObject, usize)>()?;
+                    pair?.extract::<(pyo3::Py<pyo3::PyAny>, pyo3::Py<pyo3::PyAny>, usize)>()?;
 
                 let hk = PreHashObject::from_pyobject(py, key)?;
 
@@ -303,7 +308,7 @@ impl LFUPolicy {
 
 impl LFUPolicyOccupied<'_> {
     #[inline]
-    pub fn update(self, value: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
+    pub fn update(self, value: pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
         let item = unsafe { self.bucket.as_mut() };
         unsafe {
             item.as_mut().2 += 1;
@@ -337,7 +342,7 @@ impl LFUPolicyAbsent<'_> {
     pub fn insert(
         self,
         key: PreHashObject,
-        value: pyo3::PyObject,
+        value: pyo3::Py<pyo3::PyAny>,
         freq: usize,
     ) -> pyo3::PyResult<()> {
         if self.instance.table.len() >= self.instance.maxsize.get() {

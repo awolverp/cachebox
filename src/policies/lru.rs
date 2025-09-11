@@ -59,7 +59,7 @@ impl LRUPolicy {
     }
 
     #[inline]
-    pub fn popitem(&mut self) -> Option<(PreHashObject, pyo3::PyObject)> {
+    pub fn popitem(&mut self) -> Option<(PreHashObject, pyo3::Py<pyo3::PyAny>)> {
         let ret = self.list.head?;
 
         unsafe {
@@ -130,7 +130,7 @@ impl LRUPolicy {
         &mut self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Option<&pyo3::PyObject>> {
+    ) -> pyo3::PyResult<Option<&pyo3::Py<pyo3::PyAny>>> {
         match self.entry(py, key)? {
             Entry::Occupied(x) => unsafe {
                 x.instance.list.move_back(*x.bucket.as_ptr());
@@ -145,7 +145,7 @@ impl LRUPolicy {
         &self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Option<&pyo3::PyObject>> {
+    ) -> pyo3::PyResult<Option<&pyo3::Py<pyo3::PyAny>>> {
         let result = self
             .table
             .try_find(key.hash, |x| unsafe { x.as_ref().element.0.equal(py, key) })?
@@ -200,7 +200,11 @@ impl LRUPolicy {
     }
 
     #[inline]
-    pub fn extend(&mut self, py: pyo3::Python<'_>, iterable: pyo3::PyObject) -> pyo3::PyResult<()> {
+    pub fn extend(
+        &mut self,
+        py: pyo3::Python<'_>,
+        iterable: pyo3::Py<pyo3::PyAny>,
+    ) -> pyo3::PyResult<()> {
         use pyo3::types::{PyAnyMethods, PyDictMethods};
 
         if unsafe { pyo3::ffi::PyDict_CheckExact(iterable.as_ptr()) == 1 } {
@@ -225,7 +229,8 @@ impl LRUPolicy {
             }
         } else {
             for pair in iterable.bind(py).try_iter()? {
-                let (key, value) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject)>()?;
+                let (key, value) =
+                    pair?.extract::<(pyo3::Py<pyo3::PyAny>, pyo3::Py<pyo3::PyAny>)>()?;
 
                 let hk = PreHashObject::from_pyobject(py, key)?;
 
@@ -247,11 +252,11 @@ impl LRUPolicy {
         self.list.iter()
     }
 
-    pub fn least_recently_used(&self) -> Option<&(PreHashObject, pyo3::PyObject)> {
+    pub fn least_recently_used(&self) -> Option<&(PreHashObject, pyo3::Py<pyo3::PyAny>)> {
         self.list.head.map(|x| unsafe { &x.as_ref().element })
     }
 
-    pub fn most_recently_used(&self) -> Option<&(PreHashObject, pyo3::PyObject)> {
+    pub fn most_recently_used(&self) -> Option<&(PreHashObject, pyo3::Py<pyo3::PyAny>)> {
         self.list.tail.map(|x| unsafe { &x.as_ref().element })
     }
 
@@ -269,7 +274,8 @@ impl LRUPolicy {
             let mut new = Self::new(maxsize, capacity)?;
 
             for pair in iterable.bind(py).try_iter()? {
-                let (key, value) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject)>()?;
+                let (key, value) =
+                    pair?.extract::<(pyo3::Py<pyo3::PyAny>, pyo3::Py<pyo3::PyAny>)>()?;
 
                 let hk = PreHashObject::from_pyobject(py, key)?;
 
@@ -289,7 +295,7 @@ impl LRUPolicy {
 
 impl<'a> LRUPolicyOccupied<'a> {
     #[inline]
-    pub fn update(self, value: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
+    pub fn update(self, value: pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
         let item = unsafe { self.bucket.as_mut() };
         unsafe {
             self.instance.list.move_back(*item);
@@ -302,7 +308,7 @@ impl<'a> LRUPolicyOccupied<'a> {
     }
 
     #[inline]
-    pub fn remove(self) -> (PreHashObject, pyo3::PyObject) {
+    pub fn remove(self) -> (PreHashObject, pyo3::Py<pyo3::PyAny>) {
         // let (PreHashObject { hash, .. }, _) = &self.instance.entries[self.index - self.instance.n_shifts];
         let (item, _) = unsafe { self.instance.table.remove(self.bucket) };
         let item = unsafe { self.instance.list.remove(item) };
@@ -311,7 +317,7 @@ impl<'a> LRUPolicyOccupied<'a> {
         item
     }
 
-    pub fn into_value(self) -> &'a mut (PreHashObject, pyo3::PyObject) {
+    pub fn into_value(self) -> &'a mut (PreHashObject, pyo3::Py<pyo3::PyAny>) {
         unsafe {
             self.instance.list.move_back(*self.bucket.as_ptr());
         }
@@ -323,7 +329,7 @@ impl<'a> LRUPolicyOccupied<'a> {
 
 impl LRUPolicyAbsent<'_> {
     #[inline]
-    pub fn insert(self, key: PreHashObject, value: pyo3::PyObject) -> pyo3::PyResult<()> {
+    pub fn insert(self, key: PreHashObject, value: pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<()> {
         if self.instance.table.len() >= self.instance.maxsize.get() {
             self.instance.popitem();
         }

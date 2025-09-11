@@ -30,23 +30,23 @@ features = ["inline-more", "raw"]
 version = "2.3.0"
 
 [dependencies.pyo3]
-version = "0.24.1"
+version = "0.26.0"
 default-features = false
 features = ["macros", "extension-module"]
 
 [dependencies.cfg-if]
-version = "1.0.0"
+version = "1.0.3"
 
 [dependencies.parking_lot_core]
-version = "0.9.10"
+version = "0.9.11"
 default-features = false
 
 [dependencies.lock_api]
-version = "0.4.12"
+version = "0.4.13"
 default-features = false
 
 [build-dependencies.pyo3-build-config]
-version = "0.24.1"
+version = "0.26.0"
 features = ["resolve-config"]
 
 [lints.clippy]

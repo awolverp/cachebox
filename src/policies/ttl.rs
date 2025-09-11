@@ -159,10 +159,10 @@ impl TTLPolicy {
     #[inline]
     #[rustfmt::skip]
     pub fn entry(
-        &mut self,
+        &'_ mut self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Entry<TTLPolicyOccupied, TTLPolicyAbsent>> {
+    ) -> pyo3::PyResult<Entry<TTLPolicyOccupied<'_>, TTLPolicyAbsent<'_>>> {
         match self
             .table
             .try_find(key.hash, |x| self.entries[(*x) - self.n_shifts].key.equal(py, key))?
@@ -190,7 +190,7 @@ impl TTLPolicy {
         &mut self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Entry<TTLPolicyOccupied, TTLPolicyAbsent>> {
+    ) -> pyo3::PyResult<Entry<TTLPolicyOccupied<'_>, TTLPolicyAbsent<'_>>> {
         match self.table.try_find_or_find_insert_slot(
             key.hash,
             |x| self.entries[(*x) - self.n_shifts].key.equal(py, key),

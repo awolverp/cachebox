@@ -124,10 +124,10 @@ impl VTTLPolicy {
     #[inline]
     #[rustfmt::skip]
     pub fn entry(
-        &mut self,
+        &'_ mut self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Entry<VTTLPolicyOccupied, VTTLPolicyAbsent>> {
+    ) -> pyo3::PyResult<Entry<VTTLPolicyOccupied<'_>, VTTLPolicyAbsent<'_>>> {
         match self
             .table
             .try_find(key.hash, |ptr| unsafe { ptr.as_ref().key.equal(py, key) })?
@@ -152,10 +152,10 @@ impl VTTLPolicy {
     #[inline]
     #[rustfmt::skip]
     pub fn entry_with_slot(
-        &mut self,
+        &'_ mut self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Entry<VTTLPolicyOccupied, VTTLPolicyAbsent>> {
+    ) -> pyo3::PyResult<Entry<VTTLPolicyOccupied<'_>, VTTLPolicyAbsent<'_>>> {
         match self
             .table
             .try_find_or_find_insert_slot(

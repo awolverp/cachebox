@@ -75,10 +75,10 @@ impl RandomPolicy {
     #[inline]
     #[rustfmt::skip]
     pub fn entry(
-        &mut self,
+        &'_ mut self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Entry<RandomPolicyOccupied, RandomPolicyAbsent>> {
+    ) -> pyo3::PyResult<Entry<RandomPolicyOccupied<'_>, RandomPolicyAbsent<'_>>> {
         match self.table.try_find(key.hash, |(x, _)| x.equal(py, key))? {
             Some(bucket) => {
                 Ok(
@@ -96,10 +96,10 @@ impl RandomPolicy {
     #[inline]
     #[rustfmt::skip]
     pub fn entry_with_slot(
-        &mut self,
+        &'_ mut self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Entry<RandomPolicyOccupied, RandomPolicyAbsent>> {
+    ) -> pyo3::PyResult<Entry<RandomPolicyOccupied<'_>, RandomPolicyAbsent<'_>>> {
         match self.table.try_find_or_find_insert_slot(
             key.hash,
             |(x, _)| x.equal(py, key),

@@ -81,10 +81,10 @@ impl LFUPolicy {
     #[inline]
     #[rustfmt::skip]
     pub fn entry(
-        &mut self,
+        &'_ mut self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Entry<LFUPolicyOccupied, LFUPolicyAbsent>> {
+    ) -> pyo3::PyResult<Entry<LFUPolicyOccupied<'_>, LFUPolicyAbsent<'_>>> {
         match self
             .table
             .try_find(key.hash, |ptr| unsafe { ptr.as_ref().0.equal(py, key) })?
@@ -105,10 +105,10 @@ impl LFUPolicy {
     #[inline]
     #[rustfmt::skip]
     pub fn entry_with_slot(
-        &mut self,
+        &'_ mut self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Entry<LFUPolicyOccupied, LFUPolicyAbsent>> {
+    ) -> pyo3::PyResult<Entry<LFUPolicyOccupied<'_>, LFUPolicyAbsent<'_>>> {
         match self.table.try_find_or_find_insert_slot(
                 key.hash,
                 |ptr| unsafe { ptr.as_ref().0.equal(py, key) },

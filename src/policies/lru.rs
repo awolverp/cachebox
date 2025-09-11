@@ -77,10 +77,10 @@ impl LRUPolicy {
     #[inline]
     #[rustfmt::skip]
     pub fn entry(
-        &mut self,
+        &'_ mut self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Entry<LRUPolicyOccupied, LRUPolicyAbsent>> {
+    ) -> pyo3::PyResult<Entry<LRUPolicyOccupied<'_>, LRUPolicyAbsent<'_>>> {
         match self
             .table
             .try_find(key.hash, |x| unsafe { x.as_ref().element.0.equal(py, key) })?
@@ -101,10 +101,10 @@ impl LRUPolicy {
     #[inline]
     #[rustfmt::skip]
     pub fn entry_with_slot(
-        &mut self,
+        &'_ mut self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Entry<LRUPolicyOccupied, LRUPolicyAbsent>> {
+    ) -> pyo3::PyResult<Entry<LRUPolicyOccupied<'_>, LRUPolicyAbsent<'_>>> {
         match self
             .table
             .try_find_or_find_insert_slot(

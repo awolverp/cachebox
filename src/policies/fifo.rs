@@ -145,7 +145,7 @@ impl FIFOPolicy {
         &mut self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Entry<FIFOPolicyOccupied, FIFOPolicyAbsent>> {
+    ) -> pyo3::PyResult<Entry<FIFOPolicyOccupied<'_>, FIFOPolicyAbsent<'_>>> {
         match self
             .table
             .try_find(key.hash, |x| self.entries[(*x) - self.n_shifts].0.equal(py, key))?
@@ -166,10 +166,10 @@ impl FIFOPolicy {
     #[inline]
     #[rustfmt::skip]
     pub fn entry_with_slot(
-        &mut self,
+        &'_ mut self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Entry<FIFOPolicyOccupied, FIFOPolicyAbsent>> {
+    ) -> pyo3::PyResult<Entry<FIFOPolicyOccupied<'_>, FIFOPolicyAbsent<'_>>> {
         match self.table.try_find_or_find_insert_slot(
             key.hash,
             |x| self.entries[(*x) - self.n_shifts].0.equal(py, key),

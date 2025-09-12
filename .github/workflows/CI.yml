@@ -107,6 +107,7 @@ jobs:
         with:
           python-version: "3.13"
           architecture: ${{ matrix.python-architecture || 'x64' }}
+          allow-prereleases: true
 
       - run: pip install -U twine
 

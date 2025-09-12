@@ -159,10 +159,10 @@ impl TTLPolicy {
     #[inline]
     #[rustfmt::skip]
     pub fn entry(
-        &mut self,
+        &'_ mut self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Entry<TTLPolicyOccupied, TTLPolicyAbsent>> {
+    ) -> pyo3::PyResult<Entry<TTLPolicyOccupied<'_>, TTLPolicyAbsent<'_>>> {
         match self
             .table
             .try_find(key.hash, |x| self.entries[(*x) - self.n_shifts].key.equal(py, key))?
@@ -190,7 +190,7 @@ impl TTLPolicy {
         &mut self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Entry<TTLPolicyOccupied, TTLPolicyAbsent>> {
+    ) -> pyo3::PyResult<Entry<TTLPolicyOccupied<'_>, TTLPolicyAbsent<'_>>> {
         match self.table.try_find_or_find_insert_slot(
             key.hash,
             |x| self.entries[(*x) - self.n_shifts].key.equal(py, key),
@@ -257,7 +257,11 @@ impl TTLPolicy {
     }
 
     #[inline]
-    pub fn extend(&mut self, py: pyo3::Python<'_>, iterable: pyo3::PyObject) -> pyo3::PyResult<()> {
+    pub fn extend(
+        &mut self,
+        py: pyo3::Python<'_>,
+        iterable: pyo3::Py<pyo3::PyAny>,
+    ) -> pyo3::PyResult<()> {
         use pyo3::types::{PyAnyMethods, PyDictMethods};
 
         if unsafe { pyo3::ffi::PyDict_CheckExact(iterable.as_ptr()) == 1 } {
@@ -282,7 +286,8 @@ impl TTLPolicy {
             }
         } else {
             for pair in iterable.bind(py).try_iter()? {
-                let (key, value) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject)>()?;
+                let (key, value) =
+                    pair?.extract::<(pyo3::Py<pyo3::PyAny>, pyo3::Py<pyo3::PyAny>)>()?;
 
                 let hk = PreHashObject::from_pyobject(py, key)?;
 
@@ -394,7 +399,7 @@ impl TTLPolicy {
 
             for pair in iterable.bind(py).try_iter()? {
                 let (key, value, timestamp) =
-                    pair?.extract::<(pyo3::PyObject, pyo3::PyObject, f64)>()?;
+                    pair?.extract::<(pyo3::Py<pyo3::PyAny>, pyo3::Py<pyo3::PyAny>, f64)>()?;
 
                 let hk = PreHashObject::from_pyobject(py, key)?;
 
@@ -421,7 +426,7 @@ impl TTLPolicy {
 
 impl<'a> TTLPolicyOccupied<'a> {
     #[inline]
-    pub fn update(self, value: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
+    pub fn update(self, value: pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
         // We have to move the value to the end of the vector
         let (mut index, slot) = unsafe { self.instance.table.remove(self.bucket.clone()) };
         index -= self.instance.n_shifts;
@@ -473,7 +478,7 @@ impl TTLPolicyAbsent<'_> {
     unsafe fn pickle_insert(
         self,
         key: PreHashObject,
-        value: pyo3::PyObject,
+        value: pyo3::Py<pyo3::PyAny>,
         expire_at: std::time::SystemTime,
     ) -> pyo3::PyResult<()> {
         match self.situation {
@@ -509,7 +514,7 @@ impl TTLPolicyAbsent<'_> {
         self,
         py: pyo3::Python<'_>,
         key: PreHashObject,
-        value: pyo3::PyObject,
+        value: pyo3::Py<pyo3::PyAny>,
     ) -> pyo3::PyResult<()> {
         let expire_at = std::time::SystemTime::now() + self.instance.ttl;
 

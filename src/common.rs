@@ -74,7 +74,7 @@ macro_rules! extract_pickle_tuple {
             }
 
             // Tuple returns borrowed reference
-            pyo3::PyObject::from_borrowed_ptr($py, obj)
+            pyo3::Py::<pyo3::PyAny>::from_borrowed_ptr($py, obj)
         };
 
         let capacity = {
@@ -109,7 +109,7 @@ macro_rules! extract_pickle_tuple {
             }
 
             // Tuple returns borrowed reference
-            pyo3::PyObject::from_borrowed_ptr($py, obj)
+            pyo3::Py::<pyo3::PyAny>::from_borrowed_ptr($py, obj)
         };
 
         let capacity = {
@@ -166,7 +166,7 @@ fn convert_isize_to_u64(v: &isize) -> u64 {
 /// A precomputed hash is a cryptographic hash value that's calculated in advance
 /// and stored for later use, rather than being computed on demand when needed.
 pub struct PreHashObject {
-    pub obj: pyo3::PyObject,
+    pub obj: pyo3::Py<pyo3::PyAny>,
     pub hash: u64,
 }
 
@@ -198,7 +198,7 @@ pub struct NoLifetimeSliceIter<T> {
 /// A pair representing a key-value entry with a time-to-live (TTL) expiration.
 pub struct TimeToLivePair {
     pub key: PreHashObject,
-    pub value: pyo3::PyObject,
+    pub value: pyo3::Py<pyo3::PyAny>,
     pub expire_at: Option<std::time::SystemTime>,
 }
 
@@ -219,13 +219,16 @@ pub enum AbsentSituation<T> {
 impl PreHashObject {
     /// Creates a new [`PreHashObject`]
     #[inline]
-    pub fn new(obj: pyo3::PyObject, hash: u64) -> Self {
+    pub fn new(obj: pyo3::Py<pyo3::PyAny>, hash: u64) -> Self {
         Self { obj, hash }
     }
 
     /// Calculates the hash of `object` and creates a new [`PreHashObject`]
     #[inline]
-    pub fn from_pyobject(py: pyo3::Python<'_>, object: pyo3::PyObject) -> pyo3::PyResult<Self> {
+    pub fn from_pyobject(
+        py: pyo3::Python<'_>,
+        object: pyo3::Py<pyo3::PyAny>,
+    ) -> pyo3::PyResult<Self> {
         unsafe {
             let py_hash = pyo3::ffi::PyObject_Hash(object.as_ptr());
 
@@ -456,7 +459,7 @@ impl TimeToLivePair {
     #[inline]
     pub fn new(
         key: PreHashObject,
-        value: pyo3::PyObject,
+        value: pyo3::Py<pyo3::PyAny>,
         expire_at: Option<std::time::SystemTime>,
     ) -> Self {
         Self {

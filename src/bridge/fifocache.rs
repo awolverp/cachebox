@@ -47,13 +47,15 @@ impl FIFOCache {
         let lock = self.raw.lock();
         let capacity = lock.capacity();
 
-        capacity.0 * std::mem::size_of::<usize>()
-            + capacity.1
-                * (std::mem::size_of::<PreHashObject>()
-                    + std::mem::size_of::<pyo3::ffi::PyObject>())
+        capacity.0 * size_of::<usize>()
+            + capacity.1 * (size_of::<PreHashObject>() + size_of::<pyo3::ffi::PyObject>())
     }
 
-    fn __contains__(&self, py: pyo3::Python<'_>, key: pyo3::PyObject) -> pyo3::PyResult<bool> {
+    fn __contains__(
+        &self,
+        py: pyo3::Python<'_>,
+        key: pyo3::Py<pyo3::PyAny>,
+    ) -> pyo3::PyResult<bool> {
         let key = PreHashObject::from_pyobject(py, key)?;
         let lock = self.raw.lock();
 
@@ -74,9 +76,9 @@ impl FIFOCache {
     fn insert(
         &self,
         py: pyo3::Python<'_>,
-        key: pyo3::PyObject,
-        value: pyo3::PyObject,
-    ) -> pyo3::PyResult<Option<pyo3::PyObject>> {
+        key: pyo3::Py<pyo3::PyAny>,
+        value: pyo3::Py<pyo3::PyAny>,
+    ) -> pyo3::PyResult<Option<pyo3::Py<pyo3::PyAny>>> {
         let key = PreHashObject::from_pyobject(py, key)?;
         let mut lock = self.raw.lock();
 
@@ -89,7 +91,11 @@ impl FIFOCache {
         }
     }
 
-    fn get(&self, py: pyo3::Python<'_>, key: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
+    fn get(
+        &self,
+        py: pyo3::Python<'_>,
+        key: pyo3::Py<pyo3::PyAny>,
+    ) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
         let key = PreHashObject::from_pyobject(py, key)?;
         let lock = self.raw.lock();
 
@@ -102,7 +108,7 @@ impl FIFOCache {
     fn update(
         slf: pyo3::PyRef<'_, Self>,
         py: pyo3::Python<'_>,
-        iterable: pyo3::PyObject,
+        iterable: pyo3::Py<pyo3::PyAny>,
     ) -> pyo3::PyResult<()> {
         if slf.as_ptr() == iterable.as_ptr() {
             return Ok(());
@@ -114,7 +120,7 @@ impl FIFOCache {
 
     fn __richcmp__(
         slf: pyo3::PyRef<'_, Self>,
-        other: pyo3::PyObject,
+        other: pyo3::Py<pyo3::PyAny>,
         op: pyo3::class::basic::CompareOp,
     ) -> pyo3::PyResult<bool> {
         let other = other.extract::<pyo3::PyRef<'_, Self>>(slf.py())?;
@@ -144,7 +150,11 @@ impl FIFOCache {
         }
     }
 
-    fn remove(&self, py: pyo3::Python<'_>, key: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
+    fn remove(
+        &self,
+        py: pyo3::Python<'_>,
+        key: pyo3::Py<pyo3::PyAny>,
+    ) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
         let key = PreHashObject::from_pyobject(py, key)?;
         let mut lock = self.raw.lock();
 
@@ -157,7 +167,10 @@ impl FIFOCache {
         }
     }
 
-    fn popitem(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<(pyo3::PyObject, pyo3::PyObject)> {
+    fn popitem(
+        &self,
+        py: pyo3::Python<'_>,
+    ) -> pyo3::PyResult<(pyo3::Py<pyo3::PyAny>, pyo3::Py<pyo3::PyAny>)> {
         let mut lock = self.raw.lock();
 
         match lock.popitem(py)? {
@@ -183,9 +196,9 @@ impl FIFOCache {
     fn setdefault(
         &self,
         py: pyo3::Python<'_>,
-        key: pyo3::PyObject,
-        default: pyo3::PyObject,
-    ) -> pyo3::PyResult<pyo3::PyObject> {
+        key: pyo3::Py<pyo3::PyAny>,
+        default: pyo3::Py<pyo3::PyAny>,
+    ) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
         let key = PreHashObject::from_pyobject(py, key)?;
         let mut lock = self.raw.lock();
 
@@ -214,7 +227,7 @@ impl FIFOCache {
         pyo3::Py::new(slf.py(), result)
     }
 
-    fn get_index(&self, py: pyo3::Python<'_>, index: usize) -> Option<pyo3::PyObject> {
+    fn get_index(&self, py: pyo3::Python<'_>, index: usize) -> Option<pyo3::Py<pyo3::PyAny>> {
         let lock = self.raw.lock();
 
         lock.get_index(index).map(|(key, _)| key.obj.clone_ref(py))
@@ -224,7 +237,7 @@ impl FIFOCache {
         (0,)
     }
 
-    fn __getstate__(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<pyo3::PyObject> {
+    fn __getstate__(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
         let lock = self.raw.lock();
 
         let state = unsafe {
@@ -267,7 +280,11 @@ impl FIFOCache {
         Ok(unsafe { pyo3::Py::from_owned_ptr(py, state) })
     }
 
-    pub fn __setstate__(&self, py: pyo3::Python<'_>, state: pyo3::PyObject) -> pyo3::PyResult<()> {
+    pub fn __setstate__(
+        &self,
+        py: pyo3::Python<'_>,
+        state: pyo3::Py<pyo3::PyAny>,
+    ) -> pyo3::PyResult<()> {
         let mut lock = self.raw.lock();
         lock.from_pickle(py, state.as_ptr())
     }

@@ -124,10 +124,10 @@ impl VTTLPolicy {
     #[inline]
     #[rustfmt::skip]
     pub fn entry(
-        &mut self,
+        &'_ mut self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Entry<VTTLPolicyOccupied, VTTLPolicyAbsent>> {
+    ) -> pyo3::PyResult<Entry<VTTLPolicyOccupied<'_>, VTTLPolicyAbsent<'_>>> {
         match self
             .table
             .try_find(key.hash, |ptr| unsafe { ptr.as_ref().key.equal(py, key) })?
@@ -152,10 +152,10 @@ impl VTTLPolicy {
     #[inline]
     #[rustfmt::skip]
     pub fn entry_with_slot(
-        &mut self,
+        &'_ mut self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Entry<VTTLPolicyOccupied, VTTLPolicyAbsent>> {
+    ) -> pyo3::PyResult<Entry<VTTLPolicyOccupied<'_>, VTTLPolicyAbsent<'_>>> {
         match self
             .table
             .try_find_or_find_insert_slot(
@@ -263,7 +263,7 @@ impl VTTLPolicy {
     pub fn extend(
         &mut self,
         py: pyo3::Python<'_>,
-        iterable: pyo3::PyObject,
+        iterable: pyo3::Py<pyo3::PyAny>,
         ttl: Option<f64>,
     ) -> pyo3::PyResult<()> {
         use pyo3::types::{PyAnyMethods, PyDictMethods};
@@ -290,7 +290,8 @@ impl VTTLPolicy {
             }
         } else {
             for pair in iterable.bind(py).try_iter()? {
-                let (key, value) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject)>()?;
+                let (key, value) =
+                    pair?.extract::<(pyo3::Py<pyo3::PyAny>, pyo3::Py<pyo3::PyAny>)>()?;
 
                 let hk = PreHashObject::from_pyobject(py, key)?;
 
@@ -331,7 +332,7 @@ impl VTTLPolicy {
 
             for pair in iterable.bind(py).try_iter()? {
                 let (key, value, timestamp) =
-                    pair?.extract::<(pyo3::PyObject, pyo3::PyObject, f64)>()?;
+                    pair?.extract::<(pyo3::Py<pyo3::PyAny>, pyo3::Py<pyo3::PyAny>, f64)>()?;
 
                 let hk = PreHashObject::from_pyobject(py, key)?;
 
@@ -362,7 +363,11 @@ impl VTTLPolicy {
 
 impl VTTLPolicyOccupied<'_> {
     #[inline]
-    pub fn update(self, value: pyo3::PyObject, ttl: Option<f64>) -> pyo3::PyResult<pyo3::PyObject> {
+    pub fn update(
+        self,
+        value: pyo3::Py<pyo3::PyAny>,
+        ttl: Option<f64>,
+    ) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
         let item = unsafe { self.bucket.as_mut() };
 
         unsafe {
@@ -396,7 +401,7 @@ impl VTTLPolicyAbsent<'_> {
     unsafe fn pickle_insert(
         self,
         key: PreHashObject,
-        value: pyo3::PyObject,
+        value: pyo3::Py<pyo3::PyAny>,
         expire_at: Option<std::time::SystemTime>,
     ) -> pyo3::PyResult<()> {
         match self.situation {
@@ -431,7 +436,7 @@ impl VTTLPolicyAbsent<'_> {
     pub fn insert(
         self,
         key: PreHashObject,
-        value: pyo3::PyObject,
+        value: pyo3::Py<pyo3::PyAny>,
         ttl: Option<f64>,
     ) -> pyo3::PyResult<()> {
         let expire_at =

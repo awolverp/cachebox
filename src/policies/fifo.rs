@@ -14,7 +14,7 @@ pub struct FIFOPolicy {
     table: hashbrown::raw::RawTable<usize>,
 
     /// Keep objects in order.
-    entries: VecDeque<(PreHashObject, pyo3::PyObject)>,
+    entries: VecDeque<(PreHashObject, pyo3::Py<pyo3::PyAny>)>,
     maxsize: core::num::NonZeroUsize,
 
     /// When we pop front an object from entries, two operations have to do:
@@ -41,8 +41,8 @@ pub struct FIFOPolicyAbsent<'a> {
 }
 
 pub struct FIFOIterator {
-    first: NoLifetimeSliceIter<(PreHashObject, pyo3::PyObject)>,
-    second: NoLifetimeSliceIter<(PreHashObject, pyo3::PyObject)>,
+    first: NoLifetimeSliceIter<(PreHashObject, pyo3::Py<pyo3::PyAny>)>,
+    second: NoLifetimeSliceIter<(PreHashObject, pyo3::Py<pyo3::PyAny>)>,
 }
 
 impl FIFOPolicy {
@@ -114,7 +114,7 @@ impl FIFOPolicy {
     pub fn popitem(
         &mut self,
         py: pyo3::Python<'_>,
-    ) -> pyo3::PyResult<Option<(PreHashObject, pyo3::PyObject)>> {
+    ) -> pyo3::PyResult<Option<(PreHashObject, pyo3::Py<pyo3::PyAny>)>> {
         let ret = self.entries.front();
         if ret.is_none() {
             return Ok(None);
@@ -145,7 +145,7 @@ impl FIFOPolicy {
         &mut self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Entry<FIFOPolicyOccupied, FIFOPolicyAbsent>> {
+    ) -> pyo3::PyResult<Entry<FIFOPolicyOccupied<'_>, FIFOPolicyAbsent<'_>>> {
         match self
             .table
             .try_find(key.hash, |x| self.entries[(*x) - self.n_shifts].0.equal(py, key))?
@@ -166,10 +166,10 @@ impl FIFOPolicy {
     #[inline]
     #[rustfmt::skip]
     pub fn entry_with_slot(
-        &mut self,
+        &'_ mut self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Entry<FIFOPolicyOccupied, FIFOPolicyAbsent>> {
+    ) -> pyo3::PyResult<Entry<FIFOPolicyOccupied<'_>, FIFOPolicyAbsent<'_>>> {
         match self.table.try_find_or_find_insert_slot(
             key.hash,
             |x| self.entries[(*x) - self.n_shifts].0.equal(py, key),
@@ -189,7 +189,7 @@ impl FIFOPolicy {
         &self,
         py: pyo3::Python<'_>,
         key: &PreHashObject,
-    ) -> pyo3::PyResult<Option<&pyo3::PyObject>> {
+    ) -> pyo3::PyResult<Option<&pyo3::Py<pyo3::PyAny>>> {
         match self
             .table
             .try_find(key.hash, |x| {
@@ -219,7 +219,7 @@ impl FIFOPolicy {
 
     pub fn entries_iter(
         &self,
-    ) -> std::collections::vec_deque::Iter<'_, (PreHashObject, pyo3::PyObject)> {
+    ) -> std::collections::vec_deque::Iter<'_, (PreHashObject, pyo3::Py<pyo3::PyAny>)> {
         self.entries.iter()
     }
 
@@ -255,7 +255,11 @@ impl FIFOPolicy {
     }
 
     #[inline]
-    pub fn extend(&mut self, py: pyo3::Python<'_>, iterable: pyo3::PyObject) -> pyo3::PyResult<()> {
+    pub fn extend(
+        &mut self,
+        py: pyo3::Python<'_>,
+        iterable: pyo3::Py<pyo3::PyAny>,
+    ) -> pyo3::PyResult<()> {
         use pyo3::types::{PyAnyMethods, PyDictMethods};
 
         if unsafe { pyo3::ffi::PyDict_CheckExact(iterable.as_ptr()) == 1 } {
@@ -280,7 +284,8 @@ impl FIFOPolicy {
             }
         } else {
             for pair in iterable.bind(py).try_iter()? {
-                let (key, value) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject)>()?;
+                let (key, value) =
+                    pair?.extract::<(pyo3::Py<pyo3::PyAny>, pyo3::Py<pyo3::PyAny>)>()?;
 
                 let hk = PreHashObject::from_pyobject(py, key)?;
 
@@ -322,7 +327,8 @@ impl FIFOPolicy {
             let mut new = Self::new(maxsize, capacity)?;
 
             for pair in iterable.bind(py).try_iter()? {
-                let (key, value) = pair?.extract::<(pyo3::PyObject, pyo3::PyObject)>()?;
+                let (key, value) =
+                    pair?.extract::<(pyo3::Py<pyo3::PyAny>, pyo3::Py<pyo3::PyAny>)>()?;
 
                 let hk = PreHashObject::from_pyobject(py, key)?;
 
@@ -340,14 +346,14 @@ impl FIFOPolicy {
     }
 
     #[inline(always)]
-    pub fn get_index(&self, n: usize) -> Option<&(PreHashObject, pyo3::PyObject)> {
+    pub fn get_index(&self, n: usize) -> Option<&(PreHashObject, pyo3::Py<pyo3::PyAny>)> {
         self.entries.get(n)
     }
 }
 
 impl<'a> FIFOPolicyOccupied<'a> {
     #[inline]
-    pub fn update(self, value: pyo3::PyObject) -> pyo3::PyResult<pyo3::PyObject> {
+    pub fn update(self, value: pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
         let index = unsafe { self.bucket.as_ref() };
         let item = &mut self.instance.entries[index - self.instance.n_shifts];
         let old_value = std::mem::replace(&mut item.1, value);
@@ -359,7 +365,7 @@ impl<'a> FIFOPolicyOccupied<'a> {
     }
 
     #[inline]
-    pub fn remove(self) -> (PreHashObject, pyo3::PyObject) {
+    pub fn remove(self) -> (PreHashObject, pyo3::Py<pyo3::PyAny>) {
         let (mut index, _) = unsafe { self.instance.table.remove(self.bucket) };
         index -= self.instance.n_shifts;
 
@@ -372,7 +378,7 @@ impl<'a> FIFOPolicyOccupied<'a> {
         m
     }
 
-    pub fn into_value(self) -> &'a mut (PreHashObject, pyo3::PyObject) {
+    pub fn into_value(self) -> &'a mut (PreHashObject, pyo3::Py<pyo3::PyAny>) {
         let index = unsafe { self.bucket.as_ref() };
         &mut self.instance.entries[index - self.instance.n_shifts]
     }
@@ -384,7 +390,7 @@ impl FIFOPolicyAbsent<'_> {
         self,
         py: pyo3::Python<'_>,
         key: PreHashObject,
-        value: pyo3::PyObject,
+        value: pyo3::Py<pyo3::PyAny>,
     ) -> pyo3::PyResult<()> {
         if self.instance.table.len() >= self.instance.maxsize.get() {
             self.instance.popitem(py)?;
@@ -419,7 +425,7 @@ impl FIFOPolicyAbsent<'_> {
 }
 
 impl Iterator for FIFOIterator {
-    type Item = std::ptr::NonNull<(PreHashObject, pyo3::PyObject)>;
+    type Item = std::ptr::NonNull<(PreHashObject, pyo3::Py<pyo3::PyAny>)>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {

@@ -14,17 +14,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        - "3.8"
-        - "3.9"
-        - "3.10"
-        - "3.11"
-        - "3.12"
-        - "3.13"
-        - "3.14"
-        - "3.14t"
-        - "pypy3.10"
-        - "pypy3.11"
-        - "graalpy-3.11"
+        python-version:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
+          - "3.14"
+          - "3.14t"
+          - "pypy3.10"
+          - "pypy3.11"
+          - "graalpy-3.11"
 
     runs-on: ubuntu-latest
     continue-on-error: ${{ endsWith(matrix.python-version, 't') }}

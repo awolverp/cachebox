@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "cachebox"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 keywords = ["caching", "cached", "cachebox", "cache", "in-memory-caching", "memoizing"]
 authors = [
   {name = "awolverp", email = "awolverp@gmail.com"}

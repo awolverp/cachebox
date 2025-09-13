@@ -37,7 +37,7 @@ This can make your application very faster and it's a good choice in big applica
 - 🧶 Completely thread-safe
 - 🔧 Tested and correct
 - **\[R\]** written in Rust for maximum performance
-- 🤝 Compatible with Python 3.8+ (PyPy and CPython)
+- 🤝 Compatible with Python 3.9+ (PyPy and CPython)
 - 📦 Supports 7 advanced caching algorithms
 
 ### Page Contents

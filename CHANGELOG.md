@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bump dependencies
 - Drop support for 3.8
 
+### Thanks
+- Special thanks to [@chirizxc](https://github.com/chirizxc)
+
 ## v5.0.1 - 2025-04-25
 ### Changed
 - The issue [#25](https://github.com/awolverp/cachebox/issues/25) fixed - thanks to @Techcable

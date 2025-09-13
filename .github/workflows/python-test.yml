@@ -10,7 +10,6 @@ permissions:
 jobs:
   test-python:
     if: "contains(github.event.head_commit.message, '!test')"
-
     name: test ${{ matrix.python-version }}
     strategy:
       fail-fast: false
@@ -55,7 +54,25 @@ jobs:
           HYPOTHESIS_PROFILE: slow
 
   test-os:
+
+
+
+
+
+
+
+
+
+
+
     if: "contains(github.event.head_commit.message, '!test')"
+
+
+
+
+
+
+
     name: test on ${{ matrix.os }}
 
     strategy:
@@ -87,6 +104,47 @@ jobs:
         env:
           RUST_BACKTRACE: 1
           HYPOTHESIS_PROFILE: slow
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

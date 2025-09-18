@@ -37,9 +37,8 @@ features = ["macros", "extension-module"]
 [dependencies.cfg-if]
 version = "1.0.3"
 
-[dependencies.parking_lot_core]
-version = "0.9.11"
-default-features = false
+[dependencies.parking_lot]
+version = "0.12.4"
 
 [dependencies.lock_api]
 version = "0.4.13"

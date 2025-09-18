@@ -5,14 +5,14 @@ use crate::common::TimeToLivePair;
 
 #[pyo3::pyclass(module = "cachebox._core", frozen)]
 pub struct VTTLCache {
-    raw: crate::mutex::Mutex<crate::policies::vttl::VTTLPolicy>,
+    raw: crate::common::Mutex<crate::policies::vttl::VTTLPolicy>,
 }
 
 #[allow(non_camel_case_types)]
 #[pyo3::pyclass(module = "cachebox._core")]
 pub struct vttlcache_items {
     pub ptr: ObservedIterator,
-    pub iter: crate::mutex::Mutex<crate::policies::vttl::VTTLIterator>,
+    pub iter: crate::common::Mutex<crate::policies::vttl::VTTLIterator>,
     pub now: std::time::SystemTime,
 }
 
@@ -24,7 +24,7 @@ impl VTTLCache {
         let raw = crate::policies::vttl::VTTLPolicy::new(maxsize, capacity)?;
 
         let self_ = Self {
-            raw: crate::mutex::Mutex::new(raw),
+            raw: crate::common::Mutex::new(raw),
         };
         Ok(self_)
     }
@@ -224,7 +224,7 @@ impl VTTLCache {
 
         let result = vttlcache_items {
             ptr: ObservedIterator::new(slf.as_ptr(), state),
-            iter: crate::mutex::Mutex::new(iter),
+            iter: crate::common::Mutex::new(iter),
             now: std::time::SystemTime::now(),
         };
 

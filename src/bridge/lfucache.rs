@@ -4,14 +4,14 @@ use crate::common::PreHashObject;
 
 #[pyo3::pyclass(module = "cachebox._core", frozen)]
 pub struct LFUCache {
-    raw: crate::mutex::Mutex<crate::policies::lfu::LFUPolicy>,
+    raw: crate::common::Mutex<crate::policies::lfu::LFUPolicy>,
 }
 
 #[allow(non_camel_case_types)]
 #[pyo3::pyclass(module = "cachebox._core")]
 pub struct lfucache_items {
     pub ptr: ObservedIterator,
-    pub iter: crate::mutex::Mutex<crate::policies::lfu::LFUIterator>,
+    pub iter: crate::common::Mutex<crate::policies::lfu::LFUIterator>,
 }
 
 #[pyo3::pymethods]
@@ -22,7 +22,7 @@ impl LFUCache {
         let raw = crate::policies::lfu::LFUPolicy::new(maxsize, capacity)?;
 
         let self_ = Self {
-            raw: crate::mutex::Mutex::new(raw),
+            raw: crate::common::Mutex::new(raw),
         };
         Ok(self_)
     }
@@ -234,7 +234,7 @@ impl LFUCache {
 
         let result = lfucache_items {
             ptr: ObservedIterator::new(slf.as_ptr(), state),
-            iter: crate::mutex::Mutex::new(iter),
+            iter: crate::common::Mutex::new(iter),
         };
 
         pyo3::Py::new(slf.py(), result)

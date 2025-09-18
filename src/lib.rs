@@ -2,7 +2,6 @@ use pyo3::prelude::*;
 
 mod lazyheap;
 mod linked_list;
-mod mutex;
 
 #[macro_use]
 mod common;

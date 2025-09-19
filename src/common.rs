@@ -484,3 +484,7 @@ impl TimeToLivePair {
         }
     }
 }
+
+// Thanks to `Amanieu d'Antras` for this beautiful implementation.
+// https://github.com/Amanieu/parking_lot/blob/eeb186c48c8e6433c10f7552ef1cd1d56e5c83b1/src/raw_mutex.rs
+pub type Mutex<T> = lock_api::Mutex<parking_lot::RawMutex, T>;

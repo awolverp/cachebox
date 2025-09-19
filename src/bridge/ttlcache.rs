@@ -5,14 +5,14 @@ use crate::common::TimeToLivePair;
 
 #[pyo3::pyclass(module = "cachebox._core", frozen)]
 pub struct TTLCache {
-    raw: crate::mutex::Mutex<crate::policies::ttl::TTLPolicy>,
+    raw: crate::common::Mutex<crate::policies::ttl::TTLPolicy>,
 }
 
 #[allow(non_camel_case_types)]
 #[pyo3::pyclass(module = "cachebox._core")]
 pub struct ttlcache_items {
     pub ptr: ObservedIterator,
-    pub iter: crate::mutex::Mutex<crate::policies::ttl::TTLIterator>,
+    pub iter: crate::common::Mutex<crate::policies::ttl::TTLIterator>,
     pub now: std::time::SystemTime,
 }
 
@@ -24,7 +24,7 @@ impl TTLCache {
         let raw = crate::policies::ttl::TTLPolicy::new(maxsize, capacity, ttl)?;
 
         let self_ = Self {
-            raw: crate::mutex::Mutex::new(raw),
+            raw: crate::common::Mutex::new(raw),
         };
         Ok(self_)
     }
@@ -224,7 +224,7 @@ impl TTLCache {
 
         let result = ttlcache_items {
             ptr: ObservedIterator::new(slf.as_ptr(), state),
-            iter: crate::mutex::Mutex::new(iter),
+            iter: crate::common::Mutex::new(iter),
             now: std::time::SystemTime::now(),
         };
 

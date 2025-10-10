@@ -3,13 +3,13 @@ use crate::common::ObservedIterator;
 use crate::common::PreHashObject;
 use crate::common::TimeToLivePair;
 
-#[pyo3::pyclass(module = "cachebox._core", frozen)]
+#[pyo3::pyclass(module = "cachebox._core", frozen, immutable_type)]
 pub struct TTLCache {
     raw: crate::common::Mutex<crate::policies::ttl::TTLPolicy>,
 }
 
 #[allow(non_camel_case_types)]
-#[pyo3::pyclass(module = "cachebox._core")]
+#[pyo3::pyclass(module = "cachebox._core", immutable_type)]
 pub struct ttlcache_items {
     pub ptr: ObservedIterator,
     pub iter: crate::common::Mutex<crate::policies::ttl::TTLIterator>,

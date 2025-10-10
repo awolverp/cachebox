@@ -2,7 +2,7 @@ use crate::common::Entry;
 use crate::common::ObservedIterator;
 use crate::common::PreHashObject;
 
-#[pyo3::pyclass(module = "cachebox._core", frozen)]
+#[pyo3::pyclass(module = "cachebox._core", frozen, immutable_type)]
 pub struct FIFOCache {
     raw: crate::common::Mutex<crate::policies::fifo::FIFOPolicy>,
 }

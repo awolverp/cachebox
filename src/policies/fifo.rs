@@ -82,6 +82,7 @@ impl FIFOPolicy {
     }
 
     #[inline]
+    #[optimize(speed)]
     fn decrement_indexes(&mut self, start: usize, end: usize) {
         if start <= 1 && end == self.entries.len() && self.n_shifts < MAX_N_SHIFT {
             self.n_shifts += 1;

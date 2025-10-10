@@ -98,11 +98,13 @@ impl<T> LazyHeap<T> {
         Some(*node)
     }
 
+    #[inline]
     pub fn pop_back(&mut self, compare: impl Fn(&T, &T) -> std::cmp::Ordering) -> Option<T> {
         self.sort_by(compare);
         self.unlink_back()
     }
 
+    #[inline]
     pub fn get(&self, index: usize) -> Option<&NonNull<T>> {
         self.data.get(index)
     }
@@ -127,15 +129,18 @@ impl<T> LazyHeap<T> {
         *boxed_node
     }
 
+    #[inline]
     pub fn clear(&mut self) {
         while self.unlink_back().is_some() {}
         self.is_sorted = true;
     }
 
+    #[inline]
     pub fn shrink_to_fit(&mut self) {
         self.data.shrink_to_fit();
     }
 
+    #[inline]
     pub fn iter(&mut self, compare: impl Fn(&T, &T) -> std::cmp::Ordering) -> Iter<T> {
         self.sort_by(compare);
 

@@ -1,4 +1,4 @@
-use pyo3::prelude::*;
+#![feature(optimize_attribute)]
 
 mod lazyheap;
 mod linked_list;
@@ -10,23 +10,44 @@ mod bridge;
 mod policies;
 
 /// cachebox core ( written in Rust )
-#[pymodule(gil_used = false)]
-#[cold]
-fn _core(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add("__author__", env!("CARGO_PKG_AUTHORS"))?;
-    m.add("__version__", env!("CARGO_PKG_VERSION"))?;
+#[pyo3::pymodule(gil_used = false)]
+mod _core {
+    use pyo3::types::PyModuleMethods;
 
-    m.add("CoreKeyError", py.get_type::<bridge::CoreKeyError>())?;
+    #[pymodule_export]
+    use super::bridge::TTLPair;
 
-    m.add_class::<bridge::cache::Cache>()?;
-    m.add_class::<bridge::fifocache::FIFOCache>()?;
-    m.add_class::<bridge::rrcache::RRCache>()?;
-    m.add_class::<bridge::lrucache::LRUCache>()?;
-    m.add_class::<bridge::lfucache::LFUCache>()?;
-    m.add_class::<bridge::ttlcache::TTLCache>()?;
-    m.add_class::<bridge::vttlcache::VTTLCache>()?;
-    m.add_class::<bridge::TTLPair>()?;
-    m.add_class::<bridge::BaseCacheImpl>()?;
+    #[pymodule_export]
+    use super::bridge::BaseCacheImpl;
 
-    Ok(())
+    #[pymodule_export]
+    use super::bridge::cache::Cache;
+
+    #[pymodule_export]
+    use super::bridge::fifocache::FIFOCache;
+
+    #[pymodule_export]
+    use super::bridge::rrcache::RRCache;
+
+    #[pymodule_export]
+    use super::bridge::lrucache::LRUCache;
+
+    #[pymodule_export]
+    use super::bridge::lfucache::LFUCache;
+    
+    #[pymodule_export]
+    use super::bridge::ttlcache::TTLCache;
+    
+    #[pymodule_export]
+    use super::bridge::vttlcache::VTTLCache;
+
+    #[pymodule_init]
+    fn init(m: &pyo3::Bound<'_, pyo3::types::PyModule>) -> pyo3::PyResult<()> {
+        m.add("__author__", env!("CARGO_PKG_AUTHORS"))?;
+        m.add("__version__", env!("CARGO_PKG_VERSION"))?;
+
+        m.add("CoreKeyError", m.py().get_type::<super::bridge::CoreKeyError>())?;
+
+        Ok(())
+    }
 }

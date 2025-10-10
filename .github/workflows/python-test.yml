@@ -33,6 +33,8 @@ jobs:
 
       - name: install rust stable
         uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
 
       - name: set up python
         uses: actions/setup-python@v5
@@ -68,6 +70,8 @@ jobs:
 
       - name: install rust stable
         uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
 
       - name: set up python
         uses: actions/setup-python@v5

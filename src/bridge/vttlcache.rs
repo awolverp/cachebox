@@ -3,7 +3,7 @@ use crate::common::ObservedIterator;
 use crate::common::PreHashObject;
 use crate::common::TimeToLivePair;
 
-#[pyo3::pyclass(module = "cachebox._core", frozen)]
+#[pyo3::pyclass(module = "cachebox._core", frozen, immutable_type)]
 pub struct VTTLCache {
     raw: crate::common::Mutex<crate::policies::vttl::VTTLPolicy>,
 }

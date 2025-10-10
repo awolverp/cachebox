@@ -1,6 +1,6 @@
 [package]
 name = "cachebox"
-version = "5.0.2"
+version = "5.0.3"
 edition = "2021"
 description = "The fastest memoizing and caching Python library written in Rust"
 readme = "README.md"
@@ -38,11 +38,7 @@ features = ["macros", "extension-module"]
 version = "1.0.3"
 
 [dependencies.parking_lot]
-version = "0.12.4"
-
-[dependencies.lock_api]
-version = "0.4.13"
-default-features = false
+version = "0.12.5"
 
 [build-dependencies.pyo3-build-config]
 version = "0.26.0"

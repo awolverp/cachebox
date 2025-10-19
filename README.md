@@ -1,27 +1,19 @@
+<div style="text-align: center;">
 
-<h1 align=center>
-  Cachebox
-</h1>
-<p align="center">
-    <em>The fastest caching Python library written in Rust</em>
-</p>
-<p align="center">
-    <a href="https://github.com/awolverp/cachebox/releases"><b>Releases</b></a> | <a href="https://github.com/awolverp/cachebox-benchmark" target="_blank"><b>Benchmarks</b></a> | <a href="https://github.com/awolverp/cachebox/issues/new"><b>Issues</b></a>
-</p>
-<p align="center">
-    <a href="https://github.com/awolverp/cachebox/blob/main/LICENSE">
-        <img src="https://img.shields.io/github/license/awolverp/cachebox.svg?style=flat-square" alt="License">
-    </a>
-    <a href="https://github.com/awolverp/cachebox/releases">
-        <img src="https://img.shields.io/github/v/release/awolverp/cachebox.svg?style=flat-square" alt="Release">
-    </a>
-    <a href="https://pypi.org/project/cachebox/">
-        <img src="https://img.shields.io/pypi/pyversions/cachebox.svg?style=flat-square" alt="Python Versions">
-    </a>
-    <a href="https://pepy.tech/projects/cachebox">
-        <img src="https://img.shields.io/pypi/dm/cachebox?style=flat-square&color=%23314bb5" alt="Downloads">
-    </a>
-</p>    
+# Cachebox
+
+*The fastest caching Python library written in Rust*
+
+[**Releases**](https://github.com/awolverp/cachebox/releases) | 
+[**Benchmarks**](https://github.com/awolverp/cachebox-benchmark) | 
+[**Issues**](https://github.com/awolverp/cachebox/issues/new)
+
+[![License](https://img.shields.io/github/license/awolverp/cachebox.svg?style=flat-square)](https://github.com/awolverp/cachebox/blob/main/LICENSE)
+[![Release](https://img.shields.io/github/v/release/awolverp/cachebox.svg?style=flat-square)](https://github.com/awolverp/cachebox/releases)
+[![Python Versions](https://img.shields.io/pypi/pyversions/cachebox.svg?style=flat-square)](https://pypi.org/project/cachebox/)
+[![Downloads](https://img.shields.io/pypi/dm/cachebox?style=flat-square&color=%23314bb5)](https://pepy.tech/projects/cachebox)
+
+</div>
 
 -------
 

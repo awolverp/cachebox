@@ -32,7 +32,7 @@ version = "2.3.0"
 [dependencies.pyo3]
 version = "0.27.0"
 default-features = false
-features = ["macros", "extension-module"]
+features = ["macros", "extension-module", "generate-import-lib"]
 
 [dependencies.cfg-if]
 version = "1.0.3"

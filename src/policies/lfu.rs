@@ -214,8 +214,7 @@ impl LFUPolicy {
         if unsafe { pyo3::ffi::PyDict_CheckExact(iterable.as_ptr()) == 1 } {
             let dict = unsafe {
                 iterable
-                    .downcast_bound::<pyo3::types::PyDict>(py)
-                    .unwrap_unchecked()
+                    .cast_bound_unchecked::<pyo3::types::PyDict>(py)
             };
 
             for (key, value) in dict.iter() {

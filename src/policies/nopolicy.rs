@@ -173,11 +173,7 @@ impl NoPolicy {
         use pyo3::types::{PyAnyMethods, PyDictMethods};
 
         if unsafe { pyo3::ffi::PyDict_CheckExact(iterable.as_ptr()) == 1 } {
-            let dict = unsafe {
-                iterable
-                    .downcast_bound::<pyo3::types::PyDict>(py)
-                    .unwrap_unchecked()
-            };
+            let dict = unsafe { iterable.cast_bound_unchecked::<pyo3::types::PyDict>(py) };
 
             for (key, value) in dict.iter() {
                 let hk =
@@ -227,11 +223,7 @@ impl NoPolicy {
         let mut new = Self::new(maxsize, capacity)?;
 
         // SAFETY: we checked that the iterable is a dict in extract_pickle_tuple! macro
-        let dict = unsafe {
-            iterable
-                .downcast_bound::<pyo3::types::PyDict>(py)
-                .unwrap_unchecked()
-        };
+        let dict = unsafe { iterable.cast_bound_unchecked::<pyo3::types::PyDict>(py) };
 
         unsafe {
             for (key, value) in dict.iter() {

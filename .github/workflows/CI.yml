@@ -3,111 +3,147 @@ name: CI
 on:
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 jobs:
   linux:
     runs-on: ${{ matrix.platform.runner }}
     strategy:
       matrix:
         platform:
-          - runner: ubuntu-22.04
-            target: x86_64
-          - runner: ubuntu-22.04
-            target: x86
-          - runner: ubuntu-22.04
-            target: aarch64
-          - runner: ubuntu-22.04
-            target: armv7
-          - runner: ubuntu-22.04
-            target: s390x
-          - runner: ubuntu-22.04
-            target: ppc64le
+          - {
+              runner: ubuntu-latest,
+              target: x86_64,
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
+            }
+          - {
+              runner: ubuntu-latest,
+              target: x86,
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
+            }
+          - {
+              runner: ubuntu-latest,
+              target: aarch64,
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
+            }
+          - {
+              runner: ubuntu-latest,
+              target: armv7,
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
+            }
+          - {
+              runner: ubuntu-latest,
+              target: s390x,
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
+            }
+          - {
+              runner: ubuntu-latest,
+              target: ppc64le,
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
+            }
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+        
+      - uses: actions/setup-python@v6
         with:
           python-version: 3.x
-          allow-prereleases: true
-
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
+      
+      - name: "Build wheels"
+        uses: PyO3/maturin-action@v1.49.4
         with:
           target: ${{ matrix.platform.target }}
-          args: --release --out dist --find-interpreter
+          args: --release --out dist --interpreter ${{ matrix.platform.interpreter }}
           sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
           manylinux: auto
           rust-toolchain: nightly
         
-      - name: Upload wheels
-        uses: actions/upload-artifact@v4
+      - name: "Upload wheels"
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: wheels-linux-${{ matrix.platform.target }}
           path: dist
-
+    
   musllinux:
     runs-on: ${{ matrix.platform.runner }}
     strategy:
       matrix:
         platform:
-          - runner: ubuntu-22.04
-            target: x86_64
-          - runner: ubuntu-22.04
-            target: x86
-          - runner: ubuntu-22.04
-            target: aarch64
-          - runner: ubuntu-22.04
-            target: armv7
+          - {
+              runner: ubuntu-latest,
+              target: x86_64,
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
+            }
+          - {
+              runner: ubuntu-latest,
+              target: x86,
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
+            }
+          - {
+              runner: ubuntu-latest,
+              target: aarch64,
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
+            }
+          - {
+              runner: ubuntu-latest,
+              target: armv7,
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
+            }
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
         with:
           python-version: 3.x
-          allow-prereleases: true
-        
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
+      - name: "Build wheels"
+        uses: PyO3/maturin-action@v1.49.4
         with:
           target: ${{ matrix.platform.target }}
-          args: --release --out dist --find-interpreter
+          args: --release --out dist --interpreter ${{ matrix.platform.interpreter }}
           sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
           manylinux: musllinux_1_2
           rust-toolchain: nightly
         
-      - name: Upload wheels
-        uses: actions/upload-artifact@v4
+      - name: "Upload wheels"
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: wheels-musllinux-${{ matrix.platform.target }}
           path: dist
-
+  
   windows:
     runs-on: ${{ matrix.platform.runner }}
     strategy:
       matrix:
         platform:
-          - runner: windows-latest
-            target: x64
-          - runner: windows-latest
-            target: x86
+          - {
+              runner: windows-latest,
+              target: x64,
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
+            }
+          - {
+              runner: windows-latest,
+              target: x86,
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t"
+            }
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5.0.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6.0.0
         with:
           python-version: 3.x
           architecture: ${{ matrix.platform.target }}
-          allow-prereleases: true
-        
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
+      - name: "Build wheels"
+        uses: PyO3/maturin-action@v1.49.4
         with:
           target: ${{ matrix.platform.target }}
-          args: --release --out dist --find-interpreter
+          args: --release --out dist --interpreter ${{ matrix.platform.interpreter }}
           sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
           rust-toolchain: nightly
-        
-      - name: Upload wheels
-        uses: actions/upload-artifact@v4
+
+      - name: "Upload wheels"
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: wheels-windows-${{ matrix.platform.target }}
           path: dist
@@ -117,53 +153,65 @@ jobs:
     strategy:
       matrix:
         platform:
-          - runner: macos-13
-            target: x86_64
-          - runner: macos-14
-            target: aarch64
+          - {
+            runner: macos-13,
+            target: x86_64,
+            interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
+          }
+          - {
+            runner: macos-14,
+            target: aarch64,
+            interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
+          }
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5.0.0
+        with:
+          persist-credentials: false
+      
+      - uses: actions/setup-python@v6.0.0
         with:
           python-version: 3.x
-          allow-prereleases: true
-          
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
+      
+      - name: "Build wheels"
+        uses: PyO3/maturin-action@v1.49.4
         with:
           target: ${{ matrix.platform.target }}
-          args: --release --out dist --find-interpreter
+          args: --release --out dist --interpreter ${{ matrix.platform.interpreter }}
           sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
           rust-toolchain: nightly
 
-      - name: Upload wheels
-        uses: actions/upload-artifact@v4
+      - name: "Upload wheels"
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: wheels-macos-${{ matrix.platform.target }}
           path: dist
 
-  sdist:
+  build-sdist:
+    name: "build sdist"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Build sdist
-        uses: PyO3/maturin-action@v1
+      - uses: actions/checkout@v5.0.0
+        with:
+          persist-credentials: false
+        
+      - name: "Build sdist"
+        uses: PyO3/maturin-action@v1.49.4
         with:
           command: sdist
           args: --out dist
           rust-toolchain: nightly
-
-      - name: Upload sdist
-        uses: actions/upload-artifact@v4
+        
+      - name: "Upload sdist"
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: wheels-sdist
           path: dist
-
+  
   release:
-    name: Release
+    name: "release"
     runs-on: ubuntu-latest
     if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
-    needs: [linux, musllinux, windows, macos, sdist]
+    needs: [linux, musllinux, windows, macos, build-sdist]
     permissions:
       # Use to sign the release artifacts
       id-token: write
@@ -172,16 +220,18 @@ jobs:
       # Used to generate artifact attestation
       attestations: write
     steps:
-      - uses: actions/download-artifact@v4
-      - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@v2
+      - uses: actions/download-artifact@v5.0.0
+      - name: "Generate artifact attestation"
+        uses: actions/attest-build-provenance@v3.0.0
         with:
-          subject-path: 'wheels-*/*'
-      - name: Publish to PyPI
+          subject-path: "wheels-*/*"
+      
+      - name: "Publish to PyPI"
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@v1.49.4
         env:
           MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        
         with:
           command: upload
           args: --non-interactive --skip-existing wheels-*/*

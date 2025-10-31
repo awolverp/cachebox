@@ -145,7 +145,6 @@ assert cache.get("key") == "value"
 ## Getting started
 There are 3 useful functions:
 - [**cached**](#cached--decorator): a decorator that helps you to cache your functions and calculations with a lot of options.
-- [**cachedmethod**](#cachedmethod--decorator): this is excatly works like `cached()`, but ignores `self` parameters in hashing and key making.
 - [**is_cached**](#is_cached--function): check if a function/method cached by cachebox or not
 
 And 9 classes:
@@ -251,6 +250,23 @@ print(sum_as_string.cache_info())
 sum_as_string.cache_clear()
 ```
 
+method example: *(Added in v5.1.0)*
+```python
+import cachebox
+
+class Example:
+    def __init__(self, num) -> None:
+        self.num = num
+        self._cache = cachebox.TTLCache(20, 10)
+
+    @cachebox.cached(lambda self: self._cache)
+    def method(self, char: str):
+        return char * self.num
+
+ex = Example(10)
+assert ex.method("a") == "a" * 10
+```
+
 callback example: *(Added in v4.2.0)*
 ```python
 import cachebox
@@ -283,26 +299,6 @@ assert func(5, 4) == 9
 
 </details>
 
-
-> [!NOTE]\
-> Recommended use `cached` method for **@staticmethod**s and use [`cachedmethod`](#function-cachedmethod) for **@classmethod**s;
-> And set `copy_level` parameter to `2` on **@classmethod**s.
-> ```python
-> class MyClass:
->   def __init__(self, num: int) -> None:
->       self.num = num
->
->   @classmethod
->   @cachedmethod({}, copy_level=2)
->   def class_func(cls, num: int):
->       return cls(num)
->
->   @staticmethod
->   @cached({})
->   def static_func(num: int):
->       return num * 5
-> ```
-
 > [!TIP]\
 > There's a new feature **since `v4.1.0`** that you can tell to a cached function that don't use cache for a call:
 > ```python
@@ -314,6 +310,9 @@ assert func(5, 4) == 9
 
 ### `cachedmethod` (🎀 decorator)
 this is excatly works like `cached()`, but ignores `self` parameters in hashing and key making.
+
+> [!WARNING]\
+> This function has been deprecated since `v5.1.0`, use `cached` function instead.
 
 <details>
 <summary><b>Example</b></summary>

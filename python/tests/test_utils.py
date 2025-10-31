@@ -1,10 +1,10 @@
 from cachebox import (
     Frozen,
     LRUCache,
+    TTLCache,
     cached,
     make_typed_key,
     make_key,
-    cachedmethod,
     EVENT_HIT,
     EVENT_MISS,
     is_cached,
@@ -151,13 +151,16 @@ def test_cachedmethod():
         def __init__(self, num) -> None:
             self.num = num
 
-        @cachedmethod(None)
+        @cached(None)
         def method(self, char: str):
             assert type(self) is TestCachedMethod
             return char * self.num
 
     cls = TestCachedMethod(10)
     assert cls.method("a") == ("a" * 10)
+
+    cls = TestCachedMethod(2)
+    assert cls.method("a") == ("a" * 2)
 
 
 @pytest.mark.asyncio
@@ -166,7 +169,7 @@ async def test_async_cachedmethod():
         def __init__(self, num) -> None:
             self.num = num
 
-        @cachedmethod(LRUCache(0))
+        @cached(LRUCache(0))
         async def method(self, char: str):
             assert type(self) is TestCachedMethod
             return char * self.num
@@ -302,3 +305,19 @@ def test_staticmethod():
 
     a = MyClass.new(1)
     assert isinstance(a, int) and a == 1
+
+
+def test_new_cached_method():
+    class Test:
+        def __init__(self, num) -> None:
+            self.num = num
+            self._cache = TTLCache(20, 10)
+
+        @cached(lambda self: self._cache)
+        def method(self, char: str):
+            assert type(self) is Test
+            return char * self.num
+
+    for i in range(10):
+        cls = Test(i)
+        assert cls.method("a") == ("a" * i)

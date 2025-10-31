@@ -4,7 +4,10 @@ use pyo3::types::PyTypeMethods;
 create_exception!(cachebox._core, CoreKeyError, pyo3::exceptions::PyException);
 
 #[cfg_attr(Py_3_9, pyo3::pyclass(module = "cachebox._core", frozen, subclass))]
-#[cfg_attr(not(Py_3_9), pyo3::pyclass(module = "cachebox._core", frozen, immutable_type, subclass))]
+#[cfg_attr(
+    not(Py_3_9),
+    pyo3::pyclass(module = "cachebox._core", frozen, immutable_type, subclass)
+)]
 pub struct BaseCacheImpl {}
 
 #[pyo3::pymethods]
@@ -40,7 +43,10 @@ impl BaseCacheImpl {
 }
 
 #[cfg_attr(Py_3_9, pyo3::pyclass(module = "cachebox._core", frozen))]
-#[cfg_attr(not(Py_3_9), pyo3::pyclass(module = "cachebox._core", frozen, immutable_type))]
+#[cfg_attr(
+    not(Py_3_9),
+    pyo3::pyclass(module = "cachebox._core", frozen, immutable_type)
+)]
 pub struct TTLPair {
     key: pyo3::Py<pyo3::PyAny>,
     value: pyo3::Py<pyo3::PyAny>,

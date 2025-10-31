@@ -3,7 +3,10 @@ use crate::common::ObservedIterator;
 use crate::common::PreHashObject;
 
 #[cfg_attr(Py_3_9, pyo3::pyclass(module = "cachebox._core", frozen))]
-#[cfg_attr(not(Py_3_9), pyo3::pyclass(module = "cachebox._core", frozen, immutable_type))]
+#[cfg_attr(
+    not(Py_3_9),
+    pyo3::pyclass(module = "cachebox._core", frozen, immutable_type)
+)]
 pub struct Cache {
     raw: crate::common::Mutex<crate::policies::nopolicy::NoPolicy>,
 }

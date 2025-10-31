@@ -264,10 +264,7 @@ impl FIFOPolicy {
         use pyo3::types::{PyAnyMethods, PyDictMethods};
 
         if unsafe { pyo3::ffi::PyDict_CheckExact(iterable.as_ptr()) == 1 } {
-            let dict = unsafe {
-                iterable
-                    .cast_bound_unchecked::<pyo3::types::PyDict>(py)
-            };
+            let dict = unsafe { iterable.cast_bound_unchecked::<pyo3::types::PyDict>(py) };
 
             for (key, value) in dict.iter() {
                 let hk =

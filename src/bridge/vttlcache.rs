@@ -4,7 +4,10 @@ use crate::common::PreHashObject;
 use crate::common::TimeToLivePair;
 
 #[cfg_attr(Py_3_9, pyo3::pyclass(module = "cachebox._core", frozen))]
-#[cfg_attr(not(Py_3_9), pyo3::pyclass(module = "cachebox._core", frozen, immutable_type))]
+#[cfg_attr(
+    not(Py_3_9),
+    pyo3::pyclass(module = "cachebox._core", frozen, immutable_type)
+)]
 pub struct VTTLCache {
     raw: crate::common::Mutex<crate::policies::vttl::VTTLPolicy>,
 }

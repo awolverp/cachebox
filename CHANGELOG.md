@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v5.1.0 - 2025-10-31
+### Changed
+- Now the `cached` function can accept a function as `cache`, allowing it to replace `cachedmethod` function.
+  Also this can give you more control.
+
+### Deprecated
+- `cachedmethod` decorator deprected due to [#35](https://github.com/awolverp/cachebox/issues/35)
+
+### Thanks
+- Special thanks to [@liblaf](https://github.com/liblaf)
+
 ## v5.0.4 - 2025-10-20
 ### Changed
 - Support all platforms for Python 3.14, 3.14t and 3.13t (#34; thanks to @chirizxc)

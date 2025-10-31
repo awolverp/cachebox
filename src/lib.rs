@@ -34,10 +34,10 @@ mod _core {
 
     #[pymodule_export]
     use super::bridge::lfucache::LFUCache;
-    
+
     #[pymodule_export]
     use super::bridge::ttlcache::TTLCache;
-    
+
     #[pymodule_export]
     use super::bridge::vttlcache::VTTLCache;
 
@@ -46,7 +46,10 @@ mod _core {
         m.add("__author__", env!("CARGO_PKG_AUTHORS"))?;
         m.add("__version__", env!("CARGO_PKG_VERSION"))?;
 
-        m.add("CoreKeyError", m.py().get_type::<super::bridge::CoreKeyError>())?;
+        m.add(
+            "CoreKeyError",
+            m.py().get_type::<super::bridge::CoreKeyError>(),
+        )?;
 
         Ok(())
     }

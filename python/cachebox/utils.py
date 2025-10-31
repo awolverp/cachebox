@@ -267,13 +267,14 @@ EVENT_HIT = 2
 
 def _cached_wrapper(
     func,
-    cache: BaseCacheImpl,
+    cache: typing.Union[BaseCacheImpl, typing.Callable],
     key_maker: typing.Callable[[tuple, dict], typing.Hashable],
     clear_reuse: bool,
     callback: typing.Optional[typing.Callable[[int, typing.Any, typing.Any], typing.Any]],
     copy_level: int,
     is_method: bool,
 ):
+    is_method = cache_is_function = inspect.isfunction(cache)
     _key_maker = (lambda args, kwds: key_maker(args[1:], kwds)) if is_method else key_maker
 
     hits = 0
@@ -287,11 +288,12 @@ def _cached_wrapper(
         if kwds.pop("cachebox__ignore", False):
             return func(*args, **kwds)
 
+        _cache = cache(args[0]) if cache_is_function else cache
         key = _key_maker(args, kwds)
 
         # try to get result from cache
         try:
-            result = cache[key]
+            result = _cache[key]
         except KeyError:
             pass
         else:
@@ -310,7 +312,7 @@ def _cached_wrapper(
                 raise cached_error
 
             try:
-                result = cache[key]
+                result = _cache[key]
                 hits += 1
                 event = EVENT_HIT
             except KeyError:
@@ -323,7 +325,7 @@ def _cached_wrapper(
                     raise e
 
                 else:
-                    cache[key] = result
+                    _cache[key] = result
                     misses += 1
                     event = EVENT_MISS
 
@@ -332,34 +334,39 @@ def _cached_wrapper(
 
         return _copy_if_need(result, level=copy_level)
 
-    _wrapped.cache = cache
+    if not cache_is_function:
+        _wrapped.cache = cache
+        _wrapped.cache_info = lambda: CacheInfo(
+            hits, misses, cache.maxsize, len(cache), cache.capacity()
+        )
+
     _wrapped.callback = callback
-    _wrapped.cache_info = lambda: CacheInfo(
-        hits, misses, cache.maxsize, len(cache), cache.capacity()
-    )
 
-    def cache_clear() -> None:
-        nonlocal misses, hits, locks, exceptions
-        cache.clear(reuse=clear_reuse)
-        misses = 0
-        hits = 0
-        locks.clear()
-        exceptions.clear()
+    if not cache_is_function:
 
-    _wrapped.cache_clear = cache_clear
+        def cache_clear() -> None:
+            nonlocal misses, hits, locks, exceptions
+            cache.clear(reuse=clear_reuse)
+            misses = 0
+            hits = 0
+            locks.clear()
+            exceptions.clear()
+
+        _wrapped.cache_clear = cache_clear
 
     return _wrapped
 
 
 def _async_cached_wrapper(
     func,
-    cache: BaseCacheImpl,
+    cache: typing.Union[BaseCacheImpl, typing.Callable],
     key_maker: typing.Callable[[tuple, dict], typing.Hashable],
     clear_reuse: bool,
     callback: typing.Optional[typing.Callable[[int, typing.Any, typing.Any], typing.Any]],
     copy_level: int,
     is_method: bool,
 ):
+    is_method = cache_is_function = inspect.isfunction(cache)
     _key_maker = (lambda args, kwds: key_maker(args[1:], kwds)) if is_method else key_maker
 
     hits = 0
@@ -375,11 +382,12 @@ def _async_cached_wrapper(
         if kwds.pop("cachebox__ignore", False):
             return await func(*args, **kwds)
 
+        _cache = cache(args[0]) if cache_is_function else cache
         key = _key_maker(args, kwds)
 
         # try to get result from cache
         try:
-            result = cache[key]
+            result = _cache[key]
         except KeyError:
             pass
         else:
@@ -400,7 +408,7 @@ def _async_cached_wrapper(
                 raise cached_error
 
             try:
-                result = cache[key]
+                result = _cache[key]
                 hits += 1
                 event = EVENT_HIT
             except KeyError:
@@ -413,7 +421,7 @@ def _async_cached_wrapper(
                     raise e
 
                 else:
-                    cache[key] = result
+                    _cache[key] = result
                     misses += 1
                     event = EVENT_MISS
 
@@ -424,21 +432,25 @@ def _async_cached_wrapper(
 
         return _copy_if_need(result, level=copy_level)
 
-    _wrapped.cache = cache
+    if not cache_is_function:
+        _wrapped.cache = cache
+        _wrapped.cache_info = lambda: CacheInfo(
+            hits, misses, cache.maxsize, len(cache), cache.capacity()
+        )
+
     _wrapped.callback = callback
-    _wrapped.cache_info = lambda: CacheInfo(
-        hits, misses, cache.maxsize, len(cache), cache.capacity()
-    )
 
-    def cache_clear() -> None:
-        nonlocal misses, hits, locks, exceptions
-        cache.clear(reuse=clear_reuse)
-        misses = 0
-        hits = 0
-        locks.clear()
-        exceptions.clear()
+    if not cache_is_function:
 
-    _wrapped.cache_clear = cache_clear
+        def cache_clear() -> None:
+            nonlocal misses, hits, locks, exceptions
+            cache.clear(reuse=clear_reuse)
+            misses = 0
+            hits = 0
+            locks.clear()
+            exceptions.clear()
+
+        _wrapped.cache_clear = cache_clear
 
     return _wrapped
 
@@ -456,7 +468,8 @@ def cached(
     Wraps a function to automatically cache and retrieve its results based on input parameters.
 
     Args:
-        cache (BaseCacheImpl, dict, optional): Cache implementation to store results. Defaults to FIFOCache.
+        cache (BaseCacheImpl, dict, callable): Cache implementation to store results. Defaults to FIFOCache.
+                                               Can be a function that got `self` and should return cache.
         key_maker (Callable, optional): Function to generate cache keys from function arguments. Defaults to make_key.
         clear_reuse (bool, optional): Whether to reuse cache during clearing. Defaults to False.
         callback (Callable, optional): Function called on cache hit/miss events. Defaults to None.
@@ -465,7 +478,7 @@ def cached(
     Returns:
         Callable: Decorated function with caching capabilities.
 
-    Example::
+    Example for functions::
 
         @cachebox.cached(cachebox.LRUCache(128))
         def sum_as_string(a, b):
@@ -476,6 +489,20 @@ def cached(
         assert len(sum_as_string.cache) == 1
         sum_as_string.cache_clear()
         assert len(sum_as_string.cache) == 0
+
+    Example for methods::
+
+        class A:
+            def __init__(self, num):
+                self.num = num
+                self._cache = cachebox.FIFOCache(0)
+
+            @cachebox.cached(lambda self: self._cache)
+            def method(self, n):
+                return self.num * n
+
+        instance = A(10)
+        assert A.method(2) == 20
     """
     if cache is None:
         cache = FIFOCache(0)
@@ -483,8 +510,8 @@ def cached(
     if type(cache) is dict:
         cache = FIFOCache(0, cache)
 
-    if not isinstance(cache, BaseCacheImpl):
-        raise TypeError("we expected cachebox caches, got %r" % (cache,))
+    if not isinstance(cache, BaseCacheImpl) and not inspect.isfunction(cache):
+        raise TypeError("we expected cachebox caches or function, got %r" % (cache,))
 
     def decorator(func: FT) -> FT:
         if inspect.iscoroutinefunction(func):
@@ -509,6 +536,9 @@ def cachedmethod(
     copy_level: int = 1,
 ) -> typing.Callable[[FT], FT]:
     """
+    **This function is deperecated due to issue [#35](https://github.com/awolverp/cachebox/issues/35)**.
+    Use `cached` method instead.
+
     Decorator to create a method-specific memoized cache for function results.
 
     Similar to `cached()`, but ignores `self` parameter when generating cache keys.
@@ -523,6 +553,14 @@ def cachedmethod(
     Returns:
         Callable: Decorated method with method-specific caching capabilities.
     """
+    import warnings
+
+    warnings.warn(
+        "cachedmethod is deprecated, use cached instead. see issue https://github.com/awolverp/cachebox/issues/35",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
     if cache is None:
         cache = FIFOCache(0)
 

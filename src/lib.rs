@@ -9,6 +9,10 @@ mod common;
 mod bridge;
 mod policies;
 
+#[cfg(feature = "mimalloc")]
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 /// cachebox core ( written in Rust )
 #[pyo3::pymodule(gil_used = false)]
 mod _core {

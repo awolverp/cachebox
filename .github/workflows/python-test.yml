@@ -42,7 +42,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
 
-      - run: pip install pytest pytest-asyncio maturin
+      - run: pip install pytest pytest-asyncio "maturin[patchelf]"
 
       - run: pip install -e .
         env:
@@ -78,7 +78,7 @@ jobs:
         with:
           python-version: "3.13"
 
-      - run: pip install pytest pytest-asyncio maturin
+      - run: pip install pytest pytest-asyncio "maturin[patchelf]"
 
       - run: pip install -e .
         env:

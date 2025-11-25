@@ -45,7 +45,7 @@ jobs:
 
       - run: pip install pytest pytest-asyncio "maturin[patchelf]"
 
-      - run: pip install -e .
+      - run: maturin develop --features mimalloc
         env:
           RUST_BACKTRACE: 1
 
@@ -79,7 +79,7 @@ jobs:
         with:
           python-version: "3.13"
 
-      - run: pip install pytest pytest-asyncio "maturin[patchelf]"
+      - run: pip install pytest pytest-asyncio maturin
 
       - run: pip install -e .
         env:

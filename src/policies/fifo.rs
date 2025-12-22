@@ -14,8 +14,10 @@ pub struct FIFOPolicy {
     table: hashbrown::raw::RawTable<usize>,
 
     /// Keep objects in order.
-    entries: VecDeque<(PreHashObject, pyo3::Py<pyo3::PyAny>)>,
+    entries: VecDeque<(PreHashObject, pyo3::Py<pyo3::PyAny>, usize)>,
     maxsize: core::num::NonZeroUsize,
+    maxmemory: core::num::NonZeroUsize,
+    memory: usize,
 
     /// When we pop front an object from entries, two operations have to do:
     /// 1. Shift all elements in vector.
@@ -41,19 +43,22 @@ pub struct FIFOPolicyAbsent<'a> {
 }
 
 pub struct FIFOIterator {
-    first: NoLifetimeSliceIter<(PreHashObject, pyo3::Py<pyo3::PyAny>)>,
-    second: NoLifetimeSliceIter<(PreHashObject, pyo3::Py<pyo3::PyAny>)>,
+    first: NoLifetimeSliceIter<(PreHashObject, pyo3::Py<pyo3::PyAny>, usize)>,
+    second: NoLifetimeSliceIter<(PreHashObject, pyo3::Py<pyo3::PyAny>, usize)>,
 }
 
 impl FIFOPolicy {
-    pub fn new(maxsize: usize, mut capacity: usize) -> pyo3::PyResult<Self> {
+    pub fn new(maxsize: usize, mut capacity: usize, maxmemory: usize) -> pyo3::PyResult<Self> {
         let maxsize = non_zero_or!(maxsize, isize::MAX as usize);
+        let maxmemory = non_zero_or!(maxmemory, isize::MAX as usize);
         capacity = capacity.min(maxsize.get());
 
         Ok(Self {
             table: new_table!(capacity)?,
             entries: VecDeque::new(),
             maxsize,
+            maxmemory,
+            memory: 0,
             n_shifts: 0,
             observed: Observed::new(),
         })
@@ -61,6 +66,14 @@ impl FIFOPolicy {
 
     pub fn maxsize(&self) -> usize {
         self.maxsize.get()
+    }
+
+    pub fn maxmemory(&self) -> usize {
+        self.maxmemory.get()
+    }
+
+    pub fn memory(&self) -> usize {
+        self.memory
     }
 
     #[inline]
@@ -74,7 +87,7 @@ impl FIFOPolicy {
     }
 
     pub fn is_full(&self) -> bool {
-        self.table.len() == self.maxsize.get()
+        self.table.len() == self.maxsize.get() || self.memory >= self.maxmemory.get()
     }
 
     pub fn capacity(&self) -> (usize, usize) {
@@ -114,7 +127,7 @@ impl FIFOPolicy {
     pub fn popitem(
         &mut self,
         py: pyo3::Python<'_>,
-    ) -> pyo3::PyResult<Option<(PreHashObject, pyo3::Py<pyo3::PyAny>)>> {
+    ) -> pyo3::PyResult<Option<(PreHashObject, pyo3::Py<pyo3::PyAny>, usize)>> {
         let ret = self.entries.front();
         if ret.is_none() {
             return Ok(None);
@@ -132,6 +145,7 @@ impl FIFOPolicy {
         }
 
         let ret = unsafe { self.entries.pop_front().unwrap_unchecked() };
+        self.memory = self.memory.saturating_sub(ret.2);
 
         self.observed.change();
 
@@ -206,6 +220,7 @@ impl FIFOPolicy {
         self.table.clear();
         self.entries.clear();
         self.n_shifts = 0;
+        self.memory = 0;
         self.observed.change();
     }
 
@@ -219,12 +234,16 @@ impl FIFOPolicy {
 
     pub fn entries_iter(
         &self,
-    ) -> std::collections::vec_deque::Iter<'_, (PreHashObject, pyo3::Py<pyo3::PyAny>)> {
+    ) -> std::collections::vec_deque::Iter<'_, (PreHashObject, pyo3::Py<pyo3::PyAny>, usize)> {
         self.entries.iter()
     }
 
     pub fn equal(&self, py: pyo3::Python<'_>, other: &Self) -> pyo3::PyResult<bool> {
         if self.maxsize != other.maxsize {
+            return Ok(false);
+        }
+
+        if self.maxmemory != other.maxmemory {
             return Ok(false);
         }
 
@@ -234,13 +253,13 @@ impl FIFOPolicy {
 
         unsafe {
             for index1 in self.table.iter().map(|x| x.as_ref()) {
-                let (key1, value1) = &self.entries[(*index1) - self.n_shifts];
+                let (key1, value1, _) = &self.entries[(*index1) - self.n_shifts];
 
                 match other.table.try_find(key1.hash, |x| {
                     key1.equal(py, &other.entries[(*x) - other.n_shifts].0)
                 })? {
                     Some(bucket) => {
-                        let (_, value2) = &other.entries[(*bucket.as_ref()) - other.n_shifts];
+                        let (_, value2, _) = &other.entries[(*bucket.as_ref()) - other.n_shifts];
 
                         if !crate::common::pyobject_equal(py, value1.as_ptr(), value2.as_ptr())? {
                             return Ok(false);
@@ -271,7 +290,7 @@ impl FIFOPolicy {
 
                 match self.entry_with_slot(py, &hk)? {
                     Entry::Occupied(entry) => {
-                        entry.update(value.unbind())?;
+                        entry.update(py, value.unbind())?;
                     }
                     Entry::Absent(entry) => {
                         entry.insert(py, hk, value.unbind())?;
@@ -287,7 +306,7 @@ impl FIFOPolicy {
 
                 match self.entry_with_slot(py, &hk)? {
                     Entry::Occupied(entry) => {
-                        entry.update(value)?;
+                        entry.update(py, value)?;
                     }
                     Entry::Absent(entry) => {
                         entry.insert(py, hk, value)?;
@@ -317,10 +336,9 @@ impl FIFOPolicy {
         use pyo3::types::PyAnyMethods;
 
         unsafe {
-            tuple!(check state, size=3)?;
-            let (maxsize, iterable, capacity) = extract_pickle_tuple!(py, state => list);
+            let (maxsize, iterable, capacity, maxmemory) = extract_pickle_tuple!(py, state => list);
 
-            let mut new = Self::new(maxsize, capacity)?;
+            let mut new = Self::new(maxsize, capacity, maxmemory)?;
 
             for pair in iterable.bind(py).try_iter()? {
                 let (key, value) =
@@ -342,26 +360,54 @@ impl FIFOPolicy {
     }
 
     #[inline(always)]
-    pub fn get_index(&self, n: usize) -> Option<&(PreHashObject, pyo3::Py<pyo3::PyAny>)> {
+    pub fn get_index(&self, n: usize) -> Option<&(PreHashObject, pyo3::Py<pyo3::PyAny>, usize)> {
         self.entries.get(n)
     }
 }
 
 impl<'a> FIFOPolicyOccupied<'a> {
     #[inline]
-    pub fn update(self, value: pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
+    pub fn update(
+        self,
+        py: pyo3::Python<'_>,
+        value: pyo3::Py<pyo3::PyAny>,
+    ) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
         let index = unsafe { self.bucket.as_ref() };
-        let item = &mut self.instance.entries[index - self.instance.n_shifts];
-        let old_value = std::mem::replace(&mut item.1, value);
+        let old_value;
+        {
+            let item = &mut self.instance.entries[index - self.instance.n_shifts];
+            let new_size = crate::common::entry_size(py, &item.0, &value)?;
+
+            if new_size > self.instance.maxmemory.get() {
+                return Err(pyo3::PyErr::new::<pyo3::exceptions::PyOverflowError, _>(
+                    "The cache has reached the bound",
+                ));
+            }
+
+            let old_size = item.2;
+            old_value = std::mem::replace(&mut item.1, value);
+            item.2 = new_size;
+            self.instance.memory = self
+                .instance
+                .memory
+                .saturating_sub(old_size)
+                .saturating_add(new_size);
+        }
 
         // In update we don't need to change this; because this does not change the memory address ranges
         // self.instance.observed.change();
+
+        while self.instance.memory > self.instance.maxmemory.get() {
+            if self.instance.popitem(py)?.is_none() {
+                break;
+            }
+        }
 
         Ok(old_value)
     }
 
     #[inline]
-    pub fn remove(self) -> (PreHashObject, pyo3::Py<pyo3::PyAny>) {
+    pub fn remove(self) -> (PreHashObject, pyo3::Py<pyo3::PyAny>, usize) {
         let (mut index, _) = unsafe { self.instance.table.remove(self.bucket) };
         index -= self.instance.n_shifts;
 
@@ -369,12 +415,13 @@ impl<'a> FIFOPolicyOccupied<'a> {
             .decrement_indexes(index + 1, self.instance.entries.len());
 
         let m = self.instance.entries.remove(index).unwrap();
+        self.instance.memory = self.instance.memory.saturating_sub(m.2);
 
         self.instance.observed.change();
         m
     }
 
-    pub fn into_value(self) -> &'a mut (PreHashObject, pyo3::Py<pyo3::PyAny>) {
+    pub fn into_value(self) -> &'a mut (PreHashObject, pyo3::Py<pyo3::PyAny>, usize) {
         let index = unsafe { self.bucket.as_ref() };
         &mut self.instance.entries[index - self.instance.n_shifts]
     }
@@ -388,8 +435,19 @@ impl FIFOPolicyAbsent<'_> {
         key: PreHashObject,
         value: pyo3::Py<pyo3::PyAny>,
     ) -> pyo3::PyResult<()> {
-        if self.instance.table.len() >= self.instance.maxsize.get() {
-            self.instance.popitem(py)?;
+        let entry_size = crate::common::entry_size(py, &key, &value)?;
+        if entry_size > self.instance.maxmemory.get() {
+            return Err(pyo3::PyErr::new::<pyo3::exceptions::PyOverflowError, _>(
+                "The cache has reached the bound",
+            ));
+        }
+
+        while self.instance.table.len() >= self.instance.maxsize.get()
+            || self.instance.memory.saturating_add(entry_size) > self.instance.maxmemory.get()
+        {
+            if self.instance.popitem(py)?.is_none() {
+                break;
+            }
         }
 
         match self.insert_slot {
@@ -413,7 +471,8 @@ impl FIFOPolicyAbsent<'_> {
             }
         }
 
-        self.instance.entries.push_back((key, value));
+        self.instance.entries.push_back((key, value, entry_size));
+        self.instance.memory = self.instance.memory.saturating_add(entry_size);
 
         self.instance.observed.change();
         Ok(())
@@ -421,7 +480,7 @@ impl FIFOPolicyAbsent<'_> {
 }
 
 impl Iterator for FIFOIterator {
-    type Item = std::ptr::NonNull<(PreHashObject, pyo3::Py<pyo3::PyAny>)>;
+    type Item = std::ptr::NonNull<(PreHashObject, pyo3::Py<pyo3::PyAny>, usize)>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {

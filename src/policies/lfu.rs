@@ -328,15 +328,8 @@ impl LFUPolicyOccupied<'_> {
         py: pyo3::Python<'_>,
         value: pyo3::Py<pyo3::PyAny>,
     ) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
-        let old_value;
-        {
-            let item = unsafe { self.bucket.as_mut() };
-            unsafe {
-                item.as_mut().2 += 1;
-            }
-
-            self.instance.heap.queue_sort();
-
+        let item = unsafe { self.bucket.as_mut() };
+        let (old_value, old_size, new_size) = {
             let element = unsafe { item.as_mut() };
             let new_size = crate::common::entry_size(py, &element.0, &value)?;
 
@@ -347,14 +340,18 @@ impl LFUPolicyOccupied<'_> {
             }
 
             let old_size = element.3;
-            old_value = std::mem::replace(&mut element.1, value);
+            let old_value = std::mem::replace(&mut element.1, value);
             element.3 = new_size;
-            self.instance.memory = self
-                .instance
-                .memory
-                .saturating_sub(old_size)
-                .saturating_add(new_size);
-        }
+            element.2 += 1;
+            (old_value, old_size, new_size)
+        };
+
+        self.instance.heap.queue_sort();
+        self.instance.memory = self
+            .instance
+            .memory
+            .saturating_sub(old_size)
+            .saturating_add(new_size);
 
         // In update we don't need to change this; because this does not change the memory address ranges
         // self.instance.observed.change();

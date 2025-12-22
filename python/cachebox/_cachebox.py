@@ -332,6 +332,8 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
                       a dictionary, tuple, generator, or None.
             capacity: Optional initial capacity of the cache before resizing. Defaults to 0.
             maxmemory: Maximum memory (bytes) allowed for cached entries. Zero means unlimited.
+                       When maxmemory is set, updating an existing key can evict the updated key
+                       if it is the oldest entry.
         """
         self._raw = _core.FIFOCache(maxsize, capacity=capacity, maxmemory=maxmemory)
 
@@ -601,6 +603,8 @@ class RRCache(BaseCacheImpl[KT, VT]):
             iterable (dict or Iterable[tuple], optional): Initial data to populate the cache. Defaults to None.
             capacity (int, optional): Preallocated capacity for the cache to minimize reallocations. Defaults to 0.
             maxmemory (int, optional): Maximum memory (bytes) allowed for cached entries. Zero means unlimited.
+                                       When maxmemory is set, updates can evict any key, including
+                                       the updated key.
 
         Note:
             - The cache size limit is immutable after initialization.

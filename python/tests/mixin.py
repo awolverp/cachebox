@@ -44,6 +44,11 @@ class Sized:
         return self.key == other.key
 
 
+class SizeError:
+    def __sizeof__(self) -> int:
+        raise ValueError("boom")
+
+
 def getsizeof(obj, use_sys=True):  # pragma: no cover
     try:
         if use_sys:
@@ -112,6 +117,32 @@ class _TestMixin:  # pragma: no cover
             cache[k2] = v2
             assert k2 in cache
             assert cache.memory() <= cache.maxmemory
+
+    def test_update_overflow_preserves_entry(self):
+        cache = self.CACHE(0, **self.KWARGS, maxmemory=60)
+
+        key = Sized(10, 1)
+        value = Sized(10, 101)
+        cache[key] = value
+
+        too_big = Sized(100, 102)
+        with pytest.raises(OverflowError):
+            cache[key] = too_big
+
+        assert cache[key].key == 101
+        assert cache.memory() <= cache.maxmemory
+
+    def test_update_sizeof_error_preserves_entry(self):
+        cache = self.CACHE(0, **self.KWARGS, maxmemory=60)
+
+        key = Sized(10, 1)
+        value = Sized(10, 101)
+        cache[key] = value
+
+        with pytest.raises(ValueError):
+            cache[key] = SizeError()
+
+        assert cache[key].key == 101
 
     def test___len__(self):
         cache = self.CACHE(10, **self.KWARGS, capacity=10)

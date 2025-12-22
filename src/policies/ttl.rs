@@ -509,6 +509,18 @@ impl<'a> TTLPolicyOccupied<'a> {
         py: pyo3::Python<'_>,
         value: pyo3::Py<pyo3::PyAny>,
     ) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
+        let new_size = {
+            let index = unsafe { *self.bucket.as_ref() } - self.instance.n_shifts;
+            let item = &self.instance.entries[index];
+            crate::common::entry_size(py, &item.key, &value)?
+        };
+
+        if new_size > self.instance.maxmemory.get() {
+            return Err(pyo3::PyErr::new::<pyo3::exceptions::PyOverflowError, _>(
+                "The cache has reached the bound",
+            ));
+        }
+
         // We have to move the value to the end of the vector
         let (mut index, slot) = unsafe { self.instance.table.remove(self.bucket.clone()) };
         index -= self.instance.n_shifts;
@@ -517,14 +529,6 @@ impl<'a> TTLPolicyOccupied<'a> {
             .decrement_indexes(index + 1, self.instance.entries.len());
 
         let mut item = self.instance.entries.remove(index).unwrap();
-        let new_size = crate::common::entry_size(py, &item.key, &value)?;
-
-        if new_size > self.instance.maxmemory.get() {
-            return Err(pyo3::PyErr::new::<pyo3::exceptions::PyOverflowError, _>(
-                "The cache has reached the bound",
-            ));
-        }
-
         let old_size = item.size;
         item.expire_at = Some(std::time::SystemTime::now() + self.instance.ttl);
         let old_value = std::mem::replace(&mut item.value, value);

@@ -350,7 +350,6 @@ impl Observed {
 }
 
 #[inline]
-#[optimize(speed)]
 unsafe fn _get_state(py: pyo3::Python<'_>, ptr: *mut pyo3::ffi::PyObject) -> pyo3::PyResult<u16> {
     unsafe fn inner(
         py: pyo3::Python<'_>,

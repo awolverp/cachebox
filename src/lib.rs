@@ -1,5 +1,3 @@
-#![feature(optimize_attribute)]
-
 mod lazyheap;
 mod linked_list;
 

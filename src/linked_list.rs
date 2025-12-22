@@ -20,7 +20,7 @@ pub struct LinkedList {
 pub struct Node {
     pub prev: Option<NonNull<Node>>,
     pub next: Option<NonNull<Node>>,
-    pub element: (PreHashObject, pyo3::Py<pyo3::PyAny>),
+    pub element: (PreHashObject, pyo3::Py<pyo3::PyAny>, usize),
 }
 
 impl LinkedList {
@@ -33,12 +33,17 @@ impl LinkedList {
     }
 
     #[inline]
-    pub fn push_back(&mut self, key: PreHashObject, val: pyo3::Py<pyo3::PyAny>) -> NonNull<Node> {
+    pub fn push_back(
+        &mut self,
+        key: PreHashObject,
+        val: pyo3::Py<pyo3::PyAny>,
+        size: usize,
+    ) -> NonNull<Node> {
         unsafe {
             let node = NonNull::new_unchecked(Box::into_raw(Box::new(Node {
                 prev: None,
                 next: None,
-                element: (key, val),
+                element: (key, val, size),
             })));
 
             if let Some(old) = self.tail {
@@ -57,7 +62,7 @@ impl LinkedList {
     }
 
     #[inline]
-    pub fn pop_front(&mut self) -> Option<(PreHashObject, pyo3::Py<pyo3::PyAny>)> {
+    pub fn pop_front(&mut self) -> Option<(PreHashObject, pyo3::Py<pyo3::PyAny>, usize)> {
         unsafe {
             self.head.map(|node| {
                 let boxed_node = Box::from_raw(node.as_ptr());
@@ -84,7 +89,10 @@ impl LinkedList {
     }
 
     #[inline]
-    pub unsafe fn remove(&mut self, node: NonNull<Node>) -> (PreHashObject, pyo3::Py<pyo3::PyAny>) {
+    pub unsafe fn remove(
+        &mut self,
+        node: NonNull<Node>,
+    ) -> (PreHashObject, pyo3::Py<pyo3::PyAny>, usize) {
         let node = Box::from_raw(node.as_ptr());
         let result = node.element;
 

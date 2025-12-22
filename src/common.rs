@@ -55,6 +55,19 @@ macro_rules! tuple {
 
 macro_rules! extract_pickle_tuple {
     ($py:expr, $state:expr => list) => {{
+        if pyo3::ffi::PyTuple_CheckExact($state) == 0 {
+            return Err(pyo3::PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+                "expected tuple, but got another type",
+            ));
+        }
+
+        let size = pyo3::ffi::PyTuple_Size($state);
+        if size != 3 && size != 4 {
+            return Err(pyo3::PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+                "tuple size is invalid",
+            ));
+        }
+
         let maxsize = {
             let obj = pyo3::ffi::PyTuple_GetItem($state, 0);
             pyo3::ffi::PyLong_AsSize_t(obj)
@@ -86,10 +99,36 @@ macro_rules! extract_pickle_tuple {
             return Err(e);
         }
 
-        (maxsize, iterable, capacity)
+        let maxmemory = if size == 4 {
+            let obj = pyo3::ffi::PyTuple_GetItem($state, 3);
+            let result = pyo3::ffi::PyLong_AsSize_t(obj);
+
+            if let Some(e) = pyo3::PyErr::take($py) {
+                return Err(e);
+            }
+
+            result
+        } else {
+            0
+        };
+
+        (maxsize, iterable, capacity, maxmemory)
     }};
 
     ($py:expr, $state:expr => dict) => {{
+        if pyo3::ffi::PyTuple_CheckExact($state) == 0 {
+            return Err(pyo3::PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+                "expected tuple, but got another type",
+            ));
+        }
+
+        let size = pyo3::ffi::PyTuple_Size($state);
+        if size != 3 && size != 4 {
+            return Err(pyo3::PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+                "tuple size is invalid",
+            ));
+        }
+
         let maxsize = {
             let obj = pyo3::ffi::PyTuple_GetItem($state, 0);
             pyo3::ffi::PyLong_AsSize_t(obj)
@@ -121,8 +160,40 @@ macro_rules! extract_pickle_tuple {
             return Err(e);
         }
 
-        (maxsize, iterable, capacity)
+        let maxmemory = if size == 4 {
+            let obj = pyo3::ffi::PyTuple_GetItem($state, 3);
+            let result = pyo3::ffi::PyLong_AsSize_t(obj);
+
+            if let Some(e) = pyo3::PyErr::take($py) {
+                return Err(e);
+            }
+
+            result
+        } else {
+            0
+        };
+
+        (maxsize, iterable, capacity, maxmemory)
     }};
+}
+
+#[inline]
+pub fn pyobject_size(py: pyo3::Python<'_>, obj: &pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<usize> {
+    use pyo3::types::PyAnyMethods;
+
+    obj.bind(py).call_method0("__sizeof__")?.extract::<usize>()
+}
+
+#[inline]
+pub fn entry_size(
+    py: pyo3::Python<'_>,
+    key: &PreHashObject,
+    value: &pyo3::Py<pyo3::PyAny>,
+) -> pyo3::PyResult<usize> {
+    let key_size = pyobject_size(py, &key.obj)?;
+    let value_size = pyobject_size(py, value)?;
+
+    Ok(key_size.saturating_add(value_size))
 }
 
 #[inline]
@@ -200,6 +271,7 @@ pub struct TimeToLivePair {
     pub key: PreHashObject,
     pub value: pyo3::Py<pyo3::PyAny>,
     pub expire_at: Option<std::time::SystemTime>,
+    pub size: usize,
 }
 
 /// Represents the possible situations when a key is absent in VTTL or TTL policy's data structure.
@@ -461,11 +533,13 @@ impl TimeToLivePair {
         key: PreHashObject,
         value: pyo3::Py<pyo3::PyAny>,
         expire_at: Option<std::time::SystemTime>,
+        size: usize,
     ) -> Self {
         Self {
             key,
             value,
             expire_at,
+            size,
         }
     }
 

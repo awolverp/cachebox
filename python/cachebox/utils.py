@@ -1,11 +1,11 @@
-from ._cachebox import BaseCacheImpl, FIFOCache
-from collections import namedtuple, defaultdict
-import functools
-import asyncio
 import _thread
+import asyncio
+import functools
 import inspect
 import typing
+from collections import defaultdict, namedtuple
 
+from ._cachebox import BaseCacheImpl, FIFOCache
 
 KT = typing.TypeVar("KT")
 VT = typing.TypeVar("VT")
@@ -46,6 +46,10 @@ class Frozen(BaseCacheImpl[KT, VT]):  # pragma: no cover
     def maxsize(self) -> int:
         return self.__cache.maxsize
 
+    @property
+    def maxmemory(self) -> int:
+        return self.__cache.maxmemory
+
     def __len__(self) -> int:
         return len(self.__cache)
 
@@ -84,6 +88,9 @@ class Frozen(BaseCacheImpl[KT, VT]):  # pragma: no cover
 
     def capacity(self) -> int:
         return self.__cache.capacity()
+
+    def memory(self) -> int:
+        return self.__cache.memory()
 
     def is_full(self) -> bool:
         return self.__cache.is_full()
@@ -140,7 +147,9 @@ class Frozen(BaseCacheImpl[KT, VT]):  # pragma: no cover
 
     def update(
         self,
-        iterable: typing.Union[typing.Iterable[typing.Tuple[KT, VT]], typing.Dict[KT, VT]],
+        iterable: typing.Union[
+            typing.Iterable[typing.Tuple[KT, VT]], typing.Dict[KT, VT]
+        ],
         *args,
         **kwargs,
     ) -> None:
@@ -270,16 +279,22 @@ def _cached_wrapper(
     cache: typing.Union[BaseCacheImpl, typing.Callable],
     key_maker: typing.Callable[[tuple, dict], typing.Hashable],
     clear_reuse: bool,
-    callback: typing.Optional[typing.Callable[[int, typing.Any, typing.Any], typing.Any]],
+    callback: typing.Optional[
+        typing.Callable[[int, typing.Any, typing.Any], typing.Any]
+    ],
     copy_level: int,
     is_method: bool,
 ):
     is_method = cache_is_function = inspect.isfunction(cache)
-    _key_maker = (lambda args, kwds: key_maker(args[1:], kwds)) if is_method else key_maker
+    _key_maker = (
+        (lambda args, kwds: key_maker(args[1:], kwds)) if is_method else key_maker
+    )
 
     hits = 0
     misses = 0
-    locks: defaultdict[typing.Hashable, _LockWithCounter] = defaultdict(_LockWithCounter)
+    locks: defaultdict[typing.Hashable, _LockWithCounter] = defaultdict(
+        _LockWithCounter
+    )
     exceptions: typing.Dict[typing.Hashable, BaseException] = {}
 
     def _wrapped(*args, **kwds):
@@ -308,7 +323,9 @@ def _cached_wrapper(
 
         with locks[key]:
             if exceptions.get(key, None) is not None:
-                cached_error = exceptions[key] if locks[key].waiters > 1 else exceptions.pop(key)
+                cached_error = (
+                    exceptions[key] if locks[key].waiters > 1 else exceptions.pop(key)
+                )
                 raise cached_error
 
             try:
@@ -337,7 +354,7 @@ def _cached_wrapper(
     if not cache_is_function:
         _wrapped.cache = cache
         _wrapped.cache_info = lambda: CacheInfo(
-            hits, misses, cache.maxsize, len(cache), cache.capacity()
+            hits, misses, cache.maxsize, len(cache), cache.memory()
         )
 
     _wrapped.callback = callback
@@ -362,12 +379,16 @@ def _async_cached_wrapper(
     cache: typing.Union[BaseCacheImpl, typing.Callable],
     key_maker: typing.Callable[[tuple, dict], typing.Hashable],
     clear_reuse: bool,
-    callback: typing.Optional[typing.Callable[[int, typing.Any, typing.Any], typing.Any]],
+    callback: typing.Optional[
+        typing.Callable[[int, typing.Any, typing.Any], typing.Any]
+    ],
     copy_level: int,
     is_method: bool,
 ):
     is_method = cache_is_function = inspect.isfunction(cache)
-    _key_maker = (lambda args, kwds: key_maker(args[1:], kwds)) if is_method else key_maker
+    _key_maker = (
+        (lambda args, kwds: key_maker(args[1:], kwds)) if is_method else key_maker
+    )
 
     hits = 0
     misses = 0
@@ -404,7 +425,9 @@ def _async_cached_wrapper(
 
         async with locks[key]:
             if exceptions.get(key, None) is not None:
-                cached_error = exceptions[key] if locks[key].waiters > 1 else exceptions.pop(key)
+                cached_error = (
+                    exceptions[key] if locks[key].waiters > 1 else exceptions.pop(key)
+                )
                 raise cached_error
 
             try:
@@ -435,7 +458,7 @@ def _async_cached_wrapper(
     if not cache_is_function:
         _wrapped.cache = cache
         _wrapped.cache_info = lambda: CacheInfo(
-            hits, misses, cache.maxsize, len(cache), cache.capacity()
+            hits, misses, cache.maxsize, len(cache), cache.memory()
         )
 
     _wrapped.callback = callback
@@ -459,7 +482,9 @@ def cached(
     cache: typing.Union[BaseCacheImpl, dict, None],
     key_maker: typing.Callable[[tuple, dict], typing.Hashable] = make_key,
     clear_reuse: bool = False,
-    callback: typing.Optional[typing.Callable[[int, typing.Any, typing.Any], typing.Any]] = None,
+    callback: typing.Optional[
+        typing.Callable[[int, typing.Any, typing.Any], typing.Any]
+    ] = None,
     copy_level: int = 1,
 ) -> typing.Callable[[FT], FT]:
     """
@@ -532,7 +557,9 @@ def cachedmethod(
     cache: typing.Union[BaseCacheImpl, dict, None],
     key_maker: typing.Callable[[tuple, dict], typing.Hashable] = make_key,
     clear_reuse: bool = False,
-    callback: typing.Optional[typing.Callable[[int, typing.Any, typing.Any], typing.Any]] = None,
+    callback: typing.Optional[
+        typing.Callable[[int, typing.Any, typing.Any], typing.Any]
+    ] = None,
     copy_level: int = 1,
 ) -> typing.Callable[[FT], FT]:
     """

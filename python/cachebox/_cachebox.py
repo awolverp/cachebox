@@ -1,9 +1,9 @@
-from . import _core
-from ._core import BaseCacheImpl
-from datetime import timedelta, datetime
 import copy as _std_copy
 import typing
+from datetime import datetime, timedelta
 
+from . import _core
+from ._core import BaseCacheImpl
 
 KT = typing.TypeVar("KT")
 VT = typing.TypeVar("VT")
@@ -75,6 +75,7 @@ class Cache(BaseCacheImpl[KT, VT]):
         iterable: typing.Union[dict, typing.Iterable[tuple], None] = None,
         *,
         capacity: int = 0,
+        maxmemory: int = 0,
     ) -> None:
         """
         Initialize a new Cache instance.
@@ -83,11 +84,12 @@ class Cache(BaseCacheImpl[KT, VT]):
             maxsize (int): Maximum number of elements the cache can hold. Zero means unlimited.
             iterable (Union[Cache, dict, tuple, Generator, None], optional): Initial data to populate the cache. Defaults to None.
             capacity (int, optional): Pre-allocate hash table capacity to minimize reallocations. Defaults to 0.
+            maxmemory (int, optional): Maximum memory (bytes) allowed for cached entries. Zero means unlimited.
 
         Creates a new cache with specified size constraints and optional initial data. The cache can be pre-sized
         to improve performance when the number of expected elements is known in advance.
         """
-        self._raw = _core.Cache(maxsize, capacity=capacity)
+        self._raw = _core.Cache(maxsize, capacity=capacity, maxmemory=maxmemory)
 
         if iterable is not None:
             self.update(iterable)
@@ -96,9 +98,17 @@ class Cache(BaseCacheImpl[KT, VT]):
     def maxsize(self) -> int:
         return self._raw.maxsize()
 
+    @property
+    def maxmemory(self) -> int:
+        return self._raw.maxmemory()
+
     def capacity(self) -> int:
         """Returns the number of elements the map can hold without reallocating."""
         return self._raw.capacity()
+
+    def memory(self) -> int:
+        """Returns the total estimated memory usage of cached entries in bytes."""
+        return self._raw.memory()
 
     def __len__(self) -> int:
         return len(self._raw)
@@ -159,7 +169,9 @@ class Cache(BaseCacheImpl[KT, VT]):
         except _core.CoreKeyError:
             return default  # type: ignore[return-value]
 
-    def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
+    def setdefault(
+        self, key: KT, default: typing.Optional[DT] = None
+    ) -> typing.Union[VT, DT]:
         """
         Inserts key with a value of default if key is not in the cache. Return the value for key if key is
         in the cache, else `default`.
@@ -309,6 +321,7 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         iterable: typing.Union[typing.Union[dict, typing.Iterable[tuple]], None] = None,
         *,
         capacity: int = 0,
+        maxmemory: int = 0,
     ) -> None:
         """
         Initialize a new FIFOCache instance.
@@ -318,8 +331,9 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
             iterable: Optional initial data to populate the cache. Can be another FIFOCache,
                       a dictionary, tuple, generator, or None.
             capacity: Optional initial capacity of the cache before resizing. Defaults to 0.
+            maxmemory: Maximum memory (bytes) allowed for cached entries. Zero means unlimited.
         """
-        self._raw = _core.FIFOCache(maxsize, capacity=capacity)
+        self._raw = _core.FIFOCache(maxsize, capacity=capacity, maxmemory=maxmemory)
 
         if iterable is not None:
             self.update(iterable)
@@ -328,9 +342,17 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
     def maxsize(self) -> int:
         return self._raw.maxsize()
 
+    @property
+    def maxmemory(self) -> int:
+        return self._raw.maxmemory()
+
     def capacity(self) -> int:
         """Returns the number of elements the map can hold without reallocating."""
         return self._raw.capacity()
+
+    def memory(self) -> int:
+        """Returns the total estimated memory usage of cached entries in bytes."""
+        return self._raw.memory()
 
     def __len__(self) -> int:
         return len(self._raw)
@@ -397,7 +419,9 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         except _core.CoreKeyError:
             return default  # type: ignore[return-value] # type: ignore[return-value]
 
-    def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
+    def setdefault(
+        self, key: KT, default: typing.Optional[DT] = None
+    ) -> typing.Union[VT, DT]:
         """
         Inserts key with a value of default if key is not in the cache.
 
@@ -567,6 +591,7 @@ class RRCache(BaseCacheImpl[KT, VT]):
         iterable: typing.Union[typing.Union[dict, typing.Iterable[tuple]], None] = None,
         *,
         capacity: int = 0,
+        maxmemory: int = 0,
     ) -> None:
         """
         Initialize a new RRCache instance.
@@ -575,12 +600,13 @@ class RRCache(BaseCacheImpl[KT, VT]):
             maxsize (int): Maximum size of the cache. A value of zero means unlimited capacity.
             iterable (dict or Iterable[tuple], optional): Initial data to populate the cache. Defaults to None.
             capacity (int, optional): Preallocated capacity for the cache to minimize reallocations. Defaults to 0.
+            maxmemory (int, optional): Maximum memory (bytes) allowed for cached entries. Zero means unlimited.
 
         Note:
             - The cache size limit is immutable after initialization.
             - If an iterable is provided, the cache will be populated using the update method.
         """
-        self._raw = _core.RRCache(maxsize, capacity=capacity)
+        self._raw = _core.RRCache(maxsize, capacity=capacity, maxmemory=maxmemory)
 
         if iterable is not None:
             self.update(iterable)
@@ -589,9 +615,17 @@ class RRCache(BaseCacheImpl[KT, VT]):
     def maxsize(self) -> int:
         return self._raw.maxsize()
 
+    @property
+    def maxmemory(self) -> int:
+        return self._raw.maxmemory()
+
     def capacity(self) -> int:
         """Returns the number of elements the map can hold without reallocating."""
         return self._raw.capacity()
+
+    def memory(self) -> int:
+        """Returns the total estimated memory usage of cached entries in bytes."""
+        return self._raw.memory()
 
     def __len__(self) -> int:
         return len(self._raw)
@@ -658,7 +692,9 @@ class RRCache(BaseCacheImpl[KT, VT]):
         except _core.CoreKeyError:
             return default  # type: ignore[return-value]
 
-    def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
+    def setdefault(
+        self, key: KT, default: typing.Optional[DT] = None
+    ) -> typing.Union[VT, DT]:
         """
         Inserts key with a value of default if key is not in the cache.
 
@@ -828,6 +864,7 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         iterable: typing.Union[typing.Union[dict, typing.Iterable[tuple]], None] = None,
         *,
         capacity: int = 0,
+        maxmemory: int = 0,
     ) -> None:
         """
         Initialize a new LRU Cache instance.
@@ -836,12 +873,13 @@ class LRUCache(BaseCacheImpl[KT, VT]):
             maxsize (int): Maximum size of the cache. Zero indicates unlimited size.
             iterable (dict | Iterable[tuple], optional): Initial data to populate the cache.
             capacity (int, optional): Pre-allocated capacity for the cache to minimize reallocations.
+            maxmemory (int, optional): Maximum memory (bytes) allowed for cached entries. Zero means unlimited.
 
         Notes:
             - The cache size is immutable after initialization.
             - If an iterable is provided, it will be used to populate the cache.
         """
-        self._raw = _core.LRUCache(maxsize, capacity=capacity)
+        self._raw = _core.LRUCache(maxsize, capacity=capacity, maxmemory=maxmemory)
 
         if iterable is not None:
             self.update(iterable)
@@ -850,9 +888,17 @@ class LRUCache(BaseCacheImpl[KT, VT]):
     def maxsize(self) -> int:
         return self._raw.maxsize()
 
+    @property
+    def maxmemory(self) -> int:
+        return self._raw.maxmemory()
+
     def capacity(self) -> int:
         """Returns the number of elements the map can hold without reallocating."""
         return self._raw.capacity()
+
+    def memory(self) -> int:
+        """Returns the total estimated memory usage of cached entries in bytes."""
+        return self._raw.memory()
 
     def __len__(self) -> int:
         return len(self._raw)
@@ -891,7 +937,9 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         """
         return self._raw.insert(key, value)
 
-    def peek(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
+    def peek(
+        self, key: KT, default: typing.Optional[DT] = None
+    ) -> typing.Union[VT, DT]:
         """
         Searches for a key-value in the cache and returns it (without moving the key to recently used).
         """
@@ -928,7 +976,9 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         except _core.CoreKeyError:
             return default  # type: ignore[return-value]
 
-    def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
+    def setdefault(
+        self, key: KT, default: typing.Optional[DT] = None
+    ) -> typing.Union[VT, DT]:
         """
         Inserts key with a value of default if key is not in the cache.
 
@@ -1098,6 +1148,7 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         iterable: typing.Union[typing.Union[dict, typing.Iterable[tuple]], None] = None,
         *,
         capacity: int = 0,
+        maxmemory: int = 0,
     ) -> None:
         """
         Initialize a new Least Frequently Used (LFU) cache.
@@ -1106,10 +1157,11 @@ class LFUCache(BaseCacheImpl[KT, VT]):
             maxsize (int): Maximum size of the cache. A value of zero means unlimited size.
             iterable (dict or Iterable[tuple], optional): Initial data to populate the cache.
             capacity (int, optional): Initial hash table capacity to minimize reallocations. Defaults to 0.
+            maxmemory (int, optional): Maximum memory (bytes) allowed for cached entries. Zero means unlimited.
 
         The cache uses a thread-safe LFU eviction policy, removing least frequently accessed items when the cache reaches its maximum size.
         """
-        self._raw = _core.LFUCache(maxsize, capacity=capacity)
+        self._raw = _core.LFUCache(maxsize, capacity=capacity, maxmemory=maxmemory)
 
         if iterable is not None:
             self.update(iterable)
@@ -1118,9 +1170,17 @@ class LFUCache(BaseCacheImpl[KT, VT]):
     def maxsize(self) -> int:
         return self._raw.maxsize()
 
+    @property
+    def maxmemory(self) -> int:
+        return self._raw.maxmemory()
+
     def capacity(self) -> int:
         """Returns the number of elements the map can hold without reallocating."""
         return self._raw.capacity()
+
+    def memory(self) -> int:
+        """Returns the total estimated memory usage of cached entries in bytes."""
+        return self._raw.memory()
 
     def __len__(self) -> int:
         return len(self._raw)
@@ -1198,7 +1258,9 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         except _core.CoreKeyError:
             return default  # type: ignore[return-value]
 
-    def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
+    def setdefault(
+        self, key: KT, default: typing.Optional[DT] = None
+    ) -> typing.Union[VT, DT]:
         """
         Inserts key with a value of default if key is not in the cache.
 
@@ -1378,6 +1440,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         iterable: typing.Union[typing.Union[dict, typing.Iterable[tuple]], None] = None,
         *,
         capacity: int = 0,
+        maxmemory: int = 0,
     ) -> None:
         """
         Initialize a new TTL cache instance.
@@ -1387,6 +1450,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
             ttl: Time-to-live for cache entries, either as seconds or a timedelta.
             iterable: Optional initial items to populate the cache, can be a dict or iterable of tuples.
             capacity: Optional initial capacity for the underlying cache storage. Defaults to 0.
+            maxmemory: Maximum memory (bytes) allowed for cached entries. Zero means unlimited.
 
         Raises:
             ValueError: If the time-to-live (ttl) is not a positive number.
@@ -1397,7 +1461,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         if ttl <= 0:
             raise ValueError("ttl must be a positive number and non-zero")
 
-        self._raw = _core.TTLCache(maxsize, ttl, capacity=capacity)
+        self._raw = _core.TTLCache(maxsize, ttl, capacity=capacity, maxmemory=maxmemory)
 
         if iterable is not None:
             self.update(iterable)
@@ -1407,12 +1471,20 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         return self._raw.maxsize()
 
     @property
+    def maxmemory(self) -> int:
+        return self._raw.maxmemory()
+
+    @property
     def ttl(self) -> float:
         return self._raw.ttl()
 
     def capacity(self) -> int:
         """Returns the number of elements the map can hold without reallocating."""
         return self._raw.capacity()
+
+    def memory(self) -> int:
+        """Returns the total estimated memory usage of cached entries in bytes."""
+        return self._raw.memory()
 
     def __len__(self) -> int:
         return len(self._raw)
@@ -1526,7 +1598,9 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         else:
             return (pair.value(), pair.duration())
 
-    def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
+    def setdefault(
+        self, key: KT, default: typing.Optional[DT] = None
+    ) -> typing.Union[VT, DT]:
         """
         Inserts key with a value of default if key is not in the cache.
 
@@ -1741,9 +1815,12 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         self,
         maxsize: int,
         iterable: typing.Union[typing.Union[dict, typing.Iterable[tuple]], None] = None,
-        ttl: typing.Union[float, timedelta, datetime, None] = None,  # This is not a global TTL!
+        ttl: typing.Union[
+            float, timedelta, datetime, None
+        ] = None,  # This is not a global TTL!
         *,
         capacity: int = 0,
+        maxmemory: int = 0,
     ) -> None:
         """
         Initialize a new VTTLCache instance.
@@ -1753,11 +1830,12 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
             iterable (dict or Iterable[tuple], optional): Initial data to populate the cache.
             ttl (float or timedelta or datetime, optional): Time-to-live duration for `iterable` items.
             capacity (int, optional): Preallocated capacity for the cache to minimize reallocations.
+            maxmemory (int, optional): Maximum memory (bytes) allowed for cached entries. Zero means unlimited.
 
         Raises:
             ValueError: If provided TTL is zero or negative.
         """
-        self._raw = _core.VTTLCache(maxsize, capacity=capacity)
+        self._raw = _core.VTTLCache(maxsize, capacity=capacity, maxmemory=maxmemory)
 
         if iterable is not None:
             self.update(iterable, ttl)
@@ -1766,9 +1844,17 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
     def maxsize(self) -> int:
         return self._raw.maxsize()
 
+    @property
+    def maxmemory(self) -> int:
+        return self._raw.maxmemory()
+
     def capacity(self) -> int:
         """Returns the number of elements the map can hold without reallocating."""
         return self._raw.capacity()
+
+    def memory(self) -> int:
+        """Returns the total estimated memory usage of cached entries in bytes."""
+        return self._raw.memory()
 
     def __len__(self) -> int:
         return len(self._raw)
@@ -1789,7 +1875,10 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         return self._raw.is_full()
 
     def insert(
-        self, key: KT, value: VT, ttl: typing.Union[float, timedelta, datetime, None] = None
+        self,
+        key: KT,
+        value: VT,
+        ttl: typing.Union[float, timedelta, datetime, None] = None,
     ) -> typing.Optional[VT]:
         """
         Insert a key-value pair into the cache with an optional time-to-live (TTL).

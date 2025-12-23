@@ -127,6 +127,24 @@ class _TestMixin:  # pragma: no cover
             assert k2 in cache
             assert cache.memory() <= cache.maxmemory
 
+    def test_maxmemory_enforced_base_types(self):
+        size_of_int = sys.getsizeof(1, 1)
+
+        cache = self.CACHE(0, **self.KWARGS, maxmemory=size_of_int * 10)
+
+        for i in range(5):
+            cache[i] = i
+
+        if self.NO_POLICY:
+            with pytest.raises(OverflowError):
+                cache[10] = 10
+            
+            assert 1 in cache
+        else:
+            cache[10] = 10
+            assert 10 in cache
+            assert cache.memory() <= cache.maxmemory
+
     def test_update_overflow_preserves_entry(self):
         cache = self.CACHE(0, **self.KWARGS, maxmemory=60)
 

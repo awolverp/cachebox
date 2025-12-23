@@ -178,10 +178,27 @@ macro_rules! extract_pickle_tuple {
 }
 
 #[inline]
+#[cfg(not(PyPy))]
 pub fn pyobject_size(py: pyo3::Python<'_>, obj: &pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<usize> {
     use pyo3::types::PyAnyMethods;
 
     obj.bind(py).call_method0("__sizeof__")?.extract::<usize>()
+}
+
+#[inline]
+#[cfg(PyPy)]
+pub fn pyobject_size(py: pyo3::Python<'_>, obj: &pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<usize> {
+    use pyo3::types::PyAnyMethods;
+
+    static SIZEOF_METHOD_NAME: &'static str = "__sizeof__";
+
+    // PyPy does not support __sizeof__ or sys.getsizeof
+    let has_sizeof = obj.bind(py).getattr_opt(SIZEOF_METHOD_NAME)?;
+
+    match has_sizeof {
+        Some(x) => x.call0()?.extract::<usize>(),
+        None => Ok(1),
+    }
 }
 
 #[inline]

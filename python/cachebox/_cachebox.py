@@ -85,6 +85,8 @@ class Cache(BaseCacheImpl[KT, VT]):
             iterable (Union[Cache, dict, tuple, Generator, None], optional): Initial data to populate the cache. Defaults to None.
             capacity (int, optional): Pre-allocate hash table capacity to minimize reallocations. Defaults to 0.
             maxmemory (int, optional): Maximum memory (bytes) allowed for cached entries. Zero means unlimited.
+                                       On PyPy, it works same as `maxsize` if objects do not support `__sizeof__`
+                                       method.
 
         Creates a new cache with specified size constraints and optional initial data. The cache can be pre-sized
         to improve performance when the number of expected elements is known in advance.
@@ -599,8 +601,9 @@ class RRCache(BaseCacheImpl[KT, VT]):
             iterable (dict or Iterable[tuple], optional): Initial data to populate the cache. Defaults to None.
             capacity (int, optional): Preallocated capacity for the cache to minimize reallocations. Defaults to 0.
             maxmemory (int, optional): Maximum memory (bytes) allowed for cached entries. Zero means unlimited.
-                                       When maxmemory is set, updates can evict any key, including
-                                       the updated key.
+                                       When maxmemory is set, updates can evict any key, including the updated key.
+                                       On PyPy. In PyPy, the size of each object is assumed to be 1 if the object
+                                       does not have a `__sizeof__` method.
 
         Note:
             - The cache size limit is immutable after initialization.
@@ -872,6 +875,8 @@ class LRUCache(BaseCacheImpl[KT, VT]):
             iterable (dict | Iterable[tuple], optional): Initial data to populate the cache.
             capacity (int, optional): Pre-allocated capacity for the cache to minimize reallocations.
             maxmemory (int, optional): Maximum memory (bytes) allowed for cached entries. Zero means unlimited.
+                                       On PyPy. In PyPy, the size of each object is assumed to be 1 if the object
+                                       does not have a `__sizeof__` method.
 
         Notes:
             - The cache size is immutable after initialization.
@@ -1152,6 +1157,8 @@ class LFUCache(BaseCacheImpl[KT, VT]):
             iterable (dict or Iterable[tuple], optional): Initial data to populate the cache.
             capacity (int, optional): Initial hash table capacity to minimize reallocations. Defaults to 0.
             maxmemory (int, optional): Maximum memory (bytes) allowed for cached entries. Zero means unlimited.
+                                       On PyPy. In PyPy, the size of each object is assumed to be 1 if the object
+                                       does not have a `__sizeof__` method.
 
         The cache uses a thread-safe LFU eviction policy, removing least frequently accessed items when the cache reaches its maximum size.
         """
@@ -1443,6 +1450,8 @@ class TTLCache(BaseCacheImpl[KT, VT]):
             iterable: Optional initial items to populate the cache, can be a dict or iterable of tuples.
             capacity: Optional initial capacity for the underlying cache storage. Defaults to 0.
             maxmemory: Maximum memory (bytes) allowed for cached entries. Zero means unlimited.
+                       On PyPy. In PyPy, the size of each object is assumed to be 1 if the object
+                       does not have a `__sizeof__` method.
 
         Raises:
             ValueError: If the time-to-live (ttl) is not a positive number.
@@ -1819,6 +1828,8 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
             ttl (float or timedelta or datetime, optional): Time-to-live duration for `iterable` items.
             capacity (int, optional): Preallocated capacity for the cache to minimize reallocations.
             maxmemory (int, optional): Maximum memory (bytes) allowed for cached entries. Zero means unlimited.
+                                       On PyPy. In PyPy, the size of each object is assumed to be 1 if the object
+                                       does not have a `__sizeof__` method.
 
         Raises:
             ValueError: If provided TTL is zero or negative.

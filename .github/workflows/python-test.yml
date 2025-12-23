@@ -78,7 +78,7 @@ jobs:
         with:
           python-version: "3.13"
 
-      - run: pip install pytest pytest-asyncio "maturin[patchelf]"
+      - run: pip install pytest pytest-asyncio maturin
 
       - run: pip install -e .
         env:

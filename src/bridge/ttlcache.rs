@@ -24,9 +24,14 @@ pub struct ttlcache_items {
 #[pyo3::pymethods]
 impl TTLCache {
     #[new]
-    #[pyo3(signature=(maxsize, ttl, *, capacity=0))]
-    fn __new__(maxsize: usize, ttl: f64, capacity: usize) -> pyo3::PyResult<Self> {
-        let raw = crate::policies::ttl::TTLPolicy::new(maxsize, capacity, ttl)?;
+    #[pyo3(signature=(maxsize, ttl, *, capacity=0, maxmemory=0))]
+    fn __new__(
+        maxsize: usize,
+        ttl: f64,
+        capacity: usize,
+        maxmemory: usize,
+    ) -> pyo3::PyResult<Self> {
+        let raw = crate::policies::ttl::TTLPolicy::new(maxsize, capacity, ttl, maxmemory)?;
 
         let self_ = Self {
             raw: crate::common::Mutex::new(raw),
@@ -40,6 +45,14 @@ impl TTLCache {
 
     fn maxsize(&self) -> usize {
         self.raw.lock().maxsize()
+    }
+
+    fn maxmemory(&self) -> usize {
+        self.raw.lock().maxmemory()
+    }
+
+    fn memory(&self) -> usize {
+        self.raw.lock().memory()
     }
 
     fn ttl(&self) -> f64 {
@@ -59,7 +72,10 @@ impl TTLCache {
         let capacity = lock.capacity();
 
         capacity.0 * size_of::<usize>()
-            + capacity.1 * (size_of::<PreHashObject>() + size_of::<pyo3::ffi::PyObject>())
+            + capacity.1
+                * (size_of::<PreHashObject>()
+                    + size_of::<pyo3::ffi::PyObject>()
+                    + size_of::<usize>())
     }
 
     fn __contains__(
@@ -94,7 +110,7 @@ impl TTLCache {
         let mut lock = self.raw.lock();
 
         match lock.entry_with_slot(py, &key)? {
-            Entry::Occupied(entry) => Ok(Some(entry.update(value)?)),
+            Entry::Occupied(entry) => Ok(Some(entry.update(py, value)?)),
             Entry::Absent(entry) => {
                 entry.insert(py, key, value)?;
                 Ok(None)
@@ -286,14 +302,16 @@ impl TTLCache {
             let maxsize = pyo3::ffi::PyLong_FromSize_t(lock.maxsize());
             let capacity = pyo3::ffi::PyLong_FromSize_t(lock.capacity().0);
             let ttl = pyo3::ffi::PyFloat_FromDouble(lock.ttl().as_secs_f64());
+            let maxmemory = pyo3::ffi::PyLong_FromSize_t(lock.maxmemory());
 
             tuple!(
                 py,
-                4,
+                5,
                 0 => maxsize,
                 1 => list,
                 2 => capacity,
                 3 => ttl,
+                4 => maxmemory,
             )?
         };
 

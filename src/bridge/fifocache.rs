@@ -21,9 +21,9 @@ pub struct fifocache_items {
 #[pyo3::pymethods]
 impl FIFOCache {
     #[new]
-    #[pyo3(signature=(maxsize, *, capacity=0))]
-    fn __new__(maxsize: usize, capacity: usize) -> pyo3::PyResult<Self> {
-        let raw = crate::policies::fifo::FIFOPolicy::new(maxsize, capacity)?;
+    #[pyo3(signature=(maxsize, *, capacity=0, maxmemory=0))]
+    fn __new__(maxsize: usize, capacity: usize, maxmemory: usize) -> pyo3::PyResult<Self> {
+        let raw = crate::policies::fifo::FIFOPolicy::new(maxsize, capacity, maxmemory)?;
 
         let self_ = Self {
             raw: crate::common::Mutex::new(raw),
@@ -39,6 +39,14 @@ impl FIFOCache {
         self.raw.lock().maxsize()
     }
 
+    fn maxmemory(&self) -> usize {
+        self.raw.lock().maxmemory()
+    }
+
+    fn memory(&self) -> usize {
+        self.raw.lock().memory()
+    }
+
     fn capacity(&self) -> usize {
         self.raw.lock().capacity().0
     }
@@ -52,7 +60,10 @@ impl FIFOCache {
         let capacity = lock.capacity();
 
         capacity.0 * size_of::<usize>()
-            + capacity.1 * (size_of::<PreHashObject>() + size_of::<pyo3::ffi::PyObject>())
+            + capacity.1
+                * (size_of::<PreHashObject>()
+                    + size_of::<pyo3::ffi::PyObject>()
+                    + size_of::<usize>())
     }
 
     fn __contains__(
@@ -87,7 +98,7 @@ impl FIFOCache {
         let mut lock = self.raw.lock();
 
         match lock.entry_with_slot(py, &key)? {
-            Entry::Occupied(entry) => Ok(Some(entry.update(value)?)),
+            Entry::Occupied(entry) => Ok(Some(entry.update(py, value)?)),
             Entry::Absent(entry) => {
                 entry.insert(py, key, value)?;
                 Ok(None)
@@ -164,7 +175,7 @@ impl FIFOCache {
 
         match lock.entry(py, &key)? {
             Entry::Occupied(entry) => {
-                let (_, value) = entry.remove();
+                let (_, value, _) = entry.remove();
                 Ok(value)
             }
             Entry::Absent(_) => Err(pyo3::PyErr::new::<super::CoreKeyError, _>(key.obj)),
@@ -178,7 +189,7 @@ impl FIFOCache {
         let mut lock = self.raw.lock();
 
         match lock.popitem(py)? {
-            Some((key, val)) => Ok((key.obj, val)),
+            Some((key, val, _)) => Ok((key.obj, val)),
             None => Err(pyo3::PyErr::new::<super::CoreKeyError, _>(())),
         }
     }
@@ -208,7 +219,7 @@ impl FIFOCache {
 
         match lock.entry(py, &key)? {
             Entry::Occupied(entry) => {
-                let (_, ref value) = entry.into_value();
+                let (_, ref value, _) = entry.into_value();
                 Ok(value.clone_ref(py))
             }
             Entry::Absent(entry) => {
@@ -234,7 +245,8 @@ impl FIFOCache {
     fn get_index(&self, py: pyo3::Python<'_>, index: usize) -> Option<pyo3::Py<pyo3::PyAny>> {
         let lock = self.raw.lock();
 
-        lock.get_index(index).map(|(key, _)| key.obj.clone_ref(py))
+        lock.get_index(index)
+            .map(|(key, _, _)| key.obj.clone_ref(py))
     }
 
     fn __getnewargs__(&self) -> (usize,) {
@@ -250,7 +262,7 @@ impl FIFOCache {
                 return Err(pyo3::PyErr::fetch(py));
             }
 
-            for (hk, val) in lock.entries_iter() {
+            for (hk, val, _) in lock.entries_iter() {
                 let tp = tuple!(
                     py,
                     2,
@@ -271,13 +283,15 @@ impl FIFOCache {
 
             let maxsize = pyo3::ffi::PyLong_FromSize_t(lock.maxsize());
             let capacity = pyo3::ffi::PyLong_FromSize_t(lock.capacity().0);
+            let maxmemory = pyo3::ffi::PyLong_FromSize_t(lock.maxmemory());
 
             tuple!(
                 py,
-                3,
+                4,
                 0 => maxsize,
                 1 => list,
                 2 => capacity,
+                3 => maxmemory,
             )?
         };
 
@@ -320,7 +334,7 @@ impl fifocache_items {
         slf.ptr.proceed(slf.py())?;
 
         if let Some(x) = iter.next() {
-            let (key, val) = unsafe { x.as_ref() };
+            let (key, val, _) = unsafe { x.as_ref() };
 
             tuple!(
                 slf.py(),

@@ -15,15 +15,17 @@ pub struct Cache {
 #[pyo3::pyclass(module = "cachebox._core")]
 pub struct cache_items {
     pub ptr: ObservedIterator,
-    pub iter: crate::common::Mutex<hashbrown::raw::RawIter<(PreHashObject, pyo3::Py<pyo3::PyAny>)>>,
+    pub iter: crate::common::Mutex<
+        hashbrown::raw::RawIter<(PreHashObject, pyo3::Py<pyo3::PyAny>, usize)>,
+    >,
 }
 
 #[pyo3::pymethods]
 impl Cache {
     #[new]
-    #[pyo3(signature=(maxsize, *, capacity=0))]
-    fn __new__(maxsize: usize, capacity: usize) -> pyo3::PyResult<Self> {
-        let raw = crate::policies::nopolicy::NoPolicy::new(maxsize, capacity)?;
+    #[pyo3(signature=(maxsize, *, capacity=0, maxmemory=0))]
+    fn __new__(maxsize: usize, capacity: usize, maxmemory: usize) -> pyo3::PyResult<Self> {
+        let raw = crate::policies::nopolicy::NoPolicy::new(maxsize, capacity, maxmemory)?;
 
         let self_ = Self {
             raw: crate::common::Mutex::new(raw),
@@ -39,6 +41,14 @@ impl Cache {
         self.raw.lock().maxsize()
     }
 
+    fn maxmemory(&self) -> usize {
+        self.raw.lock().maxmemory()
+    }
+
+    fn memory(&self) -> usize {
+        self.raw.lock().memory()
+    }
+
     fn capacity(&self) -> usize {
         self.raw.lock().capacity()
     }
@@ -49,7 +59,8 @@ impl Cache {
 
     fn __sizeof__(&self) -> usize {
         let lock = self.raw.lock();
-        lock.capacity() * (size_of::<PreHashObject>() + size_of::<pyo3::ffi::PyObject>())
+        lock.capacity()
+            * (size_of::<PreHashObject>() + size_of::<pyo3::ffi::PyObject>() + size_of::<usize>())
     }
 
     fn __contains__(
@@ -84,9 +95,9 @@ impl Cache {
         let mut lock = self.raw.lock();
 
         match lock.entry_with_slot(py, &key)? {
-            Entry::Occupied(entry) => Ok(Some(entry.update(value)?)),
+            Entry::Occupied(entry) => Ok(Some(entry.update(py, value)?)),
             Entry::Absent(entry) => {
-                entry.insert(key, value)?;
+                entry.insert(py, key, value)?;
                 Ok(None)
             }
         }
@@ -160,7 +171,7 @@ impl Cache {
 
         match lock.entry(py, &key)? {
             Entry::Occupied(entry) => {
-                let (_, value) = entry.remove();
+                let (_, value, _) = entry.remove();
                 Ok(value)
             }
             Entry::Absent(_) => Err(pyo3::PyErr::new::<super::CoreKeyError, _>(key.obj)),
@@ -192,11 +203,11 @@ impl Cache {
 
         match lock.entry(py, &key)? {
             Entry::Occupied(entry) => {
-                let (_, ref value) = entry.into_value();
+                let (_, ref value, _) = entry.into_value();
                 Ok(value.clone_ref(py))
             }
             Entry::Absent(entry) => {
-                entry.insert(key, default.clone_ref(py))?;
+                entry.insert(py, key, default.clone_ref(py))?;
                 Ok(default)
             }
         }
@@ -230,20 +241,22 @@ impl Cache {
                 }
 
                 for bucket in lock.iter() {
-                    let (key, val) = bucket.as_ref();
+                    let (key, val, _) = bucket.as_ref();
                     // SAFETY: we don't need to check error because we sure about key that is hashable.
                     pyo3::ffi::PyDict_SetItem(mp, key.obj.as_ptr(), val.as_ptr());
                 }
 
                 let maxsize = pyo3::ffi::PyLong_FromSize_t(lock.maxsize());
                 let capacity = pyo3::ffi::PyLong_FromSize_t(lock.capacity());
+                let maxmemory = pyo3::ffi::PyLong_FromSize_t(lock.maxmemory());
 
                 tuple!(
                     py,
-                    3,
+                    4,
                     0 => maxsize,
                     1 => mp,
                     2 => capacity,
+                    3 => maxmemory,
                 )?
             };
             Ok(pyo3::Py::from_owned_ptr(py, state))
@@ -261,7 +274,7 @@ impl Cache {
 
     pub fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
         for value in self.raw.lock().iter() {
-            let (key, value) = unsafe { value.as_ref() };
+            let (key, value, _) = unsafe { value.as_ref() };
             visit.call(&key.obj)?;
             visit.call(value)?;
         }
@@ -287,7 +300,7 @@ impl cache_items {
         slf.ptr.proceed(slf.py())?;
 
         if let Some(x) = iter.next() {
-            let (key, val) = unsafe { x.as_ref() };
+            let (key, val, _) = unsafe { x.as_ref() };
 
             tuple!(
                 slf.py(),

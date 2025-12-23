@@ -1,16 +1,18 @@
+import time
+from datetime import timedelta
+
+import pytest
 from cachebox import (
     Cache,
     FIFOCache,
-    RRCache,
-    LRUCache,
     LFUCache,
+    LRUCache,
+    RRCache,
     TTLCache,
     VTTLCache,
 )
-from datetime import timedelta
-import pytest
-from .mixin import _TestMixin
-import time
+
+from .mixin import Sized, _TestMixin
 
 
 class TestCache(_TestMixin):
@@ -63,6 +65,23 @@ class TestFIFOCache(_TestMixin):
         del cache[4]
 
         assert cache.popitem() == (10, 10)
+
+    def test_update_can_evict_self_on_maxmemory(self):
+        cache = FIFOCache(0, maxmemory=50)
+
+        k1 = Sized(10, 1)
+        v1 = Sized(10, 101)
+        k2 = Sized(10, 2)
+        v2 = Sized(10, 102)
+
+        cache[k1] = v1
+        cache[k2] = v2
+
+        cache[k1] = Sized(40, 103)
+
+        assert k1 not in cache
+        assert k2 in cache
+        assert cache.memory() <= cache.maxmemory
 
     def test_ordered_iterators(self):
         obj = self.CACHE(100, **self.KWARGS, capacity=100)

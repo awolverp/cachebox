@@ -21,9 +21,9 @@ pub struct lrucache_items {
 #[pyo3::pymethods]
 impl LRUCache {
     #[new]
-    #[pyo3(signature=(maxsize, *, capacity=0))]
-    fn __new__(maxsize: usize, capacity: usize) -> pyo3::PyResult<Self> {
-        let raw = crate::policies::lru::LRUPolicy::new(maxsize, capacity)?;
+    #[pyo3(signature=(maxsize, *, capacity=0, maxmemory=0))]
+    fn __new__(maxsize: usize, capacity: usize, maxmemory: usize) -> pyo3::PyResult<Self> {
+        let raw = crate::policies::lru::LRUPolicy::new(maxsize, capacity, maxmemory)?;
 
         let self_ = Self {
             raw: crate::common::Mutex::new(raw),
@@ -39,6 +39,14 @@ impl LRUCache {
         self.raw.lock().maxsize()
     }
 
+    fn maxmemory(&self) -> usize {
+        self.raw.lock().maxmemory()
+    }
+
+    fn memory(&self) -> usize {
+        self.raw.lock().memory()
+    }
+
     fn capacity(&self) -> usize {
         self.raw.lock().capacity()
     }
@@ -50,7 +58,8 @@ impl LRUCache {
     fn __sizeof__(&self) -> usize {
         let lock = self.raw.lock();
 
-        lock.capacity() * (size_of::<PreHashObject>() + size_of::<pyo3::ffi::PyObject>())
+        lock.capacity()
+            * (size_of::<PreHashObject>() + size_of::<pyo3::ffi::PyObject>() + size_of::<usize>())
     }
 
     fn __contains__(
@@ -85,9 +94,9 @@ impl LRUCache {
         let mut lock = self.raw.lock();
 
         match lock.entry_with_slot(py, &key)? {
-            Entry::Occupied(entry) => Ok(Some(entry.update(value)?)),
+            Entry::Occupied(entry) => Ok(Some(entry.update(py, value)?)),
             Entry::Absent(entry) => {
-                entry.insert(key, value)?;
+                entry.insert(py, key, value)?;
                 Ok(None)
             }
         }
@@ -176,7 +185,7 @@ impl LRUCache {
 
         match lock.entry(py, &key)? {
             Entry::Occupied(entry) => {
-                let (_, value) = entry.remove();
+                let (_, value, _) = entry.remove();
                 Ok(value)
             }
             Entry::Absent(_) => Err(pyo3::PyErr::new::<super::CoreKeyError, _>(key.obj)),
@@ -187,7 +196,7 @@ impl LRUCache {
         let mut lock = self.raw.lock();
 
         match lock.popitem() {
-            Some((key, val)) => Ok((key.obj, val)),
+            Some((key, val, _)) => Ok((key.obj, val)),
             None => Err(pyo3::PyErr::new::<super::CoreKeyError, _>(())),
         }
     }
@@ -217,11 +226,11 @@ impl LRUCache {
 
         match lock.entry(py, &key)? {
             Entry::Occupied(entry) => {
-                let (_, ref value) = entry.into_value();
+                let (_, ref value, _) = entry.into_value();
                 Ok(value.clone_ref(py))
             }
             Entry::Absent(entry) => {
-                entry.insert(key, default.clone_ref(py))?;
+                entry.insert(py, key, default.clone_ref(py))?;
                 Ok(default)
             }
         }
@@ -264,7 +273,7 @@ impl LRUCache {
             }
 
             for node in lock.iter() {
-                let (hk, val) = &(*node.as_ptr()).element;
+                let (hk, val, _) = &(*node.as_ptr()).element;
 
                 let tp = tuple!(
                     py,
@@ -286,13 +295,15 @@ impl LRUCache {
 
             let maxsize = pyo3::ffi::PyLong_FromSize_t(lock.maxsize());
             let capacity = pyo3::ffi::PyLong_FromSize_t(lock.capacity());
+            let maxmemory = pyo3::ffi::PyLong_FromSize_t(lock.maxmemory());
 
             tuple!(
                 py,
-                3,
+                4,
                 0 => maxsize,
                 1 => list,
                 2 => capacity,
+                3 => maxmemory,
             )?
         };
 
@@ -337,7 +348,7 @@ impl lrucache_items {
         slf.ptr.proceed(slf.py())?;
 
         if let Some(x) = iter.next() {
-            let (key, val) = unsafe { &x.as_ref().element };
+            let (key, val, _) = unsafe { &x.as_ref().element };
 
             tuple!(
                 slf.py(),

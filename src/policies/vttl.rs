@@ -28,6 +28,8 @@ pub struct VTTLPolicy {
     table: hashbrown::raw::RawTable<NonNull<TimeToLivePair>>,
     heap: lazyheap::LazyHeap<TimeToLivePair>,
     maxsize: std::num::NonZeroUsize,
+    maxmemory: std::num::NonZeroUsize,
+    memory: usize,
     pub observed: Observed,
 }
 
@@ -44,20 +46,31 @@ pub struct VTTLPolicyAbsent<'a> {
 pub type VTTLIterator = lazyheap::Iter<TimeToLivePair>;
 
 impl VTTLPolicy {
-    pub fn new(maxsize: usize, mut capacity: usize) -> pyo3::PyResult<Self> {
+    pub fn new(maxsize: usize, mut capacity: usize, maxmemory: usize) -> pyo3::PyResult<Self> {
         let maxsize = non_zero_or!(maxsize, isize::MAX as usize);
+        let maxmemory = non_zero_or!(maxmemory, isize::MAX as usize);
         capacity = capacity.min(maxsize.get());
 
         Ok(Self {
             table: new_table!(capacity)?,
             heap: lazyheap::LazyHeap::new(),
             maxsize,
+            maxmemory,
+            memory: 0,
             observed: Observed::new(),
         })
     }
 
     pub fn maxsize(&self) -> usize {
         self.maxsize.get()
+    }
+
+    pub fn maxmemory(&self) -> usize {
+        self.maxmemory.get()
+    }
+
+    pub fn memory(&self) -> usize {
+        self.memory
     }
 
     #[inline]
@@ -72,7 +85,7 @@ impl VTTLPolicy {
     }
 
     pub fn is_full(&self) -> bool {
-        self.table.len() == self.maxsize.get()
+        self.table.len() == self.maxsize.get() || self.memory >= self.maxmemory.get()
     }
 
     pub fn capacity(&self) -> usize {
@@ -98,7 +111,10 @@ impl VTTLPolicy {
                     .unwrap();
             }
 
-            self.heap.pop_front(compare_fn!());
+            let removed = self.heap.pop_front(compare_fn!());
+            if let Some(pair) = removed {
+                self.memory = self.memory.saturating_sub(pair.size);
+            }
             self.observed.change();
         }
     }
@@ -118,7 +134,9 @@ impl VTTLPolicy {
         }
 
         self.observed.change();
-        Some(self.heap.pop_front(compare_fn!()).unwrap())
+        let item = self.heap.pop_front(compare_fn!()).unwrap();
+        self.memory = self.memory.saturating_sub(item.size);
+        Some(item)
     }
 
     #[inline]
@@ -205,6 +223,7 @@ impl VTTLPolicy {
     pub fn clear(&mut self) {
         self.table.clear();
         self.heap.clear();
+        self.memory = 0;
         self.observed.change();
     }
 
@@ -222,6 +241,10 @@ impl VTTLPolicy {
 
     pub fn equal(&mut self, py: pyo3::Python<'_>, other: &mut Self) -> pyo3::PyResult<bool> {
         if self.maxsize != other.maxsize {
+            return Ok(false);
+        }
+
+        if self.maxmemory != other.maxmemory {
             return Ok(false);
         }
 
@@ -277,10 +300,10 @@ impl VTTLPolicy {
 
                 match self.entry_with_slot(py, &hk)? {
                     Entry::Occupied(entry) => {
-                        entry.update(value.unbind(), ttl)?;
+                        entry.update(py, value.unbind(), ttl)?;
                     }
                     Entry::Absent(entry) => {
-                        entry.insert(hk, value.unbind(), ttl)?;
+                        entry.insert(py, hk, value.unbind(), ttl)?;
                     }
                 }
             }
@@ -293,10 +316,10 @@ impl VTTLPolicy {
 
                 match self.entry_with_slot(py, &hk)? {
                     Entry::Occupied(entry) => {
-                        entry.update(value, ttl)?;
+                        entry.update(py, value, ttl)?;
                     }
                     Entry::Absent(entry) => {
-                        entry.insert(hk, value, ttl)?;
+                        entry.insert(py, hk, value, ttl)?;
                     }
                 }
             }
@@ -314,8 +337,7 @@ impl VTTLPolicy {
         use pyo3::types::PyAnyMethods;
 
         unsafe {
-            tuple!(check state, size=3)?;
-            let (maxsize, iterable, capacity) = extract_pickle_tuple!(py, state => list);
+            let (maxsize, iterable, capacity, maxmemory) = extract_pickle_tuple!(py, state => list);
 
             // SAFETY: we check `iterable` type in `extract_pickle_tuple` macro
             if maxsize < (pyo3::ffi::PyObject_Size(iterable.as_ptr()) as usize) {
@@ -324,7 +346,7 @@ impl VTTLPolicy {
                 ));
             }
 
-            let mut new = Self::new(maxsize, capacity)?;
+            let mut new = Self::new(maxsize, capacity, maxmemory)?;
 
             for pair in iterable.bind(py).try_iter()? {
                 let (key, value, timestamp) =
@@ -342,7 +364,7 @@ impl VTTLPolicy {
 
                 match new.entry_with_slot(py, &hk)? {
                     Entry::Absent(entry) => {
-                        entry.pickle_insert(hk, value, ttl)?;
+                        entry.pickle_insert(py, hk, value, ttl)?;
                     }
                     _ => std::hint::unreachable_unchecked(),
                 }
@@ -361,21 +383,45 @@ impl VTTLPolicyOccupied<'_> {
     #[inline]
     pub fn update(
         self,
+        py: pyo3::Python<'_>,
         value: pyo3::Py<pyo3::PyAny>,
         ttl: Option<f64>,
     ) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
-        let item = unsafe { self.bucket.as_mut() };
+        let old_value;
+        {
+            let item = unsafe { self.bucket.as_mut() };
+            let pair = unsafe { item.as_mut() };
+            let new_size = crate::common::entry_size(py, &pair.key, &value)?;
 
-        unsafe {
-            item.as_mut().expire_at =
+            if new_size > self.instance.maxmemory.get() {
+                return Err(pyo3::PyErr::new::<pyo3::exceptions::PyOverflowError, _>(
+                    "The cache has reached the bound",
+                ));
+            }
+
+            let old_size = pair.size;
+            old_value = std::mem::replace(&mut pair.value, value);
+            pair.size = new_size;
+            pair.expire_at =
                 ttl.map(|x| std::time::SystemTime::now() + std::time::Duration::from_secs_f64(x));
+            self.instance.memory = self
+                .instance
+                .memory
+                .saturating_sub(old_size)
+                .saturating_add(new_size);
         }
         self.instance.heap.queue_sort();
 
         // In update we don't need to change this; because this does not change the memory address ranges
         // self.instance.observed.change();
 
-        Ok(unsafe { std::mem::replace(&mut item.as_mut().value, value) })
+        while self.instance.memory > self.instance.maxmemory.get() {
+            if self.instance.popitem().is_none() {
+                break;
+            }
+        }
+
+        Ok(old_value)
     }
 
     #[inline]
@@ -383,6 +429,7 @@ impl VTTLPolicyOccupied<'_> {
         let (item, _) = unsafe { self.instance.table.remove(self.bucket) };
         let item = self.instance.heap.remove(item, compare_fn!());
 
+        self.instance.memory = self.instance.memory.saturating_sub(item.size);
         self.instance.observed.change();
         item
     }
@@ -396,10 +443,20 @@ impl VTTLPolicyOccupied<'_> {
 impl VTTLPolicyAbsent<'_> {
     unsafe fn pickle_insert(
         self,
+        py: pyo3::Python<'_>,
         key: PreHashObject,
         value: pyo3::Py<pyo3::PyAny>,
         expire_at: Option<std::time::SystemTime>,
     ) -> pyo3::PyResult<()> {
+        let entry_size = crate::common::entry_size(py, &key, &value)?;
+        if entry_size > self.instance.maxmemory.get()
+            || self.instance.memory.saturating_add(entry_size) > self.instance.maxmemory.get()
+        {
+            return Err(pyo3::PyErr::new::<pyo3::exceptions::PyOverflowError, _>(
+                "The cache has reached the bound",
+            ));
+        }
+
         match self.situation {
             AbsentSituation::Expired(_) => {
                 return Err(pyo3::PyErr::new::<pyo3::exceptions::PyValueError, _>(
@@ -416,7 +473,7 @@ impl VTTLPolicyAbsent<'_> {
                 let node = self
                     .instance
                     .heap
-                    .push(TimeToLivePair::new(key, value, expire_at));
+                    .push(TimeToLivePair::new(key, value, expire_at, entry_size));
 
                 unsafe {
                     self.instance.table.insert_in_slot(hash, slot, node);
@@ -425,34 +482,58 @@ impl VTTLPolicyAbsent<'_> {
             AbsentSituation::None => unsafe { std::hint::unreachable_unchecked() },
         }
 
+        self.instance.memory = self.instance.memory.saturating_add(entry_size);
         Ok(())
     }
 
     #[inline]
     pub fn insert(
         self,
+        py: pyo3::Python<'_>,
         key: PreHashObject,
         value: pyo3::Py<pyo3::PyAny>,
         ttl: Option<f64>,
     ) -> pyo3::PyResult<()> {
         let expire_at =
             ttl.map(|x| std::time::SystemTime::now() + std::time::Duration::from_secs_f64(x));
+        let entry_size = crate::common::entry_size(py, &key, &value)?;
+
+        if entry_size > self.instance.maxmemory.get() {
+            return Err(pyo3::PyErr::new::<pyo3::exceptions::PyOverflowError, _>(
+                "The cache has reached the bound",
+            ));
+        }
 
         match self.situation {
             AbsentSituation::Expired(bucket) => {
                 // This means the key is available but expired
                 // So we have to update the values of the old key
                 // and queue the heap's sort
-                let item = unsafe { bucket.as_mut() };
+                let old_size = unsafe { bucket.as_ref().as_ref().size };
 
-                unsafe {
-                    item.as_mut().expire_at = ttl.map(|x| {
-                        std::time::SystemTime::now() + std::time::Duration::from_secs_f64(x)
-                    });
-                    item.as_mut().value = value;
+                {
+                    let item = unsafe { bucket.as_mut() };
+                    unsafe {
+                        item.as_mut().expire_at = ttl.map(|x| {
+                            std::time::SystemTime::now() + std::time::Duration::from_secs_f64(x)
+                        });
+                        item.as_mut().value = value;
+                        item.as_mut().size = entry_size;
+                    }
                 }
 
                 self.instance.heap.queue_sort();
+                self.instance.memory = self
+                    .instance
+                    .memory
+                    .saturating_sub(old_size)
+                    .saturating_add(entry_size);
+
+                while self.instance.memory > self.instance.maxmemory.get() {
+                    if self.instance.popitem().is_none() {
+                        break;
+                    }
+                }
 
                 // Like VTTLPolicyOccupied::update, Here we don't need to change this
                 // self.instance.observed.change();
@@ -460,39 +541,51 @@ impl VTTLPolicyAbsent<'_> {
             AbsentSituation::Slot(slot) => {
                 self.instance.expire(); // Remove expired pairs to make room for the new pair
 
-                if self.instance.table.len() >= self.instance.maxsize.get() {
-                    self.instance.popitem();
+                while self.instance.table.len() >= self.instance.maxsize.get()
+                    || self.instance.memory.saturating_add(entry_size)
+                        > self.instance.maxmemory.get()
+                {
+                    if self.instance.popitem().is_none() {
+                        break;
+                    }
                 }
 
                 let hash = key.hash;
                 let node = self
                     .instance
                     .heap
-                    .push(TimeToLivePair::new(key, value, expire_at));
+                    .push(TimeToLivePair::new(key, value, expire_at, entry_size));
 
                 unsafe {
                     self.instance.table.insert_in_slot(hash, slot, node);
                 }
 
+                self.instance.memory = self.instance.memory.saturating_add(entry_size);
                 self.instance.observed.change();
             }
             AbsentSituation::None => {
                 self.instance.expire(); // Remove expired pairs to make room for the new pair
 
-                if self.instance.table.len() >= self.instance.maxsize.get() {
-                    self.instance.popitem();
+                while self.instance.table.len() >= self.instance.maxsize.get()
+                    || self.instance.memory.saturating_add(entry_size)
+                        > self.instance.maxmemory.get()
+                {
+                    if self.instance.popitem().is_none() {
+                        break;
+                    }
                 }
 
                 let hash = key.hash;
                 let node = self
                     .instance
                     .heap
-                    .push(TimeToLivePair::new(key, value, expire_at));
+                    .push(TimeToLivePair::new(key, value, expire_at, entry_size));
 
                 self.instance
                     .table
                     .insert(hash, node, |x| unsafe { x.as_ref().key.hash });
 
+                self.instance.memory = self.instance.memory.saturating_add(entry_size);
                 self.instance.observed.change();
             }
         }

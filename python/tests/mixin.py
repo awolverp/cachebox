@@ -1,8 +1,9 @@
-from cachebox import BaseCacheImpl, TTLCache
 import dataclasses
-import pytest
-import typing
 import sys
+import typing
+
+import pytest
+from cachebox import BaseCacheImpl, TTLCache
 
 
 @dataclasses.dataclass
@@ -24,6 +25,28 @@ class NoEQ:
 
     def __hash__(self) -> int:
         return self.val
+
+
+@dataclasses.dataclass
+class Sized:
+    size: int
+    key: int
+
+    def __sizeof__(self) -> int:
+        return self.size
+
+    def __hash__(self) -> int:
+        return self.key
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Sized):
+            return False
+        return self.key == other.key
+
+
+class SizeError:
+    def __sizeof__(self) -> int:
+        raise ValueError("boom")
 
 
 def getsizeof(obj, use_sys=True):  # pragma: no cover
@@ -70,6 +93,56 @@ class _TestMixin:  # pragma: no cover
 
         with pytest.raises(OverflowError):
             cache["new-key"] = "new-value"
+
+    def test_maxmemory_config(self):
+        cache = self.CACHE(10, **self.KWARGS, maxmemory=128)
+        assert cache.maxmemory == 128
+        assert cache.memory() == 0
+
+    def test_maxmemory_enforced(self):
+        cache = self.CACHE(0, **self.KWARGS, maxmemory=100)
+
+        k1 = Sized(10, 1)
+        v1 = Sized(80, 101)
+        cache[k1] = v1
+
+        k2 = Sized(10, 2)
+        v2 = Sized(80, 102)
+
+        if self.NO_POLICY:
+            with pytest.raises(OverflowError):
+                cache[k2] = v2
+            assert k1 in cache
+        else:
+            cache[k2] = v2
+            assert k2 in cache
+            assert cache.memory() <= cache.maxmemory
+
+    def test_update_overflow_preserves_entry(self):
+        cache = self.CACHE(0, **self.KWARGS, maxmemory=60)
+
+        key = Sized(10, 1)
+        value = Sized(10, 101)
+        cache[key] = value
+
+        too_big = Sized(100, 102)
+        with pytest.raises(OverflowError):
+            cache[key] = too_big
+
+        assert cache[key].key == 101
+        assert cache.memory() <= cache.maxmemory
+
+    def test_update_sizeof_error_preserves_entry(self):
+        cache = self.CACHE(0, **self.KWARGS, maxmemory=60)
+
+        key = Sized(10, 1)
+        value = Sized(10, 101)
+        cache[key] = value
+
+        with pytest.raises(ValueError):
+            cache[key] = SizeError()
+
+        assert cache[key].key == 101
 
     def test___len__(self):
         cache = self.CACHE(10, **self.KWARGS, capacity=10)

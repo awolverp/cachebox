@@ -5,12 +5,14 @@ use crate::common::TryFindMethods;
 use crate::lazyheap;
 use std::ptr::NonNull;
 
-type TupleValue = (PreHashObject, pyo3::Py<pyo3::PyAny>, usize);
+type TupleValue = (PreHashObject, pyo3::Py<pyo3::PyAny>, usize, usize);
 
 pub struct LFUPolicy {
     table: hashbrown::raw::RawTable<NonNull<TupleValue>>,
     heap: lazyheap::LazyHeap<TupleValue>,
     maxsize: std::num::NonZeroUsize,
+    maxmemory: std::num::NonZeroUsize,
+    memory: usize,
     pub observed: Observed,
 }
 
@@ -24,23 +26,34 @@ pub struct LFUPolicyAbsent<'a> {
     insert_slot: Option<hashbrown::raw::InsertSlot>,
 }
 
-pub type LFUIterator = lazyheap::Iter<(PreHashObject, pyo3::Py<pyo3::PyAny>, usize)>;
+pub type LFUIterator = lazyheap::Iter<(PreHashObject, pyo3::Py<pyo3::PyAny>, usize, usize)>;
 
 impl LFUPolicy {
-    pub fn new(maxsize: usize, mut capacity: usize) -> pyo3::PyResult<Self> {
+    pub fn new(maxsize: usize, mut capacity: usize, maxmemory: usize) -> pyo3::PyResult<Self> {
         let maxsize = non_zero_or!(maxsize, isize::MAX as usize);
+        let maxmemory = non_zero_or!(maxmemory, isize::MAX as usize);
         capacity = capacity.min(maxsize.get());
 
         Ok(Self {
             table: new_table!(capacity)?,
             heap: lazyheap::LazyHeap::new(),
             maxsize,
+            maxmemory,
+            memory: 0,
             observed: Observed::new(),
         })
     }
 
     pub fn maxsize(&self) -> usize {
         self.maxsize.get()
+    }
+
+    pub fn maxmemory(&self) -> usize {
+        self.maxmemory.get()
+    }
+
+    pub fn memory(&self) -> usize {
+        self.memory
     }
 
     #[inline]
@@ -54,7 +67,7 @@ impl LFUPolicy {
     }
 
     pub fn is_full(&self) -> bool {
-        self.table.len() == self.maxsize.get()
+        self.table.len() == self.maxsize.get() || self.memory >= self.maxmemory.get()
     }
 
     pub fn capacity(&self) -> usize {
@@ -75,7 +88,9 @@ impl LFUPolicy {
         }
 
         self.observed.change();
-        Some(self.heap.pop_front(|a, b| a.2.cmp(&b.2)).unwrap())
+        let item = self.heap.pop_front(|a, b| a.2.cmp(&b.2)).unwrap();
+        self.memory = self.memory.saturating_sub(item.3);
+        Some(item)
     }
 
     #[inline]
@@ -160,6 +175,7 @@ impl LFUPolicy {
     pub fn clear(&mut self) {
         self.table.clear();
         self.heap.clear();
+        self.memory = 0;
         self.observed.change();
     }
 
@@ -176,20 +192,24 @@ impl LFUPolicy {
             return Ok(false);
         }
 
+        if self.maxmemory != other.maxmemory {
+            return Ok(false);
+        }
+
         if self.table.len() != other.table.len() {
             return Ok(false);
         }
 
         unsafe {
             for node in self.table.iter().map(|x| x.as_ref()) {
-                let (key1, value1, _) = node.as_ref();
+                let (key1, value1, _, _) = node.as_ref();
 
                 match other
                     .table
                     .try_find(key1.hash, |x| key1.equal(py, &x.as_ref().0))?
                 {
                     Some(bucket) => {
-                        let (_, value2, _) = bucket.as_ref().as_ref();
+                        let (_, value2, _, _) = bucket.as_ref().as_ref();
 
                         if !crate::common::pyobject_equal(py, value1.as_ptr(), value2.as_ptr())? {
                             return Ok(false);
@@ -220,10 +240,10 @@ impl LFUPolicy {
 
                 match self.entry_with_slot(py, &hk)? {
                     Entry::Occupied(entry) => {
-                        entry.update(value.unbind())?;
+                        entry.update(py, value.unbind())?;
                     }
                     Entry::Absent(entry) => {
-                        entry.insert(hk, value.unbind(), 0)?;
+                        entry.insert(py, hk, value.unbind(), 0)?;
                     }
                 }
             }
@@ -236,10 +256,10 @@ impl LFUPolicy {
 
                 match self.entry_with_slot(py, &hk)? {
                     Entry::Occupied(entry) => {
-                        entry.update(value)?;
+                        entry.update(py, value)?;
                     }
                     Entry::Absent(entry) => {
-                        entry.insert(hk, value, 0)?;
+                        entry.insert(py, hk, value, 0)?;
                     }
                 }
             }
@@ -268,8 +288,7 @@ impl LFUPolicy {
         use pyo3::types::PyAnyMethods;
 
         unsafe {
-            tuple!(check state, size=3)?;
-            let (maxsize, iterable, capacity) = extract_pickle_tuple!(py, state => list);
+            let (maxsize, iterable, capacity, maxmemory) = extract_pickle_tuple!(py, state => list);
 
             // SAFETY: we check `iterable` type in `extract_pickle_tuple` macro
             if maxsize < (pyo3::ffi::PyObject_Size(iterable.as_ptr()) as usize) {
@@ -278,7 +297,7 @@ impl LFUPolicy {
                 ));
             }
 
-            let mut new = Self::new(maxsize, capacity)?;
+            let mut new = Self::new(maxsize, capacity, maxmemory)?;
 
             for pair in iterable.bind(py).try_iter()? {
                 let (key, value, freq) =
@@ -288,7 +307,7 @@ impl LFUPolicy {
 
                 match new.entry_with_slot(py, &hk)? {
                     Entry::Absent(entry) => {
-                        entry.insert(hk, value, freq)?;
+                        entry.insert(py, hk, value, freq)?;
                     }
                     _ => std::hint::unreachable_unchecked(),
                 }
@@ -304,18 +323,46 @@ impl LFUPolicy {
 
 impl LFUPolicyOccupied<'_> {
     #[inline]
-    pub fn update(self, value: pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
+    pub fn update(
+        self,
+        py: pyo3::Python<'_>,
+        value: pyo3::Py<pyo3::PyAny>,
+    ) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
         let item = unsafe { self.bucket.as_mut() };
-        unsafe {
-            item.as_mut().2 += 1;
-        }
+        let (old_value, old_size, new_size) = {
+            let element = unsafe { item.as_mut() };
+            let new_size = crate::common::entry_size(py, &element.0, &value)?;
+
+            if new_size > self.instance.maxmemory.get() {
+                return Err(pyo3::PyErr::new::<pyo3::exceptions::PyOverflowError, _>(
+                    "The cache has reached the bound",
+                ));
+            }
+
+            let old_size = element.3;
+            let old_value = std::mem::replace(&mut element.1, value);
+            element.3 = new_size;
+            element.2 += 1;
+            (old_value, old_size, new_size)
+        };
 
         self.instance.heap.queue_sort();
+        self.instance.memory = self
+            .instance
+            .memory
+            .saturating_sub(old_size)
+            .saturating_add(new_size);
 
         // In update we don't need to change this; because this does not change the memory address ranges
         // self.instance.observed.change();
 
-        Ok(unsafe { std::mem::replace(&mut item.as_mut().1, value) })
+        while self.instance.memory > self.instance.maxmemory.get() {
+            if self.instance.popitem().is_none() {
+                break;
+            }
+        }
+
+        Ok(old_value)
     }
 
     #[inline]
@@ -323,6 +370,7 @@ impl LFUPolicyOccupied<'_> {
         let (item, _) = unsafe { self.instance.table.remove(self.bucket) };
         let item = self.instance.heap.remove(item, |a, b| a.2.cmp(&b.2));
 
+        self.instance.memory = self.instance.memory.saturating_sub(item.3);
         self.instance.observed.change();
         item
     }
@@ -337,16 +385,28 @@ impl LFUPolicyAbsent<'_> {
     #[inline]
     pub fn insert(
         self,
+        py: pyo3::Python<'_>,
         key: PreHashObject,
         value: pyo3::Py<pyo3::PyAny>,
         freq: usize,
     ) -> pyo3::PyResult<()> {
-        if self.instance.table.len() >= self.instance.maxsize.get() {
-            self.instance.popitem();
+        let entry_size = crate::common::entry_size(py, &key, &value)?;
+        if entry_size > self.instance.maxmemory.get() {
+            return Err(pyo3::PyErr::new::<pyo3::exceptions::PyOverflowError, _>(
+                "The cache has reached the bound",
+            ));
+        }
+
+        while self.instance.table.len() >= self.instance.maxsize.get()
+            || self.instance.memory.saturating_add(entry_size) > self.instance.maxmemory.get()
+        {
+            if self.instance.popitem().is_none() {
+                break;
+            }
         }
 
         let hash = key.hash;
-        let node = self.instance.heap.push((key, value, freq));
+        let node = self.instance.heap.push((key, value, freq, entry_size));
 
         match self.insert_slot {
             Some(slot) => unsafe {
@@ -359,6 +419,7 @@ impl LFUPolicyAbsent<'_> {
             }
         }
 
+        self.instance.memory = self.instance.memory.saturating_add(entry_size);
         self.instance.observed.change();
         Ok(())
     }

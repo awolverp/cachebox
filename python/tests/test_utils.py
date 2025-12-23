@@ -1,7 +1,7 @@
 from cachebox import (
     Frozen,
     LRUCache,
-    TTLCache,
+    BaseCacheImpl,
     cached,
     make_typed_key,
     make_key,
@@ -14,8 +14,8 @@ import pytest
 import time
 
 
-def test_frozen():
-    cache = LRUCache(10, {i: i for i in range(8)})
+def test_frozen(random_cache_impl: type[BaseCacheImpl]):
+    cache = random_cache_impl(10, {i: i for i in range(8)})
     f = Frozen(cache)
 
     assert f.maxsize == cache.maxsize
@@ -39,8 +39,8 @@ def test_frozen():
     f.popitem()
 
 
-def test_cached():
-    obj = LRUCache(3)  # type: LRUCache[int, int]
+def test_cached(random_cache_impl: type[BaseCacheImpl]):
+    obj = random_cache_impl(3)
 
     @cached(obj)
     def factorial(n):
@@ -81,8 +81,8 @@ def test_cached():
     assert len(factorial.cache) == 0
 
 
-def test_key_makers():
-    @cached(LRUCache(125), key_maker=make_key)
+def test_key_makers(random_cache_impl: type[BaseCacheImpl]):
+    @cached(random_cache_impl(125), key_maker=make_key)
     def func(a, b, c):
         return a, b, c
 
@@ -92,7 +92,7 @@ def test_key_makers():
 
     assert len(func.cache) == 2
 
-    @cached(LRUCache(125), key_maker=make_typed_key)
+    @cached(random_cache_impl(125), key_maker=make_typed_key)
     def func(a, b, c):
         return a, b, c
 
@@ -104,8 +104,8 @@ def test_key_makers():
 
 
 @pytest.mark.asyncio
-async def test_async_cached():
-    obj = LRUCache(3)  # type: LRUCache[int, int]
+async def test_async_cached(random_cache_impl: type[BaseCacheImpl]):
+    obj = random_cache_impl(3)
 
     @cached(obj)
     async def factorial(n: int, _: str):
@@ -164,12 +164,12 @@ def test_cachedmethod():
 
 
 @pytest.mark.asyncio
-async def test_async_cachedmethod():
+async def test_async_cachedmethod(random_cache_impl: type[BaseCacheImpl]):
     class TestCachedMethod:
         def __init__(self, num) -> None:
             self.num = num
 
-        @cached(LRUCache(0))
+        @cached(random_cache_impl(0))
         async def method(self, char: str):
             assert type(self) is TestCachedMethod
             return char * self.num
@@ -178,8 +178,8 @@ async def test_async_cachedmethod():
     assert (await cls.method("a")) == ("a" * 10)
 
 
-def test_callback():
-    obj = LRUCache(3)
+def test_callback(random_cache_impl: type[BaseCacheImpl]):
+    obj = random_cache_impl(3)
 
     called = list()
 
@@ -210,8 +210,8 @@ def test_callback():
     assert is_cached(factorial)
 
 
-async def _test_async_callback():
-    obj = LRUCache(3)
+async def _test_async_callback(random_cache_impl: type[BaseCacheImpl]):
+    obj = random_cache_impl(3)
 
     called = list()
 
@@ -242,21 +242,21 @@ async def _test_async_callback():
     assert not is_cached(_callback)
 
 
-def test_async_callback():
+def test_async_callback(random_cache_impl: type[BaseCacheImpl]):
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
         loop = asyncio.new_event_loop()
 
-    loop.run_until_complete(_test_async_callback())
+    loop.run_until_complete(_test_async_callback(random_cache_impl))
 
 
-def test_copy_level():
+def test_copy_level(random_cache_impl: type[BaseCacheImpl]):
     class A:
         def __init__(self, c: int) -> None:
             self.c = c
 
-    @cached(LRUCache(0))
+    @cached(random_cache_impl(0))
     def func(c: int) -> A:
         return A(c)
 
@@ -267,7 +267,7 @@ def test_copy_level():
     result = func(1)
     assert result.c == 2  # !!!
 
-    @cached(LRUCache(0), copy_level=2)
+    @cached(random_cache_impl(0), copy_level=2)
     def func(c: int) -> A:
         return A(c)
 
@@ -307,11 +307,11 @@ def test_staticmethod():
     assert isinstance(a, int) and a == 1
 
 
-def test_new_cached_method():
+def test_new_cached_method(random_cache_impl: type[BaseCacheImpl]):
     class Test:
         def __init__(self, num) -> None:
             self.num = num
-            self._cache = TTLCache(20, 10)
+            self._cache = random_cache_impl(20)
 
         @cached(lambda self: self._cache)
         def method(self, char: str):
@@ -321,3 +321,95 @@ def test_new_cached_method():
     for i in range(10):
         cls = Test(i)
         assert cls.method("a") == ("a" * i)
+
+
+def test_nested_cached_shared_cache(random_cache_impl: type[BaseCacheImpl]):
+    obj = random_cache_impl(10)
+
+    @cached(obj, key_maker=make_typed_key)
+    def func_inner(a: int, b: int):
+        return a + b
+
+    @cached(obj, key_maker=make_key)
+    def func_outer(a: int, b: int):
+        return f"{a} + {b} = {func_inner(a, b)}"
+
+    assert func_outer(1, 2) == "1 + 2 = 3"
+    assert func_outer(1, 2) == "1 + 2 = 3"
+    assert func_outer(1, 2) == "1 + 2 = 3"
+    assert func_outer(1, 2) == "1 + 2 = 3"
+    assert func_outer(2, 3) == "2 + 3 = 5"
+    assert func_outer(a=2, b=3) == "2 + 3 = 5"
+
+
+def test_recursive_cached(random_cache_impl: type[BaseCacheImpl]):
+    obj = random_cache_impl(10)
+
+    @cached(obj)
+    def factorial(n):
+        if n < 0:
+            raise ValueError("فاکتوریل برای اعداد منفی تعریف نشده است.")
+        if n == 0 or n == 1:
+            return 1
+        else:
+            return n * factorial(n - 1)
+
+    assert factorial(10) == 3628800
+    assert factorial(5) == 120
+    assert factorial(10) == 3628800
+    assert factorial(5) == 120
+    assert factorial(10) == 3628800
+    assert factorial(2) == 2
+
+
+def test_recursive_threading_cached():
+    import threading
+
+    obj = LRUCache(10)
+
+    @cached(obj)
+    def factorial(n):
+        if n < 0:
+            raise ValueError("فاکتوریل برای اعداد منفی تعریف نشده است.")
+        if n == 0 or n == 1:
+            return 1
+        else:
+            return n * factorial(n - 1)
+
+    threads = list(
+        map(
+            lambda x: x.start() or x,
+            (threading.Thread(target=factorial, args=(10,), name=str(i)) for i in range(10)),
+        )
+    )
+    for t in threads:
+        t.join(timeout=60)
+
+
+@pytest.mark.asyncio
+async def test_recursive_asyncio_cached():
+    obj = LRUCache(10)
+
+    @cached(obj)
+    async def factorial(n) -> int:
+        if n < 0:
+            raise ValueError("فاکتوریل برای اعداد منفی تعریف نشده است.")
+        if n == 0 or n == 1:
+            return 1
+        else:
+            return n * (await factorial(n - 1))
+
+    result = await asyncio.wait_for(
+        asyncio.gather(
+            factorial(10),
+            factorial(10),
+            factorial(10),
+            factorial(10),
+            factorial(10),
+            factorial(10),
+            factorial(10),
+            factorial(10),
+        ),
+        10,
+    )
+    assert result == ([3628800] * 8)

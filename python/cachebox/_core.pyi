@@ -27,9 +27,7 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
     def __init__(
         self,
         maxsize: int,
-        iterable: typing.Union[
-            typing.Iterable[typing.Tuple[KT, VT]], typing.Dict[KT, VT]
-        ] = ...,
+        iterable: typing.Union[typing.Iterable[typing.Tuple[KT, VT]], typing.Dict[KT, VT]] = ...,
         *,
         capacity: int = ...,
         maxmemory: int = ...,
@@ -58,12 +56,8 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
     def insert(
         self, key: KT, value: VT, *args: typing.Any, **kwargs: typing.Any
     ) -> typing.Optional[VT]: ...
-    def get(
-        self, key: KT, default: typing.Optional[DT] = None
-    ) -> typing.Union[VT, DT]: ...
-    def pop(
-        self, key: KT, default: typing.Optional[DT] = None
-    ) -> typing.Union[VT, DT]: ...
+    def get(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]: ...
+    def pop(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]: ...
     def setdefault(
         self,
         key: KT,
@@ -77,9 +71,7 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
     def shrink_to_fit(self) -> None: ...
     def update(
         self,
-        iterable: typing.Union[
-            typing.Iterable[typing.Tuple[KT, VT]], typing.Dict[KT, VT]
-        ],
+        iterable: typing.Union[typing.Iterable[typing.Tuple[KT, VT]], typing.Dict[KT, VT]],
         *args: typing.Any,
         **kwargs: typing.Any,
     ) -> None: ...
@@ -87,7 +79,5 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
     def values(self) -> typing.Iterable[VT]: ...
     def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]: ...
     def __copy__(self) -> "BaseCacheImpl[KT, VT]": ...
-    def __deepcopy__(
-        self, memo: typing.Dict[str, object]
-    ) -> "BaseCacheImpl[KT, VT]": ...
+    def __deepcopy__(self, memo: typing.Dict[str, object]) -> "BaseCacheImpl[KT, VT]": ...
     def copy(self) -> "BaseCacheImpl[KT, VT]": ...

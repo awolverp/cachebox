@@ -69,18 +69,27 @@ class _TestMixin:  # pragma: no cover
         cache = self.CACHE(10, **self.KWARGS, capacity=8)
         assert cache.maxsize == 10
         assert 20 > cache.capacity() >= 8, "capacity: {}".format(cache.capacity())
+        assert cache.maxmemory == sys.maxsize
 
         cache = self.CACHE(20, **self.KWARGS, capacity=0)
         assert cache.maxsize == 20
         assert 2 >= cache.capacity() >= 0  # This is depends on platform
+        assert cache.maxmemory == sys.maxsize
 
         cache = self.CACHE(20, **self.KWARGS, capacity=100)
         assert cache.maxsize == 20
         assert 30 > cache.capacity() >= 20
+        assert cache.maxmemory == sys.maxsize
 
         cache = self.CACHE(0, **self.KWARGS, capacity=8)
         assert cache.maxsize == sys.maxsize
         assert 20 > cache.capacity() >= 8
+        assert cache.maxmemory == sys.maxsize
+
+        cache = self.CACHE(10, **self.KWARGS, capacity=8, maxmemory=30)
+        assert cache.maxsize == 10
+        assert 20 > cache.capacity() >= 8
+        assert cache.maxmemory == 30
 
     def test_overflow(self):
         if not self.NO_POLICY:

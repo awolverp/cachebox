@@ -169,9 +169,7 @@ class Cache(BaseCacheImpl[KT, VT]):
         except _core.CoreKeyError:
             return default  # type: ignore[return-value]
 
-    def setdefault(
-        self, key: KT, default: typing.Optional[DT] = None
-    ) -> typing.Union[VT, DT]:
+    def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
         Inserts key with a value of default if key is not in the cache. Return the value for key if key is
         in the cache, else `default`.
@@ -421,9 +419,7 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         except _core.CoreKeyError:
             return default  # type: ignore[return-value] # type: ignore[return-value]
 
-    def setdefault(
-        self, key: KT, default: typing.Optional[DT] = None
-    ) -> typing.Union[VT, DT]:
+    def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
         Inserts key with a value of default if key is not in the cache.
 
@@ -696,9 +692,7 @@ class RRCache(BaseCacheImpl[KT, VT]):
         except _core.CoreKeyError:
             return default  # type: ignore[return-value]
 
-    def setdefault(
-        self, key: KT, default: typing.Optional[DT] = None
-    ) -> typing.Union[VT, DT]:
+    def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
         Inserts key with a value of default if key is not in the cache.
 
@@ -941,9 +935,7 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         """
         return self._raw.insert(key, value)
 
-    def peek(
-        self, key: KT, default: typing.Optional[DT] = None
-    ) -> typing.Union[VT, DT]:
+    def peek(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
         Searches for a key-value in the cache and returns it (without moving the key to recently used).
         """
@@ -980,9 +972,7 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         except _core.CoreKeyError:
             return default  # type: ignore[return-value]
 
-    def setdefault(
-        self, key: KT, default: typing.Optional[DT] = None
-    ) -> typing.Union[VT, DT]:
+    def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
         Inserts key with a value of default if key is not in the cache.
 
@@ -1262,9 +1252,7 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         except _core.CoreKeyError:
             return default  # type: ignore[return-value]
 
-    def setdefault(
-        self, key: KT, default: typing.Optional[DT] = None
-    ) -> typing.Union[VT, DT]:
+    def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
         Inserts key with a value of default if key is not in the cache.
 
@@ -1602,9 +1590,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         else:
             return (pair.value(), pair.duration())
 
-    def setdefault(
-        self, key: KT, default: typing.Optional[DT] = None
-    ) -> typing.Union[VT, DT]:
+    def setdefault(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]:
         """
         Inserts key with a value of default if key is not in the cache.
 
@@ -1819,9 +1805,7 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         self,
         maxsize: int,
         iterable: typing.Union[typing.Union[dict, typing.Iterable[tuple]], None] = None,
-        ttl: typing.Union[
-            float, timedelta, datetime, None
-        ] = None,  # This is not a global TTL!
+        ttl: typing.Union[float, timedelta, datetime, None] = None,  # This is not a global TTL!
         *,
         capacity: int = 0,
         maxmemory: int = 0,

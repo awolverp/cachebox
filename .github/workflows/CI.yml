@@ -16,37 +16,37 @@ jobs:
           - {
               runner: ubuntu-latest,
               target: x86_64,
-              interpreter: "3.9 3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
               maturin-args: "--features mimalloc",
             }
           - {
               runner: ubuntu-latest,
               target: x86,
-              interpreter: "3.9 3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
               maturin-args: "--features mimalloc",
             }
           - {
               runner: ubuntu-latest,
               target: aarch64,
-              interpreter: "3.9 3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
               maturin-args: "--features mimalloc --zig",
             }
           - {
               runner: ubuntu-latest,
               target: armv7,
-              interpreter: "3.9 3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
               maturin-args: "",
             }
           - {
               runner: ubuntu-latest,
               target: s390x,
-              interpreter: "3.9 3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
               maturin-args: "",
             }
           - {
               runner: ubuntu-latest,
               target: ppc64le,
-              interpreter: "3.9 3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
               maturin-args: "",
             }
     steps:
@@ -83,22 +83,22 @@ jobs:
           - {
               runner: ubuntu-latest,
               target: x86_64,
-              interpreter: "3.9 3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
             }
           - {
               runner: ubuntu-latest,
               target: x86,
-              interpreter: "3.9 3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
             }
           - {
               runner: ubuntu-latest,
               target: aarch64,
-              interpreter: "3.9 3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
             }
           - {
               runner: ubuntu-latest,
               target: armv7,
-              interpreter: "3.9 3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
             }
 
     steps:
@@ -134,12 +134,12 @@ jobs:
           - {
               runner: windows-latest,
               target: x64,
-              interpreter: "3.9 3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
             }
           - {
               runner: windows-latest,
               target: x86,
-              interpreter: "3.9 3.10 3.11 3.12 3.13 3.13t 3.14 3.14t"
+              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t"
             }
     steps:
       - uses: actions/checkout@v5.0.0
@@ -174,12 +174,12 @@ jobs:
           - {
             runner: macos,
             target: x86_64,
-            interpreter: "3.9 3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
+            interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
           }
           - {
             runner: macos,
             target: aarch64,
-            interpreter: "3.9 3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
+            interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
           }
     steps:
       - uses: actions/checkout@v5.0.0

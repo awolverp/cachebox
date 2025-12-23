@@ -172,12 +172,12 @@ jobs:
       matrix:
         platform:
           - {
-            runner: macos,
+            runner: macos-latest,
             target: x86_64,
             interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
           }
           - {
-            runner: macos,
+            runner: macos-latest,
             target: aarch64,
             interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11"
           }

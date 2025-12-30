@@ -45,7 +45,7 @@ version = "0.12.5"
 
 [dependencies.mimalloc]
 version = "0.1.48"
-features = ["v3", "override"]
+features = ["v3", "override", "local_dynamic_tls"]
 optional = true
 
 [build-dependencies.pyo3-build-config]

@@ -1,3 +1,5 @@
+use pyo3::types::PyAnyMethods;
+
 macro_rules! non_zero_or {
     ($num:expr, $_else:expr) => {
         unsafe { core::num::NonZeroUsize::new_unchecked(if $num == 0 { $_else } else { $num }) }
@@ -180,23 +182,36 @@ macro_rules! extract_pickle_tuple {
 #[inline]
 #[cfg(not(PyPy))]
 pub fn pyobject_size(py: pyo3::Python<'_>, obj: &pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<usize> {
-    use pyo3::types::PyAnyMethods;
+    static SIZEOF_METHOD_NAME: &'static std::ffi::CStr = c"__sizeof__";
 
-    obj.bind(py).call_method0("__sizeof__")?.extract::<usize>()
+    // PyPy does not support __sizeof__ or sys.getsizeof
+    let sizeof_method = obj.bind(py).getattr(SIZEOF_METHOD_NAME)?;
+
+    unsafe {
+        if pyo3::ffi::PyType_Check(obj.as_ptr()) == 1 {
+            sizeof_method.call1((obj,))?.extract::<usize>()
+        } else {
+            sizeof_method.call0()?.extract::<usize>()
+        }
+    }
 }
 
 #[inline]
 #[cfg(PyPy)]
 pub fn pyobject_size(py: pyo3::Python<'_>, obj: &pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<usize> {
-    use pyo3::types::PyAnyMethods;
-
-    static SIZEOF_METHOD_NAME: &'static str = "__sizeof__";
+    static SIZEOF_METHOD_NAME: &'static std::ffi::CStr = c"__sizeof__";
 
     // PyPy does not support __sizeof__ or sys.getsizeof
-    let has_sizeof = obj.bind(py).getattr_opt(SIZEOF_METHOD_NAME)?;
+    let sizeof_method = obj.bind(py).getattr_opt(SIZEOF_METHOD_NAME)?;
 
-    match has_sizeof {
-        Some(x) => x.call0()?.extract::<usize>(),
+    match sizeof_method {
+        Some(sizeof_method) => unsafe {
+            if pyo3::ffi::PyType_Check(obj.as_ptr()) == 1 {
+                sizeof_method.call1((obj,))?.extract::<usize>()
+            } else {
+                sizeof_method.call0()?.extract::<usize>()
+            }
+        },
         None => Ok(1),
     }
 }

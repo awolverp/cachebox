@@ -138,7 +138,7 @@ class _TestMixin:  # pragma: no cover
         if self.NO_POLICY:
             with pytest.raises(OverflowError):
                 cache[10] = 10
-            
+
             assert 1 in cache
         else:
             cache[10] = 10
@@ -560,3 +560,11 @@ class _TestMixin:  # pragma: no cover
 
         c2.insert(1, 1)
         assert 1 not in c1
+
+    def test_cache_type(self):
+        class AType:
+            pass
+
+        cache = self.CACHE(maxsize=0, **self.KWARGS)
+        cache[AType] = AType
+        assert cache[AType] is AType

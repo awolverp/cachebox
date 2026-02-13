@@ -18,8 +18,8 @@
 -------
 
 ### What does it do?
-You can easily and powerfully perform caching operations in Python as fast as possible.
-This can make your application very faster and it's a good choice in big applications.
+You can easily perform powerful caching operations in Python as fast as possible.
+This can make your application a lot faster and it can be a good choice in complex applications.
 **Ideal for optimizing large-scale applications** with efficient, low-overhead caching.
 
 **Key Features:**
@@ -33,26 +33,26 @@ This can make your application very faster and it's a good choice in big applica
 - 📦 Supports 7 advanced caching algorithms
 
 ### Page Contents
-- ❓ [**When i need caching and cachebox**](#when-i-need-caching-and-cachebox)
-- 🌟 [**Why `cachebox`**](#why-cachebox)
+- ❓ [**When do I need caching and `cachebox`?**](#when-do-i-need-caching-and-cachebox)
+- 🌟 [**Why `cachebox`?**](#why-cachebox)
 - 🔧 [**Installation**](#installation)
 - 💡 [**Preview**](#examples)
 - 🎓 [**Getting started**](#getting-started)
 - ✏️ [**Incompatible changes**](#%EF%B8%8F-incompatible-changes)
 - 📌 [**Tips & Notes**](#tips-and-notes)
 
-### When i need caching and cachebox
-- 📈 **Frequently Data Access** \
+### When do I need caching and `cachebox`?
+- 📈 **Frequent Data Access** \
   If you need to access the same data multiple times, caching can help reduce the number of database queries or API calls, improving performance.
 
 - 💎 **Expensive Operations** \
   If you have operations that are computationally expensive, caching can help reduce the number of times these operations need to be performed.
 
 - 🚗 **High Traffic Scenarios** \
-  If your application has high user traffic, caching can help reduce the load on your server by reducing the number of requests that need to be processed.
+  If your application handles high traffic, caching can help reduce the load on your server by reducing the number of requests that need to be processed.
 
-- #️⃣ **Web Page Rendring** \
-  If you are rendering web pages, caching can help reduce the time it takes to generate the page by caching the results of expensive operations. Caching HTML pages can speed up the delivery of static content.
+- #️⃣ **Web Page Rendering** \
+  If you are rendering web pages, caching can help reduce the time it takes to generate the page by caching the results of expensive rendering operations. Caching HTML pages can speed up the delivery of static content.
 
 - 🚧 **Rate Limiting** \
   If you have a rate limiting system in place, caching can help reduce the number of requests that need to be processed by the rate limiter. Also, caching can help you to manage rate limits imposed by third-party APIs by reducing the number of requests sent.
@@ -60,44 +60,44 @@ This can make your application very faster and it's a good choice in big applica
 - 🤖 **Machine Learning Models** \
   If your application frequently makes predictions using the same input data, caching the results can save computation time.
 
-### Why cachebox?
+### Why `cachebox`?
 - **⚡ Rust** \
-It uses *Rust* language to has high-performance.
+It uses the *Rust* language for high-performance.
 
 - **🧮 SwissTable** \
-It uses Google's high-performance SwissTable hash map. thanks to [hashbrown](https://github.com/rust-lang/hashbrown).
+It uses Google's high-performance SwissTable hash map. Credit to [hashbrown](https://github.com/rust-lang/hashbrown).
 
 - **✨ Low memory usage** \
 It has very low memory usage.
 
 - **⭐ Zero Dependency** \
-As we said, `cachebox` written in Rust so you don't have to install any other dependecies.
+As we said, `cachebox` is written in Rust so you don't have to install any other dependecies.
 
 - **🧶 Thread safe** \
 It's completely thread-safe and uses locks to prevent problems.
 
 - **👌 Easy To Use** \
-You only need to import it and choice your implementation to use and behave with it like a dictionary.
+You only need to import it and choose a cache implementation to use. It will behave like a dictionary.
 
 - **🚫 Avoids Cache Stampede** \
 It avoids [cache stampede](https://en.wikipedia.org/wiki/Cache_stampede) by using a distributed lock system.
 
 
 ## Installation
-cachebox is installable by `pip`:
+cachebox is installable via `pip`:
 ```bash
 pip3 install -U cachebox
 ```
 
 > [!WARNING]\
-> The new version v5 has some incompatible with v4, for more info please see [Incompatible changes](#incompatible-changes)
+> The new version v5 has some incompatibilities with v4. For more info see [Incompatible changes](#incompatible-changes).
 
 ## Examples
 The simplest example of **cachebox** could look like this:
 ```python
 import cachebox
 
-# Like functools.lru_cache, If maxsize is set to 0, the cache can grow without bound and limit.
+# Like functools.lru_cache, If maxsize is set to 0, the cache can grow without bounds and limit.
 @cachebox.cached(cachebox.FIFOCache(maxsize=128))
 def factorial(number: int) -> int:
     fact = 1
@@ -108,14 +108,14 @@ def factorial(number: int) -> int:
 assert factorial(5) == 125
 assert len(factorial.cache) == 1
 
-# Async are also supported
+# coroutines are also supported
 @cachebox.cached(cachebox.LRUCache(maxsize=128))
 async def make_request(method: str, url: str) -> dict:
     response = await client.request(method, url)
     return response.json()
 ```
 
-Also, unlike functools.lru_cache and other caching libraries, cachebox can copy `dict`, `list`, and `set` objects.
+Unlike `functools.lru_cache` and other caching libraries, cachebox can copy `dict`, `list`, and `set` objects.
 ```python
 @cachebox.cached(cachebox.LRUCache(maxsize=128))
 def make_dict(name: str, age: int) -> dict:
@@ -130,7 +130,7 @@ d2 = make_dict("cachebox", 10)
 assert d2 == {"name": "cachebox", "age": 10}
 ```
 
-You can use cache alghoritms without `cached` decorator -- just import what cache alghoritms you want and use it like a dictionary.
+You can use cache alghoritms without the `cached` decorator -- just import the cache alghoritm you want and use it like a dictionary.
 ```python
 from cachebox import FIFOCache
 
@@ -151,17 +151,17 @@ And 9 classes:
 - [**BaseCacheImpl**](#basecacheimpl-️-class): base-class for all classes.
 - [**Cache**](#cache-️-class): A simple cache that has no algorithm; this is only a hashmap.
 - [**FIFOCache**](#fifocache-️-class): the FIFO cache will remove the element that has been in the cache the longest.
-- [**RRCache**](#rrcache-️-class): the RR cache will choice randomly element to remove it to make space when necessary.
+- [**RRCache**](#rrcache-️-class): the RR cache will remove a random element to make free up space when necessary.
 - [**LRUCache**](#lrucache-️-class): the LRU cache will remove the element in the cache that has not been accessed in the longest time.
-- [**LFUCache**](#lfucache-️-class): the LFU cache will remove the element in the cache that has been accessed the least, regardless of time.
+- [**LFUCache**](#lfucache-️-class): the LFU cache will remove the element in the cache that has been accessed the least often, regardless of time.
 - [**TTLCache**](#ttlcache-️-class): the TTL cache will automatically remove the element in the cache that has expired.
-- [**VTTLCache**](#vttlcache-️-class): the TTL cache will automatically remove the element in the cache that has expired when need.
+- [**VTTLCache**](#vttlcache-️-class): the TTL cache will automatically remove the element in the cache that has expired when needed.
 - [**Frozen**](#frozen-️-class): you can use this class for freezing your caches.
 
-You only need to import the class which you want, and behave with it like a dictionary (except for [VTTLCache](#vttlcache-️-class), this have some differences)
+You only need to import the classes you want and can work with them like a regular dictionaries (except for [VTTLCache](#vttlcache-️-class), this have some differences).
 
-There are some examples for you with different methods for introducing those.
-**All the methods you will see in the examples are common across all classes (except for a few of them).**
+The examples below will introduce you to these different features.
+**All the methods in the examples are common across all classes (exceptions are noted where applicable).**
 
 * * *
 
@@ -172,8 +172,8 @@ Decorator to wrap a function with a memoizing callable that saves results in a c
 - `cache`: Specifies a cache that handles and stores the results. if `None` or `dict`, `FIFOCache` will be used.
 
 - `key_maker`: Specifies a function that will be called with the same positional and keyword
-               arguments as the wrapped function itself, and which has to return a suitable
-               cache key (must be hashable).
+               arguments as the wrapped function itself. It has to return a suitable cache key
+               (must be hashable).
 
 - `clear_reuse`: The wrapped function has a function named `clear_cache` that uses `cache.clear`
                  method to clear the cache. This parameter will be passed to cache's `clear` method.
@@ -182,9 +182,9 @@ Decorator to wrap a function with a memoizing callable that saves results in a c
               The callback arguments are: event number (see `EVENT_MISS` or `EVENT_HIT` variables), key, and then result.
 
 - `copy_level`: The wrapped function always copies the result of your function and then returns it.
-                This parameter specifies that the wrapped function has to copy which type of results.
+                This parameter specifies how the result is copied before returning it.
                 `0` means "never copy", `1` means "only copy `dict`, `list`, and `set` results" and
-                `2` means "always copy the results".
+                `2` means "always copy the results". Defaults to 1.
 
 <details>
 <summary><b>Examples</b></summary>
@@ -205,7 +205,7 @@ sum_as_string.cache_clear()
 assert len(sum_as_string.cache) == 0
 ```
 
-A key_maker example:
+A `key_maker` example:
 ```python
 import cachebox
 
@@ -218,7 +218,7 @@ async def request_handler(request: Request):
     return Response("hello man")
 ```
 
-A typed key_maker example:
+A typed `key_maker` example using a predefined key function:
 ```python
 import cachebox
 
@@ -231,8 +231,8 @@ sum_as_string(1, 1)
 print(len(sum_as_string.cache)) # 2
 ```
 
-You have also manage functions' caches with `.cache` attribute as you saw in examples.
-Also there're more attributes and methods you can use:
+You have the option to manage caches with `.cache` attribute as shown in previous examples.
+There are more attributes and methods you can use:
 ```python
 import cachebox
 
@@ -267,7 +267,7 @@ ex = Example(10)
 assert ex.method("a") == "a" * 10
 ```
 
-callback example: *(Added in v4.2.0)*
+`callback` example: *(Added in v4.2.0)*
 ```python
 import cachebox
 
@@ -300,16 +300,16 @@ assert func(5, 4) == 9
 </details>
 
 > [!TIP]\
-> There's a new feature **since `v4.1.0`** that you can tell to a cached function that don't use cache for a call:
+> There's a new feature **since `v4.1.0`** for making a cached function not use cache for a call:
 > ```python
-> # with `cachebox__ignore=True` parameter, cachebox does not use cache and only calls the function and returns its result.
+> # with `cachebox__ignore=True` parameter, cachebox does not use cache and directly calls the function, returning its result.
 > sum_as_string(10, 20, cachebox__ignore=True)
 > ```
 
 * * *
 
 ### `cachedmethod` (🎀 decorator)
-this is excatly works like `cached()`, but ignores `self` parameters in hashing and key making.
+This decorator works excatly like `cached()`, but ignores `self` parameters in hashing and key making.
 
 > [!WARNING]\
 > This function has been deprecated since `v5.1.0`, use `cached` function instead.
@@ -334,7 +334,7 @@ c.my_method()
 * * *
 
 ### `is_cached` (📦 function)
-Checks that a function/method is cached by cachebox or not.
+Checks whether a function/method is cached by cachebox or not.
 
 **Parameters:**
 - `func`: The function/method to check.
@@ -395,16 +395,16 @@ Provides a flexible key-value storage mechanism with:
 - Thread-safe operations
 - Useful memory management methods
 
-Supports initialization with optional initial data and capacity,
+Supports initialization with optional initial data and capacity
 and provides dictionary-like access with additional cache-specific operations.
 
 > [!TIP]\
 > Differs from standard `dict` by:
-> - it is thread-safe and unordered, while dict isn't thread-safe and ordered (Python 3.6+).
-> - it uses very lower memory than dict.
-> - it supports useful and new methods for managing memory, while dict does not.
-> - it does not support popitem, while dict does.
-> - You can limit the size of Cache, but you cannot for dict.
+> - being thread-safe and unordered, while dict isn't thread-safe and ordered (Python 3.6+).
+> - using much less memory than dict.
+> - supporting useful and new methods for managing memory, while dict does not.
+> - **not supporting** `popitem()`, while dict does.
+> - an option to limit the size of `Cache` which dict doesn't support.
 
 |              | get   | insert  | delete | popitem |
 | ------------ | ----- | ------- | ------ | ------- |
@@ -417,23 +417,23 @@ and provides dictionary-like access with additional cache-specific operations.
 from cachebox import Cache
 
 # These parameters are common in classes:
-# By `maxsize` param, you can specify the limit size of the cache ( zero means infinity ); this is unchangable.
-# By `iterable` param, you can create cache from a dict or an iterable.
-# If `capacity` param is given, cache attempts to allocate a new hash table with at
+# `maxsize` specifies the limit size of the cache (zero means infinity); this is unchangable.
+# `iterable` allows creating a cache from a dict or an iterable.
+# `capacity` will make the cache attempt to allocate a new hash table with at
 # least enough capacity for inserting the given number of elements without reallocating.
 cache = Cache(maxsize=100, iterable=None, capacity=100)
 
-# you can behave with it like a dictionary
+# behaves like a regular dict
 cache["key"] = "value"
-# or you can use `.insert(key, value)` instead of that (recommended)
+# using `.insert(key, value)` is recommended
 cache.insert("key", "value")
 
-print(cache["key"]) # value
+print(cache["key"])  # value
 
 del cache["key"]
-cache["key"] # KeyError: key
+cache["key"]  # KeyError: key
 
-# cachebox.Cache does not have any policy, so will raise OverflowError if reached the bound.
+# cachebox.Cache does not have any policy, so will raise OverflowError if the capacity is exceeded
 cache.update({i:i for i in range(200)})
 # OverflowError: The cache has reached the bound.
 ```
@@ -809,7 +809,7 @@ cache1 == cache2 # True
 
 ## Tips and Notes
 #### How to save caches in files?
-there's no built-in file-based implementation, but you can use `pickle` for saving caches in files. For example:
+There's no built-in file-based implementation, but you can use `pickle` for saving caches in files. For example:
 ```python
 import cachebox
 import pickle

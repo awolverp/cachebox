@@ -463,7 +463,7 @@ def _async_cached_wrapper(
 
 
 def cached(
-    cache: typing.Union[BaseCacheImpl, dict, None],
+    cache: typing.Union[BaseCacheImpl, dict, typing.Callable[..., BaseCacheImpl], None],
     key_maker: typing.Callable[[tuple, dict], typing.Hashable] = make_key,
     clear_reuse: bool = False,
     callback: typing.Optional[typing.Callable[[int, typing.Any, typing.Any], typing.Any]] = None,

@@ -552,7 +552,7 @@ print(cache.popitem()) # (1, 2)
 
 # .peek() searches for a key-value in the cache and returns it without moving the key to recently used.
 print(cache.peek(2)) # 4
-print(cache.popitem()) # (3, 6)
+print(cache.popitem()) # (2, 4)
 
 # Does the `popitem()` `n` times and returns count of removed items.
 print(cache.drain(5)) # 5

@@ -15,7 +15,6 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -47,7 +46,6 @@ Homepage = 'https://github.com/awolverp/cachebox'
 asyncio_default_fixture_loop_scope = "function"
 
 [tool.maturin]
-python-source = "python"
 features = ["pyo3/extension-module"]
 module-name = "cachebox._core"
 

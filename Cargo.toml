@@ -1,6 +1,6 @@
 [package]
 name = "cachebox"
-version = "5.2.3"
+version = "6.0.0"
 edition = "2021"
 description = "The fastest memoizing and caching Python library written in Rust"
 readme = "README.md"
@@ -11,7 +11,7 @@ authors = ["awolverp"]
 
 [lib]
 name = "cachebox"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [profile.release]
 codegen-units = 1
@@ -19,38 +19,20 @@ debug = false
 incremental = false
 lto = true
 panic = "abort"
-strip = "symbols"
+strip = true
+
+[dependencies]
+cfg-if = "1.0.4"
+parking_lot = {version="0.12.5", default-features=false}
+pyo3 = {version="0.28.3", default-features=false, features=["macros", "generate-import-lib"]}
+
+[build-dependencies]
+pyo3-build-config = {version="0.28.3", default-features=false, features=["resolve-config"]}
 
 [features]
-mimalloc = ["dep:mimalloc"]
-
-[dependencies.hashbrown]
-version = "0.14.5"
-default-features = false
-features = ["inline-more", "raw"]
-
-[dependencies.fastrand]
-version = "2.3.0"
-
-[dependencies.pyo3]
-version = "0.27.1"
-default-features = false
-features = ["macros", "extension-module", "generate-import-lib"]
-
-[dependencies.cfg-if]
-version = "1.0.3"
-
-[dependencies.parking_lot]
-version = "0.12.5"
-
-[dependencies.mimalloc]
-version = "0.1.48"
-features = ["v3", "override", "local_dynamic_tls"]
-optional = true
-
-[build-dependencies.pyo3-build-config]
-version = "0.27.1"
-features = ["resolve-config"]
+default = ["inline-more", "extension-module"]
+inline-more = []
+extension-module = ["pyo3/extension-module"]
 
 [lints.clippy]
 dbg_macro = "warn"

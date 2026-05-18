@@ -1,6 +1,12 @@
-use super::control::{BitMaskIter, Group, Tag, TagSliceExt};
-use super::scopeguard::{guard, ScopeGuard};
-use super::util::{invalid_mut, likely, unlikely};
+use super::control::BitMaskIter;
+use super::control::Group;
+use super::control::Tag;
+use super::control::TagSliceExt;
+use super::scopeguard::guard;
+use super::scopeguard::ScopeGuard;
+use super::util::invalid_mut;
+use super::util::likely;
+use super::util::unlikely;
 use super::TryReserveError;
 use core::array;
 use core::iter::FusedIterator;
@@ -9,11 +15,14 @@ use core::mem;
 use core::ptr;
 use core::ptr::NonNull;
 use core::slice;
-use std::alloc::{handle_alloc_error, Layout};
+use std::alloc::handle_alloc_error;
+use std::alloc::Layout;
 
+use super::alloc::do_alloc;
 #[cfg(test)]
 use super::alloc::AllocError;
-use super::alloc::{do_alloc, Allocator, Global};
+use super::alloc::Allocator;
+use super::alloc::Global;
 
 #[inline]
 unsafe fn offset_from<T>(to: *const T, from: *const T) -> usize {
@@ -800,7 +809,7 @@ impl<T, A: Allocator> RawTable<T, A> {
     /// and the former `Tag` for that bucket.
     #[cfg_attr(feature = "inline-more", inline)]
     #[expect(clippy::needless_pass_by_value)]
-    pub unsafe fn remove_tagged(&mut self, item: Bucket<T>) -> (T, usize, Tag) {
+    pub(crate) unsafe fn remove_tagged(&mut self, item: Bucket<T>) -> (T, usize, Tag) {
         unsafe {
             let index = self.bucket_index(&item);
             let tag = *self.table.ctrl(index);
@@ -1083,7 +1092,7 @@ impl<T, A: Allocator> RawTable<T, A> {
     ///
     /// This does not check if the given bucket is actually occupied.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub unsafe fn replace_bucket_with<F>(&mut self, bucket: Bucket<T>, f: F) -> Option<Tag>
+    pub(crate) unsafe fn replace_bucket_with<F>(&mut self, bucket: Bucket<T>, f: F) -> Option<Tag>
     where
         F: FnOnce(T) -> Option<T>,
     {
@@ -1164,7 +1173,12 @@ impl<T, A: Allocator> RawTable<T, A> {
     /// `find_or_find_insert_index`, and no mutation of the table must have
     /// occurred since that call.
     #[inline]
-    pub unsafe fn insert_tagged_at_index(&mut self, tag: Tag, index: usize, value: T) -> Bucket<T> {
+    pub(crate) unsafe fn insert_tagged_at_index(
+        &mut self,
+        tag: Tag,
+        index: usize,
+        value: T,
+    ) -> Bucket<T> {
         unsafe {
             let old_ctrl = *self.table.ctrl(index);
             self.table.record_item_insert_at(index, old_ctrl, tag);
@@ -4408,8 +4422,11 @@ mod test_map {
     #[test]
     #[cfg(panic = "unwind")]
     fn test_catch_panic_clone_from() {
-        use super::{AllocError, Allocator, Global};
-        use core::sync::atomic::{AtomicI8, Ordering};
+        use super::AllocError;
+        use super::Allocator;
+        use super::Global;
+        use core::sync::atomic::AtomicI8;
+        use core::sync::atomic::Ordering;
         use std::sync::Arc;
         use std::thread;
         use std::vec::Vec;

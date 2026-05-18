@@ -5,24 +5,38 @@
 
 #[macro_use]
 mod macro_rules;
+mod hashbrown;
+mod typeref;
 
-pub mod hashbrown;
 pub mod internal;
+pub mod policies;
 pub mod pyclasses;
 
 #[pyo3::pymodule]
 mod _core {
-    // use crate::typeref;
+    use crate::typeref;
 
-    // #[pymodule_export]
-    // use crate::pyclasses::base::{PyBaseCacheImpl, PyBaseIteratorImpl};
+    #[pymodule_export]
+    use crate::pyclasses::base::PyAsyncBaseCacheImpl;
+    #[pymodule_export]
+    use crate::pyclasses::base::PyAsyncBaseIteratorImpl;
+    #[pymodule_export]
+    use crate::pyclasses::base::PyBaseCacheImpl;
+    #[pymodule_export]
+    use crate::pyclasses::base::PyBaseIteratorImpl;
 
-    // #[pymodule_export]
-    // use crate::pyclasses::cache::{PyCache, PyCacheItems, PyCacheKeys, PyCacheValues};
+    #[pymodule_export]
+    use crate::pyclasses::cache::PyCache;
+    #[pymodule_export]
+    use crate::pyclasses::cache::PyCacheItems;
+    #[pymodule_export]
+    use crate::pyclasses::cache::PyCacheKeys;
+    #[pymodule_export]
+    use crate::pyclasses::cache::PyCacheValues;
 
     #[pymodule_init]
-    pub fn init(_m: &pyo3::Bound<'_, pyo3::types::PyModule>) -> pyo3::PyResult<()> {
-        // typeref::initialize_typeref(m.py());
+    pub fn init(m: &pyo3::Bound<'_, pyo3::types::PyModule>) -> pyo3::PyResult<()> {
+        typeref::initialize_typeref(m.py());
         Ok(())
     }
 }

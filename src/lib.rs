@@ -17,10 +17,6 @@ mod _core {
     use crate::typeref;
 
     #[pymodule_export]
-    use crate::pyclasses::base::PyAsyncBaseCacheImpl;
-    #[pymodule_export]
-    use crate::pyclasses::base::PyAsyncBaseIteratorImpl;
-    #[pymodule_export]
     use crate::pyclasses::base::PyBaseCacheImpl;
     #[pymodule_export]
     use crate::pyclasses::base::PyBaseIteratorImpl;

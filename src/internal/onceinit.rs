@@ -22,7 +22,7 @@ pub struct OnceInitInner<T> {
     state: atomic::AtomicU8,
     /// Heap-allocated storage that is uninitialized until [`set`](OnceInit::set) completes.
     /// Wrapped in a [`std::sync::Mutex`] so that post-init access is safe across threads.
-    value: cell::UnsafeCell<mem::MaybeUninit<std::sync::Mutex<T>>>,
+    value: cell::UnsafeCell<mem::MaybeUninit<T>>,
 }
 
 /// A thread-safe, write-once container for PyO3 `__new__` / `__init__` two-phase construction.
@@ -58,7 +58,7 @@ impl<T> OnceInit<T> {
     pub fn new(val: T) -> Self {
         OnceInitInner {
             state: atomic::AtomicU8::new(INIT),
-            value: cell::UnsafeCell::new(mem::MaybeUninit::new(std::sync::Mutex::new(val))),
+            value: cell::UnsafeCell::new(mem::MaybeUninit::new(val)),
         }
         .into()
     }
@@ -87,23 +87,20 @@ impl<T> OnceInit<T> {
             already_init_panic();
         }
         // SAFETY: we own the RUNNING token — no other thread can write value.
-        unsafe { (*self.0.value.get()).write(std::sync::Mutex::new(val)) };
+        unsafe { (*self.0.value.get()).write(val) };
         self.0.state.store(INIT, atomic::Ordering::Release);
     }
 
-    /// Locks the inner [`std::sync::Mutex`] and returns a guard that dereferences to `T`.
-    ///
-    /// This is the primary read/write accessor after initialization. Multiple threads
-    /// may call `lock` concurrently; they will be serialized by the inner mutex.
+    /// Returns an immutable reference to initialized value.
     ///
     /// # Panics
     ///
     /// Panics if called before [`set`](Self::set) has completed.
     #[inline]
-    pub fn lock(&self) -> std::sync::MutexGuard<'_, T> {
+    pub fn get(&self) -> &T {
         if std::hint::likely(self.0.state.load(atomic::Ordering::Acquire) == INIT) {
             // SAFETY: state == INIT guarantees `value` was fully written and is valid.
-            unsafe { (*self.0.value.get()).assume_init_ref().lock().unwrap() }
+            unsafe { (*self.0.value.get()).assume_init_ref() }
         } else {
             not_init_panic()
         }
@@ -124,7 +121,7 @@ impl<T> From<OnceInitInner<T>> for OnceInit<T> {
 
 // SAFETY: Mutex<T> is Send+Sync when T: Send; we uphold the init invariant ourselves.
 unsafe impl<T: Send> Send for OnceInit<T> {}
-unsafe impl<T: Send> Sync for OnceInit<T> {}
+unsafe impl<T: Sync> Sync for OnceInit<T> {}
 
 impl<T> Drop for OnceInit<T> {
     /// Drops the inner value if and only if [`set`](OnceInit::set) was called.

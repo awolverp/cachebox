@@ -4,6 +4,7 @@ use crate::internal::utils;
 use crate::policies::nopolicy;
 use crate::policies::traits::HandleExt;
 use crate::policies::traits::PolicyExt;
+use crate::policies::traits::SharedExt;
 use crate::policies::wrapped::Wrapped;
 
 implement_pyclass! {
@@ -85,10 +86,13 @@ impl PyCache {
         capacity: usize,
         getsizeof: Option<alias::PyObject>,
     ) -> pyo3::PyResult<()> {
-        let mut wrapped = Wrapped::new(nopolicy::NoPolicy::new(capacity, maxsize, getsizeof));
+        let wrapped = Wrapped::new(
+            nopolicy::NoPolicy::new(capacity),
+            nopolicy::Shared::new(maxsize, getsizeof),
+        );
 
         if let Some(iterable) = iterable {
-            let getsizeof = wrapped.getsizeof().clone_ref(py);
+            let getsizeof = wrapped.shared().getsizeof().clone_ref(py);
 
             let result = wrapped.extend(
                 // iterable object
@@ -104,80 +108,85 @@ impl PyCache {
         }
     }
 
+    #[getter]
+    fn maxsize(&self) -> usize {
+        let inner = self.0.get();
+        inner.shared().maxsize()
+    }
+
+    #[getter]
+    fn current_size(&self) -> usize {
+        let inner = self.0.get();
+        inner.shared().current_size()
+    }
+
+    #[getter]
+    fn remaining_size(&self) -> usize {
+        let inner = self.0.get();
+        inner.remaining_size()
+    }
+
+    #[getter]
+    fn getsizeof(&self, py: pyo3::Python) -> Option<alias::PyObject> {
+        let inner = self.0.get();
+        inner.shared().getsizeof().clone_ref(py).into()
+    }
+
+    /// Returns the number of elements the map can hold without reallocating.
+    fn capacity(&self) -> usize {
+        let inner = self.0.get();
+        let policy = inner.policy();
+
+        policy.table().capacity()
+    }
+
     /// Returns the number of entries currently in the cache.
     fn __len__(&self) -> usize {
-        let lock = self.0.lock();
-        lock.table().len()
+        let inner = self.0.get();
+        let policy = inner.policy();
+
+        policy.table().len()
     }
 
     fn __sizeof__(&self) -> usize {
-        let lock = self.0.lock();
-        lock.table().capacity() * std::mem::size_of::<nopolicy::Handle>()
+        let inner = self.0.get();
+        let policy = inner.policy();
+
+        policy.table().capacity() * std::mem::size_of::<nopolicy::Handle>()
     }
 
     fn __bool__(&self) -> bool {
-        let lock = self.0.lock();
-        lock.table().len() > 0
+        let inner = self.0.get();
+        let policy = inner.policy();
+
+        !policy.table().is_empty()
     }
 
     fn __contains__(&self, py: pyo3::Python, key: alias::PyObject) -> pyo3::PyResult<bool> {
         self.contains(py, key)
     }
 
-    /// Returns the specified `maxsize`
-    fn maxsize(&self) -> usize {
-        let lock = self.0.lock();
-        lock.maxsize()
-    }
-
-    /// Returns the current total cumulative size consumed by all stored entries.
-    fn current_size(&self) -> usize {
-        let lock = self.0.lock();
-        lock.current_size()
-    }
-
-    /// Returns the remaining size. Equals to `maxsize - current_size`
-    fn remaining_size(&self) -> usize {
-        let lock = self.0.lock();
-        lock.remaining_size()
-    }
-
-    /// Returns the `getsizeof` function
-    fn getsizeof(&self, py: pyo3::Python) -> Option<alias::PyObject> {
-        let lock = self.0.lock();
-        lock.getsizeof().clone_ref(py).into()
-    }
-
-    /// Returns the number of elements the map can hold without reallocating.
-    fn capacity(&self) -> usize {
-        let lock = self.0.lock();
-        lock.table().capacity()
-    }
-
-    /// Returns the number of entries currently in the cache.
-    fn len(&self) -> usize {
-        let lock = self.0.lock();
-        lock.table().len()
-    }
-
     /// Returns `true` if the cache contains an entry for `key`.
     fn contains(&self, py: pyo3::Python, key: alias::PyObject) -> pyo3::PyResult<bool> {
         let key = utils::PrecomputedHashObject::new(py, key)?;
-
-        let mut lock = self.0.lock();
-        lock.contains(py, &key)
+        let inner = self.0.get();
+        inner.contains(py, &key)
     }
 
     /// Returns `True` if cache is empty.
     fn is_empty(&self) -> bool {
-        let lock = self.0.lock();
-        lock.table().len() == 0
+        let inner = self.0.get();
+        let policy = inner.policy();
+
+        policy.table().len() == 0
     }
 
     /// Returns `True` when the cumulative size has reached the maxsize limit.
     fn is_full(&self) -> bool {
-        let lock = self.0.lock();
-        lock.current_size() >= lock.maxsize()
+        let inner = self.0.get();
+        let shared = inner.shared();
+
+        shared.current_size() >= shared.maxsize()
     }
 
     /// Equals to `self[key] = value`, but returns a value:
@@ -194,10 +203,10 @@ impl PyCache {
         key: alias::PyObject,
         value: alias::PyObject,
     ) -> pyo3::PyResult<Option<alias::PyObject>> {
-        let mut lock = self.0.lock();
-        let handle = nopolicy::Handle::new(py, lock.getsizeof(), key, value)?;
+        let inner = self.0.get();
+        let handle = nopolicy::Handle::new(py, inner.shared().getsizeof(), key, value)?;
 
-        let old_handle = lock.insert(py, handle)?.map(|x| x.into_value());
+        let old_handle = inner.insert(py, handle)?.map(|x| x.into_value());
         Ok(old_handle)
     }
 
@@ -211,10 +220,10 @@ impl PyCache {
             return Ok(());
         }
 
-        let mut lock = slf.0.lock();
-        let getsizeof = lock.getsizeof().clone_ref(py);
+        let inner = slf.0.get();
+        let getsizeof = inner.shared().getsizeof().clone_ref(py);
 
-        lock.extend(
+        inner.extend(
             // iterable object
             iterable.into_bound(py),
             // transform function
@@ -228,10 +237,7 @@ impl PyCache {
         key: alias::PyObject,
         value: alias::PyObject,
     ) -> pyo3::PyResult<()> {
-        let mut lock = self.0.lock();
-        let handle = nopolicy::Handle::new(py, lock.getsizeof(), key, value)?;
-
-        lock.insert(py, handle)?;
+        self.insert(py, key, value)?;
         Ok(())
     }
 
@@ -255,9 +261,10 @@ impl PyCache {
     ) -> pyo3::PyResult<alias::PyObject> {
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
-        let mut lock = self.0.lock();
+        let inner = self.0.get();
+        let mut policy = inner.policy();
 
-        if let Some(x) = lock.get(py, &key)? {
+        if let Some(x) = policy.get(py, &key, inner.shared())? {
             return Ok(x.value().clone_ref(py));
         }
 
@@ -277,8 +284,10 @@ impl PyCache {
     ) -> pyo3::PyResult<alias::PyObject> {
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
-        let mut lock = self.0.lock();
-        match lock.get(py, &key)? {
+        let inner = self.0.get();
+        let mut policy = inner.policy();
+
+        match policy.get(py, &key, inner.shared())? {
             Some(x) => Ok(x.value().clone_ref(py)),
             None => Err(new_py_error!(
                 PyKeyError,
@@ -302,10 +311,14 @@ impl PyCache {
         // 3. Else -> insert default -> return default
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
-        let mut lock = self.0.lock();
-        if let Some(x) = lock.get(py, &key)? {
+        let inner = self.0.get();
+        let shared = inner.shared();
+        let mut policy = inner.policy();
+
+        if let Some(x) = policy.get(py, &key, shared)? {
             return Ok(x.value().clone_ref(py));
         }
+        drop(policy);
 
         let default_object = match default {
             utils::OptionalArgument::Defined(x) => x.unbind(),
@@ -317,12 +330,12 @@ impl PyCache {
 
         let handle = nopolicy::Handle::with_precomputed_hash_key(
             py,
-            lock.getsizeof(),
+            shared.getsizeof(),
             key,
             default_object.clone_ref(py),
         )?;
 
-        lock.insert(py, handle)?;
+        inner.insert(py, handle)?;
         Ok(default_object)
     }
 
@@ -338,8 +351,9 @@ impl PyCache {
     ) -> pyo3::PyResult<alias::PyObject> {
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
-        let mut lock = self.0.lock();
-        if let Some(x) = lock.remove(py, &key)? {
+        let inner = self.0.get();
+
+        if let Some(x) = inner.remove(py, &key)? {
             return Ok(x.into_value());
         }
 
@@ -355,8 +369,8 @@ impl PyCache {
     fn __delitem__(&self, py: pyo3::Python, key: alias::PyObject) -> pyo3::PyResult<()> {
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
-        let mut lock = self.0.lock();
-        match lock.remove(py, &key)? {
+        let inner = self.0.get();
+        match inner.remove(py, &key)? {
             Some(_) => Ok(()),
             None => Err(new_py_error!(
                 PyKeyError,
@@ -369,9 +383,11 @@ impl PyCache {
     ///
     /// NOTE: `Cache` always raises `NotImplementedError` because has neither policy nor algorithm to evict items.
     fn popitem(&self) -> pyo3::PyResult<(alias::PyObject, alias::PyObject)> {
-        let mut lock = self.0.lock();
-        let handle = lock.evict()?;
-        drop(lock);
+        let inner = self.0.get();
+        let mut policy = inner.policy();
+
+        let handle = policy.evict(inner.shared())?;
+        drop(policy);
 
         let (key, val) = handle.into_pair();
         Ok((key.into(), val))
@@ -383,23 +399,28 @@ impl PyCache {
         py: pyo3::Python,
         n: pyo3::ffi::Py_ssize_t,
     ) -> pyo3::PyResult<pyo3::ffi::Py_ssize_t> {
-        let mut lock = self.0.lock();
-        lock.drain(py, n)
+        let inner = self.0.get();
+        inner.drain(py, n)
     }
 
     /// Shrinks the internal allocation as close to the current length as possible.
     fn shrink_to_fit(&self) {
-        self.0.lock().shrink_to_fit();
+        let inner = self.0.get();
+        let mut policy = inner.policy();
+        policy.shrink_to_fit(inner.shared());
     }
 
     /// Removes all entries from the table and resets the cumulative size to zero.
     #[pyo3(signature=(*, reuse=false))]
     fn clear(&self, reuse: bool) {
-        let mut lock = self.0.lock();
-        lock.clear();
+        let inner = self.0.get();
+        let shared = inner.shared();
+        let mut policy = inner.policy();
+
+        policy.clear(shared);
 
         if !reuse {
-            lock.shrink_to_fit();
+            policy.shrink_to_fit(shared);
         }
     }
 
@@ -412,10 +433,18 @@ impl PyCache {
             return Ok(true);
         }
 
-        let self_lock = slf.0.lock();
-        let other_lock = other.0.lock();
+        let self_inner = slf.0.get();
+        let other_inner = other.0.get();
 
-        self_lock.py_eq(py, &*other_lock)
+        let self_policy = self_inner.policy();
+        let other_policy = other_inner.policy();
+
+        self_policy.py_eq(
+            py,
+            self_inner.shared(),
+            &*other_policy,
+            other_inner.shared(),
+        )
     }
 
     fn __ne__(
@@ -427,20 +456,30 @@ impl PyCache {
             return Ok(false);
         }
 
-        let self_lock = slf.0.lock();
-        let other_lock = other.0.lock();
+        let self_inner = slf.0.get();
+        let other_inner = other.0.get();
 
-        self_lock.py_eq(py, &*other_lock).map(|x| !x)
+        let self_policy = self_inner.policy();
+        let other_policy = other_inner.policy();
+
+        self_policy
+            .py_eq(
+                py,
+                self_inner.shared(),
+                &*other_policy,
+                other_inner.shared(),
+            )
+            .map(|x| !x)
     }
 
     fn items(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyCacheItems>> {
-        let lock = self.0.lock();
-        let gv = lock.generation_version();
+        let inner = self.0.get();
+        let gv = inner.shared().generation_version();
         let initial_gv = gv.get();
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
         let result = PyCacheItems {
-            iter: parking_lot::Mutex::new(unsafe { lock.table().iter() }),
+            iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
             gv,
             initial_gv,
         };
@@ -448,13 +487,13 @@ impl PyCache {
     }
 
     fn values(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyCacheValues>> {
-        let lock = self.0.lock();
-        let gv = lock.generation_version();
+        let inner = self.0.get();
+        let gv = inner.shared().generation_version();
         let initial_gv = gv.get();
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
         let result = PyCacheValues {
-            iter: parking_lot::Mutex::new(unsafe { lock.table().iter() }),
+            iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
             gv,
             initial_gv,
         };
@@ -462,13 +501,13 @@ impl PyCache {
     }
 
     fn keys(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyCacheKeys>> {
-        let lock = self.0.lock();
-        let gv = lock.generation_version();
+        let inner = self.0.get();
+        let gv = inner.shared().generation_version();
         let initial_gv = gv.get();
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
         let result = PyCacheKeys {
-            iter: parking_lot::Mutex::new(unsafe { lock.table().iter() }),
+            iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
             gv,
             initial_gv,
         };
@@ -480,9 +519,9 @@ impl PyCache {
     }
 
     fn copy(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<Self>> {
-        let lock = self.0.lock();
-        let cloned = lock.clone_ref(py);
-        let result = Self(onceinit::OnceInit::new(Wrapped::new(cloned)));
+        let inner = self.0.get();
+        let cloned = inner.clone_ref(py);
+        let result = Self(onceinit::OnceInit::new(cloned));
 
         pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseCacheImpl))
     }
@@ -492,10 +531,13 @@ impl PyCache {
     }
 
     fn __repr__(slf: pyo3::PyRef<'_, Self>, py: pyo3::Python) -> String {
-        let lock = slf.0.lock();
+        let inner = slf.0.get();
+        let shared = inner.shared();
+        let policy = inner.policy();
 
         let iter = unsafe {
-            lock.table()
+            policy
+                .table()
                 .iter()
                 .map(|bucket| bucket.as_ref())
                 .map(|handle| {
@@ -507,20 +549,21 @@ impl PyCache {
                 })
         };
 
-        let items = utils::items_to_str(iter, lock.table().len()).unwrap();
+        let items = utils::items_to_str(iter, policy.table().len()).unwrap();
         format!(
             "{}[{}/{}]({})",
-            utils::get_type_name(py, slf.as_ptr()),
-            lock.current_size(),
-            lock.maxsize(),
+            unsafe { utils::get_type_name(py, slf.as_ptr()) },
+            shared.current_size(),
+            shared.maxsize(),
             items
         )
     }
 
     fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
-        let lock = self.0.lock();
+        let inner = self.0.get();
+        let policy = inner.policy();
 
-        for handle_ref in unsafe { lock.table().iter() } {
+        for handle_ref in unsafe { policy.table().iter() } {
             let handle = unsafe { handle_ref.as_ref() };
 
             visit.call(handle.key().as_ref())?;
@@ -530,7 +573,9 @@ impl PyCache {
     }
 
     fn __clear__(&self) {
-        self.0.lock().clear();
+        let inner = self.0.get();
+        let mut policy = inner.policy();
+        policy.clear(inner.shared());
     }
 }
 

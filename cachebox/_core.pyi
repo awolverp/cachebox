@@ -30,9 +30,13 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
         capacity: int = 0,
         getsizeof: typing.Callable[[KT, VT]] | None = None,
     ) -> None: ...
+    @property
     def maxsize(self) -> int: ...
+    @property
     def current_size(self) -> int: ...
+    @property
     def remaining_size(self) -> int: ...
+    @property
     def getsizeof(self) -> typing.Callable[[KT, VT]] | None: ...
     def capacity(self) -> int: ...
     def __len__(self) -> int: ...
@@ -131,7 +135,7 @@ class Cache(BaseCacheImpl[KT, VT]):
         Initialize a new Cache instance.
 
         Args:
-            maxsize: Maximum number of elements the cache can hold. Zero means unlimited.
+            maxsize: Maximum number of elements the cache can hold. If zero, the limit is set to sys.maxsize internally.
             iterable: Initial data to populate the cache.
             capacity: Pre-allocate hash table capacity to minimize reallocations. Defaults to 0.
             getsizeof: A callable that computes the size of a key-value pair. When `None`, each
@@ -144,18 +148,22 @@ class Cache(BaseCacheImpl[KT, VT]):
         """
         ...
 
+    @property
     def maxsize(self) -> int:
         """Returns the specified `maxsize`"""
         ...
 
+    @property
     def current_size(self) -> int:
         """Returns the current total cumulative size consumed by all stored entries."""
         ...
 
+    @property
     def remaining_size(self) -> int:
         """Returns the remaining size. Equals to `maxsize - current_size`"""
         ...
 
+    @property
     def getsizeof(self) -> typing.Callable[[KT, VT]] | None:
         """Returns the `getsizeof` function"""
         ...
@@ -172,7 +180,8 @@ class Cache(BaseCacheImpl[KT, VT]):
         """
         Returns `true` if the cache contains an entry for `key`. Equals to `key in self`.
 
-        It's recommended to use this method instead of `key in self`.
+        It's recommended to use this method instead of `key in self`, as it keeps code
+        compatible across different cache policies.
         """
         ...
 
@@ -192,7 +201,8 @@ class Cache(BaseCacheImpl[KT, VT]):
         - If the cache did have this key present, the value is updated,
           and the old value is returned. The key is not updated, though;
 
-        It's recommended to use this method instead of `self[key] = value`.
+        It's recommended to use this method instead of `self[key] = value`, as it keeps code
+        compatible across different cache policies.
 
         Note: raises `OverflowError` if the cache reached the maxsize limit,
         because this class does not have any algorithm.

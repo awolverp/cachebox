@@ -1,3 +1,5 @@
+use std::sync::atomic;
+
 use crate::hashbrown;
 use crate::internal::alias;
 use crate::internal::utils;
@@ -66,7 +68,7 @@ impl Handle {
 
     /// Consumes `self` and returns the pair.
     pub fn into_pair(self) -> (utils::PrecomputedHashObject, alias::PyObject) {
-        (self.key.into(), self.value)
+        (self.key, self.value)
     }
 
     /// Makes a clone of self.
@@ -101,40 +103,66 @@ impl traits::HandleExt for Handle {
 pub struct Occupied<'a> {
     /// The parent storage that owns the hash table.
     policy: &'a mut NoPolicy,
+    /// The shared configuration
+    shared: &'a Shared,
     /// Raw bucket pointing to the occupied slot within the hash table.
     bucket: hashbrown::raw::Bucket<Handle>,
 }
 
 impl traits::EntryExt for Occupied<'_> {
+    type Shared = Shared;
     type Handle = Handle;
 
     fn would_exceed(&self, extra_size: usize) -> bool {
         let handle = unsafe { self.bucket.as_ref() };
+        let currsize = self.shared.currsize.load(atomic::Ordering::Relaxed);
 
-        self.policy
-            .currsize
+        currsize
             .saturating_add(extra_size)
             .saturating_sub(handle.size)
-            > self.policy.maxsize.get()
+            > self.shared.maxsize.get()
     }
 
     fn evict(&mut self) -> pyo3::PyResult<Self::Handle> {
-        self.policy.evict()
+        self.policy.evict(self.shared)
     }
 }
 
 impl traits::OccupiedExt for Occupied<'_> {
     fn remove(self) -> Self::Handle {
         let (h, _) = unsafe { self.policy.table.remove(self.bucket) };
-        self.policy.currsize = self.policy.currsize.saturating_sub(h.size);
-        self.policy.gv.increment();
+
+        self.shared.currsize.store(
+            self.shared
+                .currsize
+                .load(atomic::Ordering::Relaxed)
+                .saturating_sub(h.size),
+            atomic::Ordering::SeqCst,
+        );
+        self.shared.gv.increment();
+
         h
     }
 
     fn replace(self, new: Self::Handle) -> Self::Handle {
-        self.policy.currsize = self.policy.currsize.saturating_add(new.size);
+        self.shared.currsize.store(
+            self.shared
+                .currsize
+                .load(atomic::Ordering::Relaxed)
+                .saturating_add(new.size),
+            atomic::Ordering::SeqCst,
+        );
+
         let old = unsafe { std::mem::replace(self.bucket.as_mut(), new) };
-        self.policy.currsize = self.policy.currsize.saturating_sub(old.size);
+
+        self.shared.currsize.store(
+            self.shared
+                .currsize
+                .load(atomic::Ordering::Relaxed)
+                .saturating_sub(old.size),
+            atomic::Ordering::SeqCst,
+        );
+
         old
     }
 }
@@ -146,26 +174,36 @@ impl traits::OccupiedExt for Occupied<'_> {
 pub struct Vacant<'a> {
     /// The parent policy that owns the hash table.
     policy: &'a mut NoPolicy,
+    /// The shared configuration
+    shared: &'a Shared,
     /// If true, means we used `.evict()` method, and empty slots are available
     /// in table; so we don't need to reserve a new one.
     space_available: bool,
 }
 
 impl traits::EntryExt for Vacant<'_> {
+    type Shared = Shared;
     type Handle = Handle;
 
     fn would_exceed(&self, extra_size: usize) -> bool {
-        self.policy.currsize.saturating_add(extra_size) > self.policy.maxsize.get()
+        let currsize = self.shared.currsize.load(atomic::Ordering::Relaxed);
+        currsize.saturating_add(extra_size) > self.shared.maxsize.get()
     }
 
     fn evict(&mut self) -> pyo3::PyResult<Self::Handle> {
-        self.policy.evict()
+        self.policy.evict(self.shared)
     }
 }
 
 impl traits::VacantExt for Vacant<'_> {
     fn insert(self, handle: Self::Handle) {
-        self.policy.currsize = self.policy.currsize.saturating_add(handle.size);
+        self.shared.currsize.store(
+            self.shared
+                .currsize
+                .load(atomic::Ordering::Relaxed)
+                .saturating_add(handle.size),
+            atomic::Ordering::SeqCst,
+        );
 
         if !self.space_available {
             self.policy.table.reserve(1, |x| x.key.hash());
@@ -174,7 +212,60 @@ impl traits::VacantExt for Vacant<'_> {
             self.policy.table.insert_no_grow(handle.key.hash(), handle);
         }
 
-        self.policy.gv.increment();
+        self.shared.gv.increment();
+    }
+}
+
+pub struct Shared {
+    // Hard upper bound on `currsize`. Stored as [`NonZeroUsize`](std::num::NonZeroUsize)
+    /// so the compiler can elide a zero-check branch in division/comparison hot paths.
+    maxsize: std::num::NonZeroUsize,
+    /// Running total of all stored handles' sizes, maintained incrementally.
+    currsize: atomic::AtomicUsize,
+    /// Monotonically incrementing counter bumped on every structural mutation
+    /// (insert, remove, clear, shrink). Used to detect iterator invalidation.
+    gv: utils::GenerationVersion,
+    /// Callable used to measure the memory footprint of each key-value pair.
+    getsizeof: utils::GetsizeofFunction,
+}
+
+impl Shared {
+    /// Creates a new [`NoPolicy`].
+    #[inline]
+    pub fn new(maxsize: usize, getsizeof: Option<alias::PyObject>) -> Self {
+        Self {
+            maxsize: safe_non_zero!(maxsize),
+            currsize: atomic::AtomicUsize::new(0),
+            gv: utils::GenerationVersion::default(),
+            getsizeof: utils::GetsizeofFunction::new(getsizeof),
+        }
+    }
+}
+
+impl traits::SharedExt for Shared {
+    fn maxsize(&self) -> usize {
+        self.maxsize.get()
+    }
+
+    fn current_size(&self) -> usize {
+        self.currsize.load(atomic::Ordering::Relaxed)
+    }
+
+    fn generation_version(&self) -> utils::GenerationVersion {
+        self.gv.clone()
+    }
+
+    fn getsizeof(&self) -> &utils::GetsizeofFunction {
+        &self.getsizeof
+    }
+
+    fn clone_ref(&self, py: pyo3::Python) -> Self {
+        Self {
+            maxsize: self.maxsize,
+            currsize: atomic::AtomicUsize::new(self.currsize.load(atomic::Ordering::Relaxed)),
+            gv: Default::default(),
+            getsizeof: self.getsizeof.clone_ref(py),
+        }
     }
 }
 
@@ -187,32 +278,17 @@ impl traits::VacantExt for Vacant<'_> {
 pub struct NoPolicy {
     /// The raw hash table storing all live [`Handle`] entries.
     table: hashbrown::raw::RawTable<Handle>,
-    /// Hard upper bound on `currsize`. Stored as [`NonZeroUsize`](std::num::NonZeroUsize)
-    /// so the compiler can elide a zero-check branch in division/comparison hot paths.
-    maxsize: std::num::NonZeroUsize,
-    /// Running total of all stored handles' sizes, maintained incrementally.
-    currsize: usize,
-    /// Monotonically incrementing counter bumped on every structural mutation
-    /// (insert, remove, clear, shrink). Used to detect iterator invalidation.
-    gv: utils::GenerationVersion,
-    /// Callable used to measure the memory footprint of each key-value pair.
-    getsizeof: utils::GetsizeofFunction,
 }
 
 impl NoPolicy {
-    /// Creates a new [`NoPolicy`] with the given initial `capacity` (number of slots)
-    /// and a `maxsize` budget limit.
+    /// Creates a new [`NoPolicy`].
     ///
     /// The underlying hash table is pre-allocated to hold at least `capacity` entries
     /// without reallocation.
     #[inline]
-    pub fn new(capacity: usize, maxsize: usize, getsizeof: Option<alias::PyObject>) -> Self {
+    pub fn new(capacity: usize) -> Self {
         Self {
             table: hashbrown::raw::RawTable::with_capacity(capacity),
-            maxsize: safe_non_zero!(maxsize),
-            currsize: 0,
-            gv: utils::GenerationVersion::default(),
-            getsizeof: utils::GetsizeofFunction::new(getsizeof),
         }
     }
 
@@ -220,41 +296,10 @@ impl NoPolicy {
     pub fn table(&self) -> &hashbrown::raw::RawTable<Handle> {
         &self.table
     }
-
-    /// Returns a snapshot of the current [`utils::GenerationVersion`].
-    ///
-    /// Callers can compare a saved snapshot against a later call to detect
-    /// whether the table was mutated in the interim.
-    pub fn generation_version(&self) -> utils::GenerationVersion {
-        self.gv.clone()
-    }
-
-    /// Returns a reference to the size-measuring function used during insertion.
-    pub fn getsizeof(&self) -> &utils::GetsizeofFunction {
-        &self.getsizeof
-    }
-
-    /// Makes a clone of `self`.
-    pub fn clone_ref(&self, py: pyo3::Python<'_>) -> Self {
-        let mut table = hashbrown::raw::RawTable::with_capacity(self.table.capacity());
-
-        unsafe {
-            for handle in self.table.iter().map(|x| x.as_ref()) {
-                table.insert_no_grow(handle.key.hash(), handle.clone_ref(py));
-            }
-        }
-
-        Self {
-            table,
-            maxsize: self.maxsize,
-            currsize: self.currsize,
-            gv: utils::GenerationVersion::default(),
-            getsizeof: self.getsizeof.clone_ref(py),
-        }
-    }
 }
 
 impl traits::PolicyExt for NoPolicy {
+    type Shared = Shared;
     type Handle = Handle;
 
     type Occupied<'a>
@@ -267,34 +312,27 @@ impl traits::PolicyExt for NoPolicy {
     where
         Self: 'a;
 
-    /// Returns the maximum allowed cumulative size of all stored entries.
-    fn maxsize(&self) -> usize {
-        self.maxsize.get()
-    }
-
-    /// Returns the current cumulative size of all stored entries.
-    fn current_size(&self) -> usize {
-        self.currsize
-    }
-
     fn get(
         &mut self,
         py: pyo3::Python,
         key: &<Self::Handle as traits::HandleExt>::Key,
+        _shared: &Self::Shared,
     ) -> pyo3::PyResult<Option<&Self::Handle>> {
         let bucket = self.table.find(key.hash(), |x| key.py_eq(py, &x.key))?;
         Ok(bucket.map(|x| unsafe { x.as_ref() }))
     }
 
-    fn entry(
-        &mut self,
+    fn entry<'a>(
+        &'a mut self,
         py: pyo3::Python,
         key: &<Self::Handle as traits::HandleExt>::Key,
-    ) -> pyo3::PyResult<traits::PolicyEntry<Self::Occupied<'_>, Self::Vacant<'_>>> {
+        shared: &'a Self::Shared,
+    ) -> pyo3::PyResult<traits::PolicyEntry<Self::Occupied<'a>, Self::Vacant<'a>>> {
         match self.table.find(key.hash(), |x| key.py_eq(py, &x.key))? {
             Some(bucket) => {
                 let result = Occupied {
                     policy: self,
+                    shared,
                     bucket,
                 };
                 Ok(traits::PolicyEntry::Occupied(result))
@@ -302,6 +340,7 @@ impl traits::PolicyExt for NoPolicy {
             None => {
                 let result = Vacant {
                     policy: self,
+                    shared,
                     space_available: false,
                 };
                 Ok(traits::PolicyEntry::Vacant(result))
@@ -309,32 +348,41 @@ impl traits::PolicyExt for NoPolicy {
         }
     }
 
-    fn evict(&mut self) -> pyo3::PyResult<Self::Handle> {
+    fn evict(&mut self, _shared: &Self::Shared) -> pyo3::PyResult<Self::Handle> {
         Err(new_py_error!(
             PyOverflowError,
             "The cache has no algorithm to evict items"
         ))
     }
 
-    fn shrink_to_fit(&mut self) {
+    fn shrink_to_fit(&mut self, shared: &Self::Shared) {
         let initial = self.table.capacity();
         self.table.shrink_to(0, |x| x.key.hash());
 
         if initial != self.table.capacity() {
-            self.gv.increment();
+            shared.gv.increment();
         }
     }
 
-    fn clear(&mut self) {
+    fn clear(&mut self, shared: &Self::Shared) {
         if self.table.is_empty() {
             return;
         }
         self.table.clear();
-        self.gv.increment();
+        shared.gv.increment();
+        shared.currsize.store(0, atomic::Ordering::SeqCst);
     }
 
-    fn py_eq(&self, py: pyo3::Python, other: &Self) -> pyo3::PyResult<bool> {
-        if self.maxsize() != other.maxsize() || self.table.len() != other.table.len() {
+    fn py_eq(
+        &self,
+        py: pyo3::Python,
+        shared: &Self::Shared,
+        other: &Self,
+        other_shared: &Self::Shared,
+    ) -> pyo3::PyResult<bool> {
+        if shared.maxsize.get() != other_shared.maxsize.get()
+            || self.table.len() != other.table.len()
+        {
             return Ok(false);
         }
 
@@ -375,5 +423,17 @@ impl traits::PolicyExt for NoPolicy {
             return Err(error);
         }
         Ok(result)
+    }
+
+    fn clone_ref(&self, py: pyo3::Python<'_>) -> Self {
+        let mut table = hashbrown::raw::RawTable::with_capacity(self.table.capacity());
+
+        unsafe {
+            for handle in self.table.iter().map(|x| x.as_ref()) {
+                table.insert_no_grow(handle.key.hash(), handle.clone_ref(py));
+            }
+        }
+
+        Self { table }
     }
 }

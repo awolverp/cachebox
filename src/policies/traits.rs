@@ -1,3 +1,5 @@
+use crate::internal::utils;
+
 pub trait HandleExt {
     type Key;
 
@@ -16,6 +18,7 @@ pub trait HandleExt {
 /// Both variants hold a mutable borrow of the parent policy, so budget checks
 /// and eviction go through the entry rather than through the policy directly.
 pub trait EntryExt {
+    type Shared: SharedExt;
     type Handle: HandleExt;
 
     /// Returns `true` if adding `extra_size` would meet or exceed
@@ -59,22 +62,36 @@ pub enum PolicyEntry<O, V> {
     Vacant(V),
 }
 
-pub trait PolicyExt {
-    type Handle: HandleExt;
-
-    type Occupied<'a>: OccupiedExt<Handle = Self::Handle> + 'a
-    where
-        Self: 'a;
-
-    type Vacant<'a>: VacantExt<Handle = Self::Handle> + 'a
-    where
-        Self: 'a;
-
+pub trait SharedExt: Send + Sync {
     /// Returns the configured maxsize.
     fn maxsize(&self) -> usize;
 
     /// Returns the current total cumulative size consumed by all stored entries.
     fn current_size(&self) -> usize;
+
+    /// Returns the generation version.
+    fn generation_version(&self) -> utils::GenerationVersion;
+
+    /// Returns a reference to configued getsizeof function.
+    fn getsizeof(&self) -> &utils::GetsizeofFunction;
+
+    /// Make a clone of `self`.
+    fn clone_ref(&self, py: pyo3::Python) -> Self;
+}
+
+pub trait PolicyExt {
+    /// Read-only variables, we keep this type separated from the main policy implementation,
+    /// because we need to access them outside of `Mutex`s.
+    type Shared: SharedExt;
+    type Handle: HandleExt;
+
+    type Occupied<'a>: OccupiedExt<Handle = Self::Handle, Shared = Self::Shared> + 'a
+    where
+        Self: 'a;
+
+    type Vacant<'a>: VacantExt<Handle = Self::Handle, Shared = Self::Shared> + 'a
+    where
+        Self: 'a;
 
     /// Looks up a handle by `hash` and `eq`, applying policy side-effects on hit.
     ///
@@ -85,6 +102,7 @@ pub trait PolicyExt {
         &mut self,
         py: pyo3::Python,
         key: &<Self::Handle as HandleExt>::Key,
+        shared: &Self::Shared,
     ) -> pyo3::PyResult<Option<&Self::Handle>>;
 
     /// Returns a [`PolicyEntry`] for the slot at `hash` / `eq`.
@@ -92,11 +110,12 @@ pub trait PolicyExt {
     /// # Errors
     ///
     /// Returns `Err` if `eq` raises a Python exception.
-    fn entry(
-        &mut self,
+    fn entry<'a>(
+        &'a mut self,
         py: pyo3::Python,
         key: &<Self::Handle as HandleExt>::Key,
-    ) -> pyo3::PyResult<PolicyEntry<Self::Occupied<'_>, Self::Vacant<'_>>>;
+        shared: &'a Self::Shared,
+    ) -> pyo3::PyResult<PolicyEntry<Self::Occupied<'a>, Self::Vacant<'a>>>;
 
     /// Evicts a handle according to the policy algorithm, returning it.
     ///
@@ -107,14 +126,23 @@ pub trait PolicyExt {
     /// # Panics
     ///
     /// May panic if the policy is empty.
-    fn evict(&mut self) -> pyo3::PyResult<Self::Handle>;
+    fn evict(&mut self, shared: &Self::Shared) -> pyo3::PyResult<Self::Handle>;
 
     /// Removes all handles without shrinking the allocation.
-    fn clear(&mut self);
+    fn clear(&mut self, shared: &Self::Shared);
 
     /// Shrinks the internal allocation as close to length as possible.
-    fn shrink_to_fit(&mut self);
+    fn shrink_to_fit(&mut self, shared: &Self::Shared);
 
     /// Performs Python `==`.
-    fn py_eq(&self, py: pyo3::Python, other: &Self) -> pyo3::PyResult<bool>;
+    fn py_eq(
+        &self,
+        py: pyo3::Python,
+        shared: &Self::Shared,
+        other: &Self,
+        other_shared: &Self::Shared,
+    ) -> pyo3::PyResult<bool>;
+
+    /// Make a clone of `self`.
+    fn clone_ref(&self, py: pyo3::Python) -> Self;
 }

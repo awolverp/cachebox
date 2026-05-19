@@ -50,10 +50,14 @@ pub unsafe fn pyobject_equal(
 
 /// Calls a Python `getsizeof(key, value) -> int` callable via raw FFI for maximum performance.
 ///
+///
 /// # Errors
 /// Propagates any Python exception raised by `getsizeof`, and also returns a `PyErr` if:
 /// - the return value is not an integer
 /// - `PyLong_AsSsize_t` returns `-1` with a live Python exception (overflow / type error)
+///
+/// # Safety
+/// Both pointers must be valid, non-null, live Python objects.
 #[inline(always)]
 #[optimize(speed)]
 pub unsafe fn call_getsizeof(
@@ -179,23 +183,24 @@ where
 /// Returns the type name of a [`pyo3::ffi::PyObject`].
 ///
 /// Returns `"<unknown>"` on failure.
+///
+/// # Safety
+/// The pointer must be valid, non-null, live Python object.
 #[inline]
-pub fn get_type_name<'a>(py: pyo3::Python<'a>, obj: *mut pyo3::ffi::PyObject) -> String {
+pub unsafe fn get_type_name<'a>(py: pyo3::Python<'a>, obj: *mut pyo3::ffi::PyObject) -> String {
     use pyo3::types::PyStringMethods;
     use pyo3::types::PyTypeMethods;
 
-    unsafe {
-        let type_ = pyo3::ffi::Py_TYPE(obj);
+    let type_ = pyo3::ffi::Py_TYPE(obj);
 
-        if type_.is_null() {
-            String::from("<unknown>")
-        } else {
-            let obj = pyo3::types::PyType::from_borrowed_type_ptr(py, type_);
+    if type_.is_null() {
+        String::from("<unknown>")
+    } else {
+        let obj = pyo3::types::PyType::from_borrowed_type_ptr(py, type_);
 
-            obj.fully_qualified_name()
-                .map(|x| x.to_string_lossy().into_owned())
-                .unwrap_or_else(|_| String::from("<unknown>"))
-        }
+        obj.fully_qualified_name()
+            .map(|x| x.to_string_lossy().into_owned())
+            .unwrap_or_else(|_| String::from("<unknown>"))
     }
 }
 

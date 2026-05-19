@@ -45,11 +45,11 @@ class InitializeMixin(BaseMixin):
 
     def test_maxsize_stored(self):
         cache = self.create_cache()
-        assert cache.maxsize() == 10
+        assert cache.maxsize == 10
 
     def test_maxsize_zero_means_unlimited(self):
         cache = self.create_cache(0)
-        assert cache.maxsize() == sys.maxsize
+        assert cache.maxsize == sys.maxsize
 
     def test_init_from_dict(self):
         c = self.create_cache(maxsize=10, iterable={"a": 1, "b": 2})
@@ -77,7 +77,7 @@ class InitializeMixin(BaseMixin):
         sizer = lambda k, v: len(v)  # noqa: E731
 
         c = self.create_cache(maxsize=100, getsizeof=sizer)
-        assert c.getsizeof() is sizer
+        assert c.getsizeof is sizer
 
 
 class InsertAndGetMixin(BaseMixin):
@@ -242,13 +242,13 @@ class IntrospectionMixin(BaseMixin):
 
         cache.insert("a", 1)
         cache.insert("b", 2)
-        assert cache.current_size() == len(cache)
+        assert cache.current_size == len(cache)
 
     def test_remaining_size(self):
         cache = self.create_cache()
 
         cache.insert("a", 1)
-        assert cache.remaining_size() == cache.maxsize() - cache.current_size()
+        assert cache.remaining_size == cache.maxsize - cache.current_size
 
     def test_is_empty_on_new_cache(self):
         cache = self.create_cache()
@@ -387,7 +387,7 @@ class CopyMixin(BaseMixin):
         cache = self.create_cache()
 
         c2 = cache.copy()
-        assert c2.maxsize() == cache.maxsize()
+        assert c2.maxsize == cache.maxsize
 
 
 class GetSizeOfMixin(BaseMixin):
@@ -398,7 +398,7 @@ class GetSizeOfMixin(BaseMixin):
         c = self.create_cache(maxsize=10, getsizeof=sizer)
         c.insert("a", [1, 2, 3])  # size 3
         c.insert("b", [1])  # size 1
-        assert c.current_size() == 4
+        assert c.current_size == 4
 
     def test_overflow_based_on_weighted_size(self):
         # maxsize=5; each entry costs its value
@@ -455,7 +455,7 @@ class EQ:
     def __init__(self, val: int) -> None:
         self.val = val
 
-    def __eq__(self, other: "EQ") -> bool:
+    def __eq__(self, other: "EQ") -> bool:  # type: ignore
         return self.val == other.val
 
     def __hash__(self) -> int:
@@ -570,7 +570,7 @@ class FuzzyMixin(BaseMixin):
             if c.is_full():
                 break
             c.insert(k, v)
-        assert c.current_size() + c.remaining_size() == maxsize
+        assert c.current_size + c.remaining_size == maxsize
 
     @given(pairs=st.lists(st.tuples(hashable_keys, any_value), max_size=20))
     def test_clear_always_leaves_cache_empty(self, pairs):

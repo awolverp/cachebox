@@ -1,7 +1,6 @@
 #![feature(allocator_api)]
 #![feature(dropck_eyepatch)]
 #![feature(likely_unlikely)]
-#![feature(optimize_attribute)]
 
 #[macro_use]
 mod macro_rules;

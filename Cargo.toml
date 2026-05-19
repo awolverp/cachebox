@@ -7,7 +7,7 @@ readme = "README.md"
 license = "MIT"
 homepage = "https://github.com/awolverp/cachebox"
 repository = "https://github.com/awolverp/cachebox.git"
-authors = ["awolverp"]
+authors = ["Ali Pooralijan <awolverp@gmail.com>"]
 
 [lib]
 name = "cachebox"

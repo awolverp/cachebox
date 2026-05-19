@@ -133,6 +133,7 @@ impl PyCache {
     }
 
     /// Returns the number of elements the map can hold without reallocating.
+    #[inline]
     fn capacity(&self) -> usize {
         let inner = self.0.get();
         let policy = inner.policy();
@@ -141,6 +142,7 @@ impl PyCache {
     }
 
     /// Returns the number of entries currently in the cache.
+    #[inline]
     fn __len__(&self) -> usize {
         let inner = self.0.get();
         let policy = inner.policy();
@@ -148,6 +150,7 @@ impl PyCache {
         policy.table().len()
     }
 
+    #[inline]
     fn __sizeof__(&self) -> usize {
         let inner = self.0.get();
         let policy = inner.policy();
@@ -155,6 +158,7 @@ impl PyCache {
         policy.table().capacity() * std::mem::size_of::<nopolicy::Handle>()
     }
 
+    #[inline]
     fn __bool__(&self) -> bool {
         let inner = self.0.get();
         let policy = inner.policy();
@@ -162,11 +166,13 @@ impl PyCache {
         !policy.table().is_empty()
     }
 
+    #[inline]
     fn __contains__(&self, py: pyo3::Python, key: alias::PyObject) -> pyo3::PyResult<bool> {
         self.contains(py, key)
     }
 
     /// Returns `true` if the cache contains an entry for `key`.
+    #[inline]
     fn contains(&self, py: pyo3::Python, key: alias::PyObject) -> pyo3::PyResult<bool> {
         let key = utils::PrecomputedHashObject::new(py, key)?;
         let inner = self.0.get();
@@ -174,14 +180,16 @@ impl PyCache {
     }
 
     /// Returns `True` if cache is empty.
+    #[inline]
     fn is_empty(&self) -> bool {
         let inner = self.0.get();
         let policy = inner.policy();
 
-        policy.table().len() == 0
+        policy.table().is_empty()
     }
 
     /// Returns `True` when the cumulative size has reached the maxsize limit.
+    #[inline]
     fn is_full(&self) -> bool {
         let inner = self.0.get();
         let shared = inner.shared();
@@ -231,6 +239,7 @@ impl PyCache {
         )
     }
 
+    #[inline]
     fn __setitem__(
         &self,
         py: pyo3::Python,
@@ -394,6 +403,7 @@ impl PyCache {
     }
 
     /// Calls the `popitem()` `n` times and returns count of removed items.
+    #[inline]
     fn drain(
         &self,
         py: pyo3::Python,
@@ -404,6 +414,7 @@ impl PyCache {
     }
 
     /// Shrinks the internal allocation as close to the current length as possible.
+    #[inline]
     fn shrink_to_fit(&self) {
         let inner = self.0.get();
         let mut policy = inner.policy();
@@ -514,6 +525,7 @@ impl PyCache {
         pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
     }
 
+    #[inline]
     fn __iter__(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyCacheKeys>> {
         self.keys(py)
     }
@@ -526,6 +538,7 @@ impl PyCache {
         pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseCacheImpl))
     }
 
+    #[inline]
     fn __copy__(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<Self>> {
         self.copy(py)
     }
@@ -599,6 +612,7 @@ macro_rules! implement_iterator {
 
             #[pyo3::pymethods]
             impl $name {
+                #[inline]
                 fn __iter__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyRef<'_, Self> {
                     slf
                 }

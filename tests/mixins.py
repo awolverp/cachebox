@@ -340,6 +340,7 @@ class DrainClearShrinkMixin(BaseMixin):
         cache.clear()
         assert len(cache) == 0
         assert cache.is_empty()
+        assert cache.current_size == 0
 
     def test_clear_with_reuse(self):
         cache = self.create_cache()

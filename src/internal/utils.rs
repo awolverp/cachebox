@@ -9,8 +9,7 @@ use crate::internal::alias;
 ///
 /// # Safety
 /// Pointer must be valid, non-null, live Python objects.
-#[inline(always)]
-#[optimize(speed)]
+#[inline]
 pub unsafe fn pyobject_hash(
     py: pyo3::Python<'_>,
     arg1: *mut pyo3::ffi::PyObject,
@@ -28,8 +27,7 @@ pub unsafe fn pyobject_hash(
 ///
 /// # Safety
 /// Both pointers must be valid, non-null, live Python objects.
-#[inline(always)]
-#[optimize(speed)]
+#[inline]
 pub unsafe fn pyobject_equal(
     py: pyo3::Python<'_>,
     arg1: *mut pyo3::ffi::PyObject,
@@ -58,8 +56,7 @@ pub unsafe fn pyobject_equal(
 ///
 /// # Safety
 /// Both pointers must be valid, non-null, live Python objects.
-#[inline(always)]
-#[optimize(speed)]
+#[inline]
 pub unsafe fn call_getsizeof(
     py: pyo3::Python<'_>,
     getsizeof: Option<&alias::PyObject>,
@@ -115,6 +112,7 @@ pub unsafe fn call_getsizeof(
 /// Formats an iterator of key-value pairs into a string representation.
 ///
 /// Very useful for implementing `__repr__` methods.
+#[inline(never)]
 pub fn items_to_str<K, V, I>(items: I, length: usize) -> Result<String, std::fmt::Error>
 where
     K: std::fmt::Debug,
@@ -186,7 +184,7 @@ where
 ///
 /// # Safety
 /// The pointer must be valid, non-null, live Python object.
-#[inline]
+#[inline(never)]
 pub unsafe fn get_type_name<'a>(py: pyo3::Python<'a>, obj: *mut pyo3::ffi::PyObject) -> String {
     use pyo3::types::PyStringMethods;
     use pyo3::types::PyTypeMethods;
@@ -240,12 +238,12 @@ impl<'a, 'py> pyo3::FromPyObject<'a, 'py> for OptionalArgument<'py> {
 pub struct GenerationVersion(Arc<atomic::AtomicU32>);
 
 impl GenerationVersion {
-    #[inline]
+    #[inline(always)]
     pub fn increment(&self) -> u32 {
         self.0.fetch_add(1, atomic::Ordering::SeqCst)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn get(&self) -> u32 {
         self.0.load(atomic::Ordering::Relaxed)
     }
@@ -275,11 +273,13 @@ impl PrecomputedHashObject {
         Ok(Self::with_precomputed_hash(object, hash))
     }
 
+    #[inline]
     pub fn hash(&self) -> u64 {
         self.hash
     }
 
     /// Pointer-equality fast path, then Python `==`.
+    #[inline(always)]
     pub fn py_eq(&self, py: pyo3::Python<'_>, other: &Self) -> pyo3::PyResult<bool> {
         unsafe { pyobject_equal(py, self.object.as_ptr(), other.object.as_ptr()) }
     }
@@ -297,6 +297,7 @@ impl PrecomputedHashObject {
 
 impl AsRef<alias::PyObject> for PrecomputedHashObject {
     /// Returns a reference to its pyobject
+    #[inline]
     fn as_ref(&self) -> &alias::PyObject {
         &self.object
     }
@@ -309,7 +310,6 @@ impl From<PrecomputedHashObject> for alias::PyObject {
     }
 }
 
-#[derive(Debug)]
 #[repr(transparent)]
 pub struct GetsizeofFunction(Option<alias::PyObject>);
 
@@ -327,6 +327,7 @@ impl GetsizeofFunction {
     }
 
     /// Calls the wrapped function to get size of the pair key-value.
+    #[inline]
     pub fn call(
         &self,
         py: pyo3::Python<'_>,

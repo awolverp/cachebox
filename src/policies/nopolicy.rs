@@ -23,6 +23,7 @@ pub struct Handle {
 
 impl Handle {
     /// Creates a new [`Handle`], which calculates the precomputed hash itself.
+    #[inline]
     pub fn new(
         py: pyo3::Python<'_>,
         getsizeof: &utils::GetsizeofFunction,
@@ -41,6 +42,7 @@ impl Handle {
     ///
     /// Prefer this over [`Handle::new`] when the caller has already paid the cost
     /// of computing the hash (e.g. during a table lookup that preceded insertion).
+    #[inline]
     pub fn with_precomputed_hash_key(
         py: pyo3::Python<'_>,
         getsizeof: &utils::GetsizeofFunction,
@@ -52,21 +54,25 @@ impl Handle {
     }
 
     /// Consumes `self` and returns the [`utils::PrecomputedHashObject`].
+    #[inline]
     pub fn into_key(self) -> utils::PrecomputedHashObject {
         self.key
     }
 
     /// Returns a reference to the value.
+    #[inline]
     pub fn value(&self) -> &alias::PyObject {
         &self.value
     }
 
     /// Consumes `self` and returns the value of the pair.
+    #[inline]
     pub fn into_value(self) -> alias::PyObject {
         self.value
     }
 
     /// Consumes `self` and returns the pair.
+    #[inline]
     pub fn into_pair(self) -> (utils::PrecomputedHashObject, alias::PyObject) {
         (self.key, self.value)
     }
@@ -74,6 +80,7 @@ impl Handle {
     /// Makes a clone of self.
     ///
     /// This creates another pointer to the same object, increasing its reference count.
+    #[inline]
     pub fn clone_ref(&self, py: pyo3::Python<'_>) -> Self {
         Self {
             key: self.key.clone_ref(py),
@@ -86,10 +93,12 @@ impl Handle {
 impl traits::HandleExt for Handle {
     type Key = utils::PrecomputedHashObject;
 
+    #[inline(always)]
     fn key(&self) -> &utils::PrecomputedHashObject {
         &self.key
     }
 
+    #[inline(always)]
     fn size(&self) -> usize {
         self.size
     }
@@ -113,6 +122,7 @@ impl traits::EntryExt for Occupied<'_> {
     type Shared = Shared;
     type Handle = Handle;
 
+    #[inline]
     fn would_exceed(&self, extra_size: usize) -> bool {
         let handle = unsafe { self.bucket.as_ref() };
         let currsize = self.shared.currsize.load(atomic::Ordering::Relaxed);
@@ -123,6 +133,7 @@ impl traits::EntryExt for Occupied<'_> {
             > self.shared.maxsize.get()
     }
 
+    #[inline(always)]
     fn evict(&mut self) -> pyo3::PyResult<Self::Handle> {
         self.policy.evict(self.shared)
     }
@@ -185,11 +196,13 @@ impl traits::EntryExt for Vacant<'_> {
     type Shared = Shared;
     type Handle = Handle;
 
+    #[inline]
     fn would_exceed(&self, extra_size: usize) -> bool {
         let currsize = self.shared.currsize.load(atomic::Ordering::Relaxed);
         currsize.saturating_add(extra_size) > self.shared.maxsize.get()
     }
 
+    #[inline(always)]
     fn evict(&mut self) -> pyo3::PyResult<Self::Handle> {
         self.policy.evict(self.shared)
     }
@@ -243,18 +256,22 @@ impl Shared {
 }
 
 impl traits::SharedExt for Shared {
+    #[inline]
     fn maxsize(&self) -> usize {
         self.maxsize.get()
     }
 
+    #[inline]
     fn current_size(&self) -> usize {
         self.currsize.load(atomic::Ordering::Relaxed)
     }
 
+    #[inline]
     fn generation_version(&self) -> utils::GenerationVersion {
         self.gv.clone()
     }
 
+    #[inline]
     fn getsizeof(&self) -> &utils::GetsizeofFunction {
         &self.getsizeof
     }
@@ -285,7 +302,6 @@ impl NoPolicy {
     ///
     /// The underlying hash table is pre-allocated to hold at least `capacity` entries
     /// without reallocation.
-    #[inline]
     pub fn new(capacity: usize) -> Self {
         Self {
             table: hashbrown::raw::RawTable::with_capacity(capacity),
@@ -293,6 +309,7 @@ impl NoPolicy {
     }
 
     /// Returns a reference to the underlying raw hash table.
+    #[inline(always)]
     pub fn table(&self) -> &hashbrown::raw::RawTable<Handle> {
         &self.table
     }
@@ -312,6 +329,7 @@ impl traits::PolicyExt for NoPolicy {
     where
         Self: 'a;
 
+    #[inline]
     fn get(
         &mut self,
         py: pyo3::Python,
@@ -348,6 +366,7 @@ impl traits::PolicyExt for NoPolicy {
         }
     }
 
+    #[inline]
     fn evict(&mut self, _shared: &Self::Shared) -> pyo3::PyResult<Self::Handle> {
         Err(new_py_error!(
             PyOverflowError,
@@ -355,6 +374,7 @@ impl traits::PolicyExt for NoPolicy {
         ))
     }
 
+    #[inline]
     fn shrink_to_fit(&mut self, shared: &Self::Shared) {
         let initial = self.table.capacity();
         self.table.shrink_to(0, |x| x.key.hash());
@@ -364,6 +384,7 @@ impl traits::PolicyExt for NoPolicy {
         }
     }
 
+    #[inline]
     fn clear(&mut self, shared: &Self::Shared) {
         if self.table.is_empty() {
             return;

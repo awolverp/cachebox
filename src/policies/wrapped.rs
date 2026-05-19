@@ -36,6 +36,7 @@ impl<P: PolicyExt> Wrapped<P> {
     }
 
     /// Returns a reference to the shared, lock-free fields of the policy.
+    #[inline(always)]
     pub fn shared(&self) -> &P::Shared {
         &self.shared
     }
@@ -44,11 +45,13 @@ impl<P: PolicyExt> Wrapped<P> {
     ///
     /// # Panics
     /// Panics if the mutex is poisoned.
+    #[inline(always)]
     pub fn policy(&self) -> parking_lot::MutexGuard<'_, P> {
         self.inner.lock()
     }
 }
 
+#[inline(always)]
 fn insert_inner<P: PolicyExt>(
     lock: &mut parking_lot::MutexGuard<'_, P>,
     shared: &P::Shared,
@@ -80,6 +83,7 @@ fn insert_inner<P: PolicyExt>(
 // Duplicate methods across all policies
 impl<P: PolicyExt> Wrapped<P> {
     /// Returns the remaining size. Equals to `maxsize - current_size`.
+    #[inline]
     pub fn remaining_size(&self) -> usize {
         self.shared
             .maxsize()
@@ -87,6 +91,7 @@ impl<P: PolicyExt> Wrapped<P> {
     }
 
     /// Returns `true` if the cache contains an entry for `key`.
+    #[inline]
     pub fn contains(
         &self,
         py: pyo3::Python<'_>,
@@ -103,6 +108,7 @@ impl<P: PolicyExt> Wrapped<P> {
     ///
     /// - If the key was already present, the old handle is replaced and returned as `Some`.
     /// - If the key was absent, the handle is inserted and `None` is returned.
+    #[inline]
     pub fn insert(
         &self,
         py: pyo3::Python<'_>,
@@ -114,6 +120,7 @@ impl<P: PolicyExt> Wrapped<P> {
 
     /// Removes the entry for `key` from the cache, returning its [`Handle`](PolicyExt::Handle)
     /// if it was present, or `None` if the key was not found.
+    #[inline]
     pub fn remove(
         &self,
         py: pyo3::Python<'_>,
@@ -145,6 +152,7 @@ impl<P: PolicyExt> Wrapped<P> {
     ///   other dict-like types; `.items()` is called and the result is iterated.
     /// - **Any other iterable** — iterated directly, with each element expected to
     ///   unpack as a `(key, value)` pair.
+    #[inline]
     pub fn extend<F>(&self, iterable: alias::BoundObject, mut transform: F) -> pyo3::PyResult<()>
     where
         F: FnMut(alias::PyObject, alias::PyObject) -> pyo3::PyResult<P::Handle>,
@@ -194,6 +202,7 @@ impl<P: PolicyExt> Wrapped<P> {
     }
 
     /// Calls the `evict()` `n` times and returns count of removed items.
+    #[inline]
     pub fn drain(
         &self,
         py: pyo3::Python,
@@ -224,6 +233,7 @@ impl<P: PolicyExt> Wrapped<P> {
         Ok(count)
     }
 
+    #[inline]
     pub fn clone_ref(&self, py: pyo3::Python) -> Self {
         let shared = self.shared.clone_ref(py);
         let policy = self.inner.lock().clone_ref(py);

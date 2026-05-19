@@ -85,9 +85,8 @@ impl<P: PolicyExt> Wrapped<P> {
     /// Returns the remaining size. Equals to `maxsize - current_size`.
     #[inline]
     pub fn remaining_size(&self) -> usize {
-        self.shared
-            .maxsize()
-            .saturating_sub(self.shared.current_size())
+        let policy = self.inner.lock();
+        self.shared.maxsize().saturating_sub(policy.current_size())
     }
 
     /// Returns `true` if the cache contains an entry for `key`.

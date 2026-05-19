@@ -1,4 +1,4 @@
-use std::sync::atomic;
+// use std::sync::atomic;
 
 use crate::hashbrown;
 use crate::internal::alias;
@@ -125,9 +125,9 @@ impl traits::EntryExt for Occupied<'_> {
     #[inline]
     fn would_exceed(&self, extra_size: usize) -> bool {
         let handle = unsafe { self.bucket.as_ref() };
-        let currsize = self.shared.currsize.load(atomic::Ordering::Relaxed);
 
-        currsize
+        self.policy
+            .currsize
             .saturating_add(extra_size)
             .saturating_sub(handle.size)
             > self.shared.maxsize.get()
@@ -143,36 +143,16 @@ impl traits::OccupiedExt for Occupied<'_> {
     fn remove(self) -> Self::Handle {
         let (h, _) = unsafe { self.policy.table.remove(self.bucket) };
 
-        self.shared.currsize.store(
-            self.shared
-                .currsize
-                .load(atomic::Ordering::Relaxed)
-                .saturating_sub(h.size),
-            atomic::Ordering::SeqCst,
-        );
+        self.policy.currsize = self.policy.currsize.saturating_sub(h.size);
         self.shared.gv.increment();
 
         h
     }
 
     fn replace(self, new: Self::Handle) -> Self::Handle {
-        self.shared.currsize.store(
-            self.shared
-                .currsize
-                .load(atomic::Ordering::Relaxed)
-                .saturating_add(new.size),
-            atomic::Ordering::SeqCst,
-        );
-
+        self.policy.currsize = self.policy.currsize.saturating_add(new.size);
         let old = unsafe { std::mem::replace(self.bucket.as_mut(), new) };
-
-        self.shared.currsize.store(
-            self.shared
-                .currsize
-                .load(atomic::Ordering::Relaxed)
-                .saturating_sub(old.size),
-            atomic::Ordering::SeqCst,
-        );
+        self.policy.currsize = self.policy.currsize.saturating_sub(old.size);
 
         old
     }
@@ -198,8 +178,7 @@ impl traits::EntryExt for Vacant<'_> {
 
     #[inline]
     fn would_exceed(&self, extra_size: usize) -> bool {
-        let currsize = self.shared.currsize.load(atomic::Ordering::Relaxed);
-        currsize.saturating_add(extra_size) > self.shared.maxsize.get()
+        self.policy.currsize.saturating_add(extra_size) > self.shared.maxsize.get()
     }
 
     #[inline(always)]
@@ -210,13 +189,7 @@ impl traits::EntryExt for Vacant<'_> {
 
 impl traits::VacantExt for Vacant<'_> {
     fn insert(self, handle: Self::Handle) {
-        self.shared.currsize.store(
-            self.shared
-                .currsize
-                .load(atomic::Ordering::Relaxed)
-                .saturating_add(handle.size),
-            atomic::Ordering::SeqCst,
-        );
+        self.policy.currsize = self.policy.currsize.saturating_add(handle.size);
 
         if !self.space_available {
             self.policy.table.reserve(1, |x| x.key.hash());
@@ -233,8 +206,6 @@ pub struct Shared {
     // Hard upper bound on `currsize`. Stored as [`NonZeroUsize`](std::num::NonZeroUsize)
     /// so the compiler can elide a zero-check branch in division/comparison hot paths.
     maxsize: std::num::NonZeroUsize,
-    /// Running total of all stored handles' sizes, maintained incrementally.
-    currsize: atomic::AtomicUsize,
     /// Monotonically incrementing counter bumped on every structural mutation
     /// (insert, remove, clear, shrink). Used to detect iterator invalidation.
     gv: utils::GenerationVersion,
@@ -248,7 +219,7 @@ impl Shared {
     pub fn new(maxsize: usize, getsizeof: Option<alias::PyObject>) -> Self {
         Self {
             maxsize: safe_non_zero!(maxsize),
-            currsize: atomic::AtomicUsize::new(0),
+            // currsize: atomic::AtomicUsize::new(0),
             gv: utils::GenerationVersion::default(),
             getsizeof: utils::GetsizeofFunction::new(getsizeof),
         }
@@ -259,11 +230,6 @@ impl traits::SharedExt for Shared {
     #[inline]
     fn maxsize(&self) -> usize {
         self.maxsize.get()
-    }
-
-    #[inline]
-    fn current_size(&self) -> usize {
-        self.currsize.load(atomic::Ordering::Relaxed)
     }
 
     #[inline]
@@ -279,7 +245,6 @@ impl traits::SharedExt for Shared {
     fn clone_ref(&self, py: pyo3::Python) -> Self {
         Self {
             maxsize: self.maxsize,
-            currsize: atomic::AtomicUsize::new(self.currsize.load(atomic::Ordering::Relaxed)),
             gv: Default::default(),
             getsizeof: self.getsizeof.clone_ref(py),
         }
@@ -295,6 +260,8 @@ impl traits::SharedExt for Shared {
 pub struct NoPolicy {
     /// The raw hash table storing all live [`Handle`] entries.
     table: hashbrown::raw::RawTable<Handle>,
+    /// Running total of all stored handles' sizes, maintained incrementally.
+    currsize: usize,
 }
 
 impl NoPolicy {
@@ -305,6 +272,7 @@ impl NoPolicy {
     pub fn new(capacity: usize) -> Self {
         Self {
             table: hashbrown::raw::RawTable::with_capacity(capacity),
+            currsize: 0,
         }
     }
 
@@ -328,6 +296,11 @@ impl traits::PolicyExt for NoPolicy {
         = Vacant<'a>
     where
         Self: 'a;
+
+    #[inline]
+    fn current_size(&self) -> usize {
+        self.currsize
+    }
 
     #[inline]
     fn get(
@@ -391,7 +364,7 @@ impl traits::PolicyExt for NoPolicy {
         }
         self.table.clear();
         shared.gv.increment();
-        shared.currsize.store(0, atomic::Ordering::SeqCst);
+        self.currsize = 0;
     }
 
     fn py_eq(
@@ -455,6 +428,9 @@ impl traits::PolicyExt for NoPolicy {
             }
         }
 
-        Self { table }
+        Self {
+            table,
+            currsize: self.currsize,
+        }
     }
 }

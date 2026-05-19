@@ -114,13 +114,11 @@ impl PyCache {
         inner.shared().maxsize()
     }
 
-    #[getter]
     fn current_size(&self) -> usize {
         let inner = self.0.get();
-        inner.shared().current_size()
+        inner.policy().current_size()
     }
 
-    #[getter]
     fn remaining_size(&self) -> usize {
         let inner = self.0.get();
         inner.remaining_size()
@@ -193,8 +191,9 @@ impl PyCache {
     fn is_full(&self) -> bool {
         let inner = self.0.get();
         let shared = inner.shared();
+        let policy = inner.policy();
 
-        shared.current_size() >= shared.maxsize()
+        policy.current_size() >= shared.maxsize()
     }
 
     /// Equals to `self[key] = value`, but returns a value:
@@ -566,7 +565,7 @@ impl PyCache {
         format!(
             "{}[{}/{}]({})",
             unsafe { utils::get_type_name(py, slf.as_ptr()) },
-            shared.current_size(),
+            policy.current_size(),
             shared.maxsize(),
             items
         )

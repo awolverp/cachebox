@@ -66,9 +66,6 @@ pub trait SharedExt: Send + Sync {
     /// Returns the configured maxsize.
     fn maxsize(&self) -> usize;
 
-    /// Returns the current total cumulative size consumed by all stored entries.
-    fn current_size(&self) -> usize;
-
     /// Returns the generation version.
     fn generation_version(&self) -> utils::GenerationVersion;
 
@@ -92,6 +89,9 @@ pub trait PolicyExt {
     type Vacant<'a>: VacantExt<Handle = Self::Handle, Shared = Self::Shared> + 'a
     where
         Self: 'a;
+
+    /// Returns the current total cumulative size consumed by all stored entries.
+    fn current_size(&self) -> usize;
 
     /// Looks up a handle by `hash` and `eq`, applying policy side-effects on hit.
     ///

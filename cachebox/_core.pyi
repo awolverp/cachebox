@@ -2,6 +2,13 @@ import typing
 
 from _typeshed import SupportsItems
 
+_IterableType: typing.TypeAlias = (
+    typing.Dict[KT, VT]
+    | SupportsItems[KT, VT]
+    | BaseCacheImpl[KT, VT]
+    | typing.Iterable[typing.Tuple[KT, VT]]
+)
+
 KT = typing.TypeVar("KT")
 VT = typing.TypeVar("VT")
 DT = typing.TypeVar("DT")
@@ -18,12 +25,7 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
     def __init__(
         self,
         maxsize: int,
-        iterable: (
-            typing.Dict[KT, VT]
-            | SupportsItems[KT, VT]
-            | typing.Iterable[typing.Tuple[KT, VT]]
-            | None
-        ) = None,
+        iterable: _IterableType[KT, VT] | None = None,
         *,
         capacity: int = 0,
         getsizeof: typing.Callable[[KT, VT]] | None = None,
@@ -46,11 +48,7 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
     def __setitem__(self, key: KT, value: VT) -> None: ...
     def update(
         self,
-        iterable: (
-            typing.Dict[KT, VT]
-            | SupportsItems[KT, VT]
-            | typing.Iterable[typing.Tuple[KT, VT]]
-        ),
+        iterable: _IterableType[KT, VT],
         *args: typing.Any,
         **kwargs: typing.Any,
     ) -> None: ...
@@ -90,7 +88,6 @@ class Cache(BaseCacheImpl[KT, VT]):
     `Cache` is essentially a configurable hashmap-like store. When an item is inserted:
     - It is stored directly without any ordering, priority tracking, or access metadata.
     - If a maximum size is configured, insertions beyond that limit are rejected (raises OverflowError).
-      A max size of zero means unlimited.
     - All read and write operations are thread-safe, making it safe for concurrent access without
       external locking.
 
@@ -125,12 +122,7 @@ class Cache(BaseCacheImpl[KT, VT]):
     def __init__(
         self,
         maxsize: int,
-        iterable: (
-            typing.Dict[KT, VT]
-            | SupportsItems[KT, VT]
-            | typing.Iterable[typing.Tuple[KT, VT]]
-            | None
-        ) = ...,
+        iterable: _IterableType[KT, VT] | None = None,
         *,
         capacity: int = ...,
         getsizeof: typing.Callable[[KT, VT]] | None = ...,
@@ -207,14 +199,7 @@ class Cache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def update(
-        self,
-        iterable: (
-            typing.Dict[KT, VT]
-            | SupportsItems[KT, VT]
-            | typing.Iterable[typing.Tuple[KT, VT]]
-        ),
-    ) -> None:
+    def update(self, iterable: _IterableType[KT, VT]) -> None:
         """
         Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
         """
@@ -263,7 +248,7 @@ class Cache(BaseCacheImpl[KT, VT]):
         ...
 
     def popitem(self) -> typing.Tuple[KT, VT]:
-        """Always raises `NotImplementedError` because `Cache` has neither policy nor algorithm to evict items."""
+        """Always raises `OverflowError` because `Cache` has neither policy nor algorithm to evict items."""
         ...
 
     def drain(self, n: int) -> int:

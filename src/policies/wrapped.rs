@@ -156,7 +156,7 @@ impl<P: PolicyExt> Wrapped<P> {
         // including our cache classes
         let items_iterable = {
             if let Some(items_attribute) = iterable.getattr_opt(c"items")? {
-                items_attribute
+                items_attribute.call0()?
             } else {
                 iterable
             }

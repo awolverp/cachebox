@@ -42,9 +42,6 @@ Homepage = 'https://github.com/awolverp/cachebox'
 
 [project.optional-dependencies]
 
-[tool.pytest.ini_options]
-asyncio_default_fixture_loop_scope = "function"
-
 [tool.maturin]
 features = ["pyo3/extension-module"]
 module-name = "cachebox._core"

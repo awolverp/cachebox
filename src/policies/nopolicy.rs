@@ -115,7 +115,7 @@ impl traits::EntryExt for Occupied<'_> {
             .currsize
             .saturating_add(extra_size)
             .saturating_sub(handle.size)
-            >= self.policy.maxsize.get()
+            > self.policy.maxsize.get()
     }
 
     fn evict(&mut self) -> pyo3::PyResult<Self::Handle> {
@@ -155,7 +155,7 @@ impl traits::EntryExt for Vacant<'_> {
     type Handle = Handle;
 
     fn would_exceed(&self, extra_size: usize) -> bool {
-        self.policy.currsize.saturating_add(extra_size) >= self.policy.maxsize.get()
+        self.policy.currsize.saturating_add(extra_size) > self.policy.maxsize.get()
     }
 
     fn evict(&mut self) -> pyo3::PyResult<Self::Handle> {
@@ -311,7 +311,7 @@ impl traits::PolicyExt for NoPolicy {
 
     fn evict(&mut self) -> pyo3::PyResult<Self::Handle> {
         Err(new_py_error!(
-            PyNotImplementedError,
+            PyOverflowError,
             "The cache has no algorithm to evict items"
         ))
     }

@@ -37,11 +37,7 @@ impl BitMask {
     /// Returns the first set bit in the `BitMask`, if there is one.
     #[inline]
     pub(crate) fn lowest_set_bit(self) -> Option<usize> {
-        if let Some(nonzero) = NonZeroBitMaskWord::new(self.0) {
-            Some(Self::nonzero_trailing_zeros(nonzero))
-        } else {
-            None
-        }
+        NonZeroBitMaskWord::new(self.0).map(Self::nonzero_trailing_zeros)
     }
 
     /// Returns the number of trailing zeroes in the `BitMask`.
@@ -52,7 +48,7 @@ impl BitMask {
         // versions (pre-ARMv7) don't have RBIT and need to emulate it
         // instead. Since we only have 1 bit set in each byte on ARM, we can
         // use swap_bytes (REV) + leading_zeroes instead.
-        if cfg!(target_arch = "arm") && BITMASK_STRIDE % 8 == 0 {
+        if cfg!(target_arch = "arm") && BITMASK_STRIDE.is_multiple_of(8) {
             self.0.swap_bytes().leading_zeros() as usize / BITMASK_STRIDE
         } else {
             self.0.trailing_zeros() as usize / BITMASK_STRIDE
@@ -62,7 +58,7 @@ impl BitMask {
     /// Same as above but takes a `NonZeroBitMaskWord`.
     #[inline]
     fn nonzero_trailing_zeros(nonzero: NonZeroBitMaskWord) -> usize {
-        if cfg!(target_arch = "arm") && BITMASK_STRIDE % 8 == 0 {
+        if cfg!(target_arch = "arm") && BITMASK_STRIDE.is_multiple_of(8) {
             // SAFETY: A byte-swapped non-zero value is still non-zero.
             let swapped = unsafe { NonZeroBitMaskWord::new_unchecked(nonzero.get().swap_bytes()) };
             swapped.leading_zeros() as usize / BITMASK_STRIDE

@@ -14,7 +14,7 @@ class TestFIFOCache(
     mixins.PopAndDeleteMixin,
     mixins.UpdateMixin,
     mixins.IntrospectionMixin,
-    # mixins.IterationMixin,
+    mixins.IterationMixin,
     mixins.DrainClearShrinkMixin,
     mixins.CopyMixin,
     mixins.GetSizeOfMixin,
@@ -255,8 +255,7 @@ class TestFIFOCachePolicy(mixins.BaseMixin):
         assert cache.is_full()
 
         # Exact contents — no phantom or missing keys
-        # TODO: uncomment
-        # assert set(cache.keys()) == expected_keys
+        assert set(cache.keys()) == expected_keys
 
         # FIFO ordering must be intact
         assert cache.first() == min(expected_keys)

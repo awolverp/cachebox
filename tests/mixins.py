@@ -228,7 +228,21 @@ class UpdateMixin(BaseMixin):
         cache.update({"a": 99})
         assert cache.get("a") == 99
 
-    # TODO: test invalid arguments
+    def test_update_invalid_argument(self):
+        cache = self.create_cache()
+
+        with pytest.raises(TypeError):
+            cache.update("abc")  # type: ignore
+
+        with pytest.raises(TypeError):
+            cache.update({1, 2, 3})  # type: ignore
+
+        class _invalid_items:
+            def items(self):
+                return [1, 2, 3]
+
+        with pytest.raises(TypeError):
+            cache.update(_invalid_items())  # type: ignore
 
 
 class IntrospectionMixin(BaseMixin):
@@ -456,31 +470,40 @@ class EdgeCasesMixin(BaseMixin):
         assert cache.get("list") == [1, 2]
         assert cache.get("dict") == {"a": 1}
 
+    def test_bad_hash_key(self):
 
-@dataclasses.dataclass
-class EQ:
-    def __init__(self, val: int) -> None:
-        self.val = val
+        @dataclasses.dataclass
+        class BadHash:
+            val: int
 
-    def __eq__(self, other: "EQ") -> bool:  # type: ignore
-        return self.val == other.val
+            def __hash__(self) -> int:
+                return 1
 
-    def __hash__(self) -> int:
-        return self.val
+        size = 1000
+        cache = self.create_cache(size, capacity=size)
 
-
-@dataclasses.dataclass
-class NoEQ:
-    def __init__(self, val: int) -> None:
-        self.val = val
-
-    def __hash__(self) -> int:
-        return self.val
+        for i in range(size):
+            cache.insert(BadHash(val=i), i)
+            cache.get(BadHash(val=i))
 
 
 class IssuesMixin(BaseMixin):
     def test_issue_5(self):
         # https://github.com/awolverp/cachebox/issues/5
+
+        @dataclasses.dataclass
+        class EQ:
+            val: int
+
+            def __hash__(self) -> int:
+                return self.val
+
+        @dataclasses.dataclass
+        class NoEQ:
+            val: int
+
+            def __hash__(self) -> int:
+                return self.val
 
         size = 1000
         cache = self.create_cache(size, capacity=size)
@@ -494,9 +517,6 @@ class IssuesMixin(BaseMixin):
         for i in range(size):
             cache.insert(EQ(val=i), i)
             cache.get(EQ(val=i))
-
-
-# TODO: test rare usages, such as "same hash but not-equal", "unhashable keys"
 
 
 class FuzzyMixin(BaseMixin):

@@ -357,6 +357,36 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
+    def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
+        """
+        Returns an iterable object of the cache's items (key-value pairs).
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        - Items are ordered.
+        """
+        ...
+
+    def keys(self) -> typing.Iterable[KT]:
+        """
+        Returns an iterable object of the cache's keys.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        - Keys are ordered.
+        """
+        ...
+
+    def values(self) -> typing.Iterable[VT]:
+        """
+        Returns an iterable object of the cache's values.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        - Values are ordered.
+        """
+        ...
+
     def first(self, n: int = 0) -> typing.Optional[KT]:
         """
         Returns the first key in cache; this is the one which will be removed by `popitem()` (if n == 0).

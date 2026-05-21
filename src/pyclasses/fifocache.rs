@@ -490,52 +490,52 @@ impl PyFIFOCache {
             .map(|x| !x)
     }
 
-    // fn items(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyCacheItems>> {
-    //     let inner = self.0.get();
-    //     let gv = inner.shared().generation_version().clone();
-    //     let initial_gv = gv.get();
+    fn items(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyFIFOCacheItems>> {
+        let inner = self.0.get();
+        let gv = inner.shared().generation_version().clone();
+        let initial_gv = gv.get();
 
-    //     // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
-    //     let result = PyCacheItems {
-    //         iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
-    //         gv,
-    //         initial_gv,
-    //     };
-    //     pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
-    // }
+        // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
+        let result = PyFIFOCacheItems {
+            iter: parking_lot::Mutex::new(unsafe { inner.policy().iter() }),
+            gv,
+            initial_gv,
+        };
+        pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
+    }
 
-    // fn values(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyCacheValues>> {
-    //     let inner = self.0.get();
-    //     let gv = inner.shared().generation_version().clone();
-    //     let initial_gv = gv.get();
+    fn values(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyFIFOCacheValues>> {
+        let inner = self.0.get();
+        let gv = inner.shared().generation_version().clone();
+        let initial_gv = gv.get();
 
-    //     // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
-    //     let result = PyCacheValues {
-    //         iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
-    //         gv,
-    //         initial_gv,
-    //     };
-    //     pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
-    // }
+        // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
+        let result = PyFIFOCacheValues {
+            iter: parking_lot::Mutex::new(unsafe { inner.policy().iter() }),
+            gv,
+            initial_gv,
+        };
+        pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
+    }
 
-    // fn keys(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyCacheKeys>> {
-    //     let inner = self.0.get();
-    //     let gv = inner.shared().generation_version().clone();
-    //     let initial_gv = gv.get();
+    fn keys(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyFIFOCacheKeys>> {
+        let inner = self.0.get();
+        let gv = inner.shared().generation_version().clone();
+        let initial_gv = gv.get();
 
-    //     // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
-    //     let result = PyCacheKeys {
-    //         iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
-    //         gv,
-    //         initial_gv,
-    //     };
-    //     pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
-    // }
+        // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
+        let result = PyFIFOCacheKeys {
+            iter: parking_lot::Mutex::new(unsafe { inner.policy().iter() }),
+            gv,
+            initial_gv,
+        };
+        pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
+    }
 
-    // #[inline]
-    // fn __iter__(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyCacheKeys>> {
-    //     self.keys(py)
-    // }
+    #[inline]
+    fn __iter__(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyFIFOCacheKeys>> {
+        self.keys(py)
+    }
 
     fn copy(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<Self>> {
         let inner = self.0.get();
@@ -613,3 +613,65 @@ impl PyFIFOCache {
         policy.clear(inner.shared());
     }
 }
+
+// Implement iterators
+macro_rules! implement_iterator {
+    (
+        $(
+            $name:ident as $pyname:literal
+            fn ($py:ident, $handle:ident) -> $rt_type:ty { $init:expr }
+        )+
+    ) => {
+        $(
+            implement_pyclass! {
+                [extends=crate::pyclasses::base::PyBaseIteratorImpl, generic, frozen]
+                $name as $pyname {
+                    initial_gv: u32,
+                    gv: utils::GenerationVersion,
+                    iter: parking_lot::Mutex<fifopolicy::RawVecDequeIter<fifopolicy::Handle>>,
+                }
+            }
+
+            #[pyo3::pymethods]
+            impl $name {
+                #[inline]
+                fn __iter__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyRef<'_, Self> {
+                    slf
+                }
+
+                fn __next__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyResult<$rt_type> {
+                    if slf.initial_gv != slf.gv.get() {
+                        return Err(new_py_error!(
+                            PyRuntimeError,
+                            "cache size changed during iteration"
+                        ));
+                    }
+
+                    let mut iter = slf.iter.lock();
+
+                    match iter.next() {
+                        Some(x) => {
+                            let $py = slf.py();
+                            let $handle = unsafe { x.as_ref() };
+                            Ok($init)
+                        }
+                        None => return Err(new_py_error!(PyStopIteration, ())),
+                    }
+                }
+            }
+        )+
+    };
+}
+implement_iterator!(
+    PyFIFOCacheItems as "fifocache_items"
+    fn(py, handle) -> (alias::PyObject, alias::PyObject) {{
+        let (key, val) = handle.clone_ref(py).into_pair();
+        (key.into(), val)
+    }}
+
+    PyFIFOCacheKeys as "fifocache_keys"
+    fn(py, handle) -> alias::PyObject { handle.key().clone_ref(py).into() }
+
+    PyFIFOCacheValues as "fifocache_values"
+    fn(py, handle) -> alias::PyObject { handle.value().clone_ref(py) }
+);

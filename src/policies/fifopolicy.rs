@@ -110,6 +110,85 @@ impl traits::VacantExt for Vacant<'_> {
     }
 }
 
+/// Immutable slice iterator without lifetime
+///
+/// # Safety
+/// - You should be sure about lifetimes, and pointers should be alive while this type is alive.
+///   Any changes to pointers can cause *Undefined Behaviour*.
+/// - It doesn't support `ZST`s.
+struct RawSliceIter<T> {
+    pointer: std::ptr::NonNull<T>,
+    index: usize,
+    len: usize,
+}
+
+impl<T> RawSliceIter<T> {
+    /// Creates a new [`RawSliceIter`]
+    #[inline]
+    fn new(slice: &[T]) -> Self {
+        let pointer: std::ptr::NonNull<T> = std::ptr::NonNull::from(slice).cast();
+
+        Self {
+            pointer,
+            index: 0,
+            len: slice.len(),
+        }
+    }
+}
+
+impl<T> Iterator for RawSliceIter<T> {
+    type Item = std::ptr::NonNull<T>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.len {
+            None
+        } else {
+            let value = unsafe { self.pointer.add(self.index) };
+            self.index += 1;
+            Some(value)
+        }
+    }
+}
+
+unsafe impl<T: Sync> Send for RawSliceIter<T> {}
+unsafe impl<T: Sync> Sync for RawSliceIter<T> {}
+
+/// Raw iterator for [`VecDeque`] which doesn't have lifetime.
+///
+/// # Safety
+/// You should track changes of [`VecDeque`] yourself.
+pub struct RawVecDequeIter<T> {
+    first: RawSliceIter<T>,
+    second: RawSliceIter<T>,
+}
+
+impl<T> RawVecDequeIter<T> {
+    /// Creates a new [`RawVecDequeIter`]
+    #[inline]
+    fn new(first: &[T], second: &[T]) -> Self {
+        Self {
+            first: RawSliceIter::new(first),
+            second: RawSliceIter::new(second),
+        }
+    }
+}
+
+impl<T> Iterator for RawVecDequeIter<T> {
+    type Item = std::ptr::NonNull<T>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.first.next() {
+            Some(val) => Some(val),
+            None => {
+                std::mem::swap(&mut self.first, &mut self.second);
+                self.first.next()
+            }
+        }
+    }
+}
+
 pub struct FIFOPolicy {
     /// Maps each key to its logical index into [`FIFOPolicy::entries`], enabling O(1) lookups.
     ///
@@ -225,6 +304,12 @@ impl FIFOPolicy {
 
         // Both branches now store raw VecDeque indices, so the offset is zero.
         self.front_offset = 0;
+    }
+
+    #[inline]
+    pub unsafe fn iter(&self) -> RawVecDequeIter<Handle> {
+        let (first, second) = self.entries.as_slices();
+        RawVecDequeIter::new(first, second)
     }
 }
 

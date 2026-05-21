@@ -63,7 +63,7 @@ fn insert_inner<P: PolicyExt>(
         PolicyEntry::Occupied(mut occupied) => {
             // Evict if need
             while occupied.would_exceed(handle.size()) {
-                occupied.evict()?;
+                occupied.evict(py)?;
             }
 
             Ok(Some(occupied.replace(handle)))
@@ -71,7 +71,7 @@ fn insert_inner<P: PolicyExt>(
         PolicyEntry::Vacant(mut vacant) => {
             // Evict if need
             while vacant.would_exceed(handle.size()) {
-                vacant.evict()?;
+                vacant.evict(py)?;
             }
 
             vacant.insert(handle);
@@ -98,7 +98,7 @@ impl<P: PolicyExt> Wrapped<P> {
     ) -> pyo3::PyResult<bool> {
         let mut lock = self.inner.lock();
 
-        let handle = lock.get(py, key, &self.shared)?;
+        let handle = lock.get(py, key)?;
         Ok(handle.is_some())
     }
 
@@ -215,7 +215,7 @@ impl<P: PolicyExt> Wrapped<P> {
 
         let mut count: pyo3::ffi::Py_ssize_t = 0;
         while count < n {
-            match lock.evict(&self.shared) {
+            match lock.evict(py, &self.shared) {
                 Ok(_) => {}
                 Err(err) => {
                     if !err.is_instance_of::<pyo3::exceptions::PyKeyError>(py) {

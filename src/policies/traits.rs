@@ -21,8 +21,7 @@ pub trait EntryExt {
     type Shared: SharedExt;
     type Handle: HandleExt;
 
-    /// Returns `true` if adding `extra_size` would meet or exceed
-    /// [`PolicyExt::weight_limit`].
+    /// Returns `true` if adding `extra_size` would meet or exceed [`SharedExt::maxsize`].
     ///
     /// Call this *before* [`OccupiedExt::replace`] or [`VacantExt::insert`].
     fn would_exceed(&self, extra_size: usize) -> bool;
@@ -32,14 +31,14 @@ pub trait EntryExt {
     /// # Errors
     ///
     /// Returns any Python exception raised while dropping the evicted value.
-    fn evict(&mut self) -> pyo3::PyResult<Self::Handle>;
+    fn evict(&mut self, py: pyo3::Python) -> pyo3::PyResult<Self::Handle>;
 }
 
 /// Guard for an *occupied* slot.
 pub trait OccupiedExt: EntryExt {
     /// Replaces the current handle with `new`, returning the old one.
     ///
-    /// Does **not** enforce the weight budget; call
+    /// Does **not** enforce maxsize; call
     /// [`would_exceed`](EntryExt::would_exceed) first.
     fn replace(self, new: Self::Handle) -> Self::Handle;
 
@@ -67,7 +66,7 @@ pub trait SharedExt: Send + Sync {
     fn maxsize(&self) -> usize;
 
     /// Returns the generation version.
-    fn generation_version(&self) -> utils::GenerationVersion;
+    fn generation_version(&self) -> &utils::GenerationVersion;
 
     /// Returns a reference to configued getsizeof function.
     fn getsizeof(&self) -> &utils::GetsizeofFunction;
@@ -102,7 +101,6 @@ pub trait PolicyExt {
         &mut self,
         py: pyo3::Python,
         key: &<Self::Handle as HandleExt>::Key,
-        shared: &Self::Shared,
     ) -> pyo3::PyResult<Option<&Self::Handle>>;
 
     /// Returns a [`PolicyEntry`] for the slot at `hash` / `eq`.
@@ -126,7 +124,7 @@ pub trait PolicyExt {
     /// # Panics
     ///
     /// May panic if the policy is empty.
-    fn evict(&mut self, shared: &Self::Shared) -> pyo3::PyResult<Self::Handle>;
+    fn evict(&mut self, py: pyo3::Python, shared: &Self::Shared) -> pyo3::PyResult<Self::Handle>;
 
     /// Removes all handles without shrinking the allocation.
     fn clear(&mut self, shared: &Self::Shared);

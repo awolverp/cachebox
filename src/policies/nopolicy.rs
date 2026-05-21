@@ -1,114 +1,14 @@
-// use std::sync::atomic;
-
 use crate::hashbrown;
-use crate::internal::alias;
 use crate::internal::utils;
 use crate::policies::traits;
+use crate::policies::traits::HandleExt;
 use crate::policies::traits::PolicyExt;
+use crate::policies::traits::SharedExt;
 
-/// A key-value pair with a precomputed hash and combined memory size.
-///
-/// The `size` field caches the result of `getsizeof(key) + getsizeof(value)`
-/// so that [`NoPolicy`] can maintain an accurate `currsize` budget without
-/// re-invoking the Python-side sizing function on every access.
-pub struct Handle {
-    /// The cache key together with its precomputed hash, avoiding repeated
-    /// Python hash calls during table lookups.
-    key: utils::PrecomputedHashObject,
-    /// The cached value associated with this key.
-    value: alias::PyObject,
-    /// Combined memory footprint of the key and value as reported by `getsizeof`.
-    size: usize,
-}
-
-impl Handle {
-    /// Creates a new [`Handle`], which calculates the precomputed hash itself.
-    #[inline]
-    pub fn new(
-        py: pyo3::Python<'_>,
-        getsizeof: &utils::GetsizeofFunction,
-        key: alias::PyObject,
-        value: alias::PyObject,
-    ) -> pyo3::PyResult<Self> {
-        Self::with_precomputed_hash_key(
-            py,
-            getsizeof,
-            utils::PrecomputedHashObject::new(py, key)?,
-            value,
-        )
-    }
-
-    /// Creates a new [`Handle`] from an already-hashed key.
-    ///
-    /// Prefer this over [`Handle::new`] when the caller has already paid the cost
-    /// of computing the hash (e.g. during a table lookup that preceded insertion).
-    #[inline]
-    pub fn with_precomputed_hash_key(
-        py: pyo3::Python<'_>,
-        getsizeof: &utils::GetsizeofFunction,
-        key: utils::PrecomputedHashObject,
-        value: alias::PyObject,
-    ) -> pyo3::PyResult<Self> {
-        let size = getsizeof.call(py, key.as_ref(), &value)?;
-        Ok(Self { key, value, size })
-    }
-
-    /// Consumes `self` and returns the [`utils::PrecomputedHashObject`].
-    #[inline]
-    pub fn into_key(self) -> utils::PrecomputedHashObject {
-        self.key
-    }
-
-    /// Returns a reference to the value.
-    #[inline]
-    pub fn value(&self) -> &alias::PyObject {
-        &self.value
-    }
-
-    /// Consumes `self` and returns the value of the pair.
-    #[inline]
-    pub fn into_value(self) -> alias::PyObject {
-        self.value
-    }
-
-    /// Consumes `self` and returns the pair.
-    #[inline]
-    pub fn into_pair(self) -> (utils::PrecomputedHashObject, alias::PyObject) {
-        (self.key, self.value)
-    }
-
-    /// Makes a clone of self.
-    ///
-    /// This creates another pointer to the same object, increasing its reference count.
-    #[inline]
-    pub fn clone_ref(&self, py: pyo3::Python<'_>) -> Self {
-        Self {
-            key: self.key.clone_ref(py),
-            value: self.value.clone_ref(py),
-            size: self.size,
-        }
-    }
-}
-
-impl traits::HandleExt for Handle {
-    type Key = utils::PrecomputedHashObject;
-
-    #[inline(always)]
-    fn key(&self) -> &utils::PrecomputedHashObject {
-        &self.key
-    }
-
-    #[inline(always)]
-    fn size(&self) -> usize {
-        self.size
-    }
-}
+pub use super::common::Handle;
+pub use super::common::Shared;
 
 /// A view into an occupied entry in [`NoPolicy`].
-///
-/// Holds a mutable reference to the parent policy and a raw bucket pointer
-/// to the existing [`Handle`], enabling in-place removal or replacement without
-/// an additional lookup.
 pub struct Occupied<'a> {
     /// The parent storage that owns the hash table.
     policy: &'a mut NoPolicy,
@@ -129,39 +29,35 @@ impl traits::EntryExt for Occupied<'_> {
         self.policy
             .currsize
             .saturating_add(extra_size)
-            .saturating_sub(handle.size)
-            > self.shared.maxsize.get()
+            .saturating_sub(handle.size())
+            > self.shared.maxsize()
     }
 
     #[inline(always)]
-    fn evict(&mut self) -> pyo3::PyResult<Self::Handle> {
-        self.policy.evict(self.shared)
+    fn evict(&mut self, py: pyo3::Python) -> pyo3::PyResult<Self::Handle> {
+        self.policy.evict(py, self.shared)
     }
 }
 
 impl traits::OccupiedExt for Occupied<'_> {
     fn remove(self) -> Self::Handle {
+        self.shared.generation_version().increment();
+
         let (h, _) = unsafe { self.policy.table.remove(self.bucket) };
-
-        self.policy.currsize = self.policy.currsize.saturating_sub(h.size);
-        self.shared.gv.increment();
-
+        self.policy.currsize = self.policy.currsize.saturating_sub(h.size());
         h
     }
 
     fn replace(self, new: Self::Handle) -> Self::Handle {
-        self.policy.currsize = self.policy.currsize.saturating_add(new.size);
+        self.policy.currsize = self.policy.currsize.saturating_add(new.size());
         let old = unsafe { std::mem::replace(self.bucket.as_mut(), new) };
-        self.policy.currsize = self.policy.currsize.saturating_sub(old.size);
+        self.policy.currsize = self.policy.currsize.saturating_sub(old.size());
 
         old
     }
 }
 
 /// A view into a vacant slot in [`NoPolicy`].
-///
-/// Holds a mutable reference to the parent policy, allowing a new [`Handle`]
-/// to be inserted into the pre-located empty slot without a second lookup.
 pub struct Vacant<'a> {
     /// The parent policy that owns the hash table.
     policy: &'a mut NoPolicy,
@@ -178,85 +74,31 @@ impl traits::EntryExt for Vacant<'_> {
 
     #[inline]
     fn would_exceed(&self, extra_size: usize) -> bool {
-        self.policy.currsize.saturating_add(extra_size) > self.shared.maxsize.get()
+        self.policy.currsize.saturating_add(extra_size) > self.shared.maxsize()
     }
 
     #[inline(always)]
-    fn evict(&mut self) -> pyo3::PyResult<Self::Handle> {
-        self.policy.evict(self.shared)
+    fn evict(&mut self, py: pyo3::Python) -> pyo3::PyResult<Self::Handle> {
+        self.policy.evict(py, self.shared)
     }
 }
 
 impl traits::VacantExt for Vacant<'_> {
     fn insert(self, handle: Self::Handle) {
-        self.policy.currsize = self.policy.currsize.saturating_add(handle.size);
+        self.shared.generation_version().increment();
+        self.policy.currsize = self.policy.currsize.saturating_add(handle.size());
 
         if !self.space_available {
-            self.policy.table.reserve(1, |x| x.key.hash());
+            self.policy.table.reserve(1, |x| x.key().hash());
         }
         unsafe {
-            self.policy.table.insert_no_grow(handle.key.hash(), handle);
-        }
-
-        self.shared.gv.increment();
-    }
-}
-
-pub struct Shared {
-    // Hard upper bound on `currsize`. Stored as [`NonZeroUsize`](std::num::NonZeroUsize)
-    /// so the compiler can elide a zero-check branch in division/comparison hot paths.
-    maxsize: std::num::NonZeroUsize,
-    /// Monotonically incrementing counter bumped on every structural mutation
-    /// (insert, remove, clear, shrink). Used to detect iterator invalidation.
-    gv: utils::GenerationVersion,
-    /// Callable used to measure the memory footprint of each key-value pair.
-    getsizeof: utils::GetsizeofFunction,
-}
-
-impl Shared {
-    /// Creates a new [`NoPolicy`].
-    #[inline]
-    pub fn new(maxsize: usize, getsizeof: Option<alias::PyObject>) -> Self {
-        Self {
-            maxsize: safe_non_zero!(maxsize),
-            // currsize: atomic::AtomicUsize::new(0),
-            gv: utils::GenerationVersion::default(),
-            getsizeof: utils::GetsizeofFunction::new(getsizeof),
+            self.policy
+                .table
+                .insert_no_grow(handle.key().hash(), handle);
         }
     }
 }
 
-impl traits::SharedExt for Shared {
-    #[inline]
-    fn maxsize(&self) -> usize {
-        self.maxsize.get()
-    }
-
-    #[inline]
-    fn generation_version(&self) -> utils::GenerationVersion {
-        self.gv.clone()
-    }
-
-    #[inline]
-    fn getsizeof(&self) -> &utils::GetsizeofFunction {
-        &self.getsizeof
-    }
-
-    fn clone_ref(&self, py: pyo3::Python) -> Self {
-        Self {
-            maxsize: self.maxsize,
-            gv: Default::default(),
-            getsizeof: self.getsizeof.clone_ref(py),
-        }
-    }
-}
-
-/// A cache policy that performs **no eviction**.
-///
-/// Insertions are rejected once `currsize` would exceed `maxsize`; the caller
-/// must free space manually or accept the refusal. This is useful when the
-/// eviction strategy is handled externally, or when a hard size cap with no
-/// silent data loss is desired.
 pub struct NoPolicy {
     /// The raw hash table storing all live [`Handle`] entries.
     table: hashbrown::raw::RawTable<Handle>,
@@ -307,9 +149,8 @@ impl traits::PolicyExt for NoPolicy {
         &mut self,
         py: pyo3::Python,
         key: &<Self::Handle as traits::HandleExt>::Key,
-        _shared: &Self::Shared,
     ) -> pyo3::PyResult<Option<&Self::Handle>> {
-        let bucket = self.table.find(key.hash(), |x| key.py_eq(py, &x.key))?;
+        let bucket = self.table.find(key.hash(), |x| key.py_eq(py, x.key()))?;
         Ok(bucket.map(|x| unsafe { x.as_ref() }))
     }
 
@@ -319,7 +160,7 @@ impl traits::PolicyExt for NoPolicy {
         key: &<Self::Handle as traits::HandleExt>::Key,
         shared: &'a Self::Shared,
     ) -> pyo3::PyResult<traits::PolicyEntry<Self::Occupied<'a>, Self::Vacant<'a>>> {
-        match self.table.find(key.hash(), |x| key.py_eq(py, &x.key))? {
+        match self.table.find(key.hash(), |x| key.py_eq(py, x.key()))? {
             Some(bucket) => {
                 let result = Occupied {
                     policy: self,
@@ -340,7 +181,7 @@ impl traits::PolicyExt for NoPolicy {
     }
 
     #[inline]
-    fn evict(&mut self, _shared: &Self::Shared) -> pyo3::PyResult<Self::Handle> {
+    fn evict(&mut self, _py: pyo3::Python, _shared: &Self::Shared) -> pyo3::PyResult<Self::Handle> {
         Err(new_py_error!(
             PyOverflowError,
             "The cache has no algorithm to evict items"
@@ -350,10 +191,10 @@ impl traits::PolicyExt for NoPolicy {
     #[inline]
     fn shrink_to_fit(&mut self, shared: &Self::Shared) {
         let initial = self.table.capacity();
-        self.table.shrink_to(0, |x| x.key.hash());
+        self.table.shrink_to(0, |x| x.key().hash());
 
         if initial != self.table.capacity() {
-            shared.gv.increment();
+            shared.generation_version().increment();
         }
     }
 
@@ -363,7 +204,7 @@ impl traits::PolicyExt for NoPolicy {
             return;
         }
         self.table.clear();
-        shared.gv.increment();
+        shared.generation_version().increment();
         self.currsize = 0;
     }
 
@@ -374,9 +215,7 @@ impl traits::PolicyExt for NoPolicy {
         other: &Self,
         other_shared: &Self::Shared,
     ) -> pyo3::PyResult<bool> {
-        if shared.maxsize.get() != other_shared.maxsize.get()
-            || self.table.len() != other.table.len()
-        {
+        if shared.maxsize() != other_shared.maxsize() || self.table.len() != other.table.len() {
             return Ok(false);
         }
 
@@ -387,7 +226,7 @@ impl traits::PolicyExt for NoPolicy {
             iterator.all(|handle_1| {
                 let result = other
                     .table
-                    .get(handle_1.key.hash(), |x| handle_1.key.py_eq(py, &x.key));
+                    .get(handle_1.key().hash(), |x| handle_1.key().py_eq(py, x.key()));
 
                 match result {
                     Err(e) => {
@@ -424,7 +263,7 @@ impl traits::PolicyExt for NoPolicy {
 
         unsafe {
             for handle in self.table.iter().map(|x| x.as_ref()) {
-                table.insert_no_grow(handle.key.hash(), handle.clone_ref(py));
+                table.insert_no_grow(handle.key().hash(), handle.clone_ref(py));
             }
         }
 

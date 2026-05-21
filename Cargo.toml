@@ -24,8 +24,8 @@ strip = true
 [dependencies]
 cfg-if = "1.0.4"
 parking_lot = {version="0.12.5", default-features=false}
-pyo3 = {version="0.28.3", default-features=false, features=["macros", "generate-import-lib", "multiple-pymethods"]}
-tokio = {version="1.52.3", default-features=false, features=["sync"]}
+pyo3 = {version="0.28.3", default-features=false, features=["macros", "generate-import-lib"]}
+# tokio = {version="1.52.3", default-features=false, features=["sync"]}
 
 [build-dependencies]
 pyo3-build-config = {version="0.28.3", default-features=false, features=["resolve-config"]}
@@ -34,6 +34,7 @@ pyo3-build-config = {version="0.28.3", default-features=false, features=["resolv
 default = ["inline-more", "extension-module"]
 inline-more = []
 extension-module = ["pyo3/extension-module"]
+fifocache-small-offset = []
 
 [lints.clippy]
 dbg_macro = "warn"

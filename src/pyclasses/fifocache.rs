@@ -1,56 +1,62 @@
 use crate::internal::alias;
 use crate::internal::onceinit;
 use crate::internal::utils;
-use crate::policies::nopolicy;
+use crate::policies::fifopolicy;
 use crate::policies::traits::HandleExt;
 use crate::policies::traits::PolicyExt;
 use crate::policies::traits::SharedExt;
 use crate::policies::wrapped::Wrapped;
 
 implement_pyclass! {
-    /// A thread-safe, memory-efficient key-value cache with no eviction policy.
-    /// items remain in the cache until manually removed or the cache is cleared.
+    /// A First-In-First-Out (FIFO) cache eviction policy: when the cache is full, the oldest
+    /// inserted item is always the first to be removed, regardless of how often it has been accessed.
     ///
     /// ## How It Works
-    /// `Cache` is essentially a configurable hashmap-like store. When an item is inserted:
-    /// - It is stored directly without any ordering, priority tracking, or access metadata.
-    /// - If a maximum size is configured, insertions beyond that limit are rejected (raises OverflowError).
-    ///   A max size of zero means unlimited.
-    /// - All read and write operations are thread-safe, making it safe for concurrent access without
-    ///   external locking.
+    /// The FIFO algorithm is one of the simplest cache eviction strategies. Items are stored in
+    /// insertion order, and when the cache reaches capacity, the item that has been there the
+    /// longest is evicted to make room. There is no concept of "recently used" or "frequently used"
+    /// - age alone determines eviction order. Conceptually, it behaves like a queue: new items
+    /// join the back, and evictions come from the front.
     ///
-    /// Because no eviction logic runs in the background, there is no overhead from tracking usage order,
-    /// frequency counters, or expiry timestamps.
+    /// This implementation backs that queue with a `double-ended queue` for O(1) front removal,
+    /// paired with a `hash map` for O(1) key lookups. Rather than storing physical indices into
+    /// the deque (which shift every time an item is evicted from the front), the table stores
+    /// logical indices - a monotonically increasing counter assigned at insertion time.
+    /// A separate `front_offset` counter tracks how many items have ever been evicted; the physical
+    /// position of any key is recovered at read time as `entries[table[key] - front_offset]`,
+    /// keeping both eviction and lookup O(1) without any per-eviction rewriting of the table.
     ///
     /// ### Pros
-    /// - Minimal overhead: no bookkeeping for eviction means lower CPU and memory usage per entry compared
-    ///   to policy-based caches.
-    /// - Predictable behavior: items are never silently removed, so cache hits are deterministic once an
-    ///   item is stored.
-    /// - Thread-safe: safe for concurrent reads and writes out of the box.
-    /// - Configurable capacity: a hard size limit prevents unbounded memory growth.
+    /// - Insert, lookup, and evict are all O(1) amortized: the `front_offset` trick eliminates the O(n)
+    ///   index-shifting that a native implementation would require on every eviction.
+    /// - Eviction order is fully deterministic: the oldest item always goes first, independent of access
+    ///   patterns, making behaviour easy to reason about and reproduce in tests.
+    /// - No per-read overhead. Unlike LRU, FIFO requires no bookkeeping on cache hits.
     ///
     /// ### Cons
-    /// - No automatic eviction: the cache can fill up and stop accepting new entries if a max size is set,
-    ///   requiring manual management.
-    /// - Unordered: unlike a standard dict (Python 3.7+), insertion order is not preserved.
-    /// - Not suitable for volatile data: stale entries persist forever unless explicitly invalidated.
+    /// - Access-blind eviction. A hot item accessed thousands of times is evicted just as readily as one
+    ///   that has never been read. Hit rates suffer on workloads with strong temporal locality.
+    /// - The logical-index indirection adds a layer of internal complexity compared to a naïve queue-based cache.
+    /// - The rare O(n) index rebase (triggered when `front_offset` nears `usize::MAX - isize::MAX`) introduces
+    ///   an occasional latency spike. Amortized cost is negligible, but worst-case latency is unbounded in principle.
     ///
-    /// ## When to Use It
-    /// `Cache` is the right choice when:
-    /// - You have a fixed, well-known set of keys that are expensive to compute and never go stale
-    ///   (e.g., parsed config values, compiled regex patterns, loaded templates).
-    /// - The cached data has no meaningful expiry - it's either always valid or always explicitly invalidated.
-    /// - You need the lowest possible overhead and can guarantee the cache won't grow uncontrollably.
+    /// ## When to use it
+    /// Reach for `FIFOPolicy` when:
+    /// - Eviction order must be predictable and auditable: streaming pipelines, sequential batch processors, or
+    ///   any context where deterministic behaviour simplifies debugging.
+    /// - Access patterns are roughly uniform, so there is no meaningful "hot" subset of keys that a recency or
+    ///   frequency-aware policy could exploit.
+    /// - Read overhead must be minimal: FIFO's zero-cost hits make it preferable to LRU in insert-heavy workloads
+    ///   with infrequent re-reads.
     ///
-    /// Avoid it when cached data can become stale, when the working set is unpredictable in size, or when you need automatic
-    /// memory pressure relief.
+    /// Avoid it when your workload has strong temporal locality. If recently or frequently accessed items are likely
+    /// to be needed again soon, an LRU or LFU policy will deliver meaningfully better hit rates.
     [subclass, extends=crate::pyclasses::base::PyBaseCacheImpl, generic, frozen]
-    PyCache as "Cache" (onceinit::OnceInit<Wrapped<nopolicy::NoPolicy>>);
+    PyFIFOCache as "FIFOCache" (onceinit::OnceInit<Wrapped<fifopolicy::FIFOPolicy>>);
 }
 
 #[pyo3::pymethods]
-impl PyCache {
+impl PyFIFOCache {
     #[new]
     #[allow(unused_variables)]
     #[pyo3(signature=(*args, **kwds))]
@@ -64,12 +70,12 @@ impl PyCache {
         )
     }
 
-    /// Initialize a new `Cache` instance.
+    /// Initialize a new `FIFOCache` instance.
     ///
     /// Args:
     ///     maxsize: Maximum number of elements the cache can hold. Zero means unlimited.
     ///     iterable: Initial data to populate the cache.
-    ///     capacity: Pre-allocate hash table capacity to minimize reallocations. Defaults to 0.
+    ///     capacity: Pre-allocate capacity to minimize reallocations. Defaults to 0.
     ///     getsizeof: A callable that computes the size of a key-value pair. When `None`, each
     ///             entry is assumed to have a size of 1 (equivalent to `lambda k, v: 1`).
     ///             Use this to implement weighted caching — for example, sizing entries by
@@ -87,8 +93,8 @@ impl PyCache {
         getsizeof: Option<alias::PyObject>,
     ) -> pyo3::PyResult<()> {
         let wrapped = Wrapped::new(
-            nopolicy::NoPolicy::new(capacity),
-            nopolicy::Shared::new(maxsize, getsizeof),
+            fifopolicy::FIFOPolicy::new(capacity),
+            fifopolicy::Shared::new(maxsize, getsizeof),
         );
 
         if let Some(iterable) = iterable {
@@ -98,7 +104,7 @@ impl PyCache {
                 // iterable object
                 iterable,
                 // transform function
-                |key, value| nopolicy::Handle::new(py, &getsizeof, key, value),
+                |key, value| fifopolicy::Handle::new(py, &getsizeof, key, value),
             );
             self.0.set(wrapped);
             result
@@ -140,7 +146,7 @@ impl PyCache {
         let inner = self.0.get();
         let policy = inner.policy();
 
-        policy.table().capacity()
+        policy.table().capacity().min(policy.vecdeque().capacity())
     }
 
     /// Returns the number of entries currently in the cache.
@@ -149,6 +155,7 @@ impl PyCache {
         let inner = self.0.get();
         let policy = inner.policy();
 
+        debug_assert!(policy.table().len() == policy.vecdeque().len());
         policy.table().len()
     }
 
@@ -157,7 +164,9 @@ impl PyCache {
         let inner = self.0.get();
         let policy = inner.policy();
 
-        policy.table().capacity() * std::mem::size_of::<nopolicy::Handle>()
+        let table_cap = policy.table().capacity() * std::mem::size_of::<usize>();
+        let vecdeque_cap = policy.vecdeque().capacity() * std::mem::size_of::<fifopolicy::Handle>();
+        table_cap + vecdeque_cap
     }
 
     #[inline]
@@ -205,9 +214,6 @@ impl PyCache {
     /// - If the cache did not have this key present, None is returned.
     /// - If the cache did have this key present, the value is updated,
     ///   and the old value is returned. The key is not updated, though.
-    ///
-    /// Note: raises `OverflowError` if the cache reached the maxsize limit,
-    /// because this class does not have any algorithm.
     fn insert(
         &self,
         py: pyo3::Python,
@@ -215,7 +221,7 @@ impl PyCache {
         value: alias::PyObject,
     ) -> pyo3::PyResult<Option<alias::PyObject>> {
         let inner = self.0.get();
-        let handle = nopolicy::Handle::new(py, inner.shared().getsizeof(), key, value)?;
+        let handle = fifopolicy::Handle::new(py, inner.shared().getsizeof(), key, value)?;
 
         let old_handle = inner.insert(py, handle)?.map(|x| x.into_value());
         Ok(old_handle)
@@ -238,7 +244,7 @@ impl PyCache {
             // iterable object
             iterable.into_bound(py),
             // transform function
-            move |key, value| nopolicy::Handle::new(py, &getsizeof, key, value),
+            move |key, value| fifopolicy::Handle::new(py, &getsizeof, key, value),
         )
     }
 
@@ -340,7 +346,7 @@ impl PyCache {
             },
         };
 
-        let handle = nopolicy::Handle::with_precomputed_hash_key(
+        let handle = fifopolicy::Handle::with_precomputed_hash_key(
             py,
             shared.getsizeof(),
             key,
@@ -392,8 +398,6 @@ impl PyCache {
     }
 
     /// Remove and return a (key, value) pair as a 2-tuple.
-    ///
-    /// NOTE: `Cache` always raises `NotImplementedError` because has neither policy nor algorithm to evict items.
     fn popitem(&self, py: pyo3::Python) -> pyo3::PyResult<(alias::PyObject, alias::PyObject)> {
         let inner = self.0.get();
         let mut policy = inner.policy();
@@ -486,52 +490,52 @@ impl PyCache {
             .map(|x| !x)
     }
 
-    fn items(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyCacheItems>> {
-        let inner = self.0.get();
-        let gv = inner.shared().generation_version().clone();
-        let initial_gv = gv.get();
+    // fn items(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyCacheItems>> {
+    //     let inner = self.0.get();
+    //     let gv = inner.shared().generation_version().clone();
+    //     let initial_gv = gv.get();
 
-        // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
-        let result = PyCacheItems {
-            iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
-            gv,
-            initial_gv,
-        };
-        pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
-    }
+    //     // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
+    //     let result = PyCacheItems {
+    //         iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
+    //         gv,
+    //         initial_gv,
+    //     };
+    //     pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
+    // }
 
-    fn values(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyCacheValues>> {
-        let inner = self.0.get();
-        let gv = inner.shared().generation_version().clone();
-        let initial_gv = gv.get();
+    // fn values(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyCacheValues>> {
+    //     let inner = self.0.get();
+    //     let gv = inner.shared().generation_version().clone();
+    //     let initial_gv = gv.get();
 
-        // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
-        let result = PyCacheValues {
-            iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
-            gv,
-            initial_gv,
-        };
-        pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
-    }
+    //     // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
+    //     let result = PyCacheValues {
+    //         iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
+    //         gv,
+    //         initial_gv,
+    //     };
+    //     pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
+    // }
 
-    fn keys(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyCacheKeys>> {
-        let inner = self.0.get();
-        let gv = inner.shared().generation_version().clone();
-        let initial_gv = gv.get();
+    // fn keys(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyCacheKeys>> {
+    //     let inner = self.0.get();
+    //     let gv = inner.shared().generation_version().clone();
+    //     let initial_gv = gv.get();
 
-        // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
-        let result = PyCacheKeys {
-            iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
-            gv,
-            initial_gv,
-        };
-        pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
-    }
+    //     // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
+    //     let result = PyCacheKeys {
+    //         iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
+    //         gv,
+    //         initial_gv,
+    //     };
+    //     pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
+    // }
 
-    #[inline]
-    fn __iter__(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyCacheKeys>> {
-        self.keys(py)
-    }
+    // #[inline]
+    // fn __iter__(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyCacheKeys>> {
+    //     self.keys(py)
+    // }
 
     fn copy(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<Self>> {
         let inner = self.0.get();
@@ -551,19 +555,13 @@ impl PyCache {
         let shared = inner.shared();
         let policy = inner.policy();
 
-        let iter = unsafe {
-            policy
-                .table()
-                .iter()
-                .map(|bucket| bucket.as_ref())
-                .map(|handle| {
-                    (
-                        // Without using `.bind` it returns something like `Py(addr)`
-                        handle.key().as_ref().bind(py),
-                        handle.value().bind(py),
-                    )
-                })
-        };
+        let iter = policy.vecdeque().iter().map(|handle| {
+            (
+                // Without using `.bind` it returns something like `Py(addr)`
+                handle.key().as_ref().bind(py),
+                handle.value().bind(py),
+            )
+        });
 
         let items = utils::items_to_str(iter, policy.table().len()).unwrap();
         format!(
@@ -575,13 +573,34 @@ impl PyCache {
         )
     }
 
+    #[pyo3(signature = (n=0))]
+    fn first(&self, py: pyo3::Python, mut n: pyo3::ffi::Py_ssize_t) -> Option<alias::PyObject> {
+        let inner = self.0.get();
+        let policy = inner.policy();
+
+        if n < 0 {
+            n = (policy.vecdeque().len() as isize) + n;
+        }
+        if n < 0 {
+            return None;
+        }
+
+        let handle = policy.vecdeque().get(n as usize)?;
+        Some(handle.key().as_ref().clone_ref(py))
+    }
+
+    fn last(&self, py: pyo3::Python) -> Option<alias::PyObject> {
+        let inner = self.0.get();
+        let policy = inner.policy();
+        let handle = policy.vecdeque().back()?;
+        Some(handle.key().as_ref().clone_ref(py))
+    }
+
     fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
         let inner = self.0.get();
         let policy = inner.policy();
 
-        for handle_ref in unsafe { policy.table().iter() } {
-            let handle = unsafe { handle_ref.as_ref() };
-
+        for handle in policy.vecdeque().iter() {
             visit.call(handle.key().as_ref())?;
             visit.call(handle.value())?;
         }
@@ -594,65 +613,3 @@ impl PyCache {
         policy.clear(inner.shared());
     }
 }
-
-// Implement iterators
-macro_rules! implement_iterator {
-    (
-        $(
-            $name:ident as $pyname:literal
-            fn ($py:ident, $handle:ident) -> $rt_type:ty { $init:expr }
-        )+
-    ) => {
-        $(
-            implement_pyclass! {
-                [extends=crate::pyclasses::base::PyBaseIteratorImpl, generic, frozen]
-                $name as $pyname {
-                    initial_gv: u32,
-                    gv: utils::GenerationVersion,
-                    iter: parking_lot::Mutex<crate::hashbrown::raw::RawIter<nopolicy::Handle>>,
-                }
-            }
-
-            #[pyo3::pymethods]
-            impl $name {
-                #[inline]
-                fn __iter__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyRef<'_, Self> {
-                    slf
-                }
-
-                fn __next__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyResult<$rt_type> {
-                    if slf.initial_gv != slf.gv.get() {
-                        return Err(new_py_error!(
-                            PyRuntimeError,
-                            "cache size changed during iteration"
-                        ));
-                    }
-
-                    let mut iter = slf.iter.lock();
-
-                    match iter.next() {
-                        Some(x) => {
-                            let $py = slf.py();
-                            let $handle = unsafe { x.as_ref() };
-                            Ok($init)
-                        }
-                        None => return Err(new_py_error!(PyStopIteration, ())),
-                    }
-                }
-            }
-        )+
-    };
-}
-implement_iterator!(
-    PyCacheItems as "cache_items"
-    fn(py, handle) -> (alias::PyObject, alias::PyObject) {{
-        let (key, val) = handle.clone_ref(py).into_pair();
-        (key.into(), val)
-    }}
-
-    PyCacheKeys as "cache_keys"
-    fn(py, handle) -> alias::PyObject { handle.key().clone_ref(py).into() }
-
-    PyCacheValues as "cache_values"
-    fn(py, handle) -> alias::PyObject { handle.value().clone_ref(py) }
-);

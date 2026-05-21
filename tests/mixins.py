@@ -12,6 +12,8 @@ import cachebox
 hashable_keys = st.one_of(
     st.text(),
     st.integers(),
+    st.floats(allow_nan=False),
+    st.decimals(allow_nan=False),
     st.tuples(st.integers(), st.integers()),
 )
 
@@ -226,6 +228,8 @@ class UpdateMixin(BaseMixin):
         cache.update({"a": 99})
         assert cache.get("a") == 99
 
+    # TODO: test invalid arguments
+
 
 class IntrospectionMixin(BaseMixin):
     def test_len_reflects_insertions(self):
@@ -242,13 +246,13 @@ class IntrospectionMixin(BaseMixin):
 
         cache.insert("a", 1)
         cache.insert("b", 2)
-        assert cache.current_size == len(cache)
+        assert cache.current_size() == len(cache)
 
     def test_remaining_size(self):
         cache = self.create_cache()
 
         cache.insert("a", 1)
-        assert cache.remaining_size == cache.maxsize - cache.current_size
+        assert cache.remaining_size() == cache.maxsize - cache.current_size()
 
     def test_is_empty_on_new_cache(self):
         cache = self.create_cache()
@@ -331,6 +335,8 @@ class IterationMixin(BaseMixin):
         cache.update({"x": 10, "y": 20})
         assert set(iter(cache)) == {"x", "y"}
 
+    # TODO: test generation version
+
 
 class DrainClearShrinkMixin(BaseMixin):
     def test_clear_removes_all_items(self):
@@ -340,7 +346,7 @@ class DrainClearShrinkMixin(BaseMixin):
         cache.clear()
         assert len(cache) == 0
         assert cache.is_empty()
-        assert cache.current_size == 0
+        assert cache.current_size() == 0
 
     def test_clear_with_reuse(self):
         cache = self.create_cache()
@@ -399,7 +405,7 @@ class GetSizeOfMixin(BaseMixin):
         c = self.create_cache(maxsize=10, getsizeof=sizer)
         c.insert("a", [1, 2, 3])  # size 3
         c.insert("b", [1])  # size 1
-        assert c.current_size == 4
+        assert c.current_size() == 4
 
     def test_overflow_based_on_weighted_size(self):
         # maxsize=5; each entry costs its value
@@ -490,28 +496,31 @@ class IssuesMixin(BaseMixin):
             cache.get(EQ(val=i))
 
 
+# TODO: test rare usages, such as "same hash but not-equal", "unhashable keys"
+
+
 class FuzzyMixin(BaseMixin):
     @given(key=hashable_keys, value=any_value)
-    def test_insert_then_get_returns_same_value(self, key, value):
+    def test_fuzzy_insert_then_get_returns_same_value(self, key, value):
         c = self.create_cache(maxsize=0)
         c.insert(key, value)
         assert c.get(key) == value
 
     @given(key=hashable_keys, value=any_value)
-    def test_insert_new_key_returns_none(self, key, value):
+    def test_fuzzy_insert_new_key_returns_none(self, key, value):
         c = self.create_cache(maxsize=0)
         result = c.insert(key, value)
         assert result is None
 
     @given(key=hashable_keys, v1=any_value, v2=any_value)
-    def test_insert_existing_key_returns_old_value(self, key, v1, v2):
+    def test_fuzzy_insert_existing_key_returns_old_value(self, key, v1, v2):
         c = self.create_cache(maxsize=0)
         c.insert(key, v1)
         old = c.insert(key, v2)
         assert old == v1
 
     @given(pairs=st.lists(st.tuples(hashable_keys, any_value), max_size=20))
-    def test_len_never_exceeds_unique_keys(self, pairs):
+    def test_fuzzy_len_never_exceeds_unique_keys(self, pairs):
         c = self.create_cache(maxsize=0)
         expected = {}
         for k, v in pairs:
@@ -520,14 +529,14 @@ class FuzzyMixin(BaseMixin):
         assert len(c) == len(expected)
 
     @given(key=hashable_keys, value=any_value)
-    def test_len_increases_by_one_on_new_key(self, key, value):
+    def test_fuzzy_len_increases_by_one_on_new_key(self, key, value):
         c = self.create_cache(maxsize=0)
         before = len(c)
         c.insert(key, value)
         assert len(c) == before + 1
 
     @given(key=hashable_keys, v1=any_value, v2=any_value)
-    def test_len_unchanged_on_overwrite(self, key, v1, v2):
+    def test_fuzzy_len_unchanged_on_overwrite(self, key, v1, v2):
         c = self.create_cache(maxsize=0)
         c.insert(key, v1)
         before = len(c)
@@ -535,27 +544,27 @@ class FuzzyMixin(BaseMixin):
         assert len(c) == before
 
     @given(key=hashable_keys, value=any_value)
-    def test_contains_true_after_insert(self, key, value):
+    def test_fuzzy_contains_true_after_insert(self, key, value):
         c = self.create_cache(maxsize=0)
         c.insert(key, value)
         assert key in c
         assert c.contains(key)
 
     @given(key=hashable_keys, value=any_value)
-    def test_contains_false_after_delete(self, key, value):
+    def test_fuzzy_contains_false_after_delete(self, key, value):
         c = self.create_cache(maxsize=0)
         c.insert(key, value)
         del c[key]
         assert key not in c
 
     @given(key=hashable_keys, value=any_value)
-    def test_pop_returns_inserted_value(self, key, value):
+    def test_fuzzy_pop_returns_inserted_value(self, key, value):
         c = self.create_cache(maxsize=0)
         c.insert(key, value)
         assert c.pop(key) == value
 
     @given(key=hashable_keys, value=any_value)
-    def test_pop_removes_key(self, key, value):
+    def test_fuzzy_pop_removes_key(self, key, value):
         c = self.create_cache(maxsize=0)
         c.insert(key, value)
         c.pop(key)
@@ -565,16 +574,16 @@ class FuzzyMixin(BaseMixin):
         maxsize=st.integers(min_value=1, max_value=50),
         pairs=st.lists(st.tuples(hashable_keys, any_value), max_size=50),
     )
-    def test_current_size_plus_remaining_equals_maxsize(self, maxsize, pairs):
+    def test_fuzzy_current_size_plus_remaining_equals_maxsize(self, maxsize, pairs):
         c = self.create_cache(maxsize=maxsize)
         for k, v in pairs:
             if c.is_full():
                 break
             c.insert(k, v)
-        assert c.current_size + c.remaining_size == maxsize
+        assert c.current_size() + c.remaining_size() == maxsize
 
     @given(pairs=st.lists(st.tuples(hashable_keys, any_value), max_size=20))
-    def test_clear_always_leaves_cache_empty(self, pairs):
+    def test_fuzzy_clear_always_leaves_cache_empty(self, pairs):
         c = self.create_cache(maxsize=0)
         for k, v in pairs:
             c.insert(k, v)
@@ -583,7 +592,7 @@ class FuzzyMixin(BaseMixin):
         assert c.is_empty()
 
     @given(pairs=st.lists(st.tuples(hashable_keys, any_value), max_size=20))
-    def test_keys_values_items_are_consistent(self, pairs):
+    def test_fuzzy_keys_values_items_are_consistent(self, pairs):
         c = self.create_cache(maxsize=0)
         truth = {}
         for k, v in pairs:
@@ -598,20 +607,20 @@ class FuzzyMixin(BaseMixin):
         )
 
     @given(key=hashable_keys, existing=any_value, default=any_value)
-    def test_setdefault_never_overwrites_existing(self, key, existing, default):
+    def test_fuzzy_setdefault_never_overwrites_existing(self, key, existing, default):
         c = self.create_cache(maxsize=0)
         c.insert(key, existing)
         c.setdefault(key, default)
         assert c.get(key) == existing
 
     @given(key=hashable_keys, default=any_value)
-    def test_setdefault_inserts_when_missing(self, key, default):
+    def test_fuzzy_setdefault_inserts_when_missing(self, key, default):
         c = self.create_cache(maxsize=0)
         c.setdefault(key, default)
         assert c.get(key) == default
 
     @given(pairs=st.lists(st.tuples(hashable_keys, any_value), max_size=20))
-    def test_copy_equals_original(self, pairs):
+    def test_fuzzy_copy_equals_original(self, pairs):
         c = self.create_cache(maxsize=0)
         for k, v in pairs:
             c.insert(k, v)
@@ -620,7 +629,9 @@ class FuzzyMixin(BaseMixin):
     @given(
         key=hashable_keys, value=any_value, new_key=hashable_keys, new_value=any_value
     )
-    def test_copy_is_independent_of_original(self, key, value, new_key, new_value):
+    def test_fuzzy_copy_is_independent_of_original(
+        self, key, value, new_key, new_value
+    ):
         assume(new_key != key)
         c = self.create_cache(maxsize=0)
         c.insert(key, value)

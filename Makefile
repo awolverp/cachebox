@@ -7,6 +7,10 @@ help:
 	@echo -e "\tformat          format rust and python code"
 	@echo -e "\tclean           clean all the unneeded files"
 
+.PHONY: build-test
+build-test:
+	maturin develop --features "fifocache-small-offset"
+
 .PHONY: build-dev
 build-dev:
 	maturin develop

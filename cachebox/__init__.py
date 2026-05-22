@@ -1,6 +1,7 @@
 from ._core import BaseCacheImpl as BaseCacheImpl
 from ._core import Cache as Cache
 from ._core import FIFOCache as FIFOCache
+from ._core import RRCache as RRCache
 
 try:
     from ._core import (

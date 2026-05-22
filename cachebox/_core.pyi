@@ -400,3 +400,89 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         Returns the last key in cache. Equals to `self.first(-1)`.
         """
         ...
+
+class RRCache(BaseCacheImpl[KT, VT]):
+    def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
+        """
+        Equals to `self[key] = value`, but returns a value:
+
+        - If the cache did not have this key present, None is returned.
+        - If the cache did have this key present, the value is updated,
+          and the old value is returned. The key is not updated, though;
+
+        It's recommended to use this method instead of `self[key] = value`, as it keeps code
+        compatible across different cache policies.
+        """
+        ...
+
+    def update(self, iterable: _IterableType[KT, VT]) -> None:
+        """
+        Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
+        """
+        ...
+
+    def get(
+        self,
+        key: KT,
+        default: typing.Optional[DT] = ...,
+    ) -> typing.Union[VT, DT]:
+        """
+        Retrieves the value for a given key from the cache.
+
+        Returns the value associated with the key if present, otherwise returns the specified default value.
+        Equivalent to `self[key]`, but provides a fallback default if the key is not found.
+        """
+        ...
+
+    def setdefault(
+        self,
+        key: KT,
+        default: typing.Optional[DT] = None,
+    ) -> typing.Optional[VT | DT]:
+        """
+        Inserts key with a value of default if key is not in the cache.
+
+        Returns the value for key if key is in the cache, else default.
+        """
+        ...
+
+    def popitem(self) -> typing.Tuple[KT, VT]:
+        """Randomly selects and removes a (key, value) pair from the cache."""
+        ...
+
+    def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
+        """
+        Returns an iterable object of the cache's items (key-value pairs).
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        - Items are not ordered.
+        """
+        ...
+
+    def keys(self) -> typing.Iterable[KT]:
+        """
+        Returns an iterable object of the cache's keys.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        - Keys are not ordered.
+        """
+        ...
+
+    def values(self) -> typing.Iterable[VT]:
+        """
+        Returns an iterable object of the cache's values.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        - Values are not ordered.
+        """
+        ...
+
+    def random_key(self) -> KT:
+        """
+        Randomly selects and returns a key from the cache.
+        Raises `KeyError` If the cache is empty.
+        """
+        ...

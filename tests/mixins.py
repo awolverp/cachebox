@@ -147,6 +147,29 @@ class InsertAndGetMixin(BaseMixin):
         assert cache[AType] is AType
 
 
+class PopitemMixin(BaseMixin):
+    def test_popitem_raises_keyerror(self):
+        cache = self.create_cache()
+
+        with pytest.raises(KeyError):
+            cache.popitem()
+
+    def test_popitem_updates_currsize(self):
+        cache = self.create_cache(10, {i: i for i in range(20)})
+
+        assert cache.is_full()
+        assert cache.remaining_size() == 0
+        assert cache.current_size() == 10
+        assert len(cache) == 10
+
+        cache.popitem()
+
+        assert not cache.is_full()
+        assert cache.remaining_size() == 1
+        assert cache.current_size() == 9
+        assert len(cache) == 9
+
+
 class SetDefaultMixin(BaseMixin):
     def test_setdefault_inserts_when_absent(self):
         cache = self.create_cache()

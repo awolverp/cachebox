@@ -40,6 +40,21 @@ mod _core {
 
     #[pymodule_export]
     use crate::pyclasses::fifocache::PyFIFOCache;
+    #[pymodule_export]
+    use crate::pyclasses::fifocache::PyFIFOCacheItems;
+    #[pymodule_export]
+    use crate::pyclasses::fifocache::PyFIFOCacheKeys;
+    #[pymodule_export]
+    use crate::pyclasses::fifocache::PyFIFOCacheValues;
+
+    #[pymodule_export]
+    use crate::pyclasses::rrcache::PyRRCache;
+    #[pymodule_export]
+    use crate::pyclasses::rrcache::PyRRCacheItems;
+    #[pymodule_export]
+    use crate::pyclasses::rrcache::PyRRCacheKeys;
+    #[pymodule_export]
+    use crate::pyclasses::rrcache::PyRRCacheValues;
 
     #[pymodule_init]
     pub fn init(m: &pyo3::Bound<'_, pyo3::types::PyModule>) -> pyo3::PyResult<()> {

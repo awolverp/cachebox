@@ -15,7 +15,6 @@ implement_pyclass! {
     /// `Cache` is essentially a configurable hashmap-like store. When an item is inserted:
     /// - It is stored directly without any ordering, priority tracking, or access metadata.
     /// - If a maximum size is configured, insertions beyond that limit are rejected (raises OverflowError).
-    ///   A max size of zero means unlimited.
     /// - All read and write operations are thread-safe, making it safe for concurrent access without
     ///   external locking.
     ///
@@ -67,7 +66,7 @@ impl PyCache {
     /// Initialize a new `Cache` instance.
     ///
     /// Args:
-    ///     maxsize: Maximum number of elements the cache can hold. Zero means unlimited.
+    ///     maxsize: Maximum number of elements the cache can hold.
     ///     iterable: Initial data to populate the cache.
     ///     capacity: Pre-allocate hash table capacity to minimize reallocations. Defaults to 0.
     ///     getsizeof: A callable that computes the size of a key-value pair. When `None`, each

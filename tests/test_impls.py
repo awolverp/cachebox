@@ -234,9 +234,11 @@ class TestFIFOCachePolicy(mixins.BaseMixin):
         assert cache.first() == 42
         assert cache.last() == 42
 
-    def test_first_returns_none_on_empty_cache(self):
+    def test_first_raise_indexerror_on_empty_cache(self):
         cache = self.create_cache(0)
-        assert cache.first() is None
+
+        with pytest.raises(IndexError):
+            cache.first()
 
     def test_rolling_window_maintains_correct_contents(self):
         """
@@ -303,7 +305,7 @@ class TestFIFOCachePolicy(mixins.BaseMixin):
 
     @pytest.mark.skipif(
         not hasattr(cachebox, "_fifocache_small_offset"),
-        reason="requires fifocache-small-offset feature flag",
+        reason="requires small-offset feature flag",
     )
     def test_edge_case_of_front_offset_overflow(self):
         """
@@ -405,3 +407,232 @@ class TestRRCache(
         cache["c"] = 3
         cache["d"] = 4
         assert cache.random_key() in ("a", "b", "c", "d")
+
+
+class TestLRUCache(
+    mixins.InitializeMixin,
+    mixins.InsertAndGetMixin,
+    mixins.PopitemMixin,
+    mixins.SetDefaultMixin,
+    mixins.PopAndDeleteMixin,
+    mixins.UpdateMixin,
+    mixins.IntrospectionMixin,
+    mixins.IterationMixin,
+    mixins.DrainClearShrinkMixin,
+    mixins.CopyMixin,
+    mixins.GetSizeOfMixin,
+    mixins.EdgeCasesMixin,
+    mixins.IssuesMixin,
+    mixins.FuzzyMixin,
+):
+    def create_cache(
+        self,
+        maxsize: int = 10,
+        iterable: typing.Any = None,
+        capacity: int = 0,
+        getsizeof: typing.Any = None,
+    ) -> cachebox.LRUCache:
+        return cachebox.LRUCache(
+            maxsize,
+            iterable,
+            capacity=capacity,
+            getsizeof=getsizeof,
+        )
+
+
+class TestLRUCachePolicy(mixins.BaseMixin):
+    def create_cache(
+        self,
+        maxsize: int = 10,
+        iterable: typing.Any = None,
+        capacity: int = 0,
+        getsizeof: typing.Any = None,
+    ) -> cachebox.LRUCache:
+        return cachebox.LRUCache(
+            maxsize,
+            iterable,
+            capacity=capacity,
+            getsizeof=getsizeof,
+        )
+
+    def test_evicts_lru_when_full(self):
+        c = self.create_cache(3, {"a": 1, "b": 2, "c": 3})
+        c.insert("d", 4)
+        assert "a" not in c
+        assert "d" in c
+
+        c = self.create_cache(3, {"a": 1, "b": 2, "c": 3})
+        c.insert("a", 1)
+        c.insert("b", 2)
+        c.insert("c", 3)
+        c.insert("d", 4)
+        assert "a" not in c
+        assert "d" in c
+
+    def test_does_not_evict_recently_read_key(self):
+        c = self.create_cache(3)
+        c.insert("a", 1)
+        c.insert("b", 2)
+        c.insert("c", 3)
+        _ = c["a"]  # promote "a" → "b" becomes LRU
+        c.insert("d", 4)
+        assert "b" not in c
+        assert "a" in c
+
+    def test_reinserting_existing_key_promotes_it(self):
+        c = self.create_cache(3, [("a", 1), ("b", 2), ("c", 3)])
+        c.insert("a", 99)  # "a" was LRU, now MRU
+        c.insert("d", 4)  # should evict "b", not "a"
+        assert "a" in c
+        assert "b" not in c
+
+    def test_cache_never_exceeds_maxsize(self):
+        c = self.create_cache(5)
+        for i in range(20):
+            c.insert(i, i)
+            assert len(c) <= 5
+
+    def test_sequential_inserts_keep_only_latest(self):
+        c = self.create_cache(3)
+        for i in range(6):
+            c.insert(i, i)
+
+        for k in range(3):
+            assert k not in c
+
+        for k in range(3, 6):
+            assert k in c
+
+    def test_update_evicts_lru_to_make_room(self):
+        c = self.create_cache(3)
+        c.insert("a", 1)
+        c.insert("b", 2)
+        c.insert("c", 3)
+        c.update({"d": 4})
+        assert "a" not in c
+
+    def test_update_existing_key_promotes_it(self):
+        c = self.create_cache(3, [("a", 1), ("b", 2), ("c", 3)])
+        c.update({"a": 99})  # "a" was LRU, now MRU
+        c.update({"d": 4})  # should evict "b"
+        assert "a" in c
+        assert "b" not in c
+
+    def test_lru_and_mru_key_methods(self):
+        c = self.create_cache(3)
+        c.insert("a", 1)
+
+        assert c.least_recently_used() == "a"
+        assert c.most_recently_used() == "a"
+
+        c.insert("b", 2)
+        c.insert("c", 3)
+
+        assert c.least_recently_used() == "a"
+        assert c.most_recently_used() == "c"
+
+        _ = c["a"]  # promote "a"
+
+        assert c.least_recently_used() == "b"
+        assert c.most_recently_used() == "a"
+
+        assert "b" in c  # promote "b"
+
+        assert c.least_recently_used() == "c"
+        assert c.most_recently_used() == "b"
+
+    def test_setdefault_on_existing_key_promotes_it(self):
+        c = self.create_cache(0, [("a", 1), ("b", 2), ("c", 3)])
+        c.setdefault("a", 0)
+        assert c.most_recently_used() == "a"
+
+    def test_lru_mru_empty_raises(self):
+        with pytest.raises(KeyError):
+            self.create_cache(5).least_recently_used()
+
+        with pytest.raises(KeyError):
+            self.create_cache(5).most_recently_used()
+
+    def test_removes_least_recently_used(self):
+        c = self.create_cache(0, [("a", 1), ("b", 2), ("c", 3)])
+        key, val = c.popitem()
+        assert key == "a"
+        assert val == 1
+        assert "a" not in c
+
+    def test_order_after_read(self):
+        c = self.create_cache(0, [("a", 1), ("b", 2), ("c", 3)])
+        _ = c["a"]  # "a" now MRU → "b" is LRU
+        key, _ = c.popitem()
+        assert key == "b"
+
+    def test_order_after_reinsert(self):
+        c = self.create_cache(0, [("a", 1), ("b", 2), ("c", 3)])
+        c.insert("a", 99)  # "a" now MRU → "b" is LRU
+        key, _ = c.popitem()
+        assert key == "b"
+
+    def test_repeated_popitem_respects_lru_order(self):
+        c = self.create_cache(5)
+        for i in range(5):
+            c.insert(i, i * 10)
+
+        for expected in range(5):
+            key, _ = c.popitem()
+            assert key == expected
+
+    def test_empty_raises(self):
+        with pytest.raises(KeyError):
+            self.create_cache(5).popitem()
+
+    def test_hot_key_never_evicted(self):
+        c = self.create_cache(3)
+        c.insert("hot", 0)
+        for i in range(20):
+            _ = c.get("hot")
+            c.insert(f"cold_{i}", i)
+
+        assert "hot" in c
+
+    def test_mixed_reads_and_writes_evict_correctly(self):
+        c = self.create_cache(4)
+        c.insert("a", 1)
+        c.insert("b", 2)
+        c.insert("c", 3)
+        c.insert("d", 4)
+        _ = c["a"]  # order: b, c, d, a
+        _ = c["c"]  # order: b, d, a, c
+        c.insert("e", 5)  # evicts "b"
+        assert "b" not in c
+        c.insert("f", 6)  # evicts "d"
+        assert "d" not in c
+
+    def test_peek_existing_key(self):
+        cache = self.create_cache()
+
+        cache.insert("k", 42)
+        assert cache.peek("k") == 42
+
+    def test_peek_missing_key_returns_none(self):
+        cache = self.create_cache()
+
+        assert cache.peek("nope") is None
+
+    def test_peek_missing_key_returns_custom_default(self):
+        cache = self.create_cache()
+
+        assert cache.peek("nope", "fallback") == "fallback"
+
+    def test_peek_no_promote_key(self):
+        c = self.create_cache(3)
+        c.insert("a", 1)
+        c.insert("b", 2)
+        c.insert("c", 3)
+
+        assert c.least_recently_used() == "a"
+        assert c.most_recently_used() == "c"
+
+        c.peek("a")
+
+        assert c.least_recently_used() == "a"
+        assert c.most_recently_used() == "c"

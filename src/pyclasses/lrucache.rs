@@ -1,63 +1,88 @@
 use crate::internal::alias;
+use crate::internal::linked_list;
 use crate::internal::onceinit;
 use crate::internal::utils;
-use crate::policies::common::RawVecDequeIter;
-use crate::policies::fifopolicy;
+use crate::policies::lrupolicy;
 use crate::policies::traits::HandleExt;
 use crate::policies::traits::PolicyExt;
 use crate::policies::traits::SharedExt;
 use crate::policies::wrapped::Wrapped;
 
 implement_pyclass! {
-    /// A First-In-First-Out (FIFO) cache eviction policy: when the cache is full, the oldest
-    /// inserted item is always the first to be removed, regardless of how often it has been accessed.
+    /// A Least-Recently-Used (LRU) cache eviction policy: when the cache is full,
+    /// the item that has not been accessed for the longest time is removed first,
+    /// regardless of how many times it was accessed in the past.
     ///
     /// ## How It Works
-    /// The FIFO algorithm is one of the simplest cache eviction strategies. Items are stored in
-    /// insertion order, and when the cache reaches capacity, the item that has been there the
-    /// longest is evicted to make room. There is no concept of "recently used" or "frequently used"
-    /// - age alone determines eviction order. Conceptually, it behaves like a queue: new items
-    /// join the back, and evictions come from the front.
+    /// The LRU algorithm is one of the most widely used cache eviction strategies in
+    /// practice. Items are tracked by their access recency—every time an item is read
+    /// or written, it becomes the most recently used. When the cache reaches capacity,
+    /// the least recently used item (the one that was accessed longest ago) is
+    /// evicted to make room for new entries.
     ///
-    /// This implementation backs that queue with a `double-ended queue` for O(1) front removal,
-    /// paired with a `hash map` for O(1) key lookups. Rather than storing physical indices into
-    /// the deque (which shift every time an item is evicted from the front), the table stores
-    /// logical indices - a monotonically increasing counter assigned at insertion time.
-    /// A separate `front_offset` counter tracks how many items have ever been evicted; the physical
-    /// position of any key is recovered at read time as `entries[table[key] - front_offset]`,
-    /// keeping both eviction and lookup O(1) without any per-eviction rewriting of the table.
+    /// This implementation pairs a doubly-linked list with a hash map. The linked list
+    /// maintains items in access order: the most recently used item sits at the back,
+    /// and the least recently used at the front. The hash map stores pointers (cursors)
+    /// into this list, enabling O(1) key lookups. On every access—read or write—the
+    /// accessed item is moved to the back of the list, promoting it to "most recently used"
+    /// status. When eviction is needed, the front item is removed.
+    ///
+    /// The doubly-linked list structure is critical: it permits O(1) removal and
+    /// reinsertion of any item anywhere in the ordering, without requiring a full rebuild
+    /// or index shifting. A running total tracks the current size of cached items,
+    /// allowing capacity checks in constant time.
     ///
     /// ### Pros
-    /// - Insert, lookup, and evict are all O(1) amortized: the `front_offset` trick eliminates the O(n)
-    ///   index-shifting that a native implementation would require on every eviction.
-    /// - Eviction order is fully deterministic: the oldest item always goes first, independent of access
-    ///   patterns, making behaviour easy to reason about and reproduce in tests.
-    /// - No per-read overhead. Unlike LRU, FIFO requires no bookkeeping on cache hits.
+    /// - **Excellent hit rates on temporal locality.** Workloads where recently or
+    ///   frequently accessed items are likely to be needed again soon benefit dramatically
+    ///   from LRU's recency-aware eviction. Real-world caches (CPU L1/L2, database
+    ///   buffers, CDN edges) rely on this principle.
+    /// - **Insert, lookup, and evict are all O(1) amortized.** The doubly-linked list
+    ///   and hash map combination guarantees no per-operation index shifting or traversals.
+    /// - **Automatic adaptation to access patterns.** Hot keys naturally migrate to the
+    ///   back of the list and stay there, while cold keys drift toward eviction. No
+    ///   manual tuning of weights or thresholds is needed.
+    /// - **Per-hit cost is minimal.** While LRU does require bookkeeping on reads (moving
+    ///   an item to the back), this bookkeeping is O(1) and adds negligible overhead to most
+    ///   workloads.
     ///
     /// ### Cons
-    /// - Access-blind eviction. A hot item accessed thousands of times is evicted just as readily as one
-    ///   that has never been read. Hit rates suffer on workloads with strong temporal locality.
-    /// - The logical-index indirection adds a layer of internal complexity compared to a naïve queue-based cache.
-    /// - The rare O(n) index rebase (triggered when `front_offset` nears `usize::MAX - isize::MAX`) introduces
-    ///   an occasional latency spike. Amortized cost is negligible, but worst-case latency is unbounded in principle.
+    /// - **Per-read overhead.** Every cache hit requires updating the linked list (removing
+    ///   the item from its current position and reinserting it at the back), which is
+    ///   measurably slower than FIFO's zero-cost hits on read-heavy workloads.
+    /// - **Burst traffic can skew eviction.** A single item accessed many times in rapid
+    ///   succession will be kept alive indefinitely, even if other keys have better long-term
+    ///   utility. Recency is a proxy for future use, not a guarantee.
+    /// - **Implementation complexity.** The doubly-linked list and cursor-based hash table add
+    ///   internal complexity compared to simpler policies like FIFO.
+    /// - **Memory overhead.** Storing doubly-linked pointers (prev/next) for every cached item
+    ///   consumes extra memory compared to array-based alternatives.
     ///
     /// ## When to use it
-    /// Reach for `FIFOPolicy` when:
-    /// - Eviction order must be predictable and auditable: streaming pipelines, sequential batch processors, or
-    ///   any context where deterministic behaviour simplifies debugging.
-    /// - Access patterns are roughly uniform, so there is no meaningful "hot" subset of keys that a recency or
-    ///   frequency-aware policy could exploit.
-    /// - Read overhead must be minimal: FIFO's zero-cost hits make it preferable to LRU in insert-heavy workloads
-    ///   with infrequent re-reads.
+    /// Reach for `LRUPolicy` when:
+    /// - Your workload exhibits temporal locality—recently accessed items are likely to be
+    ///   needed again soon. Databases, web caches, and CPU caches all exhibit this pattern.
+    /// - Hit rate is your primary metric. If maximizing the proportion of requests served
+    ///   from the cache matters more than minimizing per-hit latency, LRU is typically the
+    ///   best general-purpose choice.
+    /// - Access patterns are unknown or unpredictable. LRU's automatic adaptation makes it a safe
+    ///   default when you cannot statically analyze what keys will be hot.
+    /// - You need a standard, battle-tested algorithm. LRU is the de facto eviction policy in most
+    ///   production systems; it is well-understood, widely supported, and easy to reason about.
     ///
-    /// Avoid it when your workload has strong temporal locality. If recently or frequently accessed items are likely
-    /// to be needed again soon, an LRU or LFU policy will deliver meaningfully better hit rates.
+    /// Avoid it when:
+    /// - Your workload is write-heavy with few or no re-reads. FIFO's zero per-hit bookkeeping
+    ///   will outperform LRU if the cache is rarely hit.
+    /// - You need sub-microsecond latency on every operation. The linked-list manipulation on each
+    ///   read can add measurable overhead in ultra-low-latency systems.
+    /// - Access patterns are bimodal or exhibit frequency-heavy behavior (a small set of items is
+    ///   accessed far more often than others). An LFU policy may deliver better hit rates in such cases.
     [subclass, extends=crate::pyclasses::base::PyBaseCacheImpl, generic, frozen]
-    PyFIFOCache as "FIFOCache" (onceinit::OnceInit<Wrapped<fifopolicy::FIFOPolicy>>);
+    PyLRUCache as "LRUCache" (onceinit::OnceInit<Wrapped<lrupolicy::LRUPolicy>>);
 }
 
 #[pyo3::pymethods]
-impl PyFIFOCache {
+impl PyLRUCache {
     #[new]
     #[allow(unused_variables)]
     #[pyo3(signature=(*args, **kwds))]
@@ -94,8 +119,8 @@ impl PyFIFOCache {
         getsizeof: Option<alias::PyObject>,
     ) -> pyo3::PyResult<()> {
         let wrapped = Wrapped::new(
-            fifopolicy::FIFOPolicy::new(capacity),
-            fifopolicy::Shared::new(maxsize, getsizeof),
+            lrupolicy::LRUPolicy::new(capacity),
+            lrupolicy::Shared::new(maxsize, getsizeof),
         );
 
         if let Some(iterable) = iterable {
@@ -105,7 +130,7 @@ impl PyFIFOCache {
                 // iterable object
                 iterable,
                 // transform function
-                |key, value| fifopolicy::Handle::new(py, &getsizeof, key, value),
+                |key, value| lrupolicy::Handle::new(py, &getsizeof, key, value),
             );
             self.0.set(wrapped);
             result
@@ -147,7 +172,7 @@ impl PyFIFOCache {
         let inner = self.0.get();
         let policy = inner.policy();
 
-        policy.table().capacity().min(policy.vecdeque().capacity())
+        policy.table().capacity()
     }
 
     /// Returns the number of entries currently in the cache.
@@ -156,7 +181,7 @@ impl PyFIFOCache {
         let inner = self.0.get();
         let policy = inner.policy();
 
-        debug_assert!(policy.table().len() == policy.vecdeque().len());
+        debug_assert!(policy.table().len() == policy.linked_list().len());
         policy.table().len()
     }
 
@@ -165,9 +190,10 @@ impl PyFIFOCache {
         let inner = self.0.get();
         let policy = inner.policy();
 
-        let table_cap = policy.table().capacity() * std::mem::size_of::<usize>();
-        let vecdeque_cap = policy.vecdeque().capacity() * std::mem::size_of::<fifopolicy::Handle>();
-        table_cap + vecdeque_cap
+        let table_cap = policy.table().capacity() * 8;
+        let list_cap = policy.linked_list().len() * std::mem::size_of::<lrupolicy::Handle>();
+
+        table_cap + list_cap
     }
 
     #[inline]
@@ -222,7 +248,7 @@ impl PyFIFOCache {
         value: alias::PyObject,
     ) -> pyo3::PyResult<Option<alias::PyObject>> {
         let inner = self.0.get();
-        let handle = fifopolicy::Handle::new(py, inner.shared().getsizeof(), key, value)?;
+        let handle = lrupolicy::Handle::new(py, inner.shared().getsizeof(), key, value)?;
 
         let old_handle = inner.insert(py, handle)?.map(|x| x.into_value());
         Ok(old_handle)
@@ -245,7 +271,7 @@ impl PyFIFOCache {
             // iterable object
             iterable.into_bound(py),
             // transform function
-            move |key, value| fifopolicy::Handle::new(py, &getsizeof, key, value),
+            move |key, value| lrupolicy::Handle::new(py, &getsizeof, key, value),
         )
     }
 
@@ -347,7 +373,7 @@ impl PyFIFOCache {
             },
         };
 
-        let handle = fifopolicy::Handle::with_precomputed_hash_key(
+        let handle = lrupolicy::Handle::with_precomputed_hash_key(
             py,
             shared.getsizeof(),
             key,
@@ -491,42 +517,42 @@ impl PyFIFOCache {
             .map(|x| !x)
     }
 
-    fn items(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyFIFOCacheItems>> {
+    fn items(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyLRUCacheItems>> {
         let inner = self.0.get();
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
-        let result = PyFIFOCacheItems {
-            iter: parking_lot::Mutex::new(unsafe { inner.policy().iter() }),
+        let result = PyLRUCacheItems {
+            iter: parking_lot::Mutex::new(unsafe { inner.policy().linked_list().iter() }),
             gv,
             initial_gv,
         };
         pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
     }
 
-    fn values(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyFIFOCacheValues>> {
+    fn values(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyLRUCacheValues>> {
         let inner = self.0.get();
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
-        let result = PyFIFOCacheValues {
-            iter: parking_lot::Mutex::new(unsafe { inner.policy().iter() }),
+        let result = PyLRUCacheValues {
+            iter: parking_lot::Mutex::new(unsafe { inner.policy().linked_list().iter() }),
             gv,
             initial_gv,
         };
         pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
     }
 
-    fn keys(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyFIFOCacheKeys>> {
+    fn keys(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyLRUCacheKeys>> {
         let inner = self.0.get();
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
-        let result = PyFIFOCacheKeys {
-            iter: parking_lot::Mutex::new(unsafe { inner.policy().iter() }),
+        let result = PyLRUCacheKeys {
+            iter: parking_lot::Mutex::new(unsafe { inner.policy().linked_list().iter() }),
             gv,
             initial_gv,
         };
@@ -534,7 +560,7 @@ impl PyFIFOCache {
     }
 
     #[inline]
-    fn __iter__(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyFIFOCacheKeys>> {
+    fn __iter__(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyLRUCacheKeys>> {
         self.keys(py)
     }
 
@@ -556,13 +582,16 @@ impl PyFIFOCache {
         let shared = inner.shared();
         let policy = inner.policy();
 
-        let iter = policy.vecdeque().iter().map(|handle| {
-            (
-                // Without using `.bind` it returns something like `Py(addr)`
-                handle.key().as_ref().bind(py),
-                handle.value().bind(py),
-            )
-        });
+        let iter = unsafe {
+            policy.linked_list().iter().map(|cursor| {
+                let handle = cursor.element();
+                (
+                    // Without `.bind` it returns something like `Py(addr)`
+                    handle.key().as_ref().bind(py),
+                    handle.value().bind(py),
+                )
+            })
+        };
 
         let items = utils::items_to_str(iter, policy.table().len()).unwrap();
         format!(
@@ -574,34 +603,50 @@ impl PyFIFOCache {
         )
     }
 
-    #[pyo3(signature = (n=0))]
-    fn first(
+    #[pyo3(signature = (key, default=utils::OptionalArgument::Undefined))]
+    fn peek<'p>(
         &self,
         py: pyo3::Python,
-        mut n: pyo3::ffi::Py_ssize_t,
+        key: alias::PyObject,
+        default: utils::OptionalArgument<'p>,
     ) -> pyo3::PyResult<alias::PyObject> {
+        let key = utils::PrecomputedHashObject::new(py, key)?;
+
         let inner = self.0.get();
         let policy = inner.policy();
 
-        if n < 0 {
-            n = (policy.vecdeque().len() as isize) + n;
-        }
-        if n < 0 {
-            return Err(new_py_error!(PyIndexError, "`n` out of range"));
+        if let Some(x) = policy.peek(py, &key)? {
+            return Ok(x.value().clone_ref(py));
         }
 
-        match policy.vecdeque().get(n as usize) {
-            Some(handle) => Ok(handle.key().as_ref().clone_ref(py)),
-            None => Err(new_py_error!(PyIndexError, "`n` out of range")),
+        match default {
+            utils::OptionalArgument::Defined(x) => Ok(x.unbind()),
+            utils::OptionalArgument::Undefined => unsafe {
+                // SAFETY: None is immortal, so reference counting has no meaning
+                Ok(pyo3::Bound::from_owned_ptr(py, pyo3::ffi::Py_None()).unbind())
+            },
         }
     }
 
-    fn last(&self, py: pyo3::Python) -> pyo3::PyResult<alias::PyObject> {
+    #[inline]
+    fn least_recently_used(&self, py: pyo3::Python) -> pyo3::PyResult<alias::PyObject> {
         let inner = self.0.get();
         let policy = inner.policy();
-        match policy.vecdeque().back() {
-            Some(handle) => Ok(handle.key().as_ref().clone_ref(py)),
-            None => Err(new_py_error!(PyIndexError, "`n` out of range")),
+
+        match policy.linked_list().cursor_front() {
+            Some(cursor) => Ok(unsafe { cursor.element().key().clone_ref(py).into() }),
+            None => Err(new_py_error!(PyKeyError, "cache is empty")),
+        }
+    }
+
+    #[inline]
+    fn most_recently_used(&self, py: pyo3::Python) -> pyo3::PyResult<alias::PyObject> {
+        let inner = self.0.get();
+        let policy = inner.policy();
+
+        match policy.linked_list().cursor_back() {
+            Some(cursor) => Ok(unsafe { cursor.element().key().clone_ref(py).into() }),
+            None => Err(new_py_error!(PyKeyError, "cache is empty")),
         }
     }
 
@@ -609,7 +654,9 @@ impl PyFIFOCache {
         let inner = self.0.get();
         let policy = inner.policy();
 
-        for handle in policy.vecdeque().iter() {
+        for cursor in unsafe { policy.linked_list().iter() } {
+            let handle = unsafe { cursor.element() };
+
             visit.call(handle.key().as_ref())?;
             visit.call(handle.value())?;
         }
@@ -637,7 +684,7 @@ macro_rules! implement_iterator {
                 $name as $pyname {
                     initial_gv: u32,
                     gv: utils::GenerationVersion,
-                    iter: parking_lot::Mutex<RawVecDequeIter<fifopolicy::Handle>>,
+                    iter: parking_lot::Mutex<linked_list::RawIter<lrupolicy::Handle>>,
                 }
             }
 
@@ -661,7 +708,7 @@ macro_rules! implement_iterator {
                     match iter.next() {
                         Some(x) => {
                             let $py = slf.py();
-                            let $handle = unsafe { x.as_ref() };
+                            let $handle = unsafe { x.element() };
                             Ok($init)
                         }
                         None => return Err(new_py_error!(PyStopIteration, ())),
@@ -672,15 +719,15 @@ macro_rules! implement_iterator {
     };
 }
 implement_iterator!(
-    PyFIFOCacheItems as "fifocache_items"
+    PyLRUCacheItems as "lrucache_items"
     fn(py, handle) -> (alias::PyObject, alias::PyObject) {{
         let (key, val) = handle.clone_ref(py).into_pair();
         (key.into(), val)
     }}
 
-    PyFIFOCacheKeys as "fifocache_keys"
+    PyLRUCacheKeys as "lrucache_keys"
     fn(py, handle) -> alias::PyObject { handle.key().clone_ref(py).into() }
 
-    PyFIFOCacheValues as "fifocache_values"
+    PyLRUCacheValues as "lrucache_values"
     fn(py, handle) -> alias::PyObject { handle.value().clone_ref(py) }
 );

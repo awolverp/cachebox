@@ -9,7 +9,7 @@ help:
 
 .PHONY: build-test
 build-test:
-	maturin develop --features "fifocache-small-offset"
+	maturin develop --features "small-offset"
 
 .PHONY: build-dev
 build-dev:

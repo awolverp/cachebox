@@ -8,6 +8,47 @@ use crate::policies::traits::SharedExt;
 use crate::policies::wrapped::Wrapped;
 
 implement_pyclass! {
+    /// A thread-safe, memory-efficient key-value cache with Random Replacement eviction policy.
+    /// When the cache reaches its maximum size, an item is randomly selected and
+    /// evicted to make room for new entries.
+    ///
+    /// ## How It Works
+    /// `RRCache` is a configurable hashmap-like store with automatic eviction. When an item is inserted:
+    /// - It is stored directly without any ordering or priority tracking.
+    /// - If a maximum size is configured and the cache is full, a random entry is evicted to make room
+    ///   for the new item.
+    /// - All read and write operations are thread-safe, making it safe for concurrent access without
+    ///   external locking.
+    ///
+    /// The Random Replacement policy selects entries for eviction uniformly at random, ensuring fair
+    /// treatment across all cached items regardless of access patterns.
+    ///
+    /// ### Pros
+    /// - Low overhead: Random Replacement is computationally cheap compared to tracking access order or frequency.
+    /// - Thread-safe: safe for concurrent reads and writes out of the box.
+    /// - Configurable capacity: a hard size limit prevents unbounded memory growth while allowing new entries
+    ///   through automatic eviction.
+    /// - No staleness issues: items persist only as long as they remain unselected by the eviction policy,
+    ///   preventing indefinite accumulation of stale data.
+    ///
+    /// ### Cons
+    /// - Non-deterministic eviction: random selection means you cannot predict which entry will be removed,
+    ///   potentially evicting recently cached or frequently accessed items.
+    /// - Unordered: insertion order is not preserved.
+    /// - Less optimal than LRU/LFU: for workloads with skewed access patterns, Random Replacement will
+    ///   evict frequently used items more often than policy-aware caches.
+    ///
+    /// ## When to Use It
+    /// `RRCache` is the right choice when:
+    /// - You have a working set that can grow unpredictably and requires automatic memory management.
+    /// - Access patterns are relatively uniform and predictable, so random eviction is not significantly
+    ///   worse than smarter policies.
+    /// - You need low computational overhead and simple eviction logic.
+    /// - You want to prevent unbounded memory growth without the complexity of tracking usage metadata.
+    ///
+    /// Avoid it when you have highly skewed access patterns (where certain items are accessed far more
+    /// frequently than others), when cache hits are mission-critical and predictability matters, or when
+    /// you need fine-grained control over what gets evicted.
     [subclass, extends=crate::pyclasses::base::PyBaseCacheImpl, generic, frozen]
     PyRRCache as "RRCache" (onceinit::OnceInit<Wrapped<rrpolicy::RRPolicy>>);
 }
@@ -30,7 +71,7 @@ impl PyRRCache {
     /// Initialize a new `RRCache` instance.
     ///
     /// Args:
-    ///     maxsize: Maximum number of elements the cache can hold. Zero means unlimited.
+    ///     maxsize: Maximum number of elements the cache can hold.
     ///     iterable: Initial data to populate the cache.
     ///     capacity: Pre-allocate hash table capacity to minimize reallocations. Defaults to 0.
     ///     getsizeof: A callable that computes the size of a key-value pair. When `None`, each

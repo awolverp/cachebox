@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 
 use crate::hashbrown;
 use crate::internal::utils;
+use crate::policies::common::RawVecDequeIter;
 use crate::policies::traits;
 use crate::policies::traits::HandleExt;
 use crate::policies::traits::PolicyExt;
@@ -24,6 +25,7 @@ impl traits::EntryExt for Occupied<'_> {
     type Handle = Handle;
     type Shared = Shared;
 
+    #[inline]
     fn would_exceed(&self, extra_size: usize) -> bool {
         let handle =
             unsafe { &self.policy.entries[*self.bucket.as_ref() - self.policy.front_offset] };
@@ -35,12 +37,14 @@ impl traits::EntryExt for Occupied<'_> {
             > self.shared.maxsize()
     }
 
+    #[inline]
     fn evict(&mut self, py: pyo3::Python) -> pyo3::PyResult<Self::Handle> {
         self.policy.evict(py, self.shared)
     }
 }
 
 impl traits::OccupiedExt for Occupied<'_> {
+    #[inline]
     fn replace(self, new: Self::Handle) -> Self::Handle {
         // In update we don't need to increment this; because this does not change the memory address ranges
         // self.shared.generation_version().increment();
@@ -57,6 +61,7 @@ impl traits::OccupiedExt for Occupied<'_> {
         std::mem::replace(item, new)
     }
 
+    #[inline]
     fn remove(self) -> Self::Handle {
         let (mut index, _) = unsafe { self.policy.table.remove(self.bucket) };
         index -= self.policy.front_offset;
@@ -82,10 +87,12 @@ impl traits::EntryExt for Vacant<'_> {
     type Handle = Handle;
     type Shared = Shared;
 
+    #[inline]
     fn would_exceed(&self, extra_size: usize) -> bool {
         self.policy.currsize.saturating_add(extra_size) > self.shared.maxsize()
     }
 
+    #[inline]
     fn evict(&mut self, py: pyo3::Python) -> pyo3::PyResult<Self::Handle> {
         self.policy.evict(py, self.shared)
     }
@@ -107,85 +114,6 @@ impl traits::VacantExt for Vacant<'_> {
             },
         );
         self.policy.entries.push_back(handle);
-    }
-}
-
-/// Immutable slice iterator without lifetime
-///
-/// # Safety
-/// - You should be sure about lifetimes, and pointers should be alive while this type is alive.
-///   Any changes to pointers can cause *Undefined Behaviour*.
-/// - It doesn't support `ZST`s.
-struct RawSliceIter<T> {
-    pointer: std::ptr::NonNull<T>,
-    index: usize,
-    len: usize,
-}
-
-impl<T> RawSliceIter<T> {
-    /// Creates a new [`RawSliceIter`]
-    #[inline]
-    fn new(slice: &[T]) -> Self {
-        let pointer: std::ptr::NonNull<T> = std::ptr::NonNull::from(slice).cast();
-
-        Self {
-            pointer,
-            index: 0,
-            len: slice.len(),
-        }
-    }
-}
-
-impl<T> Iterator for RawSliceIter<T> {
-    type Item = std::ptr::NonNull<T>;
-
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.index >= self.len {
-            None
-        } else {
-            let value = unsafe { self.pointer.add(self.index) };
-            self.index += 1;
-            Some(value)
-        }
-    }
-}
-
-unsafe impl<T: Sync> Send for RawSliceIter<T> {}
-unsafe impl<T: Sync> Sync for RawSliceIter<T> {}
-
-/// Raw iterator for [`VecDeque`] which doesn't have lifetime.
-///
-/// # Safety
-/// You should track changes of [`VecDeque`] yourself.
-pub struct RawVecDequeIter<T> {
-    first: RawSliceIter<T>,
-    second: RawSliceIter<T>,
-}
-
-impl<T> RawVecDequeIter<T> {
-    /// Creates a new [`RawVecDequeIter`]
-    #[inline]
-    fn new(first: &[T], second: &[T]) -> Self {
-        Self {
-            first: RawSliceIter::new(first),
-            second: RawSliceIter::new(second),
-        }
-    }
-}
-
-impl<T> Iterator for RawVecDequeIter<T> {
-    type Item = std::ptr::NonNull<T>;
-
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.first.next() {
-            Some(val) => Some(val),
-            None => {
-                std::mem::swap(&mut self.first, &mut self.second);
-                self.first.next()
-            }
-        }
     }
 }
 
@@ -246,10 +174,10 @@ impl FIFOPolicy {
 
     #[inline]
     fn decrement_indexes(&mut self, start: usize, end: usize) {
-        #[cfg(not(feature = "fifocache-small-offset"))]
+        #[cfg(not(feature = "small-offset"))]
         const MAX_FRONT_OFFSET: usize = usize::MAX - isize::MAX as usize;
 
-        #[cfg(feature = "fifocache-small-offset")]
+        #[cfg(feature = "small-offset")]
         const MAX_FRONT_OFFSET: usize = u8::MAX as usize;
 
         // Fast path: shifting the entire front is a single counter increment.
@@ -313,7 +241,7 @@ impl FIFOPolicy {
     }
 }
 
-impl traits::PolicyExt for FIFOPolicy {
+impl PolicyExt for FIFOPolicy {
     type Shared = Shared;
     type Handle = Handle;
 
@@ -379,7 +307,6 @@ impl traits::PolicyExt for FIFOPolicy {
         }
     }
 
-    #[inline]
     fn evict(&mut self, py: pyo3::Python, shared: &Self::Shared) -> pyo3::PyResult<Self::Handle> {
         let front = self.entries.front();
         if front.is_none() {

@@ -11,6 +11,9 @@ pub mod internal;
 pub mod policies;
 pub mod pyclasses;
 
+// TODO: refactor pickle
+// TODO: refactor deepcopy
+
 #[pyo3::pymodule]
 mod _core {
     #[allow(unused_imports)]
@@ -58,6 +61,15 @@ mod _core {
     use crate::pyclasses::lrucache::PyLRUCacheKeys;
     #[pymodule_export]
     use crate::pyclasses::lrucache::PyLRUCacheValues;
+
+    #[pymodule_export]
+    use crate::pyclasses::lfucache::PyLFUCache;
+    #[pymodule_export]
+    use crate::pyclasses::lfucache::PyLFUCacheItems;
+    #[pymodule_export]
+    use crate::pyclasses::lfucache::PyLFUCacheKeys;
+    #[pymodule_export]
+    use crate::pyclasses::lfucache::PyLFUCacheValues;
 
     #[pymodule_init]
     pub fn init(m: &pyo3::Bound<'_, pyo3::types::PyModule>) -> pyo3::PyResult<()> {

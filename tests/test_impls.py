@@ -636,3 +636,34 @@ class TestLRUCachePolicy(mixins.BaseMixin):
 
         assert c.least_recently_used() == "a"
         assert c.most_recently_used() == "c"
+
+
+class TestLFUCache(
+    mixins.InitializeMixin,
+    mixins.InsertAndGetMixin,
+    mixins.PopitemMixin,
+    mixins.SetDefaultMixin,
+    mixins.PopAndDeleteMixin,
+    mixins.UpdateMixin,
+    mixins.IntrospectionMixin,
+    mixins.IterationMixin,
+    mixins.DrainClearShrinkMixin,
+    mixins.CopyMixin,
+    mixins.GetSizeOfMixin,
+    mixins.EdgeCasesMixin,
+    mixins.IssuesMixin,
+    mixins.FuzzyMixin,
+):
+    def create_cache(
+        self,
+        maxsize: int = 10,
+        iterable: typing.Any = None,
+        capacity: int = 0,
+        getsizeof: typing.Any = None,
+    ) -> cachebox.LFUCache:
+        return cachebox.LFUCache(
+            maxsize,
+            iterable,
+            capacity=capacity,
+            getsizeof=getsizeof,
+        )

@@ -96,7 +96,7 @@ impl PyLRUCache {
         )
     }
 
-    /// Initialize a new `FIFOCache` instance.
+    /// Initialize a new `LRUCache` instance.
     ///
     /// Args:
     ///     maxsize: Maximum number of elements the cache can hold.
@@ -181,7 +181,7 @@ impl PyLRUCache {
         let inner = self.0.get();
         let policy = inner.policy();
 
-        debug_assert!(policy.table().len() == policy.linked_list().len());
+        debug_assert!(policy.table().len() == policy.list().len());
         policy.table().len()
     }
 
@@ -191,7 +191,7 @@ impl PyLRUCache {
         let policy = inner.policy();
 
         let table_cap = policy.table().capacity() * 8;
-        let list_cap = policy.linked_list().len() * std::mem::size_of::<lrupolicy::Handle>();
+        let list_cap = policy.list().len() * std::mem::size_of::<lrupolicy::Handle>();
 
         table_cap + list_cap
     }
@@ -524,7 +524,7 @@ impl PyLRUCache {
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
         let result = PyLRUCacheItems {
-            iter: parking_lot::Mutex::new(unsafe { inner.policy().linked_list().iter() }),
+            iter: parking_lot::Mutex::new(unsafe { inner.policy().list().iter() }),
             gv,
             initial_gv,
         };
@@ -538,7 +538,7 @@ impl PyLRUCache {
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
         let result = PyLRUCacheValues {
-            iter: parking_lot::Mutex::new(unsafe { inner.policy().linked_list().iter() }),
+            iter: parking_lot::Mutex::new(unsafe { inner.policy().list().iter() }),
             gv,
             initial_gv,
         };
@@ -552,7 +552,7 @@ impl PyLRUCache {
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
         let result = PyLRUCacheKeys {
-            iter: parking_lot::Mutex::new(unsafe { inner.policy().linked_list().iter() }),
+            iter: parking_lot::Mutex::new(unsafe { inner.policy().list().iter() }),
             gv,
             initial_gv,
         };
@@ -583,7 +583,7 @@ impl PyLRUCache {
         let policy = inner.policy();
 
         let iter = unsafe {
-            policy.linked_list().iter().map(|cursor| {
+            policy.list().iter().map(|cursor| {
                 let handle = cursor.element();
                 (
                     // Without `.bind` it returns something like `Py(addr)`
@@ -633,7 +633,7 @@ impl PyLRUCache {
         let inner = self.0.get();
         let policy = inner.policy();
 
-        match policy.linked_list().cursor_front() {
+        match policy.list().cursor_front() {
             Some(cursor) => Ok(unsafe { cursor.element().key().clone_ref(py).into() }),
             None => Err(new_py_error!(PyKeyError, "cache is empty")),
         }
@@ -644,7 +644,7 @@ impl PyLRUCache {
         let inner = self.0.get();
         let policy = inner.policy();
 
-        match policy.linked_list().cursor_back() {
+        match policy.list().cursor_back() {
             Some(cursor) => Ok(unsafe { cursor.element().key().clone_ref(py).into() }),
             None => Err(new_py_error!(PyKeyError, "cache is empty")),
         }
@@ -654,7 +654,7 @@ impl PyLRUCache {
         let inner = self.0.get();
         let policy = inner.policy();
 
-        for cursor in unsafe { policy.linked_list().iter() } {
+        for cursor in unsafe { policy.list().iter() } {
             let handle = unsafe { cursor.element() };
 
             visit.call(handle.key().as_ref())?;

@@ -190,12 +190,8 @@ impl traits::PolicyExt for NoPolicy {
 
     #[inline]
     fn shrink_to_fit(&mut self, shared: &Self::Shared) {
-        let initial = self.table.capacity();
+        shared.generation_version().increment();
         self.table.shrink_to(0, |x| x.key().hash());
-
-        if initial != self.table.capacity() {
-            shared.generation_version().increment();
-        }
     }
 
     #[inline]
@@ -258,7 +254,7 @@ impl traits::PolicyExt for NoPolicy {
         Ok(result)
     }
 
-    fn clone_ref(&self, py: pyo3::Python<'_>) -> Self {
+    fn clone_ref(&mut self, py: pyo3::Python<'_>) -> Self {
         let mut table = hashbrown::raw::RawTable::with_capacity(self.table.capacity());
 
         unsafe {

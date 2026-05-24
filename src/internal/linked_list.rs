@@ -17,11 +17,12 @@ impl<T> Node<T> {
         }
     }
 
+    #[allow(clippy::boxed_local)]
     fn into_element(self: Box<Self>) -> T {
         self.element
     }
 
-    pub fn element<'a>(&'a self) -> &'a T {
+    pub fn element(&self) -> &T {
         &self.element
     }
 }
@@ -34,7 +35,7 @@ pub struct LinkedList<T> {
     head: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
     len: usize,
-    marker: PhantomData<Box<Node<T>>>,
+    _marker: PhantomData<Box<Node<T>>>,
 }
 
 // private methods
@@ -185,7 +186,7 @@ impl<T> LinkedList<T> {
             head: None,
             tail: None,
             len: 0,
-            marker: PhantomData,
+            _marker: PhantomData,
         }
     }
 
@@ -216,7 +217,7 @@ impl<T> LinkedList<T> {
             head: self.head.take(),
             tail: self.tail.take(),
             len: mem::take(&mut self.len),
-            marker: PhantomData,
+            _marker: PhantomData,
         });
     }
 

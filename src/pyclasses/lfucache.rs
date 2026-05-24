@@ -1,62 +1,78 @@
 use crate::internal::alias;
+use crate::internal::lazyheap;
 use crate::internal::onceinit;
 use crate::internal::utils;
-use crate::policies::fifopolicy;
+use crate::policies::lfupolicy;
 use crate::policies::traits::HandleExt;
 use crate::policies::traits::PolicyExt;
 use crate::policies::traits::SharedExt;
 use crate::policies::wrapped::Wrapped;
 
 implement_pyclass! {
-    /// A First-In-First-Out (FIFO) cache eviction policy: when the cache is full, the oldest
-    /// inserted item is always the first to be removed, regardless of how often it has been accessed.
+    /// A Least-Frequently-Used (LFU) cache eviction policy: when the cache is full, the item
+    /// with the lowest access count is evicted first. Ties in frequency are broken by recency -
+    /// among equally rare items, the oldest is evicted.
     ///
     /// ## How It Works
-    /// The FIFO algorithm is one of the simplest cache eviction strategies. Items are stored in
-    /// insertion order, and when the cache reaches capacity, the item that has been there the
-    /// longest is evicted to make room. There is no concept of "recently used" or "frequently used"
-    /// - age alone determines eviction order. Conceptually, it behaves like a queue: new items
-    /// join the back, and evictions come from the front.
+    /// The LFU algorithm tracks how many times each cached item has been accessed, and always
+    /// evicts the item with the smallest count. This makes it well-suited for workloads where
+    /// some items are structurally "hot" and where that frequency signal is stable enough to
+    /// be worth preserving across cache pressure events.
     ///
-    /// This implementation backs that queue with a `double-ended queue` for O(1) front removal,
-    /// paired with a `hash map` for O(1) key lookups. Rather than storing physical indices into
-    /// the deque (which shift every time an item is evicted from the front), the table stores
-    /// logical indices - a monotonically increasing counter assigned at insertion time.
-    /// A separate `front_offset` counter tracks how many items have ever been evicted; the physical
-    /// position of any key is recovered at read time as `entries[table[key] - front_offset]`,
-    /// keeping both eviction and lookup O(1) without any per-eviction rewriting of the table.
+    /// This implementation uses a `lazy binary min-heap` keyed on access frequency, paired with
+    /// a `hash map` that maps each key to its cursor (a stable pointer into the heap's backing
+    /// buffer). The heap is "lazy" in the sense that it does not restore the heap invariant after
+    /// every frequency increment; instead it sets a dirty flag and defers the full re-sort until
+    /// the next eviction. This amortises the cost of heap maintenance across many hits, so
+    /// read-heavy workloads pay far less per operation than a classic eager heap would require.
+    ///
+    /// On a cache hit, the item's frequency counter is incremented in O(1) and the heap is marked
+    /// dirty. On eviction, the heap is sorted if dirty, and the minimum-frequency item is popped
+    /// in O(n log n) worst-case (amortised O(log n) under typical access distributions). Lookups
+    /// are O(1) via the hash map.
     ///
     /// ### Pros
-    /// - Insert, lookup, and evict are all O(1) amortized: the `front_offset` trick eliminates the O(n)
-    ///   index-shifting that a native implementation would require on every eviction.
-    /// - Eviction order is fully deterministic: the oldest item always goes first, independent of access
-    ///   patterns, making behaviour easy to reason about and reproduce in tests.
-    /// - No per-read overhead. Unlike LRU, FIFO requires no bookkeeping on cache hits.
+    /// - Frequency-aware eviction. Items that are accessed often are protected from eviction even
+    ///   under heavy cache pressure, leading to higher hit rates on skewed workloads.
+    /// - O(1) cache hits. Incrementing a counter and marking the heap dirty is constant-time work,
+    ///   with no structural reorganisation on the hot path.
+    /// - Lazy heap sorting amortises O(n log n) sort cost across many inserts and hits, keeping
+    ///   the average cost per operation much lower than a naive eager implementation.
     ///
     /// ### Cons
-    /// - Access-blind eviction. A hot item accessed thousands of times is evicted just as readily as one
-    ///   that has never been read. Hit rates suffer on workloads with strong temporal locality.
-    /// - The logical-index indirection adds a layer of internal complexity compared to a naïve queue-based cache.
-    /// - The rare O(n) index rebase (triggered when `front_offset` nears `usize::MAX - isize::MAX`) introduces
-    ///   an occasional latency spike. Amortized cost is negligible, but worst-case latency is unbounded in principle.
+    /// - Eviction is O(n log n) worst-case. If the heap is maximally dirty (every entry modified
+    ///   since last sort), a single eviction triggers a full re-sort over all entries. This is
+    ///   amortised away in practice but introduces latency spikes under adversarial access patterns.
+    /// - Frequency counters accumulate indefinitely. A key that was hot during an early burst remains
+    ///   privileged long after traffic shifts, causing "cache pollution" - stale items that monopolise
+    ///   capacity because of historical frequency, not current utility.
+    /// - Access patterns must be skewed for LFU to outperform simpler policies. On uniform workloads,
+    ///   frequency counters provide no signal and the extra bookkeeping is pure overhead.
     ///
     /// ## When to use it
-    /// Reach for `FIFOPolicy` when:
-    /// - Eviction order must be predictable and auditable: streaming pipelines, sequential batch processors, or
-    ///   any context where deterministic behaviour simplifies debugging.
-    /// - Access patterns are roughly uniform, so there is no meaningful "hot" subset of keys that a recency or
-    ///   frequency-aware policy could exploit.
-    /// - Read overhead must be minimal: FIFO's zero-cost hits make it preferable to LRU in insert-heavy workloads
-    ///   with infrequent re-reads.
+    /// Reach for `LFUPolicy` when:
+    /// - Your workload has a stable hot set: a minority of keys that are accessed disproportionately
+    ///   often and whose relative popularity changes slowly over time.
+    /// - Cache pollution from one-time scans is a concern: LFU naturally resists large sequential reads
+    ///   from displacing frequently accessed items, because freshly inserted keys start at count 1 and
+    ///   are evicted before any item with accumulated hits.
+    /// - Hit rate matters more than worst-case eviction latency: the amortised cost is low, but if your
+    ///   system has hard real-time latency requirements, the occasional sort spike may be unacceptable.
     ///
-    /// Avoid it when your workload has strong temporal locality. If recently or frequently accessed items are likely
-    /// to be needed again soon, an LRU or LFU policy will deliver meaningfully better hit rates.
+    /// Avoid it when access patterns shift rapidly. If the "hot" subset of keys changes frequently,
+    /// frequency counters become stale signals and LFU will evict items that have recently become
+    /// popular. In those cases, an LRU policy - which tracks recency rather than frequency - will
+    /// adapt faster and typically deliver better hit rates.
+    ///
+    /// Avoid it on uniform workloads where all keys are accessed with roughly equal probability.
+    /// The frequency signal provides no meaningful discrimination, and the overhead of maintaining
+    /// counters and a heap is wasted compared to the simpler bookkeeping of FIFO or LRU.
     [subclass, extends=crate::pyclasses::base::PyBaseCacheImpl, generic, frozen]
-    PyFIFOCache as "FIFOCache" (onceinit::OnceInit<Wrapped<fifopolicy::FIFOPolicy>>);
+    PyLFUCache as "LFUCache" (onceinit::OnceInit<Wrapped<lfupolicy::LFUPolicy>>);
 }
 
 #[pyo3::pymethods]
-impl PyFIFOCache {
+impl PyLFUCache {
     #[new]
     #[allow(unused_variables)]
     #[pyo3(signature=(*args, **kwds))]
@@ -70,7 +86,7 @@ impl PyFIFOCache {
         )
     }
 
-    /// Initialize a new `FIFOCache` instance.
+    /// Initialize a new `LFUCache` instance.
     ///
     /// Args:
     ///     maxsize: Maximum number of elements the cache can hold.
@@ -93,8 +109,8 @@ impl PyFIFOCache {
         getsizeof: Option<alias::PyObject>,
     ) -> pyo3::PyResult<()> {
         let wrapped = Wrapped::new(
-            fifopolicy::FIFOPolicy::new(capacity),
-            fifopolicy::Shared::new(maxsize, getsizeof),
+            lfupolicy::LFUPolicy::new(capacity),
+            lfupolicy::Shared::new(maxsize, getsizeof),
         );
 
         if let Some(iterable) = iterable {
@@ -104,7 +120,7 @@ impl PyFIFOCache {
                 // iterable object
                 iterable,
                 // transform function
-                |key, value| fifopolicy::Handle::new(py, &getsizeof, key, value),
+                |key, value| lfupolicy::FrequencyHandle::new(py, &getsizeof, key, value, 1),
             );
             self.0.set(wrapped);
             result
@@ -146,7 +162,7 @@ impl PyFIFOCache {
         let inner = self.0.get();
         let policy = inner.policy();
 
-        policy.table().capacity().min(policy.entries().capacity())
+        policy.table().capacity()
     }
 
     /// Returns the number of entries currently in the cache.
@@ -155,7 +171,7 @@ impl PyFIFOCache {
         let inner = self.0.get();
         let policy = inner.policy();
 
-        debug_assert!(policy.table().len() == policy.entries().len());
+        debug_assert!(policy.table().len() == policy.heap().len());
         policy.table().len()
     }
 
@@ -164,9 +180,10 @@ impl PyFIFOCache {
         let inner = self.0.get();
         let policy = inner.policy();
 
-        let table_cap = policy.table().capacity() * std::mem::size_of::<usize>();
-        let vecdeque_cap = policy.entries().capacity() * std::mem::size_of::<fifopolicy::Handle>();
-        table_cap + vecdeque_cap
+        let table_cap = policy.table().capacity() * 8;
+        let list_cap = policy.heap().len() * std::mem::size_of::<lfupolicy::FrequencyHandle>();
+
+        table_cap + list_cap
     }
 
     #[inline]
@@ -221,7 +238,8 @@ impl PyFIFOCache {
         value: alias::PyObject,
     ) -> pyo3::PyResult<Option<alias::PyObject>> {
         let inner = self.0.get();
-        let handle = fifopolicy::Handle::new(py, inner.shared().getsizeof(), key, value)?;
+        let handle =
+            lfupolicy::FrequencyHandle::new(py, inner.shared().getsizeof(), key, value, 1)?;
 
         let old_handle = inner.insert(py, handle)?.map(|x| x.into_value());
         Ok(old_handle)
@@ -244,7 +262,7 @@ impl PyFIFOCache {
             // iterable object
             iterable.into_bound(py),
             // transform function
-            move |key, value| fifopolicy::Handle::new(py, &getsizeof, key, value),
+            move |key, value| lfupolicy::FrequencyHandle::new(py, &getsizeof, key, value, 1),
         )
     }
 
@@ -346,11 +364,12 @@ impl PyFIFOCache {
             },
         };
 
-        let handle = fifopolicy::Handle::with_precomputed_hash_key(
+        let handle = lfupolicy::FrequencyHandle::with_precomputed_hash_key(
             py,
             shared.getsizeof(),
             key,
             default_object.clone_ref(py),
+            1,
         )?;
 
         inner.insert(py, handle)?;
@@ -419,7 +438,6 @@ impl PyFIFOCache {
         let inner = self.0.get();
         inner.drain(py, n)
     }
-
     /// Shrinks the internal allocation as close to the current length as possible.
     #[inline]
     fn shrink_to_fit(&self) {
@@ -490,42 +508,74 @@ impl PyFIFOCache {
             .map(|x| !x)
     }
 
-    fn items(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyFIFOCacheItems>> {
+    fn items(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyLFUCacheItems>> {
         let inner = self.0.get();
+
+        let mut policy = inner.policy();
+        let heap_mut = policy.heap_mut();
+
+        // TODO: test this edge case
+        // We don't want to intrupt other iterators with no reason
+        // so need to manually call sort_by to only intrupt them on changes.
+        if heap_mut.sort_by(|x, y| x.frequency().cmp(&y.frequency())) {
+            inner.shared().generation_version().increment();
+        }
+
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
 
-        // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
-        let result = PyFIFOCacheItems {
-            iter: parking_lot::Mutex::new(inner.policy().iter()),
+        let result = PyLFUCacheItems {
+            iter: parking_lot::Mutex::new(heap_mut.iter(|x, y| x.frequency().cmp(&y.frequency()))),
             gv,
             initial_gv,
         };
         pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
     }
 
-    fn values(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyFIFOCacheValues>> {
+    fn values(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyLFUCacheValues>> {
         let inner = self.0.get();
+
+        let mut policy = inner.policy();
+        let heap_mut = policy.heap_mut();
+
+        // TODO: test this edge case
+        // We don't want to intrupt other iterators with no reason
+        // so need to manually call sort_by to only intrupt them on changes.
+        if heap_mut.sort_by(|x, y| x.frequency().cmp(&y.frequency())) {
+            inner.shared().generation_version().increment();
+        }
+
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
-        let result = PyFIFOCacheValues {
-            iter: parking_lot::Mutex::new(inner.policy().iter()),
+        let result = PyLFUCacheValues {
+            iter: parking_lot::Mutex::new(heap_mut.iter(|x, y| x.frequency().cmp(&y.frequency()))),
             gv,
             initial_gv,
         };
         pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
     }
 
-    fn keys(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyFIFOCacheKeys>> {
+    fn keys(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyLFUCacheKeys>> {
         let inner = self.0.get();
+
+        let mut policy = inner.policy();
+        let heap_mut = policy.heap_mut();
+
+        // TODO: test this edge case
+        // We don't want to intrupt other iterators with no reason
+        // so need to manually call sort_by to only intrupt them on changes.
+        if heap_mut.sort_by(|x, y| x.frequency().cmp(&y.frequency())) {
+            inner.shared().generation_version().increment();
+        }
+
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
-        let result = PyFIFOCacheKeys {
-            iter: parking_lot::Mutex::new(inner.policy().iter()),
+        let result = PyLFUCacheKeys {
+            iter: parking_lot::Mutex::new(heap_mut.iter(|x, y| x.frequency().cmp(&y.frequency()))),
             gv,
             initial_gv,
         };
@@ -533,9 +583,11 @@ impl PyFIFOCache {
     }
 
     #[inline]
-    fn __iter__(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyFIFOCacheKeys>> {
+    fn __iter__(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyLFUCacheKeys>> {
         self.keys(py)
     }
+
+    // TODO: support items_with_frequency
 
     fn copy(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<Self>> {
         let inner = self.0.get();
@@ -555,13 +607,22 @@ impl PyFIFOCache {
         let shared = inner.shared();
         let policy = inner.policy();
 
-        let iter = policy.entries().iter().map(|handle| {
-            (
-                // Without using `.bind` it returns something like `Py(addr)`
-                handle.key().as_ref().bind(py),
-                handle.value().bind(py),
-            )
-        });
+        // We cannot use heap.iter here, because it requires re-sorting
+        // and this can lead to intrupt iterators.
+        let iter = unsafe {
+            policy
+                .table()
+                .iter()
+                .map(|bucket| bucket.as_ref())
+                .map(|cursor| {
+                    let handle = cursor.element();
+                    (
+                        // Without `.bind` it returns something like `Py(addr)`
+                        handle.key().as_ref().bind(py),
+                        handle.value().bind(py),
+                    )
+                })
+        };
 
         let items = utils::items_to_str(iter, policy.table().len()).unwrap();
         format!(
@@ -573,33 +634,58 @@ impl PyFIFOCache {
         )
     }
 
+    #[pyo3(signature = (key, default=utils::OptionalArgument::Undefined))]
+    fn peek<'p>(
+        &self,
+        py: pyo3::Python,
+        key: alias::PyObject,
+        default: utils::OptionalArgument<'p>,
+    ) -> pyo3::PyResult<alias::PyObject> {
+        let key = utils::PrecomputedHashObject::new(py, key)?;
+
+        let inner = self.0.get();
+        let policy = inner.policy();
+
+        if let Some(x) = policy.peek(py, &key)? {
+            return Ok(x.value().clone_ref(py));
+        }
+
+        match default {
+            utils::OptionalArgument::Defined(x) => Ok(x.unbind()),
+            utils::OptionalArgument::Undefined => unsafe {
+                // SAFETY: None is immortal, so reference counting has no meaning
+                Ok(pyo3::Bound::from_owned_ptr(py, pyo3::ffi::Py_None()).unbind())
+            },
+        }
+    }
+
     #[pyo3(signature = (n=0))]
-    fn first(
+    fn least_frequently_used(
         &self,
         py: pyo3::Python,
         mut n: pyo3::ffi::Py_ssize_t,
     ) -> pyo3::PyResult<alias::PyObject> {
         let inner = self.0.get();
-        let policy = inner.policy();
+        let mut policy = inner.policy();
 
         if n < 0 {
-            n += policy.entries().len() as isize;
+            n += policy.table().len() as isize;
         }
         if n < 0 {
             return Err(new_py_error!(PyIndexError, "`n` out of range"));
         }
 
-        match policy.entries().get(n as usize) {
-            Some(handle) => Ok(handle.key().as_ref().clone_ref(py)),
-            None => Err(new_py_error!(PyIndexError, "`n` out of range")),
-        }
-    }
+        let heap_mut = policy.heap_mut();
 
-    fn last(&self, py: pyo3::Python) -> pyo3::PyResult<alias::PyObject> {
-        let inner = self.0.get();
-        let policy = inner.policy();
-        match policy.entries().back() {
-            Some(handle) => Ok(handle.key().as_ref().clone_ref(py)),
+        if heap_mut.sort_by(|x, y| x.frequency().cmp(&y.frequency())) {
+            inner.shared().generation_version().increment();
+        }
+
+        match heap_mut.get(n as usize) {
+            Some(handle) => unsafe {
+                let element = handle.element();
+                Ok(element.key().as_ref().clone_ref(py))
+            },
             None => Err(new_py_error!(PyIndexError, "`n` out of range")),
         }
     }
@@ -608,7 +694,9 @@ impl PyFIFOCache {
         let inner = self.0.get();
         let policy = inner.policy();
 
-        for handle in policy.entries().iter() {
+        for cursor in unsafe { policy.table().iter() } {
+            let handle = unsafe { cursor.as_ref().element() };
+
             visit.call(handle.key().as_ref())?;
             visit.call(handle.value())?;
         }
@@ -636,7 +724,7 @@ macro_rules! implement_iterator {
                 $name as $pyname {
                     initial_gv: u32,
                     gv: utils::GenerationVersion,
-                    iter: parking_lot::Mutex<utils::RawVecDequeIter<fifopolicy::Handle>>,
+                    iter: parking_lot::Mutex<lazyheap::RawIter<lfupolicy::FrequencyHandle>>,
                 }
             }
 
@@ -660,7 +748,7 @@ macro_rules! implement_iterator {
                     match iter.next() {
                         Some(x) => {
                             let $py = slf.py();
-                            let $handle = unsafe { x.as_ref() };
+                            let $handle = unsafe { x.element() };
                             Ok($init)
                         }
                         None => return Err(new_py_error!(PyStopIteration, ())),
@@ -671,15 +759,15 @@ macro_rules! implement_iterator {
     };
 }
 implement_iterator!(
-    PyFIFOCacheItems as "fifocache_items"
+    PyLFUCacheItems as "lfucache_items"
     fn(py, handle) -> (alias::PyObject, alias::PyObject) {{
         let (key, val) = handle.clone_ref(py).into_pair();
         (key.into(), val)
     }}
 
-    PyFIFOCacheKeys as "fifocache_keys"
+    PyLFUCacheKeys as "lfucache_keys"
     fn(py, handle) -> alias::PyObject { handle.key().clone_ref(py).into() }
 
-    PyFIFOCacheValues as "fifocache_values"
+    PyLFUCacheValues as "lfucache_values"
     fn(py, handle) -> alias::PyObject { handle.value().clone_ref(py) }
 );

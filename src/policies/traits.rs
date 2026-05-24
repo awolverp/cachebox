@@ -116,14 +116,6 @@ pub trait PolicyExt {
     ) -> pyo3::PyResult<PolicyEntry<Self::Occupied<'a>, Self::Vacant<'a>>>;
 
     /// Evicts a handle according to the policy algorithm, returning it.
-    ///
-    /// # Errors
-    ///
-    /// Returns `Err` if dropping the evicted value raises a Python exception.
-    ///
-    /// # Panics
-    ///
-    /// May panic if the policy is empty.
     fn evict(&mut self, py: pyo3::Python, shared: &Self::Shared) -> pyo3::PyResult<Self::Handle>;
 
     /// Removes all handles without shrinking the allocation.
@@ -142,5 +134,5 @@ pub trait PolicyExt {
     ) -> pyo3::PyResult<bool>;
 
     /// Make a clone of `self`.
-    fn clone_ref(&self, py: pyo3::Python) -> Self;
+    fn clone_ref(&mut self, py: pyo3::Python) -> Self;
 }

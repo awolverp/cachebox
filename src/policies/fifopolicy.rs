@@ -2,7 +2,6 @@ use std::collections::VecDeque;
 
 use crate::hashbrown;
 use crate::internal::utils;
-use crate::policies::common::RawVecDequeIter;
 use crate::policies::traits;
 use crate::policies::traits::HandleExt;
 use crate::policies::traits::PolicyExt;
@@ -168,7 +167,7 @@ impl FIFOPolicy {
     }
 
     #[inline]
-    pub fn vecdeque(&self) -> &VecDeque<Handle> {
+    pub fn entries(&self) -> &VecDeque<Handle> {
         &self.entries
     }
 
@@ -235,9 +234,9 @@ impl FIFOPolicy {
     }
 
     #[inline]
-    pub unsafe fn iter(&self) -> RawVecDequeIter<Handle> {
+    pub fn iter(&self) -> utils::RawVecDequeIter<Handle> {
         let (first, second) = self.entries.as_slices();
-        RawVecDequeIter::new(first, second)
+        utils::RawVecDequeIter::new(first, second)
     }
 }
 
@@ -269,7 +268,7 @@ impl PolicyExt for FIFOPolicy {
         let eq = |index: &usize| {
             self.entries[(*index) - self.front_offset]
                 .key()
-                .py_eq(py, &key)
+                .py_eq(py, key)
         };
         match self.table.get(key.hash(), eq)? {
             Some(index) => Ok(Some(&self.entries[(*index) - self.front_offset])),
@@ -286,7 +285,7 @@ impl PolicyExt for FIFOPolicy {
         let eq = |index: &usize| {
             self.entries[(*index) - self.front_offset]
                 .key()
-                .py_eq(py, &key)
+                .py_eq(py, key)
         };
         match self.table.find(key.hash(), eq)? {
             Some(bucket) => {
@@ -336,23 +335,12 @@ impl PolicyExt for FIFOPolicy {
 
     #[inline]
     fn shrink_to_fit(&mut self, shared: &Self::Shared) {
-        // Shrink table
-        let initial = self.table.capacity();
+        shared.generation_version().increment();
+
         self.table.shrink_to(0, |index| {
             self.entries[(*index) - self.front_offset].key().hash()
         });
-
-        if initial != self.table.capacity() {
-            shared.generation_version().increment();
-        }
-
-        // Shrink entries
-        let initial = self.entries.capacity();
         self.entries.shrink_to_fit();
-
-        if initial != self.entries.capacity() {
-            shared.generation_version().increment();
-        }
     }
 
     #[inline]
@@ -423,7 +411,7 @@ impl PolicyExt for FIFOPolicy {
         Ok(result)
     }
 
-    fn clone_ref(&self, py: pyo3::Python<'_>) -> Self {
+    fn clone_ref(&mut self, py: pyo3::Python<'_>) -> Self {
         let mut entries = VecDeque::with_capacity(self.entries.len());
         for handle in self.entries.iter() {
             entries.push_back(handle.clone_ref(py));

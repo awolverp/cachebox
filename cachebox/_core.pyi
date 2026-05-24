@@ -694,9 +694,6 @@ class LRUCache(BaseCacheImpl[KT, VT]):
     ) -> typing.Union[VT, DT]:
         """
         Retrieves the value for a given key from the cache (without promoting the key).
-
-        Returns the value associated with the key if present, otherwise returns the specified default value.
-        Equivalent to `self[key]`, but provides a fallback default if the key is not found.
         """
 
     def least_recently_used(self) -> typing.Optional[KT]:
@@ -712,5 +709,170 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         Returns the key in the cache that has been accessed in the shortest time.
 
         Raises `KeyError` if cache is empty.
+        """
+        ...
+
+class LFUCache(BaseCacheImpl[KT, VT]):
+    """
+    A Least-Frequently-Used (LFU) cache eviction policy: when the cache is full, the item
+    with the lowest access count is evicted first. Ties in frequency are broken by recency -
+    among equally rare items, the oldest is evicted.
+
+    ## How It Works
+    The LFU algorithm tracks how many times each cached item has been accessed, and always
+    evicts the item with the smallest count. This makes it well-suited for workloads where
+    some items are structurally "hot" and where that frequency signal is stable enough to
+    be worth preserving across cache pressure events.
+
+    This implementation uses a `lazy binary min-heap` keyed on access frequency, paired with
+    a `hash map` that maps each key to its cursor (a stable pointer into the heap's backing
+    buffer). The heap is "lazy" in the sense that it does not restore the heap invariant after
+    every frequency increment; instead it sets a dirty flag and defers the full re-sort until
+    the next eviction. This amortises the cost of heap maintenance across many hits, so
+    read-heavy workloads pay far less per operation than a classic eager heap would require.
+
+    On a cache hit, the item's frequency counter is incremented in O(1) and the heap is marked
+    dirty. On eviction, the heap is sorted if dirty, and the minimum-frequency item is popped
+    in O(n log n) worst-case (amortised O(log n) under typical access distributions). Lookups
+    are O(1) via the hash map.
+
+    ### Pros
+    - Frequency-aware eviction. Items that are accessed often are protected from eviction even
+      under heavy cache pressure, leading to higher hit rates on skewed workloads.
+    - O(1) cache hits. Incrementing a counter and marking the heap dirty is constant-time work,
+      with no structural reorganisation on the hot path.
+    - Lazy heap sorting amortises O(n log n) sort cost across many inserts and hits, keeping
+      the average cost per operation much lower than a naive eager implementation.
+
+    ### Cons
+    - Eviction is O(n log n) worst-case. If the heap is maximally dirty (every entry modified
+      since last sort), a single eviction triggers a full re-sort over all entries. This is
+      amortised away in practice but introduces latency spikes under adversarial access patterns.
+    - Frequency counters accumulate indefinitely. A key that was hot during an early burst remains
+      privileged long after traffic shifts, causing "cache pollution" - stale items that monopolise
+      capacity because of historical frequency, not current utility.
+    - Access patterns must be skewed for LFU to outperform simpler policies. On uniform workloads,
+      frequency counters provide no signal and the extra bookkeeping is pure overhead.
+
+    ## When to use it
+    Reach for `LFUPolicy` when:
+    - Your workload has a stable hot set: a minority of keys that are accessed disproportionately
+      often and whose relative popularity changes slowly over time.
+    - Cache pollution from one-time scans is a concern: LFU naturally resists large sequential reads
+      from displacing frequently accessed items, because freshly inserted keys start at count 1 and
+      are evicted before any item with accumulated hits.
+    - Hit rate matters more than worst-case eviction latency: the amortised cost is low, but if your
+      system has hard real-time latency requirements, the occasional sort spike may be unacceptable.
+
+    Avoid it when access patterns shift rapidly. If the "hot" subset of keys changes frequently,
+    frequency counters become stale signals and LFU will evict items that have recently become
+    popular. In those cases, an LRU policy - which tracks recency rather than frequency - will
+    adapt faster and typically deliver better hit rates.
+
+    Avoid it on uniform workloads where all keys are accessed with roughly equal probability.
+    The frequency signal provides no meaningful discrimination, and the overhead of maintaining
+    counters and a heap is wasted compared to the simpler bookkeeping of FIFO or LRU.
+    """
+
+    def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
+        """
+        Equals to `self[key] = value`, but returns a value:
+
+        - If the cache did not have this key present, None is returned.
+        - If the cache did have this key present, the value is updated,
+          and the old value is returned. The key is not updated, though;
+
+        It's recommended to use this method instead of `self[key] = value`, as it keeps code
+        compatible across different cache policies.
+        """
+        ...
+
+    def update(self, iterable: _IterableType[KT, VT]) -> None:
+        """
+        Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
+        """
+        ...
+
+    def get(
+        self,
+        key: KT,
+        default: typing.Optional[DT] = ...,
+    ) -> typing.Union[VT, DT]:
+        """
+        Retrieves the value for a given key from the cache.
+
+        Returns the value associated with the key if present, otherwise returns the specified default value.
+        Equivalent to `self[key]`, but provides a fallback default if the key is not found.
+        """
+        ...
+
+    def setdefault(
+        self,
+        key: KT,
+        default: typing.Optional[DT] = None,
+    ) -> typing.Optional[VT | DT]:
+        """
+        Inserts key with a value of default if key is not in the cache.
+
+        Returns the value for key if key is in the cache, else default.
+        """
+        ...
+
+    def popitem(self) -> typing.Tuple[KT, VT]:
+        """
+        Removes the least recently used item from the cache and returns it as a (key, value) tuple.
+        Raises KeyError if the cache is empty.
+        """
+        ...
+
+    def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
+        """
+        Returns an iterable object of the cache's items (key-value pairs).
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        - Items are ordered.
+        """
+        ...
+
+    def keys(self) -> typing.Iterable[KT]:
+        """
+        Returns an iterable object of the cache's keys.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        - Keys are ordered.
+        """
+        ...
+
+    def values(self) -> typing.Iterable[VT]:
+        """
+        Returns an iterable object of the cache's values.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        - Values are ordered.
+        """
+        ...
+
+    def peek(
+        self,
+        key: KT,
+        default: typing.Optional[DT] = ...,
+    ) -> typing.Union[VT, DT]:
+        """
+        Retrieves the value for a given key from the cache (without frequency increment).
+        """
+        ...
+
+    def least_frequently_used(self, n: int = 0) -> KT:
+        """
+        Returns the key in the cache that has been accessed the least. If n is given, returns the nth least frequently used key.
+
+        Raises `IndexError` if cache is empty, or `n` is out of range.
+
+        Notes:
+            - This method may re-sort the cache which can cause iterators to be stopped.
+            - Do not use this method while using iterators.
         """
         ...

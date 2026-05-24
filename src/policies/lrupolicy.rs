@@ -54,7 +54,7 @@ impl traits::OccupiedExt for Occupied<'_> {
                 .saturating_add(new.size());
 
             let old = std::mem::replace(cursor.element_mut(), new);
-            cursor.move_to_back(&mut self.policy.entries);
+            cursor.move_to_back(&mut self.policy.list);
 
             old
         }
@@ -65,7 +65,7 @@ impl traits::OccupiedExt for Occupied<'_> {
         self.shared.generation_version().increment();
 
         let (cursor, _) = unsafe { self.policy.table.remove(self.bucket) };
-        let item = unsafe { cursor.unlink(&mut self.policy.entries) };
+        let item = unsafe { cursor.unlink(&mut self.policy.list) };
 
         self.policy.currsize = self.policy.currsize.saturating_sub(item.size());
         item
@@ -102,7 +102,7 @@ impl traits::VacantExt for Vacant<'_> {
         self.policy.currsize = self.policy.currsize.saturating_add(handle.size());
 
         let hash = handle.key().hash();
-        let cursor = self.policy.entries.push_back(handle);
+        let cursor = self.policy.list.push_back(handle);
 
         self.policy
             .table
@@ -111,11 +111,11 @@ impl traits::VacantExt for Vacant<'_> {
 }
 
 pub struct LRUPolicy {
-    /// Maps each key to its node pointer into [`FIFOPolicy::entries`], enabling O(1) lookups.
+    /// Maps each key to its node pointer into [`LRUPolicy::list`], enabling O(1) lookups.
     table: hashbrown::raw::RawTable<linked_list::Cursor<Handle>>,
 
     /// A doubly-linked list, which holds cached handles, providing O(1) pops (front/back) and pushes (front/back).
-    entries: linked_list::LinkedList<Handle>,
+    list: linked_list::LinkedList<Handle>,
 
     /// Running total of all stored handles' sizes, maintained incrementally.
     currsize: usize,
@@ -129,7 +129,7 @@ impl LRUPolicy {
     pub fn new(capacity: usize) -> Self {
         Self {
             table: hashbrown::raw::RawTable::with_capacity(capacity),
-            entries: linked_list::LinkedList::new(),
+            list: linked_list::LinkedList::new(),
             currsize: 0,
         }
     }
@@ -140,8 +140,8 @@ impl LRUPolicy {
     }
 
     #[inline]
-    pub fn linked_list(&self) -> &linked_list::LinkedList<Handle> {
-        &self.entries
+    pub fn list(&self) -> &linked_list::LinkedList<Handle> {
+        &self.list
     }
 
     #[inline]
@@ -188,12 +188,12 @@ impl PolicyExt for LRUPolicy {
         unsafe {
             let bucket = self
                 .table
-                .find(key.hash(), |cursor| key.py_eq(py, cursor.element().key()))?;
+                .get(key.hash(), |cursor| key.py_eq(py, cursor.element().key()))?;
 
             match bucket {
                 Some(cursor) => {
-                    cursor.as_mut().move_to_back(&mut self.entries);
-                    Ok(Some(cursor.as_ref().element()))
+                    cursor.move_to_back(&mut self.list);
+                    Ok(Some(cursor.element()))
                 }
                 None => Ok(None),
             }
@@ -230,7 +230,7 @@ impl PolicyExt for LRUPolicy {
 
     fn evict(&mut self, _py: pyo3::Python, shared: &Self::Shared) -> pyo3::PyResult<Self::Handle> {
         {
-            let front_cursor = match self.entries.cursor_front() {
+            let front_cursor = match self.list.cursor_front() {
                 Some(x) => x,
                 None => return Err(new_py_error!(PyKeyError, "cache is empty")),
             };
@@ -243,31 +243,26 @@ impl PolicyExt for LRUPolicy {
                 .expect("evict: key not found in table.");
         }
 
-        let handle = unsafe { self.entries.pop_front().unwrap_unchecked() };
+        let handle = unsafe { self.list.pop_front().unwrap_unchecked() };
         self.currsize = self.currsize.saturating_sub(handle.size());
         Ok(handle)
     }
 
     #[inline]
-    fn shrink_to_fit(&mut self, shared: &Self::Shared) {
-        let initial = self.table.capacity();
+    fn shrink_to_fit(&mut self, _shared: &Self::Shared) {
         self.table
             .shrink_to(0, |cursor| unsafe { cursor.element().key().hash() });
-
-        if initial != self.table.capacity() {
-            shared.generation_version().increment();
-        }
     }
 
     #[inline]
     fn clear(&mut self, shared: &Self::Shared) {
-        if self.entries.is_empty() {
+        if self.list.is_empty() {
             return;
         }
 
         shared.generation_version().increment();
         self.table.clear_no_drop();
-        self.entries.clear();
+        self.list.clear();
         self.currsize = 0;
     }
 
@@ -325,12 +320,12 @@ impl PolicyExt for LRUPolicy {
         Ok(result)
     }
 
-    fn clone_ref(&self, py: pyo3::Python<'_>) -> Self {
-        let mut table = hashbrown::raw::RawTable::with_capacity(self.entries.len());
+    fn clone_ref(&mut self, py: pyo3::Python<'_>) -> Self {
+        let mut table = hashbrown::raw::RawTable::with_capacity(self.list.len());
         let mut entries = linked_list::LinkedList::new();
 
         unsafe {
-            for cursor in self.entries.iter() {
+            for cursor in self.list.iter() {
                 let cloned_handle = cursor.element().clone_ref(py);
                 let new_cursor = entries.push_back(cloned_handle);
                 table.insert_no_grow(new_cursor.element().key().hash(), new_cursor);
@@ -339,7 +334,7 @@ impl PolicyExt for LRUPolicy {
 
         Self {
             table,
-            entries,
+            list: entries,
             currsize: self.currsize,
         }
     }

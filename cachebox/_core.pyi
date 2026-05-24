@@ -821,7 +821,7 @@ class LFUCache(BaseCacheImpl[KT, VT]):
     def popitem(self) -> typing.Tuple[KT, VT]:
         """
         Removes the least recently used item from the cache and returns it as a (key, value) tuple.
-        Raises KeyError if the cache is empty.
+        Raises `KeyError` if the cache is empty.
         """
         ...
 

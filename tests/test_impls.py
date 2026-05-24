@@ -667,3 +667,225 @@ class TestLFUCache(
             capacity=capacity,
             getsizeof=getsizeof,
         )
+
+    @staticmethod
+    def _hit(cache: cachebox.LFUCache, key, times: int = 1) -> None:
+        """Access a key `times` times to accumulate frequency."""
+        for _ in range(times):
+            cache[key]
+
+    def test_evicts_least_frequent_on_insert(self):
+        c = self.create_cache(3)
+        c["a"] = 1
+        c["b"] = 2
+        c["c"] = 3
+        self._hit(c, "a", 5)
+        self._hit(c, "b", 3)
+        # "c" has frequency 1 — should be evicted
+        c["d"] = 4
+        assert "c" not in c
+        assert "a" in c
+        assert "b" in c
+        assert "d" in c
+
+    def test_evicts_lowest_frequency_not_oldest(self):
+        """LFU must evict by count, not by insertion order."""
+        c = self.create_cache(3)
+        c["old"] = 0  # inserted first
+        c["mid"] = 0
+        c["new"] = 0  # inserted last
+        self._hit(c, "old", 10)
+        self._hit(c, "mid", 10)
+        # "new" has lowest frequency even though "old" is oldest
+        c["x"] = 99
+        assert "new" not in c
+        assert "old" in c
+        assert "mid" in c
+
+    def test_frequency_survives_value_update(self):
+        """Re-inserting a key should update value but preserve (and increment) frequency."""
+        c = self.create_cache(2)
+        c["a"] = 1
+        c["b"] = 1
+        self._hit(c, "a", 5)  # a.freq = 6 (5 reads + 1 insert)
+        c["a"] = 99  # update — should NOT reset frequency to 1
+        # b has freq=1, a has freq>=6; inserting "c" must evict "b"
+        c["c"] = 3
+        assert "b" not in c
+        assert "a" in c
+
+    def test_popitem_removes_lfu_item(self):
+        c = self.create_cache(3)
+        c["a"] = 1
+        c["b"] = 2
+        c["c"] = 3
+        self._hit(c, "a", 5)
+        self._hit(c, "b", 2)
+        # c has lowest frequency
+        key, val = c.popitem()
+        assert key == "c"
+        assert val == 3
+        assert "c" not in c
+
+    def test_tie_broken_by_recency_oldest_evicted(self):
+        """When frequencies are equal, the oldest-inserted key is evicted."""
+        c = self.create_cache(3)
+        c["first"] = 1  # inserted first → evicted on tie
+        c["second"] = 2
+        c["third"] = 3
+        # All have freq=1; "first" is oldest
+        c["fourth"] = 4
+        assert "first" not in c
+
+    def test_single_item_cache_evicts_on_second_insert(self):
+        c = self.create_cache(1)
+        c["only"] = 42
+        self._hit(c, "only", 100)
+        c["new"] = 7
+        assert "only" not in c
+        assert c["new"] == 7
+
+    def test_get_increments_frequency(self):
+        c = self.create_cache(2)
+        c["a"] = 1
+        c["b"] = 2
+        self._hit(c, "a", 3)  # a.freq = 4, b.freq = 1
+        c["c"] = 3  # evicts b
+        assert "b" not in c
+        assert "a" in c
+
+    def test_setdefault_increments_frequency_on_hit(self):
+        c = self.create_cache(2)
+        c["a"] = 1
+        c["b"] = 2
+        # setdefault on existing key should count as an access
+        for _ in range(5):
+            c.setdefault("a", 999)
+        c["c"] = 3  # should evict "b", not "a"
+        assert "b" not in c
+        assert "a" in c
+
+    def test_peek_does_not_increment_frequency(self):
+        c = self.create_cache(2)
+        c["a"] = 1
+        c["b"] = 2
+
+        # Peek "a" many times — frequency must NOT change
+        for _ in range(100):
+            c.peek("a")
+
+        # hit b once so it has freq=2 vs a's freq=1
+        self._hit(c, "b", 1)
+        c["c"] = 3  # must evict "a" (lower freq due to peek not counting)
+        assert "a" not in c
+        assert "b" in c
+
+    def test_least_frequently_used_reflects_access_counts(self):
+        c = self.create_cache(4)
+        c["a"] = 1
+        c["b"] = 2
+        c["c"] = 3
+        c["d"] = 4
+        self._hit(c, "a", 10)
+        self._hit(c, "b", 5)
+        self._hit(c, "c", 2)
+        # d has freq=1, c has freq=3, b has freq=6, a has freq=11
+        assert c.least_frequently_used(0) == "d"
+        assert c.least_frequently_used(1) == "c"
+        assert c.least_frequently_used(2) == "b"
+        assert c.least_frequently_used(3) == "a"
+
+    def test_frequency_not_reset_after_pop_and_reinsert(self):
+        """A key that is popped and re-added starts fresh at frequency 1."""
+        c = self.create_cache(2)
+        c["a"] = 1
+        c["b"] = 2
+        self._hit(c, "a", 10)
+        c.pop("a")
+        c["a"] = 1  # fresh insert — freq resets to 1
+        # now b also has freq=1; tie broken by insertion order — a is newer
+        c["c"] = 3  # should evict b (older with same freq=1)
+        assert "b" not in c
+        assert "a" in c
+
+    def test_cache_never_exceeds_maxsize(self):
+        c = self.create_cache(5)
+        for i in range(20):
+            c[i] = i
+        assert len(c) <= 5
+
+    def test_update_triggers_eviction(self):
+        c = self.create_cache(3)
+        c["a"] = 1
+        c["b"] = 2
+        c["c"] = 3
+        self._hit(c, "a", 5)
+        self._hit(c, "b", 3)
+        c.update({"d": 4, "e": 5})
+        assert len(c) == 3
+
+    def test_drain_removes_lfu_items_in_order(self):
+        c = self.create_cache(4)
+        c["a"] = 1
+        c["b"] = 2
+        c["c"] = 3
+        c["d"] = 4
+        self._hit(c, "d", 10)
+        self._hit(c, "c", 5)
+        self._hit(c, "b", 2)
+        # a has freq=1 → evicted first; b next; etc.
+        removed = c.drain(2)
+        assert removed == 2
+        assert "a" not in c
+        assert "b" not in c
+        assert "c" in c
+        assert "d" in c
+
+    def test_single_entry_popitem(self):
+        c = self.create_cache(10)
+        c["solo"] = 99
+        k, v = c.popitem()
+        assert k == "solo" and v == 99
+        assert len(c) == 0
+
+    def test_popitem_empty_raises(self):
+        c = self.create_cache(5)
+        with pytest.raises(KeyError):
+            c.popitem()
+
+    def test_least_frequently_used_empty_raises(self):
+        c = self.create_cache(5)
+        with pytest.raises(IndexError):
+            c.least_frequently_used()
+
+    def test_least_frequently_used_out_of_range_raises(self):
+        c = self.create_cache(5)
+        c["a"] = 1
+        with pytest.raises(IndexError):
+            c.least_frequently_used(5)
+
+    def test_clear_resets_all_frequencies(self):
+        c = self.create_cache(3)
+        c["a"] = 1
+        self._hit(c, "a", 50)
+        c.clear()
+        assert len(c) == 0
+        # After clearing, re-inserted keys start at frequency 1
+        c["a"] = 1
+        c["b"] = 2
+        c["c"] = 3
+        # All freq=1; tie → oldest ("a") evicted
+        c["d"] = 4
+        assert "a" not in c
+
+    def test_insert_returns_none_for_new_key(self):
+        c = self.create_cache(5)
+        result = c.insert("x", 42)
+        assert result is None
+
+    def test_insert_returns_old_value_for_existing_key(self):
+        c = self.create_cache(5)
+        c["x"] = 1
+        old = c.insert("x", 99)
+        assert old == 1
+        assert c["x"] == 99

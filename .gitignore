@@ -6,4 +6,5 @@ __pycache__
 /.pytest_cache
 /htmlcov
 /backup
-/a.py
+/.benchmarks
+/.hypothesis

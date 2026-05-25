@@ -752,3 +752,138 @@ class FuzzyMixin(BaseMixin):
         c2 = c.copy()
         c2.insert(new_key, new_value)
         assert not c.contains(new_key)
+
+
+class BenchmarkMixin(BaseMixin):
+    @pytest.fixture(autouse=True)
+    def _set_benchmark_name(self, benchmark, request):
+        benchmark.name = f"{type(self).__name__}.{request.node.originalname}"
+
+    @pytest.fixture()
+    def cache(self) -> cachebox.BaseCacheImpl:
+        return self.create_cache(256)
+
+    @pytest.fixture()
+    def full_cache(self) -> cachebox.BaseCacheImpl:
+        """A cache pre-populated to capacity."""
+        c = self.create_cache(256)
+
+        for i in range(256):
+            c.insert(i, i)
+
+        return c
+
+    def test_bench_insert(self, benchmark, cache):
+        i = 0
+
+        def run():
+            nonlocal i
+            cache.insert(i % 256, i)
+            i += 1
+
+        benchmark.pedantic(run, iterations=1000, rounds=100, warmup_rounds=2)
+
+    def test_bench_update(self, benchmark, cache):
+        data = {i: i for i in range(64)}
+        benchmark.pedantic(
+            cache.update,
+            args=(data,),
+            iterations=1000,
+            rounds=100,
+            warmup_rounds=2,
+        )
+
+    def test_bench_get_hit(self, benchmark, full_cache):
+        key = 0
+        benchmark.pedantic(
+            full_cache.get,
+            args=(key,),
+            iterations=1000,
+            rounds=100,
+            warmup_rounds=2,
+        )
+
+    def test_bench_get_miss(self, benchmark, cache):
+        key = 9999
+        benchmark.pedantic(
+            cache.get,
+            args=(key, None),
+            iterations=1000,
+            rounds=100,
+            warmup_rounds=2,
+        )
+
+    def test_bench_getitem(self, benchmark, full_cache):
+        key = 0
+        benchmark.pedantic(
+            full_cache.__getitem__,
+            args=(key,),
+            iterations=1000,
+            rounds=100,
+            warmup_rounds=2,
+        )
+
+    def test_bench_contains(self, benchmark, full_cache):
+        key = 0
+        benchmark.pedantic(
+            full_cache.contains,
+            args=(key,),
+            iterations=1000,
+            rounds=100,
+            warmup_rounds=2,
+        )
+
+    def test_bench_pop(self, benchmark):
+        """Each round gets a fresh cache so pop always finds the key."""
+        key = 0
+        val = 0
+
+        def setup():
+            c = self.create_cache(256)
+            c.insert(key, val)
+            return (c,), {}
+
+        benchmark.pedantic(
+            lambda c: c.pop(key, None),
+            setup=setup,
+            iterations=1,
+            rounds=1000,
+            warmup_rounds=5,
+        )
+
+    def test_bench_popitem(self, benchmark):
+        """Each round gets a fresh full cache."""
+        if isinstance(self.create_cache(0), cachebox.Cache):
+            pytest.skip("cachebox.Cache not supported this")
+
+        def setup():
+            c = self.create_cache(1000)
+            for i in range(1000):
+                c.insert(i, i)
+
+            return (c,), {}
+
+        benchmark.pedantic(
+            lambda c: c.popitem(),
+            setup=setup,
+            iterations=1,
+            rounds=200,
+            warmup_rounds=5,
+        )
+
+    def test_bench_delitem(self, benchmark):
+        key = 0
+        val = 0
+
+        def setup():
+            c = self.create_cache(256)
+            c.insert(key, val)
+            return (c,), {}
+
+        benchmark.pedantic(
+            lambda c: c.__delitem__(key),
+            setup=setup,
+            iterations=1,
+            rounds=200,
+            warmup_rounds=5,
+        )

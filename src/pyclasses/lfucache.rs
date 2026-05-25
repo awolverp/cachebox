@@ -289,11 +289,11 @@ impl PyLFUCache {
     /// Returns:
     ///     The value associated with the key, or the default value if the key is not found.
     #[pyo3(signature = (key, default=utils::OptionalArgument::Undefined))]
-    fn get<'p>(
+    fn get(
         &self,
         py: pyo3::Python,
         key: alias::PyObject,
-        default: utils::OptionalArgument<'p>,
+        default: utils::OptionalArgument,
     ) -> pyo3::PyResult<alias::PyObject> {
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
@@ -305,7 +305,7 @@ impl PyLFUCache {
         }
 
         match default {
-            utils::OptionalArgument::Defined(x) => Ok(x.unbind()),
+            utils::OptionalArgument::Defined(x) => Ok(x),
             utils::OptionalArgument::Undefined => unsafe {
                 // SAFETY: None is immortal, so reference counting has no meaning
                 Ok(pyo3::Bound::from_owned_ptr(py, pyo3::ffi::Py_None()).unbind())
@@ -357,7 +357,7 @@ impl PyLFUCache {
         drop(policy);
 
         let default_object = match default {
-            utils::OptionalArgument::Defined(x) => x.unbind(),
+            utils::OptionalArgument::Defined(x) => x,
             utils::OptionalArgument::Undefined => unsafe {
                 // SAFETY: None is immortal, so reference counting has no meaning
                 pyo3::Bound::from_owned_ptr(py, pyo3::ffi::Py_None()).unbind()
@@ -395,7 +395,7 @@ impl PyLFUCache {
         }
 
         match default {
-            utils::OptionalArgument::Defined(x) => Ok(x.unbind()),
+            utils::OptionalArgument::Defined(x) => Ok(x),
             utils::OptionalArgument::Undefined => Err(new_py_error!(
                 PyKeyError,
                 Into::<alias::PyObject>::into(key)
@@ -635,11 +635,11 @@ impl PyLFUCache {
     }
 
     #[pyo3(signature = (key, default=utils::OptionalArgument::Undefined))]
-    fn peek<'p>(
+    fn peek(
         &self,
         py: pyo3::Python,
         key: alias::PyObject,
-        default: utils::OptionalArgument<'p>,
+        default: utils::OptionalArgument,
     ) -> pyo3::PyResult<alias::PyObject> {
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
@@ -651,7 +651,7 @@ impl PyLFUCache {
         }
 
         match default {
-            utils::OptionalArgument::Defined(x) => Ok(x.unbind()),
+            utils::OptionalArgument::Defined(x) => Ok(x),
             utils::OptionalArgument::Undefined => unsafe {
                 // SAFETY: None is immortal, so reference counting has no meaning
                 Ok(pyo3::Bound::from_owned_ptr(py, pyo3::ffi::Py_None()).unbind())

@@ -434,6 +434,18 @@ class CopyMixin(BaseMixin):
         assert c2.maxsize == cache.maxsize
 
 
+@dataclasses.dataclass
+class Sized:
+    size: int
+    key: typing.Any
+
+    def __hash__(self) -> int:
+        return hash(self.key)
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Sized) and self.key == other.key
+
+
 class GetSizeOfMixin(BaseMixin):
     def test_current_size_uses_getsizeof(self):
         # Each value is a list; size = len(value)
@@ -455,6 +467,65 @@ class GetSizeOfMixin(BaseMixin):
         if isinstance(c, cachebox.Cache):
             with pytest.raises(OverflowError):
                 c.insert("c", 1)  # would push to 6
+
+    def test_getsizeof_invalid_handle_size(self):
+        c = self.create_cache(maxsize=5, getsizeof=lambda x, _: len(x))
+
+        with pytest.raises(OverflowError):
+            c["more than 5"] = 1
+
+        with pytest.raises(OverflowError):
+            c.update({"more than 5": 1})
+
+        with pytest.raises(OverflowError):
+            c.update({"5": 1, "more than 5": 2})
+
+        assert "5" in c
+
+    def test_getsizeof_insert_enforced(self):
+        c = self.create_cache(maxsize=100, getsizeof=lambda x, v: x.size + v.size)
+
+        k1 = Sized(10, 1)
+        v1 = Sized(80, 101)
+        c[k1] = v1
+
+        k2 = Sized(10, 2)
+        v2 = Sized(80, 102)
+
+        if isinstance(c, cachebox.Cache):
+            with pytest.raises(OverflowError):
+                c[k2] = v2
+
+            assert k1 in c
+
+        else:
+            c[k2] = v2
+            assert k1 not in c
+            assert k2 in c
+            assert c.current_size() <= c.maxsize
+
+    def test_getsizeof_insert_existing_key_enforced(self):
+        c = self.create_cache(maxsize=100, getsizeof=lambda x, _: x.size)
+
+        a_size_10 = Sized(10, "A")
+        a_size_100 = Sized(100, "A")
+
+        b_size_10 = Sized(10, "B")
+
+        c[a_size_10] = 1
+        c[b_size_10] = 2
+
+        # A(10) -> currsize=10
+        # B(10) -> currsize=20
+        #
+        # A(100) -> currsize=110 - exceeded maxsize, should call evict
+        if isinstance(c, cachebox.Cache):
+            with pytest.raises(OverflowError):
+                c[a_size_100] = "new"
+
+            return
+
+        c[a_size_100] = "new"
 
 
 class EdgeCasesMixin(BaseMixin):

@@ -13,33 +13,12 @@ pub trait HandleExt {
     fn size(&self) -> usize;
 }
 
-/// Shared behaviour for occupied and vacant entry guards.
-///
-/// Both variants hold a mutable borrow of the parent policy, so budget checks
-/// and eviction go through the entry rather than through the policy directly.
-pub trait EntryExt {
+/// Guard for an *occupied* slot.
+pub trait OccupiedExt {
     type Shared: SharedExt;
     type Handle: HandleExt;
 
-    /// Returns `true` if adding `extra_size` would meet or exceed [`SharedExt::maxsize`].
-    ///
-    /// Call this *before* [`OccupiedExt::replace`] or [`VacantExt::insert`].
-    fn would_exceed(&self, extra_size: usize) -> bool;
-
-    /// Evicts one entry, freeing budget for a subsequent insert or replace.
-    ///
-    /// # Errors
-    ///
-    /// Returns any Python exception raised while dropping the evicted value.
-    fn evict(&mut self, py: pyo3::Python) -> pyo3::PyResult<Self::Handle>;
-}
-
-/// Guard for an *occupied* slot.
-pub trait OccupiedExt: EntryExt {
     /// Replaces the current handle with `new`, returning the old one.
-    ///
-    /// Does **not** enforce maxsize; call
-    /// [`would_exceed`](EntryExt::would_exceed) first.
     fn replace(self, new: Self::Handle) -> Self::Handle;
 
     /// Removes the handle from this slot and returns it.
@@ -47,7 +26,26 @@ pub trait OccupiedExt: EntryExt {
 }
 
 /// Guard for a *vacant* slot.
-pub trait VacantExt: EntryExt {
+pub trait VacantExt {
+    type Shared: SharedExt;
+    type Handle: HandleExt;
+
+    /// Returns `true` if adding `extra_size` would meet or exceed [`SharedExt::maxsize`].
+    /// Called *before* [`VacantExt::insert`].
+    ///
+    /// This method is exists here because after calling [`PolicyExt::entry`], we can't use
+    /// policy.
+    fn would_exceed(&self, extra_size: usize) -> bool;
+
+    /// Evicts one entry, freeing budget for a subsequent insert or replace.
+    ///
+    /// This method is exists here because after calling [`PolicyExt::entry`], we can't use
+    /// policy.
+    ///
+    /// # Errors
+    /// Returns any Python exception raised while dropping the evicted value.
+    fn evict(&mut self, py: pyo3::Python) -> pyo3::PyResult<()>;
+
     /// Inserts `handle` into this slot.
     ///
     /// Does **not** enforce the weight budget; call
@@ -70,6 +68,9 @@ pub trait SharedExt: Send + Sync {
 
     /// Returns a reference to configued getsizeof function.
     fn getsizeof(&self) -> &utils::GetsizeofFunction;
+
+    /// Returns a reference to configued getsizeof function.
+    fn global_ttl(&self) -> Option<std::time::Duration>;
 
     /// Make a clone of `self`.
     fn clone_ref(&self, py: pyo3::Python) -> Self;

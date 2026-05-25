@@ -4,6 +4,7 @@ from ._core import FIFOCache as FIFOCache
 from ._core import LFUCache as LFUCache
 from ._core import LRUCache as LRUCache
 from ._core import RRCache as RRCache
+from ._core import TTLCache as TTLCache
 
 try:
     from ._core import (

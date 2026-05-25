@@ -1,14 +1,14 @@
 use std::collections::VecDeque;
 
 use crate::hashbrown;
+use crate::internal::alias;
 use crate::internal::utils;
 use crate::policies::traits;
 use crate::policies::traits::HandleExt;
 use crate::policies::traits::PolicyExt;
 use crate::policies::traits::SharedExt;
 
-pub use super::common::Handle;
-pub use super::common::Shared;
+pub use crate::policies::common::Shared;
 
 macro_rules! get_handle {
     (&$slf:expr, $index:expr) => {
@@ -19,10 +19,148 @@ macro_rules! get_handle {
     };
 }
 
-/// A view into an occupied entry in [`FIFOPolicy`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ExpiresAt {
+    SystemTime(std::time::SystemTime),
+    Duration(std::time::Duration),
+}
+
+impl From<std::time::Duration> for ExpiresAt {
+    #[inline]
+    fn from(value: std::time::Duration) -> Self {
+        Self::Duration(value)
+    }
+}
+
+impl From<ExpiresAt> for std::time::SystemTime {
+    #[inline]
+    fn from(value: ExpiresAt) -> Self {
+        match value {
+            ExpiresAt::Duration(x) => std::time::SystemTime::now() + x,
+            ExpiresAt::SystemTime(x) => x,
+        }
+    }
+}
+
+/// A key-value pair with a precomputed hash and combined size.
+pub struct ExpiringHandle {
+    /// The cache key together with its precomputed hash, avoiding repeated
+    /// Python hash calls during table lookups.
+    key: utils::PrecomputedHashObject,
+    /// The cached value associated with this key.
+    value: alias::PyObject,
+    /// Size of the key and value as reported by `getsizeof`.
+    size: usize,
+    /// Configured ttl for handle.
+    expires_at: std::time::SystemTime,
+}
+
+impl ExpiringHandle {
+    /// Creates a new [`Handle`], which calculates the precomputed hash itself.
+    #[inline]
+    pub fn new(
+        py: pyo3::Python<'_>,
+        getsizeof: &utils::GetsizeofFunction,
+        expires_at: ExpiresAt,
+        key: alias::PyObject,
+        value: alias::PyObject,
+    ) -> pyo3::PyResult<Self> {
+        Self::with_precomputed_hash_key(
+            py,
+            getsizeof,
+            expires_at,
+            utils::PrecomputedHashObject::new(py, key)?,
+            value,
+        )
+    }
+
+    /// Creates a new [`Handle`] from an already-hashed key.
+    ///
+    /// Prefer this over [`Handle::new`] when the caller has already paid the cost
+    /// of computing the hash (e.g. during a table lookup that preceded insertion).
+    #[inline]
+    pub fn with_precomputed_hash_key(
+        py: pyo3::Python<'_>,
+        getsizeof: &utils::GetsizeofFunction,
+        expires_at: ExpiresAt,
+        key: utils::PrecomputedHashObject,
+        value: alias::PyObject,
+    ) -> pyo3::PyResult<Self> {
+        let size = getsizeof.call(py, key.as_ref(), &value)?;
+        Ok(Self {
+            key,
+            value,
+            size,
+            expires_at: expires_at.into(),
+        })
+    }
+
+    /// Consumes `self` and returns the [`utils::PrecomputedHashObject`].
+    #[inline]
+    pub fn into_key(self) -> utils::PrecomputedHashObject {
+        self.key
+    }
+
+    /// Returns a reference to the value.
+    #[inline]
+    pub fn value(&self) -> &alias::PyObject {
+        &self.value
+    }
+
+    /// Consumes `self` and returns the value of the pair.
+    #[inline]
+    pub fn into_value(self) -> alias::PyObject {
+        self.value
+    }
+
+    /// Consumes `self` and returns the pair.
+    #[inline]
+    pub fn into_pair(self) -> (utils::PrecomputedHashObject, alias::PyObject) {
+        (self.key, self.value)
+    }
+
+    #[inline]
+    pub fn expires_at(&self) -> std::time::SystemTime {
+        self.expires_at
+    }
+
+    #[inline]
+    pub fn is_expired(&self, now: std::time::SystemTime) -> bool {
+        self.expires_at <= now
+    }
+
+    /// Makes a clone of self.
+    ///
+    /// This creates another pointer to the same object, increasing its reference count.
+    #[inline]
+    pub fn clone_ref(&self, py: pyo3::Python<'_>) -> Self {
+        Self {
+            key: self.key.clone_ref(py),
+            value: self.value.clone_ref(py),
+            size: self.size,
+            expires_at: self.expires_at,
+        }
+    }
+}
+
+impl HandleExt for ExpiringHandle {
+    type Key = utils::PrecomputedHashObject;
+
+    #[inline(always)]
+    fn key(&self) -> &utils::PrecomputedHashObject {
+        &self.key
+    }
+
+    #[inline(always)]
+    fn size(&self) -> usize {
+        self.size
+    }
+}
+
+/// A view into an occupied entry in [`TTLPolicy`].
 pub struct Occupied<'a> {
     /// The parent storage that owns the hash table.
-    policy: &'a mut FIFOPolicy,
+    policy: &'a mut TTLPolicy,
     /// The shared configuration
     shared: &'a Shared,
     /// Raw bucket pointing to the occupied index.
@@ -30,7 +168,7 @@ pub struct Occupied<'a> {
 }
 
 impl traits::OccupiedExt for Occupied<'_> {
-    type Handle = Handle;
+    type Handle = ExpiringHandle;
     type Shared = Shared;
 
     #[inline]
@@ -65,16 +203,16 @@ impl traits::OccupiedExt for Occupied<'_> {
     }
 }
 
-/// A view into a vacant slot in [`FIFOPolicy`].
+/// A view into a vacant slot in [`TTLPolicy`].
 pub struct Vacant<'a> {
     /// The parent policy that owns the hash table.
-    policy: &'a mut FIFOPolicy,
+    policy: &'a mut TTLPolicy,
     /// The shared configuration
     shared: &'a Shared,
 }
 
 impl traits::VacantExt for Vacant<'_> {
-    type Handle = Handle;
+    type Handle = ExpiringHandle;
     type Shared = Shared;
 
     #[inline]
@@ -102,39 +240,16 @@ impl traits::VacantExt for Vacant<'_> {
     }
 }
 
-pub struct FIFOPolicy {
-    /// Maps each key to its logical index into [`FIFOPolicy::entries`], enabling O(1) lookups.
-    ///
-    /// Stored indices are *logical* (i.e. they do not reset when entries are popped from the
-    /// front), so they must be adjusted on read: `entries[table[k] - front_offset]`.
-    /// As a result, table values grow monotonically over the lifetime of the cache,
-    /// but their *count* stays bounded by the cache capacity — this is not a memory concern.
+pub struct TTLPolicy {
+    // fields are same as FIFOPolicy
     table: hashbrown::raw::RawTable<usize>,
-
-    /// Insertion-ordered sequence of cached handles, providing O(1) front removal.
-    entries: VecDeque<Handle>,
-
-    /// Running total of all stored handles' sizes, maintained incrementally.
+    entries: VecDeque<ExpiringHandle>,
     currsize: usize,
-
-    /// Number of handles ever popped from the front of [`FIFOPolicy::entries`].
-    ///
-    /// Because [`VecDeque`] indices shift on front-removal, naively keeping
-    /// [`FIFOPolicy::table`] consistent would require decrementing every stored
-    /// index — an O(n) operation. Instead, this counter is incremented on each
-    /// pop and subtracted at read time: `entries[table[k] - front_offset]`,
-    /// keeping both the pop and the lookup O(1).
-    ///
-    /// To prevent `usize` overflow in the subtraction, once `front_offset`
-    /// reaches `usize::MAX - isize::MAX`, all indices in `table` are decremented
-    /// by the current `front_offset` and the counter is reset to zero. This
-    /// rewrite is O(n) but occurs so rarely, at most once per
-    /// `usize::MAX - isize::MAX` evictions, that it is effectively free in practice.
     front_offset: usize,
 }
 
-impl FIFOPolicy {
-    /// Creates a new [`FIFOPolicy`].
+impl TTLPolicy {
+    /// Creates a new [`TTLPolicy`].
     ///
     /// The underlying [`VecDeque`] is pre-allocated to hold at least `capacity` entries
     /// without reallocation.
@@ -153,7 +268,7 @@ impl FIFOPolicy {
     }
 
     #[inline]
-    pub fn entries(&self) -> &VecDeque<Handle> {
+    pub fn entries(&self) -> &VecDeque<ExpiringHandle> {
         &self.entries
     }
 
@@ -219,16 +334,46 @@ impl FIFOPolicy {
         self.front_offset = 0;
     }
 
+    pub fn expire(&mut self, py: pyo3::Python<'_>, shared: &Shared) -> pyo3::PyResult<()> {
+        let now = std::time::SystemTime::now();
+
+        while let Some(handle) = self.entries.front() {
+            if !handle.is_expired(now) {
+                break;
+            }
+
+            let eq = |index: &usize| get_handle!(&self, *index).key().py_eq(py, handle.key());
+            if std::hint::unlikely(self.table.remove_entry(handle.key().hash(), eq)?.is_none()) {
+                unreachable!("popitem key not found in table");
+            }
+
+            shared.generation_version().increment();
+
+            let front = unsafe { self.entries.pop_front().unwrap_unchecked() };
+
+            self.currsize = self.currsize.saturating_sub(front.size());
+            self.decrement_indexes(1, self.entries.len());
+        }
+
+        Ok(())
+    }
+
     #[inline]
-    pub fn iter(&self) -> utils::RawVecDequeIter<Handle> {
+    pub fn iter(
+        &mut self,
+        py: pyo3::Python<'_>,
+        shared: &Shared,
+    ) -> pyo3::PyResult<utils::RawVecDequeIter<ExpiringHandle>> {
+        self.expire(py, shared)?;
+
         let (first, second) = self.entries.as_slices();
-        utils::RawVecDequeIter::new(first, second)
+        Ok(utils::RawVecDequeIter::new(first, second))
     }
 }
 
-impl PolicyExt for FIFOPolicy {
+impl PolicyExt for TTLPolicy {
     type Shared = Shared;
-    type Handle = Handle;
+    type Handle = ExpiringHandle;
 
     type Occupied<'a>
         = Occupied<'a>
@@ -249,11 +394,22 @@ impl PolicyExt for FIFOPolicy {
     fn get(
         &mut self,
         py: pyo3::Python,
-        key: &<Self::Handle as traits::HandleExt>::Key,
+        key: &<Self::Handle as HandleExt>::Key,
     ) -> pyo3::PyResult<Option<&Self::Handle>> {
         let eq = |index: &usize| get_handle!(&self, *index).key().py_eq(py, key);
-        match self.table.get(key.hash(), eq)? {
-            Some(index) => Ok(Some(get_handle!(&self, *index))),
+
+        match self
+            .table
+            .get(key.hash(), eq)?
+            .map(|index| get_handle!(&self, *index))
+        {
+            Some(handle) => {
+                if handle.is_expired(std::time::SystemTime::now()) {
+                    Ok(None)
+                } else {
+                    Ok(Some(handle))
+                }
+            }
             None => Ok(None),
         }
     }
@@ -264,6 +420,8 @@ impl PolicyExt for FIFOPolicy {
         key: &<Self::Handle as HandleExt>::Key,
         shared: &'a Self::Shared,
     ) -> pyo3::PyResult<traits::PolicyEntry<Self::Occupied<'a>, Self::Vacant<'a>>> {
+        self.expire(py, shared)?;
+
         let eq = |index: &usize| get_handle!(&self, *index).key().py_eq(py, key);
         match self.table.find(key.hash(), eq)? {
             Some(bucket) => {
@@ -284,30 +442,23 @@ impl PolicyExt for FIFOPolicy {
         }
     }
 
-    fn evict(&mut self, py: pyo3::Python, shared: &Self::Shared) -> pyo3::PyResult<Self::Handle> {
-        let front = self.entries.front();
+    fn evict(&mut self, _py: pyo3::Python, shared: &Self::Shared) -> pyo3::PyResult<Self::Handle> {
+        let front = self.entries.pop_front();
         if front.is_none() {
-            return Err(new_py_error!(PyKeyError, ()));
+            return Err(new_py_error!(PyKeyError, "cache is empty"));
         }
 
         let front = unsafe { front.unwrap_unchecked() };
 
-        let eq = |index: &usize| {
-            self.entries[(*index) - self.front_offset]
-                .key()
-                .py_eq(py, front.key())
-        };
+        let eq = |index: &usize| Ok::<_, pyo3::PyErr>((*index - self.front_offset) == 0);
         if std::hint::unlikely(self.table.remove_entry(front.key().hash(), eq)?.is_none()) {
             unreachable!("popitem key not found in table");
         }
 
         shared.generation_version().increment();
 
-        let front = unsafe { self.entries.pop_front().unwrap_unchecked() };
-
         self.currsize = self.currsize.saturating_sub(front.size());
         self.decrement_indexes(1, self.entries.len());
-
         Ok(front)
     }
 
@@ -317,7 +468,6 @@ impl PolicyExt for FIFOPolicy {
 
         self.table
             .shrink_to(0, |index| get_handle!(&self, *index).key().hash());
-
         self.entries.shrink_to_fit();
     }
 
@@ -341,7 +491,10 @@ impl PolicyExt for FIFOPolicy {
         other: &Self,
         other_shared: &Self::Shared,
     ) -> pyo3::PyResult<bool> {
-        if shared.maxsize() != other_shared.maxsize() || self.table.len() != other.table.len() {
+        if shared.maxsize() != other_shared.maxsize()
+            || shared.global_ttl() != other_shared.global_ttl()
+            || self.table.len() != other.table.len()
+        {
             return Ok(false);
         }
 

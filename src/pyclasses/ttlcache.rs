@@ -1,60 +1,85 @@
 use crate::internal::alias;
 use crate::internal::onceinit;
 use crate::internal::utils;
-use crate::policies::rrpolicy;
 use crate::policies::traits::HandleExt;
 use crate::policies::traits::PolicyExt;
 use crate::policies::traits::SharedExt;
+use crate::policies::ttlpolicy;
 use crate::policies::wrapped::Wrapped;
 
 implement_pyclass! {
-    /// A thread-safe, memory-efficient key-value cache with Random Replacement eviction policy.
-    /// When the cache reaches its maximum size, an item is randomly selected and
-    /// evicted to make room for new entries.
+    /// A Time-To-Live (TTL) cache eviction policy: each entry carries an expiration timestamp
+    /// and is considered stale — and eligible for eviction — once that deadline has passed,
+    /// regardless of how recently or frequently it was accessed.
     ///
     /// ## How It Works
-    /// `RRCache` is a configurable hashmap-like store with automatic eviction. When an item is inserted:
-    /// - It is stored directly without any ordering or priority tracking.
-    /// - If a maximum size is configured and the cache is full, a random entry is evicted to make room
-    ///   for the new item.
-    /// - All read and write operations are thread-safe, making it safe for concurrent access without
-    ///   external locking.
+    /// The TTL algorithm pairs time-based expiration with insertion-order eviction. Every entry
+    /// is stamped with an absolute `expires_at` timestamp at insertion time (computed as
+    /// `now + global_ttl`). Entries are stored in insertion order, and eviction proceeds from the
+    /// front of that queue — but only after confirming the candidate has actually expired. A live
+    /// entry at the front of the queue blocks eviction of everything behind it, so the cache may
+    /// temporarily exceed capacity if the oldest entries are still fresh.
     ///
-    /// The Random Replacement policy selects entries for eviction uniformly at random, ensuring fair
-    /// treatment across all cached items regardless of access patterns.
+    /// Like `FIFOPolicy`, this implementation backs the queue with a `double-ended queue` for O(1)
+    /// front removal and a `hash map` for O(1) key lookups. The same logical-index trick applies:
+    /// the table stores monotonically increasing counters rather than physical deque positions, and
+    /// a `front_offset` counter converts a logical index back to a physical one at read time via
+    /// `entries[table[key] - front_offset]`. This keeps eviction and lookup O(1) without rewriting
+    /// the table on every eviction. On top of that, every read checks `expires_at` against the current wall-clock time and
+    /// treats any expired entry as a cache miss.
+    ///
+    /// Without `grace_time`, an expiry sweep is triggered automatically on every call to
+    /// `insert`, `update`, `current_size`, `remaining_size`, `last`, `first`, `items`, `keys`,
+    /// `values`, and `__iter__`. A completely idle cache will accumulate stale entries between
+    /// these calls, but any normal interaction with the cache is sufficient to reclaim them.
+    /// When `grace_time` is set, a background Rust thread performs the sweep on that interval
+    /// instead, reclaiming expired entries independent of any method calls.
     ///
     /// ### Pros
-    /// - Low overhead: Random Replacement is computationally cheap compared to tracking access order or frequency.
-    /// - Thread-safe: safe for concurrent reads and writes out of the box.
-    /// - Configurable capacity: a hard size limit prevents unbounded memory growth while allowing new entries
-    ///   through automatic eviction.
-    /// - No staleness issues: items persist only as long as they remain unselected by the eviction policy,
-    ///   preventing indefinite accumulation of stale data.
+    /// - Insert, lookup, and evict are all O(1) amortized: the `front_offset` trick eliminates the O(n)
+    ///   index-shifting that a naïve implementation would require on every eviction.
+    /// - Entries expire automatically without any background thread or explicit invalidation call.
+    ///   Stale data is never returned to the caller.
+    /// - TTL expiry and insertion-order eviction compose cleanly: the oldest entry is always evicted
+    ///   first among those that have already expired.
+    /// - A single `global_ttl` keeps configuration simple; every entry ages at the same rate.
     ///
     /// ### Cons
-    /// - Non-deterministic eviction: random selection means you cannot predict which entry will be removed,
-    ///   potentially evicting recently cached or frequently accessed items.
-    /// - Unordered: insertion order is not preserved.
-    /// - Less optimal than LRU/LFU: for workloads with skewed access patterns, Random Replacement will
-    ///   evict frequently used items more often than policy-aware caches.
     ///
-    /// ## When to Use It
-    /// `RRCache` is the right choice when:
-    /// - You have a working set that can grow unpredictably and requires automatic memory management.
-    /// - Access patterns are relatively uniform and predictable, so random eviction is not significantly
-    ///   worse than smarter policies.
-    /// - You need low computational overhead and simple eviction logic.
-    /// - You want to prevent unbounded memory growth without the complexity of tracking usage metadata.
+    /// - Wall-clock dependency. Correctness relies on a monotonically advancing system clock.
+    ///   Clock adjustments (NTP steps, suspend/resume) can cause entries to expire earlier or later
+    ///   than intended.
+    /// - When `grace_time` is set, a background Rust thread wakes on that interval to sweep and
+    ///   remove all expired entries. This adds a small amount of background CPU usage and
+    ///   introduces a reaper thread for the lifetime of the cache.
+    /// - No per-entry TTL override. All entries share `global_ttl`; mixed expiry requirements need
+    ///   a different policy or a wrapper layer.
+    /// - The rare O(n) index rebase (triggered when `front_offset` nears `usize::MAX - isize::MAX`)
+    ///   introduces an occasional latency spike. Amortized cost is negligible, but worst-case
+    ///   latency is unbounded in principle.
     ///
-    /// Avoid it when you have highly skewed access patterns (where certain items are accessed far more
-    /// frequently than others), when cache hits are mission-critical and predictability matters, or when
-    /// you need fine-grained control over what gets evicted.
+    /// ## When to use it
+    /// Reach for `TTLPolicy` when:
+    /// - Cached data has a natural freshness window: API responses, auth tokens, DNS records,
+    ///   rate-limit counters, or any value that becomes incorrect or unsafe after a known interval.
+    /// - You need automatic expiry without a background reaper thread — expiry sweeps on common
+    ///   method calls are sufficient, or you want continuous reclamation via `grace_time`.
+    /// - Access patterns are unpredictable or uniform enough that recency- or frequency-based
+    ///   eviction (LRU/LFU) would offer no meaningful advantage.
+    ///
+    /// Avoid it when:
+    /// - Your workload has strong temporal locality and you need a best-effort hit rate policy —
+    ///   LRU will serve you better.
+    /// - Per-entry TTL granularity is required. If different keys need different lifetimes,
+    ///   consider a policy that accepts per-insertion expiry hints.
+    /// - Your environment has an unreliable or adjustable system clock, where wall-clock-based
+    ///   expiry may behave unexpectedly.
     [subclass, extends=crate::pyclasses::base::PyBaseCacheImpl, generic, frozen]
-    PyRRCache as "RRCache" (onceinit::OnceInit<Wrapped<rrpolicy::RRPolicy>>);
+    PyTTLCache as "TTLCache" (onceinit::OnceInit<Wrapped<ttlpolicy::TTLPolicy>>);
 }
 
 #[pyo3::pymethods]
-impl PyRRCache {
+impl PyTTLCache {
     #[new]
     #[allow(unused_variables)]
     #[pyo3(signature=(*args, **kwds))]
@@ -68,12 +93,13 @@ impl PyRRCache {
         )
     }
 
-    /// Initialize a new `RRCache` instance.
+    /// Initialize a new `PyTTLCache` instance.
     ///
     /// Args:
     ///     maxsize: Maximum number of elements the cache can hold.
+    ///     global_ttl: Time-to-live for cache entries, either as seconds or a timedelta.
     ///     iterable: Initial data to populate the cache.
-    ///     capacity: Pre-allocate hash table capacity to minimize reallocations. Defaults to 0.
+    ///     capacity: Pre-allocate capacity to minimize reallocations. Defaults to 0.
     ///     getsizeof: A callable that computes the size of a key-value pair. When `None`, each
     ///             entry is assumed to have a size of 1 (equivalent to `lambda k, v: 1`).
     ///             Use this to implement weighted caching — for example, sizing entries by
@@ -81,28 +107,39 @@ impl PyRRCache {
     ///
     /// The cache can be pre-sized via `capacity` to reduce hash table reallocations when
     /// the number of expected entries is known ahead of time.
-    #[pyo3(signature=(maxsize, iterable=None, *, capacity=0, getsizeof=None))]
+    #[pyo3(signature=(maxsize, global_ttl, iterable=None, *, capacity=0, getsizeof=None))]
     fn __init__(
         &self,
         py: pyo3::Python,
         maxsize: usize,
+        global_ttl: utils::FloatOrTimedelta,
         iterable: Option<alias::BoundObject>,
         capacity: usize,
         getsizeof: Option<alias::PyObject>,
     ) -> pyo3::PyResult<()> {
-        let wrapped = Wrapped::new(
-            rrpolicy::RRPolicy::new(capacity),
-            rrpolicy::Shared::new(maxsize, getsizeof),
-        );
+        // TODO: support sweep_interval
+
+        let global_ttl: f64 = global_ttl.into();
+        if global_ttl <= 0.0 {
+            return Err(new_py_error!(
+                PyValueError,
+                "global_ttl must be positive and non-zero"
+            ));
+        }
+
+        let wrapped = Wrapped::new(ttlpolicy::TTLPolicy::new(capacity), unsafe {
+            ttlpolicy::Shared::with_ttl(maxsize, getsizeof, Some(global_ttl))
+        });
 
         if let Some(iterable) = iterable {
+            let ttl: ttlpolicy::ExpiresAt = wrapped.shared().global_ttl().unwrap().into();
             let getsizeof = wrapped.shared().getsizeof().clone_ref(py);
 
             let result = wrapped.extend(
                 // iterable object
                 iterable,
                 // transform function
-                |key, value| rrpolicy::Handle::new(py, &getsizeof, key, value),
+                |key, value| ttlpolicy::ExpiringHandle::new(py, &getsizeof, ttl, key, value),
             );
             self.0.set(wrapped);
             result
@@ -120,15 +157,22 @@ impl PyRRCache {
     }
 
     #[inline]
-    fn current_size(&self) -> usize {
+    fn current_size(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
         let inner = self.0.get();
-        inner.policy().current_size()
+        let mut policy = inner.policy();
+        policy.expire(py, inner.shared())?;
+        Ok(policy.current_size())
     }
 
     #[inline]
-    fn remaining_size(&self) -> usize {
+    fn remaining_size(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
         let inner = self.0.get();
-        inner.remaining_size()
+        {
+            let mut policy = inner.policy();
+            policy.expire(py, inner.shared())?;
+        }
+
+        Ok(inner.remaining_size())
     }
 
     #[getter]
@@ -138,13 +182,20 @@ impl PyRRCache {
         inner.shared().getsizeof().clone_ref(py).into()
     }
 
+    #[getter]
+    #[inline]
+    fn global_ttl(&self) -> f64 {
+        let inner = self.0.get();
+        unsafe { inner.shared().global_ttl().unwrap_unchecked().as_secs_f64() }
+    }
+
     /// Returns the number of elements the map can hold without reallocating.
     #[inline]
     fn capacity(&self) -> usize {
         let inner = self.0.get();
         let policy = inner.policy();
 
-        policy.table().capacity()
+        policy.table().capacity().min(policy.entries().capacity())
     }
 
     /// Returns the number of entries currently in the cache.
@@ -153,6 +204,7 @@ impl PyRRCache {
         let inner = self.0.get();
         let policy = inner.policy();
 
+        debug_assert!(policy.table().len() == policy.entries().len());
         policy.table().len()
     }
 
@@ -161,7 +213,11 @@ impl PyRRCache {
         let inner = self.0.get();
         let policy = inner.policy();
 
-        policy.table().capacity() * std::mem::size_of::<rrpolicy::Handle>()
+        let table_cap = policy.table().capacity() * std::mem::size_of::<usize>();
+        let vecdeque_cap =
+            policy.entries().capacity() * std::mem::size_of::<ttlpolicy::ExpiringHandle>();
+
+        table_cap + vecdeque_cap
     }
 
     #[inline]
@@ -209,9 +265,6 @@ impl PyRRCache {
     /// - If the cache did not have this key present, None is returned.
     /// - If the cache did have this key present, the value is updated,
     ///   and the old value is returned. The key is not updated, though.
-    ///
-    /// Note: raises `OverflowError` if the cache reached the maxsize limit,
-    /// because this class does not have any algorithm.
     fn insert(
         &self,
         py: pyo3::Python,
@@ -219,7 +272,14 @@ impl PyRRCache {
         value: alias::PyObject,
     ) -> pyo3::PyResult<Option<alias::PyObject>> {
         let inner = self.0.get();
-        let handle = rrpolicy::Handle::new(py, inner.shared().getsizeof(), key, value)?;
+        let shared = inner.shared();
+        let handle = ttlpolicy::ExpiringHandle::new(
+            py,
+            shared.getsizeof(),
+            unsafe { shared.global_ttl().unwrap_unchecked().into() },
+            key,
+            value,
+        )?;
 
         let old_handle = inner.insert(py, handle)?.map(|x| x.into_value());
         Ok(old_handle)
@@ -236,13 +296,16 @@ impl PyRRCache {
         }
 
         let inner = slf.0.get();
-        let getsizeof = inner.shared().getsizeof().clone_ref(py);
+        let shared = inner.shared();
+
+        let ttl: ttlpolicy::ExpiresAt = unsafe { shared.global_ttl().unwrap_unchecked().into() };
+        let getsizeof = shared.getsizeof().clone_ref(py);
 
         inner.extend(
             // iterable object
             iterable.into_bound(py),
             // transform function
-            move |key, value| rrpolicy::Handle::new(py, &getsizeof, key, value),
+            move |key, value| ttlpolicy::ExpiringHandle::new(py, &getsizeof, ttl, key, value),
         )
     }
 
@@ -344,9 +407,10 @@ impl PyRRCache {
             },
         };
 
-        let handle = rrpolicy::Handle::with_precomputed_hash_key(
+        let handle = ttlpolicy::ExpiringHandle::with_precomputed_hash_key(
             py,
             shared.getsizeof(),
+            unsafe { shared.global_ttl().unwrap_unchecked().into() },
             key,
             default_object.clone_ref(py),
         )?;
@@ -396,8 +460,6 @@ impl PyRRCache {
     }
 
     /// Remove and return a (key, value) pair as a 2-tuple.
-    ///
-    /// NOTE: `Cache` always raises `NotImplementedError` because has neither policy nor algorithm to evict items.
     fn popitem(&self, py: pyo3::Python) -> pyo3::PyResult<(alias::PyObject, alias::PyObject)> {
         let inner = self.0.get();
         let mut policy = inner.policy();
@@ -490,42 +552,51 @@ impl PyRRCache {
             .map(|x| !x)
     }
 
-    fn items(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyRRCacheItems>> {
+    fn items(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyTTLCacheItems>> {
         let inner = self.0.get();
+
+        let iter = inner.policy().iter(py, inner.shared())?;
+
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
-        let result = PyRRCacheItems {
-            iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
+        let result = PyTTLCacheItems {
+            iter: parking_lot::Mutex::new(iter),
             gv,
             initial_gv,
         };
         pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
     }
 
-    fn values(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyRRCacheValues>> {
+    fn values(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyTTLCacheValues>> {
         let inner = self.0.get();
+
+        let iter = inner.policy().iter(py, inner.shared())?;
+
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
-        let result = PyRRCacheValues {
-            iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
+        let result = PyTTLCacheValues {
+            iter: parking_lot::Mutex::new(iter),
             gv,
             initial_gv,
         };
         pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
     }
 
-    fn keys(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyRRCacheKeys>> {
+    fn keys(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyTTLCacheKeys>> {
         let inner = self.0.get();
+
+        let iter = inner.policy().iter(py, inner.shared())?;
+
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
-        let result = PyRRCacheKeys {
-            iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
+        let result = PyTTLCacheKeys {
+            iter: parking_lot::Mutex::new(iter),
             gv,
             initial_gv,
         };
@@ -533,7 +604,7 @@ impl PyRRCache {
     }
 
     #[inline]
-    fn __iter__(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyRRCacheKeys>> {
+    fn __iter__(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyTTLCacheKeys>> {
         self.keys(py)
     }
 
@@ -555,19 +626,18 @@ impl PyRRCache {
         let shared = inner.shared();
         let policy = inner.policy();
 
-        let iter = unsafe {
-            policy
-                .table()
-                .iter()
-                .map(|bucket| bucket.as_ref())
-                .map(|handle| {
-                    (
-                        // Without using `.bind` it returns something like `Py(addr)`
-                        handle.key().as_ref().bind(py),
-                        handle.value().bind(py),
-                    )
-                })
-        };
+        let now = std::time::SystemTime::now();
+        let iter = policy
+            .entries()
+            .iter()
+            .filter(|handle| !handle.is_expired(now))
+            .map(|handle| {
+                (
+                    // Without using `.bind` it returns something like `Py(addr)`
+                    handle.key().as_ref().bind(py),
+                    handle.value().bind(py),
+                )
+            });
 
         let items = utils::items_to_str(iter, policy.table().len()).unwrap();
         format!(
@@ -580,29 +650,162 @@ impl PyRRCache {
     }
 
     #[inline]
-    fn random_key(&self, py: pyo3::Python) -> pyo3::PyResult<alias::PyObject> {
+    #[pyo3(signature=(*, reuse=false))]
+    fn expire(&self, py: pyo3::Python, reuse: bool) -> pyo3::PyResult<()> {
         let inner = self.0.get();
-        let policy = inner.policy();
+        let shared = inner.shared();
+        let mut policy = inner.policy();
 
-        if policy.table().is_empty() {
-            Err(new_py_error!(PyKeyError, "cache is empty"))
-        } else {
-            let nth = fastrand::usize(0..policy.table().len());
+        policy.expire(py, shared)?;
 
-            let bucket = unsafe { policy.table().iter().nth(nth).unwrap_unchecked() };
-
-            let handle = unsafe { bucket.as_ref() };
-            Ok(handle.key().clone_ref(py).into())
+        if !reuse {
+            policy.shrink_to_fit(shared);
         }
+        Ok(())
+    }
+
+    #[pyo3(signature = (n=0))]
+    fn first(
+        &self,
+        py: pyo3::Python,
+        mut n: pyo3::ffi::Py_ssize_t,
+    ) -> pyo3::PyResult<alias::PyObject> {
+        let inner = self.0.get();
+        let mut policy = inner.policy();
+
+        policy.expire(py, inner.shared())?;
+
+        if n < 0 {
+            n += policy.entries().len() as isize;
+        }
+        if n < 0 {
+            return Err(new_py_error!(PyIndexError, "`n` out of range"));
+        }
+
+        match policy.entries().get(n as usize) {
+            Some(handle) => Ok(handle.key().as_ref().clone_ref(py)),
+            None => Err(new_py_error!(PyIndexError, "`n` out of range")),
+        }
+    }
+
+    fn last(&self, py: pyo3::Python) -> pyo3::PyResult<alias::PyObject> {
+        let inner = self.0.get();
+        let mut policy = inner.policy();
+
+        policy.expire(py, inner.shared())?;
+
+        match policy.entries().back() {
+            Some(handle) => Ok(handle.key().as_ref().clone_ref(py)),
+            None => Err(new_py_error!(PyIndexError, "`n` out of range")),
+        }
+    }
+
+    #[pyo3(signature = (key, default=utils::OptionalArgument::Undefined))]
+    fn get_with_expire(
+        &self,
+        py: pyo3::Python,
+        key: alias::PyObject,
+        default: utils::OptionalArgument,
+    ) -> pyo3::PyResult<(alias::PyObject, f64)> {
+        let key = utils::PrecomputedHashObject::new(py, key)?;
+
+        let inner = self.0.get();
+        let mut policy = inner.policy();
+
+        if let Some(x) = policy.get(py, &key)? {
+            let dur = x
+                .expires_at()
+                .duration_since(std::time::SystemTime::now())
+                .unwrap_or_default();
+
+            return Ok((x.value().clone_ref(py), dur.as_secs_f64()));
+        }
+
+        match default {
+            utils::OptionalArgument::Defined(x) => Ok((x, 0.0)),
+            utils::OptionalArgument::Undefined => unsafe {
+                // SAFETY: None is immortal, so reference counting has no meaning
+                Ok((
+                    pyo3::Bound::from_owned_ptr(py, pyo3::ffi::Py_None()).unbind(),
+                    0.0,
+                ))
+            },
+        }
+    }
+
+    #[pyo3(signature = (key, default=utils::OptionalArgument::Undefined))]
+    fn pop_with_expire(
+        &self,
+        py: pyo3::Python,
+        key: alias::PyObject,
+        default: utils::OptionalArgument,
+    ) -> pyo3::PyResult<(alias::PyObject, f64)> {
+        let key = utils::PrecomputedHashObject::new(py, key)?;
+
+        let inner = self.0.get();
+
+        if let Some(x) = inner.remove(py, &key)? {
+            let dur = x
+                .expires_at()
+                .duration_since(std::time::SystemTime::now())
+                .unwrap_or_default();
+
+            return Ok((x.into_value(), dur.as_secs_f64()));
+        }
+
+        match default {
+            utils::OptionalArgument::Defined(x) => Ok((x, 0.0)),
+            utils::OptionalArgument::Undefined => Err(new_py_error!(
+                PyKeyError,
+                Into::<alias::PyObject>::into(key)
+            )),
+        }
+    }
+
+    fn popitem_with_expire(
+        &self,
+        py: pyo3::Python,
+    ) -> pyo3::PyResult<(alias::PyObject, alias::PyObject, f64)> {
+        let inner = self.0.get();
+        let mut policy = inner.policy();
+
+        let handle = policy.evict(py, inner.shared())?;
+        drop(policy);
+
+        let dur = handle
+            .expires_at()
+            .duration_since(std::time::SystemTime::now())
+            .unwrap_or_default();
+
+        let (key, val) = handle.into_pair();
+        Ok((key.into(), val, dur.as_secs_f64()))
+    }
+
+    fn items_with_expire(
+        &self,
+        py: pyo3::Python,
+    ) -> pyo3::PyResult<pyo3::Py<PyTTLCacheItemsWithExpire>> {
+        let inner = self.0.get();
+
+        let iter = inner.policy().iter(py, inner.shared())?;
+
+        let gv = inner.shared().generation_version().clone();
+        let initial_gv = gv.get();
+
+        // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
+        let result = PyTTLCacheItemsWithExpire {
+            iter: parking_lot::Mutex::new(iter),
+            gv,
+            initial_gv,
+        };
+        pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
     }
 
     fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
         let inner = self.0.get();
         let policy = inner.policy();
 
-        for handle_ref in unsafe { policy.table().iter() } {
-            let handle = unsafe { handle_ref.as_ref() };
-
+        for handle in policy.entries().iter() {
             visit.call(handle.key().as_ref())?;
             visit.call(handle.value())?;
         }
@@ -630,7 +833,7 @@ macro_rules! implement_iterator {
                 $name as $pyname {
                     initial_gv: u32,
                     gv: utils::GenerationVersion,
-                    iter: parking_lot::Mutex<crate::hashbrown::raw::RawIter<rrpolicy::Handle>>,
+                    iter: parking_lot::Mutex<utils::RawVecDequeIter<ttlpolicy::ExpiringHandle>>,
                 }
             }
 
@@ -649,31 +852,46 @@ macro_rules! implement_iterator {
                         ));
                     }
 
+                    let now = std::time::SystemTime::now();
                     let mut iter = slf.iter.lock();
+                    let $py = slf.py();
 
-                    match iter.next() {
-                        Some(x) => {
-                            let $py = slf.py();
-                            let $handle = unsafe { x.as_ref() };
-                            Ok($init)
+                    while let Some(x) = iter.next() {
+                        let $handle = unsafe { x.as_ref() };
+                        if $handle.is_expired(now) {
+                            continue;
                         }
-                        None => return Err(new_py_error!(PyStopIteration, ())),
+
+                        return Ok($init);
                     }
+
+                    Err(new_py_error!(PyStopIteration, ()))
                 }
             }
         )+
     };
 }
 implement_iterator!(
-    PyRRCacheItems as "rrcache_items"
+    PyTTLCacheItems as "ttlcache_items"
     fn(py, handle) -> (alias::PyObject, alias::PyObject) {{
         let (key, val) = handle.clone_ref(py).into_pair();
         (key.into(), val)
     }}
 
-    PyRRCacheKeys as "rrcache_keys"
+    PyTTLCacheItemsWithExpire as "ttlcache_items_with_expire"
+    fn(py, handle) -> (alias::PyObject, alias::PyObject, f64) {{
+        let dur = handle
+            .expires_at()
+            .duration_since(std::time::SystemTime::now())
+            .unwrap_or_default();
+
+        let (key, val) = handle.clone_ref(py).into_pair();
+        (key.into(), val, dur.as_secs_f64())
+    }}
+
+    PyTTLCacheKeys as "ttlcache_keys"
     fn(py, handle) -> alias::PyObject { handle.key().clone_ref(py).into() }
 
-    PyRRCacheValues as "rrcache_values"
+    PyTTLCacheValues as "ttlcache_values"
     fn(py, handle) -> alias::PyObject { handle.value().clone_ref(py) }
 );

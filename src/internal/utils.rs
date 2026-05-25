@@ -206,19 +206,35 @@ pub unsafe fn get_type_name<'a>(py: pyo3::Python<'a>, obj: *mut pyo3::ffi::PyObj
 /// otherwise you will get [`OptionalArgument::Undefined`].
 ///
 /// It can be used instead of [`Option<T>`] to improve performance.
-#[derive(Debug, Clone)]
-pub enum OptionalArgument<'a> {
+#[derive(Debug)]
+pub enum OptionalArgument {
     /// The argument was not provided by the caller.
     Undefined,
     /// The argument was provided and holds the bound Python object.
-    Defined(pyo3::Bound<'a, pyo3::PyAny>),
+    Defined(alias::PyObject),
 }
 
-impl<'a, 'py> pyo3::FromPyObject<'a, 'py> for OptionalArgument<'py> {
+impl<'a, 'py> pyo3::FromPyObject<'a, 'py> for OptionalArgument {
     type Error = pyo3::PyErr;
 
     fn extract(obj: pyo3::Borrowed<'a, 'py, pyo3::PyAny>) -> Result<Self, Self::Error> {
-        Ok(Self::Defined(obj.to_owned()))
+        Ok(Self::Defined(obj.to_owned().unbind()))
+    }
+}
+
+#[derive(pyo3::FromPyObject)]
+pub enum FloatOrTimedelta {
+    Float(f64),
+    Timedelta(chrono::Duration),
+}
+
+impl From<FloatOrTimedelta> for f64 {
+    #[inline]
+    fn from(value: FloatOrTimedelta) -> Self {
+        match value {
+            FloatOrTimedelta::Float(x) => x,
+            FloatOrTimedelta::Timedelta(x) => x.as_seconds_f64(),
+        }
     }
 }
 

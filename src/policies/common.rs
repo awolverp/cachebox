@@ -106,16 +106,32 @@ pub struct Shared {
     gv: utils::GenerationVersion,
     /// Callable used to measure size of each key-value pair.
     getsizeof: utils::GetsizeofFunction,
+    /// Global time-to-live for cache entries. This is for *TTL* implementations.
+    global_ttl: Option<std::time::Duration>,
 }
 
 impl Shared {
     /// Creates a new [`Shared`].
     #[inline]
     pub fn new(maxsize: usize, getsizeof: Option<alias::PyObject>) -> Self {
+        unsafe { Self::with_ttl(maxsize, getsizeof, None) }
+    }
+
+    /// Creates a new [`Shared`] with configured TTL.
+    ///
+    /// # Safety
+    /// `ttl` should not be negative or zero.
+    #[inline]
+    pub unsafe fn with_ttl(
+        maxsize: usize,
+        getsizeof: Option<alias::PyObject>,
+        ttl: Option<f64>,
+    ) -> Self {
         Self {
             maxsize: safe_non_zero!(maxsize),
             gv: utils::GenerationVersion::default(),
             getsizeof: utils::GetsizeofFunction::new(getsizeof),
+            global_ttl: ttl.map(std::time::Duration::from_secs_f64),
         }
     }
 }
@@ -136,11 +152,17 @@ impl traits::SharedExt for Shared {
         &self.getsizeof
     }
 
+    #[inline]
+    fn global_ttl(&self) -> Option<std::time::Duration> {
+        self.global_ttl
+    }
+
     fn clone_ref(&self, py: pyo3::Python) -> Self {
         Self {
             maxsize: self.maxsize,
             gv: Default::default(),
             getsizeof: self.getsizeof.clone_ref(py),
+            global_ttl: self.global_ttl,
         }
     }
 }

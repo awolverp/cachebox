@@ -71,6 +71,15 @@ mod _core {
     #[pymodule_export]
     use crate::pyclasses::lfucache::PyLFUCacheValues;
 
+    #[pymodule_export]
+    use crate::pyclasses::ttlcache::PyTTLCache;
+    #[pymodule_export]
+    use crate::pyclasses::ttlcache::PyTTLCacheItems;
+    #[pymodule_export]
+    use crate::pyclasses::ttlcache::PyTTLCacheKeys;
+    #[pymodule_export]
+    use crate::pyclasses::ttlcache::PyTTLCacheValues;
+
     #[pymodule_init]
     pub fn init(m: &pyo3::Bound<'_, pyo3::types::PyModule>) -> pyo3::PyResult<()> {
         typeref::initialize_typeref(m.py());

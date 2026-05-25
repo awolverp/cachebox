@@ -18,28 +18,10 @@ pub struct Occupied<'a> {
     bucket: hashbrown::raw::Bucket<Handle>,
 }
 
-impl traits::EntryExt for Occupied<'_> {
+impl traits::OccupiedExt for Occupied<'_> {
     type Shared = Shared;
     type Handle = Handle;
 
-    #[inline]
-    fn would_exceed(&self, extra_size: usize) -> bool {
-        let handle = unsafe { self.bucket.as_ref() };
-
-        self.policy
-            .currsize
-            .saturating_add(extra_size)
-            .saturating_sub(handle.size())
-            > self.shared.maxsize()
-    }
-
-    #[inline(always)]
-    fn evict(&mut self, py: pyo3::Python) -> pyo3::PyResult<Self::Handle> {
-        self.policy.evict(py, self.shared)
-    }
-}
-
-impl traits::OccupiedExt for Occupied<'_> {
     fn remove(self) -> Self::Handle {
         self.shared.generation_version().increment();
 
@@ -68,7 +50,7 @@ pub struct Vacant<'a> {
     space_available: bool,
 }
 
-impl traits::EntryExt for Vacant<'_> {
+impl traits::VacantExt for Vacant<'_> {
     type Shared = Shared;
     type Handle = Handle;
 
@@ -78,12 +60,11 @@ impl traits::EntryExt for Vacant<'_> {
     }
 
     #[inline(always)]
-    fn evict(&mut self, py: pyo3::Python) -> pyo3::PyResult<Self::Handle> {
-        self.policy.evict(py, self.shared)
+    fn evict(&mut self, py: pyo3::Python) -> pyo3::PyResult<()> {
+        self.policy.evict(py, self.shared)?;
+        Ok(())
     }
-}
 
-impl traits::VacantExt for Vacant<'_> {
     fn insert(self, handle: Self::Handle) {
         self.shared.generation_version().increment();
         self.policy.currsize = self.policy.currsize.saturating_add(handle.size());

@@ -6,5 +6,6 @@ pub mod lfupolicy;
 pub mod lrupolicy;
 pub mod nopolicy;
 pub mod rrpolicy;
+pub mod ttlpolicy;
 
 pub mod wrapped;

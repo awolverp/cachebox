@@ -1,5 +1,4 @@
 use crate::internal::alias;
-use crate::policies::traits::EntryExt;
 use crate::policies::traits::HandleExt;
 use crate::policies::traits::OccupiedExt;
 use crate::policies::traits::PolicyEntry;
@@ -58,26 +57,36 @@ fn insert_inner<P: PolicyExt>(
     py: pyo3::Python<'_>,
     handle: P::Handle,
 ) -> pyo3::PyResult<Option<P::Handle>> {
-    let entry = lock.entry(py, handle.key(), shared)?;
-    match entry {
-        PolicyEntry::Occupied(mut occupied) => {
-            // Evict if need
-            while occupied.would_exceed(handle.size()) {
-                occupied.evict(py)?;
-            }
+    let handle_size = handle.size();
 
-            Ok(Some(occupied.replace(handle)))
-        }
+    if handle_size > shared.maxsize() {
+        return Err(new_py_error!(
+            PyOverflowError,
+            "handle size is more than the configured maximum size"
+        ));
+    }
+
+    let result = match lock.entry(py, handle.key(), shared)? {
+        PolicyEntry::Occupied(occupied) => Some(occupied.replace(handle)),
         PolicyEntry::Vacant(mut vacant) => {
             // Evict if need
-            while vacant.would_exceed(handle.size()) {
+            while vacant.would_exceed(handle_size) {
                 vacant.evict(py)?;
             }
 
             vacant.insert(handle);
-            Ok(None)
+            None
+        }
+    };
+
+    if result.is_some() {
+        // For the `PolicyEntry::Occupied` case, evict after replacement
+        while lock.current_size() > shared.maxsize() {
+            lock.evict(py, shared)?;
         }
     }
+
+    Ok(result)
 }
 
 // Duplicate methods across all policies

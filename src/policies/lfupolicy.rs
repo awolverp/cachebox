@@ -135,28 +135,10 @@ pub struct Occupied<'a> {
     bucket: hashbrown::raw::Bucket<lazyheap::Cursor<FrequencyHandle>>,
 }
 
-impl traits::EntryExt for Occupied<'_> {
+impl traits::OccupiedExt for Occupied<'_> {
     type Handle = FrequencyHandle;
     type Shared = Shared;
 
-    #[inline]
-    fn would_exceed(&self, extra_size: usize) -> bool {
-        let handle = unsafe { self.bucket.as_ref().element() };
-
-        self.policy
-            .currsize
-            .saturating_add(extra_size)
-            .saturating_sub(handle.size())
-            > self.shared.maxsize()
-    }
-
-    #[inline]
-    fn evict(&mut self, py: pyo3::Python) -> pyo3::PyResult<Self::Handle> {
-        self.policy.evict(py, self.shared)
-    }
-}
-
-impl traits::OccupiedExt for Occupied<'_> {
     fn replace(self, new: Self::Handle) -> Self::Handle {
         // Here we don't need to increment generation version
         // self.shared.generation_version().increment();
@@ -202,7 +184,7 @@ pub struct Vacant<'a> {
     shared: &'a Shared,
 }
 
-impl traits::EntryExt for Vacant<'_> {
+impl traits::VacantExt for Vacant<'_> {
     type Handle = FrequencyHandle;
     type Shared = Shared;
 
@@ -212,12 +194,11 @@ impl traits::EntryExt for Vacant<'_> {
     }
 
     #[inline]
-    fn evict(&mut self, py: pyo3::Python) -> pyo3::PyResult<Self::Handle> {
-        self.policy.evict(py, self.shared)
+    fn evict(&mut self, py: pyo3::Python) -> pyo3::PyResult<()> {
+        self.policy.evict(py, self.shared)?;
+        Ok(())
     }
-}
 
-impl traits::VacantExt for Vacant<'_> {
     fn insert(self, handle: Self::Handle) {
         self.shared.generation_version().increment();
 

@@ -1,4 +1,5 @@
 import typing
+from datetime import timedelta
 
 from _typeshed import SupportsItems
 
@@ -874,5 +875,238 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         Notes:
             - This method may re-sort the cache which can cause iterators to be stopped.
             - Do not use this method while using iterators.
+        """
+        ...
+
+class TTLCache(BaseCacheImpl[KT, VT]):
+    """
+    A Time-To-Live (TTL) cache eviction policy: each entry carries an expiration timestamp
+    and is considered stale — and eligible for eviction — once that deadline has passed,
+    regardless of how recently or frequently it was accessed.
+
+    ## How It Works
+    The TTL algorithm pairs time-based expiration with insertion-order eviction. Every entry
+    is stamped with an absolute `expires_at` timestamp at insertion time (computed as
+    `now + global_ttl`). Entries are stored in insertion order, and eviction proceeds from the
+    front of that queue — but only after confirming the candidate has actually expired. A live
+    entry at the front of the queue blocks eviction of everything behind it, so the cache may
+    temporarily exceed capacity if the oldest entries are still fresh.
+
+    Like `FIFOPolicy`, this implementation backs the queue with a `double-ended queue` for O(1)
+    front removal and a `hash map` for O(1) key lookups. The same logical-index trick applies:
+    the table stores monotonically increasing counters rather than physical deque positions, and
+    a `front_offset` counter converts a logical index back to a physical one at read time via
+    `entries[table[key] - front_offset]`. This keeps eviction and lookup O(1) without rewriting
+    the table on every eviction. On top of that, every read checks `expires_at` against the current wall-clock time and
+    treats any expired entry as a cache miss.
+
+    Without `sweep_interval`, an expiry sweep is triggered automatically on every call to
+    `insert`, `update`, `current_size`, `remaining_size`, `last`, `first`, `items`, `keys`,
+    `values`, and `__iter__`. A completely idle cache will accumulate stale entries between
+    these calls, but any normal interaction with the cache is sufficient to reclaim them.
+    When `sweep_interval` is set, a background Rust thread performs the sweep on that interval
+    instead, reclaiming expired entries independent of any method calls.
+
+    ### Pros
+    - Insert, lookup, and evict are all O(1) amortized: the `front_offset` trick eliminates the O(n)
+      index-shifting that a naïve implementation would require on every eviction.
+    - Entries expire automatically without any background thread or explicit invalidation call.
+      Stale data is never returned to the caller.
+    - TTL expiry and insertion-order eviction compose cleanly: the oldest entry is always evicted
+      first among those that have already expired.
+    - A single `global_ttl` keeps configuration simple; every entry ages at the same rate.
+
+    ### Cons
+
+    - Wall-clock dependency. Correctness relies on a monotonically advancing system clock.
+      Clock adjustments (NTP steps, suspend/resume) can cause entries to expire earlier or later
+      than intended.
+    - When `sweep_interval` is set, a background Rust thread wakes on that interval to sweep and
+      remove all expired entries. This adds a small amount of background CPU usage and
+      introduces a reaper thread for the lifetime of the cache.
+    - No per-entry TTL override. All entries share `global_ttl`; mixed expiry requirements need
+      a different policy or a wrapper layer.
+    - The rare O(n) index rebase (triggered when `front_offset` nears `usize::MAX - isize::MAX`)
+      introduces an occasional latency spike. Amortized cost is negligible, but worst-case
+      latency is unbounded in principle.
+
+    ## When to use it
+    Reach for `TTLPolicy` when:
+    - Cached data has a natural freshness window: API responses, auth tokens, DNS records,
+      rate-limit counters, or any value that becomes incorrect or unsafe after a known interval.
+    - You need automatic expiry without a background reaper thread — expiry sweeps on common
+      method calls are sufficient, or you want continuous reclamation via `sweep_interval`.
+    - Access patterns are unpredictable or uniform enough that recency- or frequency-based
+      eviction (LRU/LFU) would offer no meaningful advantage.
+
+    Avoid it when:
+    - Your workload has strong temporal locality and you need a best-effort hit rate policy —
+      LRU will serve you better.
+    - Per-entry TTL granularity is required. If different keys need different lifetimes,
+      consider `VTTLCache`.
+    - Your environment has an unreliable or adjustable system clock, where wall-clock-based
+      expiry may behave unexpectedly.
+    """
+
+    def __init__(
+        self,
+        maxsize: int,
+        global_ttl: float | timedelta,
+        iterable: _IterableType[KT, VT] | None = None,
+        *,
+        capacity: int = 0,
+        getsizeof: typing.Callable[[KT, VT]] | None = None,
+        sweep_interval: float | timedelta | None = None,
+    ) -> None:
+        """
+        Initialize a new instance.
+
+        Args:
+            maxsize: Maximum number of elements the cache can hold. If zero, the limit is set to sys.maxsize internally.
+            global_ttl: Time-to-live for every entry, either as seconds (float) or a timedelta. Applied at insertion time.
+            iterable: Initial data to populate the cache.
+            capacity: Pre-allocate cache capacity to minimize reallocations. Defaults to 0.
+            getsizeof: A callable that computes the size of a key-value pair. When `None`, each
+                    entry is assumed to have a size of 1 (equivalent to `lambda k, v: 1`).
+                    Use this to implement weighted caching — for example, sizing entries by
+                    memory footprint or byte length.
+            sweep_interval: If set, starts a background Rust thread that sweeps and removes all expired entries on this interval.
+                    When None, expiry is lazy. Defaults to `None`.
+
+        The cache can be pre-sized via `capacity` to reduce reallocations when
+        the number of expected entries is known ahead of time.
+        """
+        ...
+
+    @property
+    def global_ttl(self) -> float:
+        """Returns the specified `global_ttl`"""
+        ...
+
+    def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
+        """
+        Equals to `self[key] = value`, but returns a value:
+
+        - If the cache did not have this key present, None is returned.
+        - If the cache did have this key present, the value is updated,
+          and the old value is returned. The key is not updated, though;
+
+        It's recommended to use this method instead of `self[key] = value`, as it keeps code
+        compatible across different cache policies.
+        """
+        ...
+
+    def update(self, iterable: _IterableType[KT, VT]) -> None:
+        """
+        Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
+        """
+        ...
+
+    def setdefault(
+        self,
+        key: KT,
+        default: typing.Optional[DT] = None,
+    ) -> typing.Optional[VT | DT]:
+        """
+        Inserts key with a value of default if key is not in the cache.
+
+        Returns the value for key if key is in the cache, else default.
+        """
+        ...
+
+    def popitem(self) -> typing.Tuple[KT, VT]:
+        """
+        Removes the element that has been in the cache the longest.
+        """
+        ...
+
+    def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
+        """
+        Returns an iterable object of the cache's items (key-value pairs).
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        - Items are ordered.
+        """
+        ...
+
+    def keys(self) -> typing.Iterable[KT]:
+        """
+        Returns an iterable object of the cache's keys.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        - Keys are ordered.
+        """
+        ...
+
+    def values(self) -> typing.Iterable[VT]:
+        """
+        Returns an iterable object of the cache's values.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        - Values are ordered.
+        """
+        ...
+
+    def first(self, n: int = 0) -> typing.Optional[KT]:
+        """
+        Returns the first key in cache; this is the one which will be removed by `popitem()` (if n == 0).
+        By using `n` parameter, you can browse order index by index.
+
+        Raises `IndexError` if cache is empty, or `n` is out of range.
+        """
+        ...
+
+    def last(self) -> typing.Optional[KT]:
+        """
+        Returns the last key in cache. Equals to `self.first(-1)`.
+
+        Raises `IndexError` if cache is empty.
+        """
+        ...
+
+    def expire(self, *, reuse: bool = False) -> None:
+        """
+        Manually removes expired key-value pairs from cache.
+
+        If `reuse` is True, will not free the memory for reusing in the future.
+        """
+        ...
+
+    def get_with_expire(
+        self,
+        key: KT,
+        default: typing.Optional[DT] = None,
+    ) -> typing.Tuple[typing.Union[VT, DT], float]:
+        """
+        Works exactly like `.get()`, but also returns expiration duration for a given key from the cache (or 0.0 if not found).
+        """
+        ...
+
+    def pop_with_expire(
+        self,
+        key: KT,
+        default: typing.Optional[DT] = None,
+    ) -> typing.Tuple[typing.Union[VT, DT], float]:
+        """
+        Works exactly like `.pop()`, but also returns expiration duration for a given key from the cache (or 0.0 if not found).
+        """
+        ...
+
+    def popitem_with_expire(self) -> typing.Tuple[VT, DT, float]:
+        """
+        Works exactly like `.popitem()`, but also returns expiration duration for a given key from the cache.
+        """
+        ...
+
+    def items_with_expire(self) -> typing.Iterable[typing.Tuple[KT, VT, float]]:
+        """
+        Returns an iterable object of the cache's items (key-value pairs) with their expiration duration.
+
+        Notes:
+        - You should not make any changes in cache while using this iterable object.
+        - Items are ordered.
         """
         ...

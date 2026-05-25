@@ -157,19 +157,19 @@ impl PyTTLCache {
     }
 
     #[inline]
-    fn current_size(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
+    fn current_size(&self) -> pyo3::PyResult<usize> {
         let inner = self.0.get();
         let mut policy = inner.policy();
-        policy.expire(py, inner.shared())?;
+        policy.expire(inner.shared())?;
         Ok(policy.current_size())
     }
 
     #[inline]
-    fn remaining_size(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
+    fn remaining_size(&self) -> pyo3::PyResult<usize> {
         let inner = self.0.get();
         {
             let mut policy = inner.policy();
-            policy.expire(py, inner.shared())?;
+            policy.expire(inner.shared())?;
         }
 
         Ok(inner.remaining_size())
@@ -555,7 +555,7 @@ impl PyTTLCache {
     fn items(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyTTLCacheItems>> {
         let inner = self.0.get();
 
-        let iter = inner.policy().iter(py, inner.shared())?;
+        let iter = inner.policy().iter(inner.shared())?;
 
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
@@ -572,7 +572,7 @@ impl PyTTLCache {
     fn values(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyTTLCacheValues>> {
         let inner = self.0.get();
 
-        let iter = inner.policy().iter(py, inner.shared())?;
+        let iter = inner.policy().iter(inner.shared())?;
 
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
@@ -589,7 +589,7 @@ impl PyTTLCache {
     fn keys(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyTTLCacheKeys>> {
         let inner = self.0.get();
 
-        let iter = inner.policy().iter(py, inner.shared())?;
+        let iter = inner.policy().iter(inner.shared())?;
 
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
@@ -651,12 +651,12 @@ impl PyTTLCache {
 
     #[inline]
     #[pyo3(signature=(*, reuse=false))]
-    fn expire(&self, py: pyo3::Python, reuse: bool) -> pyo3::PyResult<()> {
+    fn expire(&self, reuse: bool) -> pyo3::PyResult<()> {
         let inner = self.0.get();
         let shared = inner.shared();
         let mut policy = inner.policy();
 
-        policy.expire(py, shared)?;
+        policy.expire(shared)?;
 
         if !reuse {
             policy.shrink_to_fit(shared);
@@ -673,7 +673,7 @@ impl PyTTLCache {
         let inner = self.0.get();
         let mut policy = inner.policy();
 
-        policy.expire(py, inner.shared())?;
+        policy.expire(inner.shared())?;
 
         if n < 0 {
             n += policy.entries().len() as isize;
@@ -692,7 +692,7 @@ impl PyTTLCache {
         let inner = self.0.get();
         let mut policy = inner.policy();
 
-        policy.expire(py, inner.shared())?;
+        policy.expire(inner.shared())?;
 
         match policy.entries().back() {
             Some(handle) => Ok(handle.key().as_ref().clone_ref(py)),
@@ -787,7 +787,7 @@ impl PyTTLCache {
     ) -> pyo3::PyResult<pyo3::Py<PyTTLCacheItemsWithExpire>> {
         let inner = self.0.get();
 
-        let iter = inner.policy().iter(py, inner.shared())?;
+        let iter = inner.policy().iter(inner.shared())?;
 
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();

@@ -28,11 +28,11 @@ implement_pyclass! {
     /// the table on every eviction. On top of that, every read checks `expires_at` against the current wall-clock time and
     /// treats any expired entry as a cache miss.
     ///
-    /// Without `grace_time`, an expiry sweep is triggered automatically on every call to
+    /// Without `sweep_interval`, an expiry sweep is triggered automatically on every call to
     /// `insert`, `update`, `current_size`, `remaining_size`, `last`, `first`, `items`, `keys`,
     /// `values`, and `__iter__`. A completely idle cache will accumulate stale entries between
     /// these calls, but any normal interaction with the cache is sufficient to reclaim them.
-    /// When `grace_time` is set, a background Rust thread performs the sweep on that interval
+    /// When `sweep_interval` is set, a background Rust thread performs the sweep on that interval
     /// instead, reclaiming expired entries independent of any method calls.
     ///
     /// ### Pros
@@ -49,7 +49,7 @@ implement_pyclass! {
     /// - Wall-clock dependency. Correctness relies on a monotonically advancing system clock.
     ///   Clock adjustments (NTP steps, suspend/resume) can cause entries to expire earlier or later
     ///   than intended.
-    /// - When `grace_time` is set, a background Rust thread wakes on that interval to sweep and
+    /// - When `sweep_interval` is set, a background thread wakes on that interval to sweep and
     ///   remove all expired entries. This adds a small amount of background CPU usage and
     ///   introduces a reaper thread for the lifetime of the cache.
     /// - No per-entry TTL override. All entries share `global_ttl`; mixed expiry requirements need
@@ -63,7 +63,7 @@ implement_pyclass! {
     /// - Cached data has a natural freshness window: API responses, auth tokens, DNS records,
     ///   rate-limit counters, or any value that becomes incorrect or unsafe after a known interval.
     /// - You need automatic expiry without a background reaper thread — expiry sweeps on common
-    ///   method calls are sufficient, or you want continuous reclamation via `grace_time`.
+    ///   method calls are sufficient, or you want continuous reclamation via `sweep_interval`.
     /// - Access patterns are unpredictable or uniform enough that recency- or frequency-based
     ///   eviction (LRU/LFU) would offer no meaningful advantage.
     ///
@@ -117,8 +117,6 @@ impl PyTTLCache {
         capacity: usize,
         getsizeof: Option<alias::PyObject>,
     ) -> pyo3::PyResult<()> {
-        // TODO: support sweep_interval
-
         let global_ttl: f64 = global_ttl.into();
         if global_ttl <= 0.0 {
             return Err(new_py_error!(
@@ -131,22 +129,26 @@ impl PyTTLCache {
             ttlpolicy::Shared::with_ttl(maxsize, getsizeof, Some(global_ttl))
         });
 
-        if let Some(iterable) = iterable {
-            let ttl: ttlpolicy::ExpiresAt = wrapped.shared().global_ttl().unwrap().into();
-            let getsizeof = wrapped.shared().getsizeof().clone_ref(py);
+        // Populate cache if `iterable` passed
+        let extend_result = {
+            if let Some(iterable) = iterable {
+                let ttl: ttlpolicy::ExpiresAt = wrapped.shared().global_ttl().unwrap().into();
+                let getsizeof = wrapped.shared().getsizeof().clone_ref(py);
 
-            let result = wrapped.extend(
-                // iterable object
-                iterable,
-                // transform function
-                |key, value| ttlpolicy::ExpiringHandle::new(py, &getsizeof, ttl, key, value),
-            );
-            self.0.set(wrapped);
-            result
-        } else {
-            self.0.set(wrapped);
-            Ok(())
-        }
+                let result = wrapped.extend(
+                    // iterable object
+                    iterable,
+                    // transform function
+                    |key, value| ttlpolicy::ExpiringHandle::new(py, &getsizeof, ttl, key, value),
+                );
+                result
+            } else {
+                Ok(())
+            }
+        };
+
+        self.0.set(wrapped);
+        extend_result
     }
 
     #[getter]
@@ -160,7 +162,7 @@ impl PyTTLCache {
     fn current_size(&self) -> pyo3::PyResult<usize> {
         let inner = self.0.get();
         let mut policy = inner.policy();
-        policy.expire(inner.shared())?;
+        policy.expire(inner.shared().generation_version())?;
         Ok(policy.current_size())
     }
 
@@ -169,7 +171,7 @@ impl PyTTLCache {
         let inner = self.0.get();
         {
             let mut policy = inner.policy();
-            policy.expire(inner.shared())?;
+            policy.expire(inner.shared().generation_version())?;
         }
 
         Ok(inner.remaining_size())
@@ -611,6 +613,7 @@ impl PyTTLCache {
     fn copy(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<Self>> {
         let inner = self.0.get();
         let cloned = inner.clone_ref(py);
+
         let result = Self(onceinit::OnceInit::new(cloned));
 
         pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseCacheImpl))
@@ -656,7 +659,7 @@ impl PyTTLCache {
         let shared = inner.shared();
         let mut policy = inner.policy();
 
-        policy.expire(shared)?;
+        policy.expire(shared.generation_version())?;
 
         if !reuse {
             policy.shrink_to_fit(shared);
@@ -673,7 +676,7 @@ impl PyTTLCache {
         let inner = self.0.get();
         let mut policy = inner.policy();
 
-        policy.expire(inner.shared())?;
+        policy.expire(inner.shared().generation_version())?;
 
         if n < 0 {
             n += policy.entries().len() as isize;
@@ -692,7 +695,7 @@ impl PyTTLCache {
         let inner = self.0.get();
         let mut policy = inner.policy();
 
-        policy.expire(inner.shared())?;
+        policy.expire(inner.shared().generation_version())?;
 
         match policy.entries().back() {
             Some(handle) => Ok(handle.key().as_ref().clone_ref(py)),

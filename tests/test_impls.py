@@ -1300,3 +1300,11 @@ class TestTTLCachePolicy:
             assert key in obj
             assert val == obj[key]
             assert isinstance(ttl, float)
+
+    def test_sweep_interval(self):
+        obj = cachebox.TTLCache(10, 3, {1: 1, 2: 2, 3: 3}, sweep_interval=3)
+
+        # __len__ doesn't call expire itself
+        assert len(obj) == 3
+        time.sleep(3.5)
+        assert len(obj) == 0

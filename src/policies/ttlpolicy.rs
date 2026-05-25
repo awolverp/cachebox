@@ -334,7 +334,7 @@ impl TTLPolicy {
         self.front_offset = 0;
     }
 
-    pub fn expire(&mut self, shared: &Shared) -> pyo3::PyResult<()> {
+    pub fn expire(&mut self, gv: &utils::GenerationVersion) -> pyo3::PyResult<()> {
         let now = std::time::SystemTime::now();
 
         while let Some(handle) = self.entries.front() {
@@ -347,7 +347,7 @@ impl TTLPolicy {
                 unreachable!("popitem key not found in table");
             }
 
-            shared.generation_version().increment();
+            gv.increment();
 
             let front = unsafe { self.entries.pop_front().unwrap_unchecked() };
 
@@ -363,7 +363,7 @@ impl TTLPolicy {
         &mut self,
         shared: &Shared,
     ) -> pyo3::PyResult<utils::RawVecDequeIter<ExpiringHandle>> {
-        self.expire(shared)?;
+        self.expire(shared.generation_version())?;
 
         let (first, second) = self.entries.as_slices();
         Ok(utils::RawVecDequeIter::new(first, second))
@@ -419,7 +419,7 @@ impl PolicyExt for TTLPolicy {
         key: &<Self::Handle as HandleExt>::Key,
         shared: &'a Self::Shared,
     ) -> pyo3::PyResult<traits::PolicyEntry<Self::Occupied<'a>, Self::Vacant<'a>>> {
-        self.expire(shared)?;
+        self.expire(shared.generation_version())?;
 
         let eq = |index: &usize| get_handle!(&self, *index).key().py_eq(py, key);
         match self.table.find(key.hash(), eq)? {

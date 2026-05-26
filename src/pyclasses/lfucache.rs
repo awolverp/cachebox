@@ -591,7 +591,32 @@ impl PyLFUCache {
         self.keys(py)
     }
 
-    // TODO: support items_with_frequency
+    fn items_with_frequency(
+        &self,
+        py: pyo3::Python,
+    ) -> pyo3::PyResult<pyo3::Py<PyLFUCacheItemsWithFrequency>> {
+        let inner = self.0.get();
+
+        let mut policy = inner.policy();
+        let heap_mut = policy.heap_mut();
+
+        // TODO: test this edge case
+        // We don't want to intrupt other iterators with no reason
+        // so need to manually call sort_by to only intrupt them on changes.
+        if heap_mut.sort_by(|x, y| x.frequency().cmp(&y.frequency())) {
+            inner.shared().generation_version().increment();
+        }
+
+        let gv = inner.shared().generation_version().clone();
+        let initial_gv = gv.get();
+
+        let result = PyLFUCacheItemsWithFrequency {
+            iter: parking_lot::Mutex::new(heap_mut.iter(|x, y| x.frequency().cmp(&y.frequency()))),
+            gv,
+            initial_gv,
+        };
+        pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
+    }
 
     fn copy(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<Self>> {
         let inner = self.0.get();
@@ -767,6 +792,13 @@ implement_iterator!(
     fn(py, handle) -> (alias::PyObject, alias::PyObject) {{
         let (key, val) = handle.clone_ref(py).into_pair();
         (key.into(), val)
+    }}
+
+    PyLFUCacheItemsWithFrequency as "lfucache_items_with_freq"
+    fn(py, handle) -> (alias::PyObject, alias::PyObject, u128) {{
+        let freq = handle.frequency();
+        let (key, val) = handle.clone_ref(py).into_pair();
+        (key.into(), val, freq)
     }}
 
     PyLFUCacheKeys as "lfucache_keys"

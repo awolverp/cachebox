@@ -1042,6 +1042,19 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
+    def items_with_frequency(self) -> typing.Iterable[typing.Tuple[KT, VT, int]]:
+        """
+        Returns an ordered iterable of the cache's ``(key, value)`` pairs with their
+        frequency counter.
+
+        Warning:
+            Do not modify the cache while iterating.
+
+        Returns:
+            An iterable of ``(key, value)`` tuples in frequency order.
+        """
+        ...
+
     def peek(
         self,
         key: KT,

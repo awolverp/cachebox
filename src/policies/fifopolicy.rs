@@ -83,8 +83,8 @@ impl traits::VacantExt for Vacant<'_> {
     }
 
     #[inline]
-    fn evict(&mut self, py: pyo3::Python) -> pyo3::PyResult<()> {
-        self.policy.evict(py, self.shared)?;
+    fn evict(&mut self) -> pyo3::PyResult<()> {
+        self.policy.evict(self.shared)?;
         Ok(())
     }
 
@@ -284,7 +284,7 @@ impl PolicyExt for FIFOPolicy {
         }
     }
 
-    fn evict(&mut self, py: pyo3::Python, shared: &Self::Shared) -> pyo3::PyResult<Self::Handle> {
+    fn evict(&mut self, shared: &Self::Shared) -> pyo3::PyResult<Self::Handle> {
         let front = self.entries.front();
         if front.is_none() {
             return Err(new_py_error!(PyKeyError, ()));
@@ -292,11 +292,7 @@ impl PolicyExt for FIFOPolicy {
 
         let front = unsafe { front.unwrap_unchecked() };
 
-        let eq = |index: &usize| {
-            self.entries[(*index) - self.front_offset]
-                .key()
-                .py_eq(py, front.key())
-        };
+        let eq = |index: &usize| Ok::<_, pyo3::PyErr>((*index - self.front_offset) == 0);
         if std::hint::unlikely(self.table.remove_entry(front.key().hash(), eq)?.is_none()) {
             unreachable!("popitem key not found in table");
         }

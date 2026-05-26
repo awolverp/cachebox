@@ -62,8 +62,8 @@ impl traits::VacantExt for Vacant<'_> {
     }
 
     #[inline(always)]
-    fn evict(&mut self, py: pyo3::Python) -> pyo3::PyResult<()> {
-        self.policy.evict(py, self.shared)?;
+    fn evict(&mut self) -> pyo3::PyResult<()> {
+        self.policy.evict(self.shared)?;
         Ok(())
     }
 
@@ -164,7 +164,7 @@ impl PolicyExt for RRPolicy {
     }
 
     #[inline]
-    fn evict(&mut self, _py: pyo3::Python, shared: &Self::Shared) -> pyo3::PyResult<Self::Handle> {
+    fn evict(&mut self, shared: &Self::Shared) -> pyo3::PyResult<Self::Handle> {
         if self.table.is_empty() {
             Err(new_py_error!(PyKeyError, "cache is empty"))
         } else {

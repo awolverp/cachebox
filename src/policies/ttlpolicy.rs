@@ -221,8 +221,8 @@ impl traits::VacantExt for Vacant<'_> {
     }
 
     #[inline]
-    fn evict(&mut self, py: pyo3::Python) -> pyo3::PyResult<()> {
-        self.policy.evict(py, self.shared)?;
+    fn evict(&mut self) -> pyo3::PyResult<()> {
+        self.policy.evict(self.shared)?;
         Ok(())
     }
 
@@ -241,7 +241,7 @@ impl traits::VacantExt for Vacant<'_> {
 }
 
 pub struct TTLPolicy {
-    // fields are same as FIFOPolicy
+    // Fields are same as `FIFOPolicy`
     table: hashbrown::raw::RawTable<usize>,
     entries: VecDeque<ExpiringHandle>,
     currsize: usize,
@@ -441,7 +441,7 @@ impl PolicyExt for TTLPolicy {
         }
     }
 
-    fn evict(&mut self, _py: pyo3::Python, shared: &Self::Shared) -> pyo3::PyResult<Self::Handle> {
+    fn evict(&mut self, shared: &Self::Shared) -> pyo3::PyResult<Self::Handle> {
         let front = self.entries.pop_front();
         if front.is_none() {
             return Err(new_py_error!(PyKeyError, "cache is empty"));

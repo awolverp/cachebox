@@ -44,7 +44,7 @@ pub trait VacantExt {
     ///
     /// # Errors
     /// Returns any Python exception raised while dropping the evicted value.
-    fn evict(&mut self, py: pyo3::Python) -> pyo3::PyResult<()>;
+    fn evict(&mut self) -> pyo3::PyResult<()>;
 
     /// Inserts `handle` into this slot.
     ///
@@ -117,7 +117,7 @@ pub trait PolicyExt {
     ) -> pyo3::PyResult<PolicyEntry<Self::Occupied<'a>, Self::Vacant<'a>>>;
 
     /// Evicts a handle according to the policy algorithm, returning it.
-    fn evict(&mut self, py: pyo3::Python, shared: &Self::Shared) -> pyo3::PyResult<Self::Handle>;
+    fn evict(&mut self, shared: &Self::Shared) -> pyo3::PyResult<Self::Handle>;
 
     /// Removes all handles without shrinking the allocation.
     fn clear(&mut self, shared: &Self::Shared);

@@ -71,7 +71,7 @@ fn insert_inner<P: PolicyExt>(
         PolicyEntry::Vacant(mut vacant) => {
             // Evict if need
             while vacant.would_exceed(handle_size) {
-                vacant.evict(py)?;
+                vacant.evict()?;
             }
 
             vacant.insert(handle);
@@ -82,7 +82,7 @@ fn insert_inner<P: PolicyExt>(
     if result.is_some() {
         // For the `PolicyEntry::Occupied` case, evict after replacement
         while lock.current_size() > shared.maxsize() {
-            lock.evict(py, shared)?;
+            lock.evict(shared)?;
         }
     }
 
@@ -224,7 +224,7 @@ impl<P: PolicyExt> Wrapped<P> {
 
         let mut count: pyo3::ffi::Py_ssize_t = 0;
         while count < n {
-            match lock.evict(py, &self.shared) {
+            match lock.evict(&self.shared) {
                 Ok(_) => {}
                 Err(err) => {
                     if !err.is_instance_of::<pyo3::exceptions::PyKeyError>(py) {

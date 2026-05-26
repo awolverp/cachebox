@@ -398,11 +398,11 @@ impl PyRRCache {
     /// Remove and return a (key, value) pair as a 2-tuple.
     ///
     /// NOTE: `Cache` always raises `NotImplementedError` because has neither policy nor algorithm to evict items.
-    fn popitem(&self, py: pyo3::Python) -> pyo3::PyResult<(alias::PyObject, alias::PyObject)> {
+    fn popitem(&self) -> pyo3::PyResult<(alias::PyObject, alias::PyObject)> {
         let inner = self.0.get();
         let mut policy = inner.policy();
 
-        let handle = policy.evict(py, inner.shared())?;
+        let handle = policy.evict(inner.shared())?;
         drop(policy);
 
         let (key, val) = handle.into_pair();

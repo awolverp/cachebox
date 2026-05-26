@@ -72,8 +72,8 @@ impl traits::VacantExt for Vacant<'_> {
     }
 
     #[inline]
-    fn evict(&mut self, py: pyo3::Python) -> pyo3::PyResult<()> {
-        self.policy.evict(py, self.shared)?;
+    fn evict(&mut self) -> pyo3::PyResult<()> {
+        self.policy.evict(self.shared)?;
         Ok(())
     }
 
@@ -209,7 +209,7 @@ impl PolicyExt for LRUPolicy {
         }
     }
 
-    fn evict(&mut self, _py: pyo3::Python, shared: &Self::Shared) -> pyo3::PyResult<Self::Handle> {
+    fn evict(&mut self, shared: &Self::Shared) -> pyo3::PyResult<Self::Handle> {
         {
             let front_cursor = match self.list.cursor_front() {
                 Some(x) => x,

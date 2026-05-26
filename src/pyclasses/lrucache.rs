@@ -425,11 +425,11 @@ impl PyLRUCache {
     }
 
     /// Remove and return a (key, value) pair as a 2-tuple.
-    fn popitem(&self, py: pyo3::Python) -> pyo3::PyResult<(alias::PyObject, alias::PyObject)> {
+    fn popitem(&self) -> pyo3::PyResult<(alias::PyObject, alias::PyObject)> {
         let inner = self.0.get();
         let mut policy = inner.policy();
 
-        let handle = policy.evict(py, inner.shared())?;
+        let handle = policy.evict(inner.shared())?;
         drop(policy);
 
         let (key, val) = handle.into_pair();

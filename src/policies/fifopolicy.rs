@@ -10,6 +10,7 @@ use crate::policies::traits::SharedExt;
 pub use super::common::Handle;
 pub use super::common::Shared;
 
+/// Shorthand for `self.entries[index - self.front_offset]`
 macro_rules! get_handle {
     (&$slf:expr, $index:expr) => {
         &$slf.entries[$index - $slf.front_offset]
@@ -162,6 +163,7 @@ impl FIFOPolicy {
         #[cfg(not(feature = "small-offset"))]
         const MAX_FRONT_OFFSET: usize = usize::MAX - isize::MAX as usize;
 
+        // Use u8::MAX as maximum front offset, useful for tests
         #[cfg(feature = "small-offset")]
         const MAX_FRONT_OFFSET: usize = u8::MAX as usize;
 

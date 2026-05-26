@@ -2,6 +2,7 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ptr::NonNull;
 
+/// [`LinkedList`]'s node
 pub struct Node<T> {
     next: Option<NonNull<Node<T>>>,
     prev: Option<NonNull<Node<T>>>,

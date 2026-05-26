@@ -11,7 +11,7 @@ pub use crate::policies::common::Shared;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
-pub struct Frequency(usize);
+pub struct Frequency(u128);
 
 impl Frequency {
     #[inline(always)]
@@ -37,7 +37,7 @@ impl FrequencyHandle {
         key: alias::PyObject,
         value: alias::PyObject,
         // initial frequency
-        frequency: usize,
+        frequency: u128,
     ) -> pyo3::PyResult<Self> {
         Self::with_precomputed_hash_key(
             py,
@@ -56,7 +56,7 @@ impl FrequencyHandle {
         key: utils::PrecomputedHashObject,
         value: alias::PyObject,
         // initial frequency
-        frequency: usize,
+        frequency: u128,
     ) -> pyo3::PyResult<Self> {
         let size = getsizeof.call(py, key.as_ref(), &value)?;
         Ok(Self {
@@ -69,7 +69,7 @@ impl FrequencyHandle {
 
     /// Returns the frequency.
     #[inline]
-    pub fn frequency(&self) -> usize {
+    pub fn frequency(&self) -> u128 {
         self.frequency.0
     }
 
@@ -314,7 +314,7 @@ impl PolicyExt for LFUPolicy {
         key: &<Self::Handle as HandleExt>::Key,
         shared: &'a Self::Shared,
     ) -> pyo3::PyResult<traits::PolicyEntry<Self::Occupied<'a>, Self::Vacant<'a>>> {
-        let eq = |cursor: &lazyheap::Cursor<FrequencyHandle>| unsafe {
+        let eq = |cursor: &lazyheap::Cursor<Self::Handle>| unsafe {
             key.py_eq(py, cursor.element().key())
         };
 

@@ -483,6 +483,7 @@ impl PolicyExt for TTLPolicy {
         self.front_offset = 0;
     }
 
+    // TODO: considering expired handles
     fn py_eq(
         &self,
         py: pyo3::Python,

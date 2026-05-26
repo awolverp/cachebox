@@ -23,8 +23,6 @@ mod _core {
 
     #[pymodule_export]
     use crate::pyclasses::base::PyBaseCacheImpl;
-    #[pymodule_export]
-    use crate::pyclasses::base::PyBaseIteratorImpl;
 
     #[pymodule_export]
     use crate::pyclasses::cache::PyCache;

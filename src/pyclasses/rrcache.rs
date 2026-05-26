@@ -505,7 +505,7 @@ impl PyRRCache {
             gv,
             initial_gv,
         };
-        pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
+        pyo3::Py::new(py, result)
     }
 
     fn values(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyRRCacheValues>> {
@@ -519,7 +519,7 @@ impl PyRRCache {
             gv,
             initial_gv,
         };
-        pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
+        pyo3::Py::new(py, result)
     }
 
     fn keys(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyRRCacheKeys>> {
@@ -533,7 +533,7 @@ impl PyRRCache {
             gv,
             initial_gv,
         };
-        pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseIteratorImpl))
+        pyo3::Py::new(py, result)
     }
 
     #[inline]
@@ -630,8 +630,7 @@ macro_rules! implement_iterator {
     ) => {
         $(
             implement_pyclass! {
-                [extends=crate::pyclasses::base::PyBaseIteratorImpl, generic, frozen]
-                $name as $pyname {
+                [generic, frozen] $name as $pyname {
                     initial_gv: u32,
                     gv: utils::GenerationVersion,
                     iter: parking_lot::Mutex<crate::hashbrown::raw::RawIter<rrpolicy::Handle>>,

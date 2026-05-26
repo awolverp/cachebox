@@ -125,13 +125,13 @@ impl Shared {
     pub unsafe fn with_ttl(
         maxsize: usize,
         getsizeof: Option<alias::PyObject>,
-        ttl: Option<f64>,
+        ttl: Option<std::time::Duration>,
     ) -> Self {
         Self {
             maxsize: safe_non_zero!(maxsize),
             gv: utils::GenerationVersion::default(),
             getsizeof: utils::GetsizeofFunction::new(getsizeof),
-            global_ttl: ttl.map(std::time::Duration::from_secs_f64),
+            global_ttl: ttl,
         }
     }
 }

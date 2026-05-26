@@ -1308,3 +1308,39 @@ class TestTTLCachePolicy:
         assert len(obj) == 3
         time.sleep(3.5)
         assert len(obj) == 0
+
+    # TODO: more tests for sweep_interval
+
+
+class TestVTTLCache(
+    mixins.InitializeMixin,
+    mixins.InsertAndGetMixin,
+    mixins.PopitemMixin,
+    mixins.SetDefaultMixin,
+    mixins.PopAndDeleteMixin,
+    mixins.UpdateMixin,
+    mixins.IntrospectionMixin,
+    mixins.IterationMixin,
+    mixins.DrainClearShrinkMixin,
+    mixins.CopyMixin,
+    mixins.GetSizeOfMixin,
+    mixins.EdgeCasesMixin,
+    mixins.IssuesMixin,
+    mixins.FuzzyMixin,
+):
+    def create_cache(
+        self,
+        maxsize: int = 10,
+        iterable: typing.Any = None,
+        capacity: int = 0,
+        getsizeof: typing.Any = None,
+    ) -> cachebox.VTTLCache:
+        return cachebox.VTTLCache(
+            maxsize,
+            iterable,
+            100,
+            capacity=capacity,
+            getsizeof=getsizeof,
+        )
+
+    # TODO: complete vttlcache tests

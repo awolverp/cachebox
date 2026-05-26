@@ -9,71 +9,8 @@ use crate::policies::wrapped::Wrapped;
 
 implement_pyclass! {
     /// A Time-To-Live (TTL) cache eviction policy: each entry carries an expiration timestamp
-    /// and is considered stale — and eligible for eviction — once that deadline has passed,
+    /// and is considered stale — and eligible for eviction - once that deadline has passed,
     /// regardless of how recently or frequently it was accessed.
-    ///
-    /// ## How It Works
-    /// The TTL algorithm pairs time-based expiration with insertion-order eviction. Every entry
-    /// is stamped with an absolute `expires_at` timestamp at insertion time (computed as
-    /// `now + global_ttl`). Entries are stored in insertion order, and eviction proceeds from the
-    /// front of that queue — but only after confirming the candidate has actually expired. A live
-    /// entry at the front of the queue blocks eviction of everything behind it, so the cache may
-    /// temporarily exceed capacity if the oldest entries are still fresh.
-    ///
-    /// Like `FIFOPolicy`, this implementation backs the queue with a `double-ended queue` for O(1)
-    /// front removal and a `hash map` for O(1) key lookups. The same logical-index trick applies:
-    /// the table stores monotonically increasing counters rather than physical deque positions, and
-    /// a `front_offset` counter converts a logical index back to a physical one at read time via
-    /// `entries[table[key] - front_offset]`. This keeps eviction and lookup O(1) without rewriting
-    /// the table on every eviction. On top of that, every read checks `expires_at` against the current wall-clock time and
-    /// treats any expired entry as a cache miss.
-    ///
-    /// Without `sweep_interval`, an expiry sweep is triggered automatically on every call to
-    /// `insert`, `update`, `current_size`, `remaining_size`, `last`, `first`, `items`, `keys`,
-    /// `values`, and `__iter__`. A completely idle cache will accumulate stale entries between
-    /// these calls, but any normal interaction with the cache is sufficient to reclaim them.
-    /// When `sweep_interval` is set, a background Rust thread performs the sweep on that interval
-    /// instead, reclaiming expired entries independent of any method calls.
-    ///
-    /// ### Pros
-    /// - Insert, lookup, and evict are all O(1) amortized: the `front_offset` trick eliminates the O(n)
-    ///   index-shifting that a naive implementation would require on every eviction.
-    /// - Entries expire automatically without any background thread or explicit invalidation call.
-    ///   Stale data is never returned to the caller.
-    /// - TTL expiry and insertion-order eviction compose cleanly: the oldest entry is always evicted
-    ///   first among those that have already expired.
-    /// - A single `global_ttl` keeps configuration simple; every entry ages at the same rate.
-    ///
-    /// ### Cons
-    ///
-    /// - Wall-clock dependency. Correctness relies on a monotonically advancing system clock.
-    ///   Clock adjustments (NTP steps, suspend/resume) can cause entries to expire earlier or later
-    ///   than intended.
-    /// - When `sweep_interval` is set, a background thread wakes on that interval to sweep and
-    ///   remove all expired entries. This adds a small amount of background CPU usage and
-    ///   introduces a reaper thread for the lifetime of the cache.
-    /// - No per-entry TTL override. All entries share `global_ttl`; mixed expiry requirements need
-    ///   a different policy or a wrapper layer.
-    /// - The rare O(n) index rebase (triggered when `front_offset` nears `usize::MAX - isize::MAX`)
-    ///   introduces an occasional latency spike. Amortized cost is negligible, but worst-case
-    ///   latency is unbounded in principle.
-    ///
-    /// ## When to use it
-    /// Reach for `TTLPolicy` when:
-    /// - Cached data has a natural freshness window: API responses, auth tokens, DNS records,
-    ///   rate-limit counters, or any value that becomes incorrect or unsafe after a known interval.
-    /// - You need automatic expiry without a background reaper thread — expiry sweeps on common
-    ///   method calls are sufficient, or you want continuous reclamation via `sweep_interval`.
-    /// - Access patterns are unpredictable or uniform enough that recency- or frequency-based
-    ///   eviction (LRU/LFU) would offer no meaningful advantage.
-    ///
-    /// Avoid it when:
-    /// - Your workload has strong temporal locality and you need a best-effort hit rate policy —
-    ///   LRU will serve you better.
-    /// - Per-entry TTL granularity is required. If different keys need different lifetimes,
-    ///   consider a policy that accepts per-insertion expiry hints.
-    /// - Your environment has an unreliable or adjustable system clock, where wall-clock-based
-    ///   expiry may behave unexpectedly.
     [subclass, extends=crate::pyclasses::base::PyBaseCacheImpl, generic, frozen]
     PyTTLCache as "TTLCache" (onceinit::OnceInit<Wrapped<ttlpolicy::TTLPolicy>>);
 }
@@ -112,18 +49,12 @@ impl PyTTLCache {
         &self,
         py: pyo3::Python,
         maxsize: usize,
-        global_ttl: utils::FloatOrTimedelta,
+        global_ttl: utils::TimeToLiveArgument,
         iterable: Option<alias::BoundObject>,
         capacity: usize,
         getsizeof: Option<alias::PyObject>,
     ) -> pyo3::PyResult<()> {
-        let global_ttl: f64 = global_ttl.into();
-        if global_ttl <= 0.0 {
-            return Err(new_py_error!(
-                PyValueError,
-                "global_ttl must be positive and non-zero"
-            ));
-        }
+        let global_ttl = global_ttl.into_duration(false)?;
 
         let wrapped = Wrapped::new(ttlpolicy::TTLPolicy::new(capacity), unsafe {
             ttlpolicy::Shared::with_ttl(maxsize, getsizeof, Some(global_ttl))
@@ -159,22 +90,21 @@ impl PyTTLCache {
     }
 
     #[inline]
-    fn current_size(&self) -> pyo3::PyResult<usize> {
+    fn current_size(&self) -> usize {
         let inner = self.0.get();
         let mut policy = inner.policy();
-        policy.expire(inner.shared().generation_version())?;
-        Ok(policy.current_size())
+        policy.expire(inner.shared().generation_version());
+        policy.current_size()
     }
 
     #[inline]
-    fn remaining_size(&self) -> pyo3::PyResult<usize> {
+    fn remaining_size(&self) -> usize {
         let inner = self.0.get();
         {
             let mut policy = inner.policy();
-            policy.expire(inner.shared().generation_version())?;
+            policy.expire(inner.shared().generation_version());
         }
-
-        Ok(inner.remaining_size())
+        inner.remaining_size()
     }
 
     #[getter]
@@ -557,7 +487,7 @@ impl PyTTLCache {
     fn items(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyTTLCacheItems>> {
         let inner = self.0.get();
 
-        let iter = inner.policy().iter(inner.shared())?;
+        let iter = inner.policy().iter(inner.shared());
 
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
@@ -574,7 +504,7 @@ impl PyTTLCache {
     fn values(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyTTLCacheValues>> {
         let inner = self.0.get();
 
-        let iter = inner.policy().iter(inner.shared())?;
+        let iter = inner.policy().iter(inner.shared());
 
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
@@ -591,7 +521,7 @@ impl PyTTLCache {
     fn keys(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyTTLCacheKeys>> {
         let inner = self.0.get();
 
-        let iter = inner.policy().iter(inner.shared())?;
+        let iter = inner.policy().iter(inner.shared());
 
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
@@ -654,17 +584,16 @@ impl PyTTLCache {
 
     #[inline]
     #[pyo3(signature=(*, reuse=false))]
-    fn expire(&self, reuse: bool) -> pyo3::PyResult<()> {
+    fn expire(&self, reuse: bool) {
         let inner = self.0.get();
         let shared = inner.shared();
         let mut policy = inner.policy();
 
-        policy.expire(shared.generation_version())?;
+        policy.expire(shared.generation_version());
 
         if !reuse {
             policy.shrink_to_fit(shared);
         }
-        Ok(())
     }
 
     #[pyo3(signature = (n=0))]
@@ -676,7 +605,7 @@ impl PyTTLCache {
         let inner = self.0.get();
         let mut policy = inner.policy();
 
-        policy.expire(inner.shared().generation_version())?;
+        policy.expire(inner.shared().generation_version());
 
         if n < 0 {
             n += policy.entries().len() as isize;
@@ -695,7 +624,7 @@ impl PyTTLCache {
         let inner = self.0.get();
         let mut policy = inner.policy();
 
-        policy.expire(inner.shared().generation_version())?;
+        policy.expire(inner.shared().generation_version());
 
         match policy.entries().back() {
             Some(handle) => Ok(handle.key().as_ref().clone_ref(py)),
@@ -787,7 +716,7 @@ impl PyTTLCache {
     ) -> pyo3::PyResult<pyo3::Py<PyTTLCacheItemsWithExpire>> {
         let inner = self.0.get();
 
-        let iter = inner.policy().iter(inner.shared())?;
+        let iter = inner.policy().iter(inner.shared());
 
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();

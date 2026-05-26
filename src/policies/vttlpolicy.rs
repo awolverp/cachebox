@@ -5,78 +5,96 @@ use crate::internal::utils;
 use crate::policies::traits;
 use crate::policies::traits::HandleExt;
 use crate::policies::traits::PolicyExt;
-use crate::policies::traits::SharedExt;
 
 pub use crate::policies::common::Shared;
+use crate::policies::traits::SharedExt;
 
+/// Compares two items by `expires_at`, placing `None` values last.
 macro_rules! compare_fn {
     () => {
-        |x, y| x.frequency.cmp(&y.frequency)
+        |a, b| {
+            a.expires_at
+                .is_none()
+                .cmp(&b.expires_at.is_none())
+                .then_with(|| a.expires_at.cmp(&b.expires_at))
+        }
     };
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(transparent)]
-pub struct Frequency(u128);
+pub enum ExpiresAt {
+    SystemTime(std::time::SystemTime),
+    Duration(std::time::Duration),
+}
 
-impl Frequency {
-    #[inline(always)]
-    fn increment(&mut self) {
-        self.0 = self.0.saturating_add(1)
+impl From<f64> for ExpiresAt {
+    #[inline]
+    fn from(value: f64) -> Self {
+        Self::Duration(std::time::Duration::from_secs_f64(value))
     }
 }
 
-/// Same as [`Handle`](struct@super::common::Handle), but with a frequency counter.
-pub struct FrequencyHandle {
-    key: utils::PrecomputedHashObject,
-    value: alias::PyObject,
-    size: usize,
-    frequency: Frequency,
+impl From<ExpiresAt> for std::time::SystemTime {
+    #[inline]
+    fn from(value: ExpiresAt) -> Self {
+        match value {
+            ExpiresAt::Duration(x) => std::time::SystemTime::now() + x,
+            ExpiresAt::SystemTime(x) => x,
+        }
+    }
 }
 
-impl FrequencyHandle {
-    /// Creates a new [`FrequencyHandle`] with an initial frequency (always is zero, except
-    /// in loading pickle states).
+/// A key-value pair with a precomputed hash and combined size.
+pub struct ExpiringHandle {
+    /// The cache key together with its precomputed hash, avoiding repeated
+    /// Python hash calls during table lookups.
+    key: utils::PrecomputedHashObject,
+    /// The cached value associated with this key.
+    value: alias::PyObject,
+    /// Size of the key and value as reported by `getsizeof`.
+    size: usize,
+    /// Configured ttl for handle. `None` means has no ttl.
+    expires_at: Option<std::time::SystemTime>,
+}
+
+impl ExpiringHandle {
+    /// Creates a new [`Handle`], which calculates the precomputed hash itself.
     #[inline]
     pub fn new(
         py: pyo3::Python<'_>,
         getsizeof: &utils::GetsizeofFunction,
+        expires_at: Option<ExpiresAt>,
         key: alias::PyObject,
         value: alias::PyObject,
-        frequency: u128,
     ) -> pyo3::PyResult<Self> {
         Self::with_precomputed_hash_key(
             py,
             getsizeof,
+            expires_at,
             utils::PrecomputedHashObject::new(py, key)?,
             value,
-            frequency,
         )
     }
 
-    /// Creates a new [`FrequencyHandle`] from an already-hashed key,
-    /// with an initial frequency (always is zero, except in loading pickle states).
+    /// Creates a new [`Handle`] from an already-hashed key.
+    ///
+    /// Prefer this over [`Handle::new`] when the caller has already paid the cost
+    /// of computing the hash (e.g. during a table lookup that preceded insertion).
     #[inline]
     pub fn with_precomputed_hash_key(
         py: pyo3::Python<'_>,
         getsizeof: &utils::GetsizeofFunction,
+        expires_at: Option<ExpiresAt>,
         key: utils::PrecomputedHashObject,
         value: alias::PyObject,
-        frequency: u128,
     ) -> pyo3::PyResult<Self> {
         let size = getsizeof.call(py, key.as_ref(), &value)?;
         Ok(Self {
             key,
             value,
             size,
-            frequency: Frequency(frequency),
+            expires_at: expires_at.map(Into::into),
         })
-    }
-
-    /// Returns the frequency.
-    #[inline]
-    pub fn frequency(&self) -> u128 {
-        self.frequency.0
     }
 
     /// Consumes `self` and returns the [`utils::PrecomputedHashObject`].
@@ -103,6 +121,16 @@ impl FrequencyHandle {
         (self.key, self.value)
     }
 
+    #[inline]
+    pub fn expires_at(&self) -> Option<std::time::SystemTime> {
+        self.expires_at
+    }
+
+    #[inline]
+    pub fn is_expired(&self, now: std::time::SystemTime) -> bool {
+        self.expires_at.map(|x| x <= now).unwrap_or_default()
+    }
+
     /// Makes a clone of self.
     ///
     /// This creates another pointer to the same object, increasing its reference count.
@@ -112,12 +140,12 @@ impl FrequencyHandle {
             key: self.key.clone_ref(py),
             value: self.value.clone_ref(py),
             size: self.size,
-            frequency: self.frequency,
+            expires_at: self.expires_at,
         }
     }
 }
 
-impl HandleExt for FrequencyHandle {
+impl HandleExt for ExpiringHandle {
     type Key = utils::PrecomputedHashObject;
 
     #[inline(always)]
@@ -131,18 +159,18 @@ impl HandleExt for FrequencyHandle {
     }
 }
 
-/// A view into an occupied entry in [`LFUPolicy`].
+/// A view into an occupied entry in [`VTTLPolicy`].
 pub struct Occupied<'a> {
     /// The parent storage that owns the hash table.
-    policy: &'a mut LFUPolicy,
+    policy: &'a mut VTTLPolicy,
     /// The shared configuration
     shared: &'a Shared,
     /// Raw bucket pointing to the occupied index.
-    bucket: hashbrown::raw::Bucket<lazyheap::Cursor<FrequencyHandle>>,
+    bucket: hashbrown::raw::Bucket<lazyheap::Cursor<ExpiringHandle>>,
 }
 
 impl traits::OccupiedExt for Occupied<'_> {
-    type Handle = FrequencyHandle;
+    type Handle = ExpiringHandle;
     type Shared = Shared;
 
     fn replace(self, new: Self::Handle) -> Self::Handle {
@@ -160,9 +188,7 @@ impl traits::OccupiedExt for Occupied<'_> {
 
             let old = std::mem::replace(cursor.element_mut(), new);
 
-            cursor.element_mut().frequency.increment();
             self.policy.heap.mark_unsorted();
-
             old
         }
     }
@@ -178,17 +204,16 @@ impl traits::OccupiedExt for Occupied<'_> {
         item
     }
 }
-
-/// A view into a vacant slot in [`LFUPolicy`].
+/// A view into a vacant slot in [`VTTLPolicy`].
 pub struct Vacant<'a> {
     /// The parent policy that owns the hash table.
-    policy: &'a mut LFUPolicy,
+    policy: &'a mut VTTLPolicy,
     /// The shared configuration
     shared: &'a Shared,
 }
 
 impl traits::VacantExt for Vacant<'_> {
-    type Handle = FrequencyHandle;
+    type Handle = ExpiringHandle;
     type Shared = Shared;
 
     #[inline]
@@ -216,19 +241,15 @@ impl traits::VacantExt for Vacant<'_> {
     }
 }
 
-pub struct LFUPolicy {
-    /// Maps each key to its node pointer into [`LFUPolicy::entries`], enabling O(1) lookups.
-    table: hashbrown::raw::RawTable<lazyheap::Cursor<FrequencyHandle>>,
-
-    /// A lazy binary heap.
-    heap: lazyheap::LazyHeap<FrequencyHandle>,
-
-    /// Running total of all stored handles' sizes, maintained incrementally.
+pub struct VTTLPolicy {
+    // Fields are same as `LFUPolicy`
+    table: hashbrown::raw::RawTable<lazyheap::Cursor<ExpiringHandle>>,
+    heap: lazyheap::LazyHeap<ExpiringHandle>,
     currsize: usize,
 }
 
-impl LFUPolicy {
-    /// Creates a new [`LFUPolicy`].
+impl VTTLPolicy {
+    /// Creates a new [`VTTLPolicy`].
     ///
     /// The underlying hash map is pre-allocated to hold at least `capacity` entries
     /// without reallocation.
@@ -241,17 +262,19 @@ impl LFUPolicy {
     }
 
     #[inline]
-    pub fn table(&self) -> &hashbrown::raw::RawTable<lazyheap::Cursor<FrequencyHandle>> {
+    pub fn table(&self) -> &hashbrown::raw::RawTable<lazyheap::Cursor<ExpiringHandle>> {
         &self.table
     }
 
     #[inline]
-    pub fn heap(&self) -> &lazyheap::LazyHeap<FrequencyHandle> {
+    pub fn heap(&self) -> &lazyheap::LazyHeap<ExpiringHandle> {
         &self.heap
     }
 
     #[inline]
-    pub fn iter(&mut self, gv: &utils::GenerationVersion) -> lazyheap::RawIter<FrequencyHandle> {
+    pub fn iter(&mut self, gv: &utils::GenerationVersion) -> lazyheap::RawIter<ExpiringHandle> {
+        self.expire(gv);
+
         // We don't want to intrupt other iterators with no reason
         // so need to manually call sort_by to only intrupt them on changes.
         if self.heap.sort_by(compare_fn!()) {
@@ -261,41 +284,35 @@ impl LFUPolicy {
         self.heap.iter(compare_fn!())
     }
 
-    #[inline]
-    pub fn least_frequently_used(
-        &mut self,
-        py: pyo3::Python,
-        n: usize,
-        gv: &utils::GenerationVersion,
-    ) -> Option<utils::PrecomputedHashObject> {
-        if self.heap.sort_by(compare_fn!()) {
+    pub fn expire(&mut self, gv: &utils::GenerationVersion) {
+        let now = std::time::SystemTime::now();
+
+        while let Some(cursor) = self.heap.front(compare_fn!()) {
+            let handle = unsafe { cursor.element() };
+
+            if !handle.is_expired(now) {
+                break;
+            }
+
+            self.table
+                .remove_entry(handle.key.hash(), |x| {
+                    Ok::<_, pyo3::PyErr>(x.as_ptr() == cursor.as_ptr())
+                })
+                .unwrap();
+
+            drop(cursor);
+
             gv.increment();
-        }
 
-        self.heap
-            .get(n)
-            .map(|cursor| unsafe { cursor.element().key().clone_ref(py) })
-    }
-
-    #[inline]
-    pub fn peek(
-        &self,
-        py: pyo3::Python,
-        key: &utils::PrecomputedHashObject,
-    ) -> pyo3::PyResult<Option<&FrequencyHandle>> {
-        unsafe {
-            let bucket = self
-                .table
-                .find(key.hash(), |cursor| key.py_eq(py, &cursor.element().key))?;
-
-            Ok(bucket.map(|x| x.as_ref().element()))
+            let handle = self.heap.pop_front(compare_fn!()).unwrap();
+            self.currsize = self.currsize.saturating_sub(handle.size);
         }
     }
 }
 
-impl PolicyExt for LFUPolicy {
+impl PolicyExt for VTTLPolicy {
     type Shared = Shared;
-    type Handle = FrequencyHandle;
+    type Handle = ExpiringHandle;
 
     type Occupied<'a>
         = Occupied<'a>
@@ -316,19 +333,22 @@ impl PolicyExt for LFUPolicy {
     fn get(
         &mut self,
         py: pyo3::Python,
-        key: &<Self::Handle as traits::HandleExt>::Key,
+        key: &<Self::Handle as HandleExt>::Key,
     ) -> pyo3::PyResult<Option<&Self::Handle>> {
         let cursor = self
             .table
             .get_mut(key.hash(), |x| unsafe { key.py_eq(py, &x.element().key) })?;
 
         match cursor {
-            Some(cursor) => unsafe {
-                // increment frequency
-                cursor.element_mut().frequency.increment();
+            Some(cursor) => {
+                let handle = unsafe { cursor.element() };
 
-                Ok(Some(cursor.element()))
-            },
+                if handle.is_expired(std::time::SystemTime::now()) {
+                    Ok(None)
+                } else {
+                    Ok(Some(handle))
+                }
+            }
             None => Ok(None),
         }
     }
@@ -339,6 +359,8 @@ impl PolicyExt for LFUPolicy {
         key: &<Self::Handle as HandleExt>::Key,
         shared: &'a Self::Shared,
     ) -> pyo3::PyResult<traits::PolicyEntry<Self::Occupied<'a>, Self::Vacant<'a>>> {
+        self.expire(shared.generation_version());
+
         let eq = |cursor: &lazyheap::Cursor<Self::Handle>| unsafe {
             key.py_eq(py, cursor.element().key())
         };
@@ -404,6 +426,7 @@ impl PolicyExt for LFUPolicy {
         self.heap.shrink_to_fit();
     }
 
+    // TODO: considering expired handles
     fn py_eq(
         &self,
         py: pyo3::Python,

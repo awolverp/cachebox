@@ -5,6 +5,7 @@ from ._cachebox import LFUCache as LFUCache
 from ._cachebox import LRUCache as LRUCache
 from ._cachebox import RRCache as RRCache
 from ._cachebox import TTLCache as TTLCache
+from ._cachebox import VTTLCache as VTTLCache
 
 try:
     from ._core import (

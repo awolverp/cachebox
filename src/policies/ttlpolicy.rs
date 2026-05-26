@@ -334,7 +334,7 @@ impl TTLPolicy {
         self.front_offset = 0;
     }
 
-    pub fn expire(&mut self, gv: &utils::GenerationVersion) -> pyo3::PyResult<()> {
+    pub fn expire(&mut self, gv: &utils::GenerationVersion) {
         let now = std::time::SystemTime::now();
 
         while let Some(handle) = self.entries.front() {
@@ -343,7 +343,12 @@ impl TTLPolicy {
             }
 
             let eq = |index: &usize| Ok::<_, pyo3::PyErr>((*index - self.front_offset) == 0);
-            if std::hint::unlikely(self.table.remove_entry(handle.key().hash(), eq)?.is_none()) {
+            if std::hint::unlikely(
+                self.table
+                    .remove_entry(handle.key().hash(), eq)
+                    .unwrap()
+                    .is_none(),
+            ) {
                 unreachable!("popitem key not found in table");
             }
 
@@ -354,19 +359,14 @@ impl TTLPolicy {
             self.currsize = self.currsize.saturating_sub(front.size());
             self.decrement_indexes(1, self.entries.len());
         }
-
-        Ok(())
     }
 
     #[inline]
-    pub fn iter(
-        &mut self,
-        shared: &Shared,
-    ) -> pyo3::PyResult<utils::RawVecDequeIter<ExpiringHandle>> {
-        self.expire(shared.generation_version())?;
+    pub fn iter(&mut self, shared: &Shared) -> utils::RawVecDequeIter<ExpiringHandle> {
+        self.expire(shared.generation_version());
 
         let (first, second) = self.entries.as_slices();
-        Ok(utils::RawVecDequeIter::new(first, second))
+        utils::RawVecDequeIter::new(first, second)
     }
 }
 
@@ -419,7 +419,7 @@ impl PolicyExt for TTLPolicy {
         key: &<Self::Handle as HandleExt>::Key,
         shared: &'a Self::Shared,
     ) -> pyo3::PyResult<traits::PolicyEntry<Self::Occupied<'a>, Self::Vacant<'a>>> {
-        self.expire(shared.generation_version())?;
+        self.expire(shared.generation_version());
 
         let eq = |index: &usize| get_handle!(&self, *index).key().py_eq(py, key);
         match self.table.find(key.hash(), eq)? {

@@ -222,19 +222,47 @@ impl<'a, 'py> pyo3::FromPyObject<'a, 'py> for OptionalArgument {
     }
 }
 
+/// It can use as PyO3 function argument. Accepts Python `float`, `dateime.timedelta`, and `datetime.datetime`.
 #[derive(pyo3::FromPyObject)]
-pub enum FloatOrTimedelta {
+pub enum TimeToLiveArgument {
     Float(f64),
-    Timedelta(chrono::Duration),
+    Timedelta(chrono::TimeDelta),
+    Datetime(chrono::DateTime<chrono::Utc>),
 }
 
-impl From<FloatOrTimedelta> for f64 {
-    #[inline]
-    fn from(value: FloatOrTimedelta) -> Self {
-        match value {
-            FloatOrTimedelta::Float(x) => x,
-            FloatOrTimedelta::Timedelta(x) => x.as_seconds_f64(),
+impl TimeToLiveArgument {
+    /// Consumes self and returns [`std::time::Duration`].
+    #[inline(always)]
+    pub fn into_duration(self, datetime_allowed: bool) -> pyo3::PyResult<std::time::Duration> {
+        self.into_seconds_f64(datetime_allowed)
+            .map(std::time::Duration::from_secs_f64)
+    }
+
+    #[inline(always)]
+    pub fn into_seconds_f64(self, datetime_allowed: bool) -> pyo3::PyResult<f64> {
+        let seconds = match self {
+            Self::Float(x) => x,
+            Self::Timedelta(x) => x.as_seconds_f64(),
+            Self::Datetime(x) => {
+                if !datetime_allowed {
+                    return Err(new_py_error!(
+                        PyValueError,
+                        "expected datetime.timedelta or float, got datetime.datetime"
+                    ));
+                } else {
+                    (chrono::Utc::now() - x).as_seconds_f64()
+                }
+            }
+        };
+
+        if seconds <= 0.0 {
+            return Err(new_py_error!(
+                PyValueError,
+                "time-to-live must be positive and non-zero"
+            ));
         }
+
+        Ok(seconds)
     }
 }
 

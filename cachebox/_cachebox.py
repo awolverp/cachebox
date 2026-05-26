@@ -1,7 +1,7 @@
 import threading
 import time
 import typing
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from ._core import BaseCacheImpl as BaseCacheImpl
 from ._core import Cache as Cache
@@ -12,6 +12,7 @@ from ._core import RRCache as RRCache
 
 # private import
 from ._core import TTLCache as _CoreTTLCache
+from ._core import VTTLCache as _CoreVTTLCache
 
 if typing.TYPE_CHECKING:
     from ._core import _IterableType
@@ -20,7 +21,7 @@ KT = typing.TypeVar("KT", bound=typing.Hashable)
 VT = typing.TypeVar("VT")
 
 
-class TTLCache(_CoreTTLCache):
+class TTLCache(_CoreTTLCache[KT, VT]):
     """
     A cache with a Time-To-Live (TTL) eviction policy.
 
@@ -134,6 +135,152 @@ class TTLCache(_CoreTTLCache):
             maxsize,
             global_ttl,
             iterable,
+            capacity=capacity,
+            getsizeof=getsizeof,
+        )
+
+        self._thread: threading.Thread | None = None
+        self._thread_is_running: bool = False
+
+        if sweep_interval is not None:
+            if isinstance(sweep_interval, timedelta):
+                sweep_interval = sweep_interval.total_seconds()
+
+            if sweep_interval < 1:
+                raise ValueError("sweep_interval must be more than 1 seconds.")
+
+            self._thread_is_running = True
+            self._thread = threading.Thread(
+                target=self._sweeper_thread,
+                args=(sweep_interval,),
+                daemon=True,
+            )
+            self._thread.start()
+
+        self._sweep_interval = sweep_interval
+
+    @property
+    def sweep_interval(self) -> float | None:
+        """The configured ``sweep_interval`` in seconds."""
+        return self._sweep_interval
+
+    def _sweeper_thread(self, interval: float):
+        while self._thread_is_running:
+            time.sleep(interval)
+            self.expire()
+
+    def stop_sweeper(self) -> None:
+        """Signals the background sweeper thread to stop, if one is active."""
+        self._thread_is_running = False
+
+    def __del__(self) -> None:
+        self.stop_sweeper()
+
+
+class VTTLCache(_CoreVTTLCache[KT, VT]):
+    """
+    A cache with a Variable Time-To-Live (VTTL) eviction policy.
+
+    Each item can be inserted with its own individual TTL (time-to-live). When
+    an item's TTL expires, it is considered stale and will be evicted. Items
+    inserted without a TTL never expire and are only evicted when the cache
+    reaches capacity.
+
+    Expiration is managed lazily by default: stale entries are not removed
+    immediately when they expire, but are cleaned up on the next access or
+    when the cache needs to reclaim capacity. Optionally, a ``sweep_interval``
+    can be configured to spawn a background thread that proactively removes
+    expired items on a fixed schedule, bounding the window in which stale
+    data can be observed or memory held unnecessarily.
+
+    Internally, a lazy-evaluated min-heap tracks expiration deadlines. The
+    heap is only fully sorted when needed (e.g. during eviction), keeping
+    insert costs low on average. A hash table stores cursors into the heap for
+    O(1) key lookups. A running total enables O(1) capacity checks.
+
+    When the cache is full and eviction is needed, expired items are reclaimed
+    first (in expiration order, cheapest deadline first). If no expired items
+    exist, the item with the nearest upcoming expiration is evicted. Items with
+    no TTL are the last resort and are evicted only when all expiring items
+    have been exhausted.
+
+    Pros:
+        - Per-item TTL control: each entry can have a different lifetime.
+        - Expired items are reclaimed before live items, maximising useful
+          capacity.
+        - Lazy expiry avoids background threads and timer overhead by default.
+        - Optional background sweeping bounds stale-data visibility and memory
+          retention when lazy eviction is insufficient.
+        - Insert, lookup, and evict are O(1) amortized (O(log n) worst-case
+          during heap rebalancing).
+        - TTL-free items coexist naturally alongside expiring ones.
+
+    Cons:
+        - Without sweeping, stale items may linger in memory until the next
+          access or eviction pressure forces a cleanup.
+        - With sweeping, a background thread is running for the lifetime of
+          the cache, adding concurrency overhead and requiring thread-safe
+          internal locking.
+        - Slightly higher per-insert cost compared to pure LRU/LFU.
+        - No guarantee on the exact eviction moment for expired items in lazy
+          mode; callers that require strict TTL enforcement should validate
+          timestamps on read, or configure a sufficiently short
+          ``sweep_interval``.
+
+    Use ``VTTLCache`` when different items have different natural lifetimes
+    (e.g. session tokens, API responses with varying freshness requirements,
+    or multi-tier data with mixed staleness tolerances). Set
+    ``sweep_interval`` when bounded staleness or proactive memory reclamation
+    is required.
+
+    Avoid it when all items share a uniform TTL (consider ``TTLCache`` instead),
+    when strict and immediate expiry is a hard requirement, or when memory pressure
+    from temporarily lingering stale entries is unacceptable and a background thread
+    is not an option.
+    """
+
+    def __init__(
+        self,
+        maxsize: int,
+        iterable: _IterableType[KT, VT] | None = None,
+        ttl: float | timedelta | datetime | None = None,
+        *,
+        capacity: int = 0,
+        getsizeof: typing.Callable[[KT, VT]] | None = None,
+        sweep_interval: float | timedelta | None = None,
+    ) -> None:
+        """
+        Initializes a new TTLCache instance.
+
+        Args:
+            maxsize: Maximum number of elements the cache can hold. If zero,
+                the limit is set to ``sys.maxsize`` internally.
+            iterable: Initial data to populate the cache.
+            ttl: Time-to-live duration for ``iterable`` items. This *is not* a global ttl.
+            capacity: Pre-allocate cache capacity to minimize reallocations.
+                Defaults to 0.
+            getsizeof: A callable that computes the size of a key-value pair.
+                When ``None``, each entry is assumed to have a size of 1
+                (equivalent to ``lambda k, v: 1``). Use this to implement
+                weighted caching — for example, sizing entries by memory
+                footprint or byte length.
+            sweep_interval: If set, starts a background thread that sweeps and
+                removes all expired entries on this interval (in seconds or as
+                a ``timedelta``). When ``None``, expiry is lazy. Defaults to
+                ``None``. Must be greater than or equal to 1.
+
+        Note:
+            The cache can be pre-sized via ``capacity`` to reduce
+            reallocations when the number of expected entries is known
+            ahead of time.
+
+        Raises:
+            ValueError: If ``sweep_interval`` is set to a value less than 1.
+        """
+        super().__init__(
+            maxsize,
+            iterable,
+            ttl,
             capacity=capacity,
             getsizeof=getsizeof,
         )

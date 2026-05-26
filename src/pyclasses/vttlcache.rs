@@ -2,77 +2,25 @@ use crate::internal::alias;
 use crate::internal::lazyheap;
 use crate::internal::onceinit;
 use crate::internal::utils;
-use crate::policies::lfupolicy;
 use crate::policies::traits::HandleExt;
 use crate::policies::traits::PolicyExt;
 use crate::policies::traits::SharedExt;
+use crate::policies::vttlpolicy;
 use crate::policies::wrapped::Wrapped;
 
 implement_pyclass! {
-    /// A Least-Frequently-Used (LFU) cache eviction policy: when the cache is full, the item
-    /// with the lowest access count is evicted first. Ties in frequency are broken by recency -
-    /// among equally rare items, the oldest is evicted.
+    /// A cache with a Variable Time-To-Live (VTTL) eviction policy.
     ///
-    /// ## How It Works
-    /// The LFU algorithm tracks how many times each cached item has been accessed, and always
-    /// evicts the item with the smallest count. This makes it well-suited for workloads where
-    /// some items are structurally "hot" and where that frequency signal is stable enough to
-    /// be worth preserving across cache pressure events.
-    ///
-    /// This implementation uses a `lazy binary min-heap` keyed on access frequency, paired with
-    /// a `hash map` that maps each key to its cursor (a stable pointer into the heap's backing
-    /// buffer). The heap is "lazy" in the sense that it does not restore the heap invariant after
-    /// every frequency increment; instead it sets a dirty flag and defers the full re-sort until
-    /// the next eviction. This amortises the cost of heap maintenance across many hits, so
-    /// read-heavy workloads pay far less per operation than a classic eager heap would require.
-    ///
-    /// On a cache hit, the item's frequency counter is incremented in O(1) and the heap is marked
-    /// dirty. On eviction, the heap is sorted if dirty, and the minimum-frequency item is popped
-    /// in O(n log n) worst-case (amortised O(log n) under typical access distributions). Lookups
-    /// are O(1) via the hash map.
-    ///
-    /// ### Pros
-    /// - Frequency-aware eviction. Items that are accessed often are protected from eviction even
-    ///   under heavy cache pressure, leading to higher hit rates on skewed workloads.
-    /// - O(1) cache hits. Incrementing a counter and marking the heap dirty is constant-time work,
-    ///   with no structural reorganisation on the hot path.
-    /// - Lazy heap sorting amortises O(n log n) sort cost across many inserts and hits, keeping
-    ///   the average cost per operation much lower than a naive eager implementation.
-    ///
-    /// ### Cons
-    /// - Eviction is O(n log n) worst-case. If the heap is maximally dirty (every entry modified
-    ///   since last sort), a single eviction triggers a full re-sort over all entries. This is
-    ///   amortised away in practice but introduces latency spikes under adversarial access patterns.
-    /// - Frequency counters accumulate indefinitely. A key that was hot during an early burst remains
-    ///   privileged long after traffic shifts, causing "cache pollution" - stale items that monopolise
-    ///   capacity because of historical frequency, not current utility.
-    /// - Access patterns must be skewed for LFU to outperform simpler policies. On uniform workloads,
-    ///   frequency counters provide no signal and the extra bookkeeping is pure overhead.
-    ///
-    /// ## When to use it
-    /// Reach for `LFUPolicy` when:
-    /// - Your workload has a stable hot set: a minority of keys that are accessed disproportionately
-    ///   often and whose relative popularity changes slowly over time.
-    /// - Cache pollution from one-time scans is a concern: LFU naturally resists large sequential reads
-    ///   from displacing frequently accessed items, because freshly inserted keys start at count 1 and
-    ///   are evicted before any item with accumulated hits.
-    /// - Hit rate matters more than worst-case eviction latency: the amortised cost is low, but if your
-    ///   system has hard real-time latency requirements, the occasional sort spike may be unacceptable.
-    ///
-    /// Avoid it when access patterns shift rapidly. If the "hot" subset of keys changes frequently,
-    /// frequency counters become stale signals and LFU will evict items that have recently become
-    /// popular. In those cases, an LRU policy - which tracks recency rather than frequency - will
-    /// adapt faster and typically deliver better hit rates.
-    ///
-    /// Avoid it on uniform workloads where all keys are accessed with roughly equal probability.
-    /// The frequency signal provides no meaningful discrimination, and the overhead of maintaining
-    /// counters and a heap is wasted compared to the simpler bookkeeping of FIFO or LRU.
+    /// Each item can be inserted with its own individual TTL (time-to-live). When
+    /// an item's TTL expires, it is considered stale and will be evicted. Items
+    /// inserted without a TTL never expire and are only evicted when the cache
+    /// reaches capacity.
     [subclass, extends=crate::pyclasses::base::PyBaseCacheImpl, generic, frozen]
-    PyLFUCache as "LFUCache" (onceinit::OnceInit<Wrapped<lfupolicy::LFUPolicy>>);
+    PyVTTLCache as "VTTLCache" (onceinit::OnceInit<Wrapped<vttlpolicy::VTTLPolicy>>);
 }
 
 #[pyo3::pymethods]
-impl PyLFUCache {
+impl PyVTTLCache {
     #[new]
     #[allow(unused_variables)]
     #[pyo3(signature=(*args, **kwds))]
@@ -86,11 +34,12 @@ impl PyLFUCache {
         )
     }
 
-    /// Initialize a new `LFUCache` instance.
+    /// Initialize a new `PyTTLCache` instance.
     ///
     /// Args:
     ///     maxsize: Maximum number of elements the cache can hold.
     ///     iterable: Initial data to populate the cache.
+    ///     ttl: Time-to-live duration for `iterable` items. This *is not* a global ttl.
     ///     capacity: Pre-allocate capacity to minimize reallocations. Defaults to 0.
     ///     getsizeof: A callable that computes the size of a key-value pair. When `None`, each
     ///             entry is assumed to have a size of 1 (equivalent to `lambda k, v: 1`).
@@ -99,30 +48,36 @@ impl PyLFUCache {
     ///
     /// The cache can be pre-sized via `capacity` to reduce hash table reallocations when
     /// the number of expected entries is known ahead of time.
-    #[pyo3(signature=(maxsize, iterable=None, *, capacity=0, getsizeof=None))]
+    #[pyo3(signature=(maxsize, iterable=None, ttl=None, *, capacity=0, getsizeof=None))]
     fn __init__(
         &self,
         py: pyo3::Python,
         maxsize: usize,
         iterable: Option<alias::BoundObject>,
+        ttl: Option<utils::TimeToLiveArgument>,
         capacity: usize,
         getsizeof: Option<alias::PyObject>,
     ) -> pyo3::PyResult<()> {
         let wrapped = Wrapped::new(
-            lfupolicy::LFUPolicy::new(capacity),
-            lfupolicy::Shared::new(maxsize, getsizeof),
+            vttlpolicy::VTTLPolicy::new(capacity),
+            vttlpolicy::Shared::new(maxsize, getsizeof),
         );
 
         // Populate cache if `iterable` passed
         let extend_result = {
             if let Some(iterable) = iterable {
+                let ttl: Option<vttlpolicy::ExpiresAt> = match ttl {
+                    Some(x) => Some(x.into_seconds_f64(true)?.into()),
+                    None => None,
+                };
+
                 let getsizeof = wrapped.shared().getsizeof().clone_ref(py);
 
                 let result = wrapped.extend(
                     // iterable object
                     iterable,
                     // transform function
-                    |key, value| lfupolicy::FrequencyHandle::new(py, &getsizeof, key, value, 0),
+                    |key, value| vttlpolicy::ExpiringHandle::new(py, &getsizeof, ttl, key, value),
                 );
                 result
             } else {
@@ -144,12 +99,19 @@ impl PyLFUCache {
     #[inline]
     fn current_size(&self) -> usize {
         let inner = self.0.get();
-        inner.policy().current_size()
+        let mut policy = inner.policy();
+        policy.expire(inner.shared().generation_version());
+        policy.current_size()
     }
 
     #[inline]
     fn remaining_size(&self) -> usize {
         let inner = self.0.get();
+        {
+            let mut policy = inner.policy();
+            policy.expire(inner.shared().generation_version());
+        }
+
         inner.remaining_size()
     }
 
@@ -185,7 +147,7 @@ impl PyLFUCache {
         let policy = inner.policy();
 
         let table_cap = policy.table().capacity() * 8;
-        let list_cap = policy.heap().len() * std::mem::size_of::<lfupolicy::FrequencyHandle>();
+        let list_cap = policy.heap().len() * std::mem::size_of::<vttlpolicy::ExpiringHandle>();
 
         table_cap + list_cap
     }
@@ -235,38 +197,59 @@ impl PyLFUCache {
     /// - If the cache did not have this key present, None is returned.
     /// - If the cache did have this key present, the value is updated,
     ///   and the old value is returned. The key is not updated, though.
+    #[pyo3(signature=(key, value, ttl=None))]
     fn insert(
         &self,
         py: pyo3::Python,
         key: alias::PyObject,
         value: alias::PyObject,
+        ttl: Option<utils::TimeToLiveArgument>,
     ) -> pyo3::PyResult<Option<alias::PyObject>> {
+        let ttl = match ttl {
+            Some(x) => Some(x.into_seconds_f64(true)?),
+            None => None,
+        };
+
         let inner = self.0.get();
-        let handle =
-            lfupolicy::FrequencyHandle::new(py, inner.shared().getsizeof(), key, value, 0)?;
+        let shared = inner.shared();
+        let handle = vttlpolicy::ExpiringHandle::new(
+            py,
+            shared.getsizeof(),
+            ttl.map(Into::into),
+            key,
+            value,
+        )?;
 
         let old_handle = inner.insert(py, handle)?.map(|x| x.into_value());
         Ok(old_handle)
     }
 
     /// Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
+    #[pyo3(signature=(iterable, ttl=None))]
     fn update(
         slf: pyo3::PyRef<'_, Self>,
         py: pyo3::Python,
         iterable: alias::PyObject,
+        ttl: Option<utils::TimeToLiveArgument>,
     ) -> pyo3::PyResult<()> {
         if std::ptr::eq(slf.as_ptr(), iterable.as_ptr()) {
             return Ok(());
         }
 
+        let ttl: Option<vttlpolicy::ExpiresAt> = match ttl {
+            Some(x) => Some(x.into_seconds_f64(true)?.into()),
+            None => None,
+        };
+
         let inner = slf.0.get();
-        let getsizeof = inner.shared().getsizeof().clone_ref(py);
+        let shared = inner.shared();
+        let getsizeof = shared.getsizeof().clone_ref(py);
 
         inner.extend(
             // iterable object
             iterable.into_bound(py),
             // transform function
-            move |key, value| lfupolicy::FrequencyHandle::new(py, &getsizeof, key, value, 0),
+            move |key, value| vttlpolicy::ExpiringHandle::new(py, &getsizeof, ttl, key, value),
         )
     }
 
@@ -277,21 +260,10 @@ impl PyLFUCache {
         key: alias::PyObject,
         value: alias::PyObject,
     ) -> pyo3::PyResult<()> {
-        self.insert(py, key, value)?;
+        self.insert(py, key, value, None)?;
         Ok(())
     }
 
-    /// Retrieves the value for a given key from the cache.
-    ///
-    /// Returns the value associated with the key if present, otherwise returns the specified default value.
-    /// Equivalent to `self[key]`, but provides a fallback default if the key is not found.
-    ///
-    /// Args:
-    ///     key: The key to look up in the cache.
-    ///     default: The value to return if the key is not present in the cache. Defaults to None.
-    ///
-    /// Returns:
-    ///     The value associated with the key, or the default value if the key is not found.
     #[pyo3(signature = (key, default=utils::OptionalArgument::Undefined))]
     fn get(
         &self,
@@ -336,19 +308,21 @@ impl PyLFUCache {
         }
     }
 
-    /// Inserts key with a value of default if key is not in the cache.
-    ///
-    /// Returns the value for key if key is in the cache, else default.
-    #[pyo3(signature = (key, default=utils::OptionalArgument::Undefined))]
+    #[pyo3(signature = (key, default=utils::OptionalArgument::Undefined, ttl=None))]
     fn setdefault(
         &self,
         py: pyo3::Python,
         key: alias::PyObject,
         default: utils::OptionalArgument,
+        ttl: Option<utils::TimeToLiveArgument>,
     ) -> pyo3::PyResult<alias::PyObject> {
         // 1. Try to get value
         // 2. If exists -> return it
         // 3. Else -> insert default -> return default
+        let ttl: Option<vttlpolicy::ExpiresAt> = match ttl {
+            Some(x) => Some(x.into_seconds_f64(true)?.into()),
+            None => None,
+        };
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
         let inner = self.0.get();
@@ -368,21 +342,18 @@ impl PyLFUCache {
             },
         };
 
-        let handle = lfupolicy::FrequencyHandle::with_precomputed_hash_key(
+        let handle = vttlpolicy::ExpiringHandle::with_precomputed_hash_key(
             py,
             shared.getsizeof(),
+            ttl,
             key,
             default_object.clone_ref(py),
-            1,
         )?;
 
         inner.insert(py, handle)?;
         Ok(default_object)
     }
 
-    /// Removes specified key and returns the corresponding value.
-    ///
-    /// If the key is not found, returns the `default` if given; otherwise, raise a KeyError.
     #[pyo3(signature = (key, default=utils::OptionalArgument::Undefined))]
     fn pop(
         &self,
@@ -442,6 +413,7 @@ impl PyLFUCache {
         let inner = self.0.get();
         inner.drain(py, n)
     }
+
     /// Shrinks the internal allocation as close to the current length as possible.
     #[inline]
     fn shrink_to_fit(&self) {
@@ -512,14 +484,14 @@ impl PyLFUCache {
             .map(|x| !x)
     }
 
-    fn items(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyLFUCacheItems>> {
+    fn items(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyVTTLCacheItems>> {
         let inner = self.0.get();
         let mut policy = inner.policy();
 
         let gv = inner.shared().generation_version();
         let iter = policy.iter(gv);
 
-        let result = PyLFUCacheItems {
+        let result = PyVTTLCacheItems {
             iter: parking_lot::Mutex::new(iter),
             gv: gv.clone(),
             initial_gv: gv.get(),
@@ -527,14 +499,14 @@ impl PyLFUCache {
         pyo3::Py::new(py, result)
     }
 
-    fn values(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyLFUCacheValues>> {
+    fn values(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyVTTLCacheValues>> {
         let inner = self.0.get();
         let mut policy = inner.policy();
 
         let gv = inner.shared().generation_version();
         let iter = policy.iter(gv);
 
-        let result = PyLFUCacheValues {
+        let result = PyVTTLCacheValues {
             iter: parking_lot::Mutex::new(iter),
             gv: gv.clone(),
             initial_gv: gv.get(),
@@ -542,14 +514,14 @@ impl PyLFUCache {
         pyo3::Py::new(py, result)
     }
 
-    fn keys(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyLFUCacheKeys>> {
+    fn keys(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyVTTLCacheKeys>> {
         let inner = self.0.get();
         let mut policy = inner.policy();
 
         let gv = inner.shared().generation_version();
         let iter = policy.iter(gv);
 
-        let result = PyLFUCacheKeys {
+        let result = PyVTTLCacheKeys {
             iter: parking_lot::Mutex::new(iter),
             gv: gv.clone(),
             initial_gv: gv.get(),
@@ -558,31 +530,14 @@ impl PyLFUCache {
     }
 
     #[inline]
-    fn __iter__(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyLFUCacheKeys>> {
+    fn __iter__(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyVTTLCacheKeys>> {
         self.keys(py)
-    }
-
-    fn items_with_frequency(
-        &self,
-        py: pyo3::Python,
-    ) -> pyo3::PyResult<pyo3::Py<PyLFUCacheItemsWithFrequency>> {
-        let inner = self.0.get();
-        let mut policy = inner.policy();
-
-        let gv = inner.shared().generation_version();
-        let iter = policy.iter(gv);
-
-        let result = PyLFUCacheItemsWithFrequency {
-            iter: parking_lot::Mutex::new(iter),
-            gv: gv.clone(),
-            initial_gv: gv.get(),
-        };
-        pyo3::Py::new(py, result)
     }
 
     fn copy(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<Self>> {
         let inner = self.0.get();
         let cloned = inner.clone_ref(py);
+
         let result = Self(onceinit::OnceInit::new(cloned));
 
         pyo3::Py::new(py, (result, crate::pyclasses::base::PyBaseCacheImpl))
@@ -598,15 +553,17 @@ impl PyLFUCache {
         let shared = inner.shared();
         let policy = inner.policy();
 
+        let now = std::time::SystemTime::now();
+
         // We cannot use heap.iter here, because it requires re-sorting
         // and this can lead to intrupt iterators.
         let iter = unsafe {
             policy
                 .table()
                 .iter()
-                .map(|bucket| bucket.as_ref())
-                .map(|cursor| {
-                    let handle = cursor.element();
+                .map(|bucket| bucket.as_ref().element())
+                .filter(|handle| !handle.is_expired(now))
+                .map(|handle| {
                     (
                         // Without `.bind` it returns something like `Py(addr)`
                         handle.key().as_ref().bind(py),
@@ -625,52 +582,21 @@ impl PyLFUCache {
         )
     }
 
-    #[pyo3(signature = (key, default=utils::OptionalArgument::Undefined))]
-    fn peek(
-        &self,
-        py: pyo3::Python,
-        key: alias::PyObject,
-        default: utils::OptionalArgument,
-    ) -> pyo3::PyResult<alias::PyObject> {
-        let key = utils::PrecomputedHashObject::new(py, key)?;
-
+    #[inline]
+    #[pyo3(signature=(*, reuse=false))]
+    fn expire(&self, reuse: bool) {
         let inner = self.0.get();
-        let policy = inner.policy();
-
-        if let Some(x) = policy.peek(py, &key)? {
-            return Ok(x.value().clone_ref(py));
-        }
-
-        match default {
-            utils::OptionalArgument::Defined(x) => Ok(x),
-            utils::OptionalArgument::Undefined => unsafe {
-                // SAFETY: None is immortal, so reference counting has no meaning
-                Ok(pyo3::Bound::from_owned_ptr(py, pyo3::ffi::Py_None()).unbind())
-            },
-        }
-    }
-
-    #[pyo3(signature = (n=0))]
-    fn least_frequently_used(
-        &self,
-        py: pyo3::Python,
-        mut n: pyo3::ffi::Py_ssize_t,
-    ) -> pyo3::PyResult<alias::PyObject> {
-        let inner = self.0.get();
+        let shared = inner.shared();
         let mut policy = inner.policy();
 
-        if n < 0 {
-            n += policy.table().len() as isize;
-        }
-        if n < 0 {
-            return Err(new_py_error!(PyIndexError, "`n` out of range"));
-        }
+        policy.expire(shared.generation_version());
 
-        match policy.least_frequently_used(py, n as usize, inner.shared().generation_version()) {
-            Some(key) => Ok(key.into()),
-            None => Err(new_py_error!(PyIndexError, "`n` out of range")),
+        if !reuse {
+            policy.shrink_to_fit(shared);
         }
     }
+
+    // TODO: items_with_expire, get_with_expire, pop_with_expire, popitem_with_expire
 
     fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
         let inner = self.0.get();
@@ -705,7 +631,7 @@ macro_rules! implement_iterator {
                 [generic, frozen] $name as $pyname {
                     initial_gv: u32,
                     gv: utils::GenerationVersion,
-                    iter: parking_lot::Mutex<lazyheap::RawIter<lfupolicy::FrequencyHandle>>,
+                    iter: parking_lot::Mutex<lazyheap::RawIter<vttlpolicy::ExpiringHandle>>,
                 }
             }
 
@@ -724,38 +650,35 @@ macro_rules! implement_iterator {
                         ));
                     }
 
+                    let now = std::time::SystemTime::now();
                     let mut iter = slf.iter.lock();
+                    let $py = slf.py();
 
-                    match iter.next() {
-                        Some(x) => {
-                            let $py = slf.py();
-                            let $handle = unsafe { x.element() };
-                            Ok($init)
+                    while let Some(x) = iter.next() {
+                        let $handle = unsafe { x.element() };
+                        if $handle.is_expired(now) {
+                            continue;
                         }
-                        None => return Err(new_py_error!(PyStopIteration, ())),
+
+                        return Ok($init);
                     }
+
+                    Err(new_py_error!(PyStopIteration, ()))
                 }
             }
         )+
     };
 }
 implement_iterator!(
-    PyLFUCacheItems as "lfucache_items"
+    PyVTTLCacheItems as "vttlcache_items"
     fn(py, handle) -> (alias::PyObject, alias::PyObject) {{
         let (key, val) = handle.clone_ref(py).into_pair();
         (key.into(), val)
     }}
 
-    PyLFUCacheItemsWithFrequency as "lfucache_items_with_freq"
-    fn(py, handle) -> (alias::PyObject, alias::PyObject, u128) {{
-        let freq = handle.frequency();
-        let (key, val) = handle.clone_ref(py).into_pair();
-        (key.into(), val, freq)
-    }}
-
-    PyLFUCacheKeys as "lfucache_keys"
+    PyVTTLCacheKeys as "vttlcache_keys"
     fn(py, handle) -> alias::PyObject { handle.key().clone_ref(py).into() }
 
-    PyLFUCacheValues as "lfucache_values"
+    PyVTTLCacheValues as "vttlcache_values"
     fn(py, handle) -> alias::PyObject { handle.value().clone_ref(py) }
 );

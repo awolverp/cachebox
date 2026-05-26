@@ -1,5 +1,5 @@
 import typing
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from _typeshed import SupportsItems
 
@@ -1324,5 +1324,152 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         Returns:
             An iterable of ``(key, value, remaining_ttl)`` tuples in insertion
             order, where ``remaining_ttl`` is in seconds.
+        """
+        ...
+
+class VTTLCache(BaseCacheImpl[KT, VT]):
+    """
+    A cache with a Variable Time-To-Live (VTTL) eviction policy.
+
+    Each item can be inserted with its own individual TTL (time-to-live). When
+    an item's TTL expires, it is considered stale and will be evicted. Items
+    inserted without a TTL never expire and are only evicted when the cache
+    reaches capacity.
+    """
+
+    def __init__(
+        self,
+        maxsize: int,
+        iterable: _IterableType[KT, VT] | None = None,
+        ttl: float | timedelta | datetime | None = None,
+        *,
+        capacity: int = 0,
+        getsizeof: typing.Callable[[KT, VT]] | None = None,
+    ) -> None:
+        """
+        Initializes a new TTLCache instance.
+
+        Args:
+            maxsize: Maximum number of elements the cache can hold. If zero,
+                the limit is set to ``sys.maxsize`` internally.
+            iterable: Initial data to populate the cache.
+            ttl: Time-to-live duration for ``iterable`` items. This *is not* a global ttl.
+            capacity: Pre-allocate cache capacity to minimize reallocations.
+                Defaults to 0.
+            getsizeof: A callable that computes the size of a key-value pair.
+                When ``None``, each entry is assumed to have a size of 1.
+        """
+        ...
+
+    def insert(
+        self,
+        key: KT,
+        value: VT,
+        ttl: float | timedelta | datetime | None = None,
+    ) -> typing.Optional[VT]:
+        """
+        Insert a key-value pair into the cache with an optional time-to-live (TTL).
+        Returns the previous value associated with the key, if it existed.
+
+        Args:
+            key: The key to insert or update.
+            value: The value to associate with ``key``.
+            ttl: An optional time-to-live duration for the item.
+
+        Returns:
+            ``None`` if the key was not previously present; the old value if
+            the key already existed (the key itself is not updated).
+        """
+        ...
+
+    def update(
+        self,
+        iterable: _IterableType[KT, VT],
+        ttl: float | timedelta | datetime | None = None,
+    ) -> None:
+        """
+        Updates the cache with elements from a dictionary or iterable of key-value pairs.
+
+        Args:
+            iterable: A dictionary, object supporting ``items()``, another
+                cache instance, or an iterable of ``(key, value)`` tuples.
+            ttl: An optional time-to-live duration for items.
+        """
+        ...
+
+    def setdefault(
+        self,
+        key: KT,
+        default: typing.Optional[DT] = None,
+        ttl: float | timedelta | datetime | None = None,
+    ) -> typing.Optional[VT | DT]:
+        """
+        Inserts ``key`` with ``default`` as its value if the key is absent.
+
+        Args:
+            key: The key to look up or insert.
+            default: The value to insert if ``key`` is not in the cache.
+                Defaults to ``None``.
+            ttl: An optional time-to-live duration for items.
+
+        Returns:
+            The existing value if ``key`` is present, otherwise ``default``.
+        """
+        ...
+
+    def popitem(self) -> typing.Tuple[KT, VT]:
+        """
+        Removes and returns the key-value pair that is closest to expiration.
+
+        Returns:
+            A tuple containing the key and value of the removed item.
+
+        Raises:
+            KeyError: If the cache is empty.
+        """
+
+    def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
+        """
+        Returns an ordered iterable of the cache's ``(key, value)`` pairs.
+
+        Warning:
+            Do not modify the cache while iterating.
+
+        Returns:
+            An iterable of ``(key, value)`` tuples in insertion order.
+        """
+        ...
+
+    def keys(self) -> typing.Iterable[KT]:
+        """
+        Returns an ordered iterable of the cache's keys.
+
+        Warning:
+            Do not modify the cache while iterating.
+
+        Returns:
+            An iterable of keys in insertion order.
+        """
+        ...
+
+    def values(self) -> typing.Iterable[VT]:
+        """
+        Returns an ordered iterable of the cache's values.
+
+        Warning:
+            Do not modify the cache while iterating.
+
+        Returns:
+            An iterable of values in insertion order.
+        """
+        ...
+
+    def expire(self, *, reuse: bool = False) -> None:
+        """
+        Manually removes all expired key-value pairs from the cache.
+
+        Args:
+            reuse: If ``True``, retains the allocated memory for future reuse
+                rather than freeing it. Defaults to ``False``.
         """
         ...

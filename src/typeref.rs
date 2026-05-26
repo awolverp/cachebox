@@ -1,4 +1,7 @@
+/// Raw pointer to the CPython `dict`, cached at initialization.
 pub static mut STD_DICT_TYPE: *mut pyo3::ffi::PyTypeObject = std::ptr::null_mut();
+
+/// Raw pointer to the CPython `tuple`, cached at initialization.
 pub static mut STD_TUPLE_TYPE: *mut pyo3::ffi::PyTypeObject = std::ptr::null_mut();
 
 #[inline(never)]
@@ -17,6 +20,7 @@ fn _initialize_typeref(py: pyo3::Python) {
     }
 }
 
+/// Initializes the cached CPython type object pointers.
 pub fn initialize_typeref(py: pyo3::Python) {
     static INIT: std::sync::Once = std::sync::Once::new();
 

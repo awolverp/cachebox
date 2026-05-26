@@ -22,72 +22,73 @@ VT = typing.TypeVar("VT")
 
 class TTLCache(_CoreTTLCache):
     """
-    A Time-To-Live (TTL) cache eviction policy: each entry carries an expiration timestamp
-    and is considered stale — and eligible for eviction — once that deadline has passed,
-    regardless of how recently or frequently it was accessed.
+    A cache with a Time-To-Live (TTL) eviction policy.
 
-    ## How It Works
-    The TTL algorithm pairs time-based expiration with insertion-order eviction. Every entry
-    is stamped with an absolute `expires_at` timestamp at insertion time (computed as
-    `now + global_ttl`). Entries are stored in insertion order, and eviction proceeds from the
-    front of that queue — but only after confirming the candidate has actually expired. A live
-    entry at the front of the queue blocks eviction of everything behind it, so the cache may
-    temporarily exceed capacity if the oldest entries are still fresh.
+    Each entry carries an expiration timestamp and is considered stale — and
+    eligible for eviction — once that deadline has passed, regardless of how
+    recently or frequently it was accessed.
 
-    Like `FIFOPolicy`, this implementation backs the queue with a `double-ended queue` for O(1)
-    front removal and a `hash map` for O(1) key lookups. The same logical-index trick applies:
-    the table stores monotonically increasing counters rather than physical deque positions, and
-    a `front_offset` counter converts a logical index back to a physical one at read time via
-    `entries[table[key] - front_offset]`. This keeps eviction and lookup O(1) without rewriting
-    the table on every eviction. On top of that, every read checks `expires_at` against the current wall-clock time and
-    treats any expired entry as a cache miss.
+    Every entry is stamped with an absolute ``expires_at`` timestamp at
+    insertion time (computed as ``now + global_ttl``). Entries are stored in
+    insertion order and eviction proceeds from the front of that queue, but
+    only after confirming the candidate has actually expired. A live entry at
+    the front of the queue blocks eviction of everything behind it, so the
+    cache may temporarily exceed capacity if the oldest entries are still
+    fresh.
 
-    Without `sweep_interval`, an expiry sweep is triggered automatically on every call to
-    `insert`, `update`, `current_size`, `remaining_size`, `last`, `first`, `items`, `keys`,
-    `values`, and `__iter__`. A completely idle cache will accumulate stale entries between
-    these calls, but any normal interaction with the cache is sufficient to reclaim them.
-    When `sweep_interval` is set, a background thread performs the sweep on that interval
-    instead, reclaiming expired entries independent of any method calls.
+    Like ``FIFOCache``, this implementation backs the queue with a
+    double-ended queue for O(1) front removal and a hash map for O(1) key
+    lookups. The same logical-index trick applies: the table stores
+    monotonically increasing counters rather than physical deque positions, and
+    a ``front_offset`` counter converts a logical index back to a physical one
+    at read time via ``entries[table[key] - front_offset]``. This keeps
+    eviction and lookup O(1) without rewriting the table on every eviction.
+    Every read also checks ``expires_at`` against the current wall-clock time
+    and treats any expired entry as a cache miss.
 
-    ### Pros
-    - Insert, lookup, and evict are all O(1) amortized: the `front_offset` trick eliminates the O(n)
-      index-shifting that a naïve implementation would require on every eviction.
-    - Entries expire automatically without any background thread or explicit invalidation call.
-      Stale data is never returned to the caller.
-    - TTL expiry and insertion-order eviction compose cleanly: the oldest entry is always evicted
-      first among those that have already expired.
-    - A single `global_ttl` keeps configuration simple; every entry ages at the same rate.
+    Without ``sweep_interval``, an expiry sweep is triggered automatically on
+    every call to ``insert``, ``update``, ``current_size``, ``remaining_size``,
+    ``last``, ``first``, ``items``, ``keys``, ``values``, and ``__iter__``. A
+    completely idle cache will accumulate stale entries between these calls,
+    but any normal interaction is sufficient to reclaim them. When
+    ``sweep_interval`` is set, a background thread performs the sweep on that
+    interval instead, reclaiming expired entries independent of method calls.
 
-    ### Cons
+    Pros:
+        - Insert, lookup, and evict are all O(1) amortized: the
+          ``front_offset`` trick eliminates the O(n) index-shifting that a
+          naive implementation would require on every eviction.
+        - Entries expire automatically without a background thread or explicit
+          invalidation call; stale data is never returned to the caller.
+        - TTL expiry and insertion-order eviction compose cleanly: the oldest
+          expired entry is always evicted first.
+        - A single ``global_ttl`` keeps configuration simple; every entry ages
+          at the same rate.
 
-    - Wall-clock dependency. Correctness relies on a monotonically advancing system clock.
-      Clock adjustments (NTP steps, suspend/resume) can cause entries to expire earlier or later
-      than intended.
-    - When `sweep_interval` is set, a background thread wakes on that interval to sweep and
-      remove all expired entries. This adds a small amount of background CPU usage and
-      introduces a reaper thread for the lifetime of the cache.
-    - No per-entry TTL override. All entries share `global_ttl`; mixed expiry requirements need
-      a different policy or a wrapper layer.
-    - The rare O(n) index rebase (triggered when `front_offset` nears `usize::MAX - isize::MAX`)
-      introduces an occasional latency spike. Amortized cost is negligible, but worst-case
-      latency is unbounded in principle.
+    Cons:
+        - Wall-clock dependency: correctness relies on a monotonically
+          advancing system clock. Clock adjustments (NTP steps,
+          suspend/resume) can cause entries to expire earlier or later than
+          intended.
+        - When ``sweep_interval`` is set, a background thread wakes on that
+          interval to remove all expired entries, adding a small amount of
+          background CPU usage for the lifetime of the cache.
+        - No per-entry TTL override: all entries share ``global_ttl``; mixed
+          expiry requirements need a different policy or a wrapper layer.
+        - A rare O(n) index rebase (triggered when ``front_offset`` nears
+          ``usize::MAX - isize::MAX``) introduces an occasional latency spike;
+          amortised cost is negligible but worst-case latency is unbounded in
+          principle.
 
-    ## When to use it
-    Reach for `TTLPolicy` when:
-    - Cached data has a natural freshness window: API responses, auth tokens, DNS records,
-      rate-limit counters, or any value that becomes incorrect or unsafe after a known interval.
-    - You need automatic expiry without a background reaper thread — expiry sweeps on common
-      method calls are sufficient, or you want continuous reclamation via `sweep_interval`.
-    - Access patterns are unpredictable or uniform enough that recency- or frequency-based
-      eviction (LRU/LFU) would offer no meaningful advantage.
+    Use ``TTLCache`` when cached data has a natural freshness window (API
+    responses, auth tokens, DNS records, rate-limit counters), when automatic
+    expiry without a background reaper is sufficient, or when access patterns
+    are unpredictable enough that recency- or frequency-based eviction would
+    offer no meaningful advantage.
 
-    Avoid it when:
-    - Your workload has strong temporal locality and you need a best-effort hit rate policy —
-      LRU will serve you better.
-    - Per-entry TTL granularity is required. If different keys need different lifetimes,
-      consider `VTTLCache`.
-    - Your environment has an unreliable or adjustable system clock, where wall-clock-based
-      expiry may behave unexpectedly.
+    Avoid it when strong temporal locality makes LRU a better fit, when
+    per-entry TTL granularity is required (consider ``VTTLCache`` instead), or
+    when the system clock is unreliable or subject to adjustment.
     """
 
     def __init__(
@@ -101,22 +102,33 @@ class TTLCache(_CoreTTLCache):
         sweep_interval: float | timedelta | None = None,
     ) -> None:
         """
-        Initialize a new instance.
+        Initializes a new TTLCache instance.
 
         Args:
-            maxsize: Maximum number of elements the cache can hold. If zero, the limit is set to sys.maxsize internally.
-            global_ttl: Time-to-live for every entry, either as seconds (float) or a timedelta. Applied at insertion time.
+            maxsize: Maximum number of elements the cache can hold. If zero,
+                the limit is set to ``sys.maxsize`` internally.
+            global_ttl: Time-to-live for every entry, as seconds (float) or a
+                ``timedelta``. Applied at insertion time.
             iterable: Initial data to populate the cache.
-            capacity: Pre-allocate cache capacity to minimize reallocations. Defaults to 0.
-            getsizeof: A callable that computes the size of a key-value pair. When `None`, each
-                    entry is assumed to have a size of 1 (equivalent to `lambda k, v: 1`).
-                    Use this to implement weighted caching — for example, sizing entries by
-                    memory footprint or byte length.
-            sweep_interval: If set, starts a background thread that sweeps and removes all expired entries on this interval.
-                    When None, expiry is lazy. Defaults to `None`. *It should be more than 1*.
+            capacity: Pre-allocate cache capacity to minimize reallocations.
+                Defaults to 0.
+            getsizeof: A callable that computes the size of a key-value pair.
+                When ``None``, each entry is assumed to have a size of 1
+                (equivalent to ``lambda k, v: 1``). Use this to implement
+                weighted caching — for example, sizing entries by memory
+                footprint or byte length.
+            sweep_interval: If set, starts a background thread that sweeps and
+                removes all expired entries on this interval (in seconds or as
+                a ``timedelta``). When ``None``, expiry is lazy. Defaults to
+                ``None``. Must be greater than or equal to 1.
 
-        The cache can be pre-sized via `capacity` to reduce reallocations when
-        the number of expected entries is known ahead of time.
+        Note:
+            The cache can be pre-sized via ``capacity`` to reduce
+            reallocations when the number of expected entries is known
+            ahead of time.
+
+        Raises:
+            ValueError: If ``sweep_interval`` is set to a value less than 1.
         """
         super().__init__(
             maxsize,
@@ -148,7 +160,7 @@ class TTLCache(_CoreTTLCache):
 
     @property
     def sweep_interval(self) -> float | None:
-        """Returns the configured `sweep_interval`."""
+        """The configured ``sweep_interval`` in seconds."""
         return self._sweep_interval
 
     def _sweeper_thread(self, interval: float):
@@ -157,7 +169,7 @@ class TTLCache(_CoreTTLCache):
             self.expire()
 
     def stop_sweeper(self) -> None:
-        """Signals the sweeper thread to stop ( if is active )"""
+        """Signals the background sweeper thread to stop, if one is active."""
         self._thread_is_running = False
 
     def __del__(self) -> None:

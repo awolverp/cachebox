@@ -123,21 +123,25 @@ impl PyLRUCache {
             lrupolicy::Shared::new(maxsize, getsizeof),
         );
 
-        if let Some(iterable) = iterable {
-            let getsizeof = wrapped.shared().getsizeof().clone_ref(py);
+        // Populate cache if `iterable` passed
+        let extend_result = {
+            if let Some(iterable) = iterable {
+                let getsizeof = wrapped.shared().getsizeof().clone_ref(py);
 
-            let result = wrapped.extend(
-                // iterable object
-                iterable,
-                // transform function
-                |key, value| lrupolicy::Handle::new(py, &getsizeof, key, value),
-            );
-            self.0.set(wrapped);
-            result
-        } else {
-            self.0.set(wrapped);
-            Ok(())
-        }
+                let result = wrapped.extend(
+                    // iterable object
+                    iterable,
+                    // transform function
+                    |key, value| lrupolicy::Handle::new(py, &getsizeof, key, value),
+                );
+                result
+            } else {
+                Ok(())
+            }
+        };
+
+        self.0.set(wrapped);
+        extend_result
     }
 
     #[getter]

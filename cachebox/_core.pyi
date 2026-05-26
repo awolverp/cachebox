@@ -16,12 +16,21 @@ _IterableType: typing.TypeAlias = (
 
 class BaseCacheImpl(typing.Generic[KT, VT]):
     """
-    Base implementation for cache classes in the cachebox library.
+    Base implementation for cache classes.
 
-    This abstract base class defines the generic structure for cache implementations,
-    supporting different key and value types through generic type parameters.
-    Serves as a foundation for specific cache variants like Cache and FIFOCache.
+    This abstract base class defines the generic structure for cache
+    implementations.
     """
+
+    def __new__(cls, *args, **kwds) -> typing.Self:
+        """
+        Allocates memory and returns an uninitialized instance.
+
+        Warning:
+            Using the returned instance before calling ``__init__`` is unsafe
+            and causes panic errors.
+        """
+        ...
 
     def __init__(
         self,
@@ -29,49 +38,74 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
         iterable: _IterableType[KT, VT] | None = None,
         *,
         capacity: int = 0,
-        getsizeof: typing.Callable[[KT, VT]] | None = None,
+        getsizeof: typing.Callable[[KT, VT], int] | None = None,
     ) -> None:
         """
-        Initialize a new instance.
+        Initializes a new instance.
 
         Args:
-            maxsize: Maximum number of elements the cache can hold. If zero, the limit is set to sys.maxsize internally.
+            maxsize: Maximum number of elements the cache can hold. If zero,
+                the limit is set to ``sys.maxsize`` internally.
             iterable: Initial data to populate the cache.
-            capacity: Pre-allocate cache capacity to minimize reallocations. Defaults to 0.
-            getsizeof: A callable that computes the size of a key-value pair. When `None`, each
-                    entry is assumed to have a size of 1 (equivalent to `lambda k, v: 1`).
-                    Use this to implement weighted caching — for example, sizing entries by
-                    memory footprint or byte length.
+            capacity: Pre-allocate cache capacity to minimize reallocations.
+                Defaults to 0.
+            getsizeof: A callable that computes the size of a key-value pair.
+                When ``None``, each entry is assumed to have a size of 1
+                (equivalent to ``lambda k, v: 1``). Use this to implement
+                weighted caching — for example, sizing entries by memory
+                footprint or byte length.
 
-        The cache can be pre-sized via `capacity` to reduce reallocations when
-        the number of expected entries is known ahead of time.
+        Note:
+            The cache can be pre-sized via ``capacity`` to reduce
+            reallocations when the number of expected entries is known
+            ahead of time.
         """
         ...
 
     @property
     def maxsize(self) -> int:
-        """Returns the specified `maxsize`"""
+        """int: The configured ``maxsize``."""
         ...
 
     @property
-    def getsizeof(self) -> typing.Callable[[KT, VT]] | None:
-        """Returns the `getsizeof` function"""
+    def getsizeof(self) -> typing.Callable[[KT, VT], int] | None:
+        """Callable or None: The configured ``getsizeof`` function."""
         ...
 
     def current_size(self) -> int:
-        """Returns the current total cumulative size consumed by all stored entries."""
+        """
+        Returns the current total cumulative size of all stored entries.
+
+        Returns:
+            The sum of sizes of all entries currently in the cache.
+        """
         ...
 
     def remaining_size(self) -> int:
-        """Returns the remaining size. Equals to `maxsize - current_size`"""
+        """
+        Returns the remaining available size.
+
+        Returns:
+            The result of ``maxsize - current_size``.
+        """
         ...
 
     def capacity(self) -> int:
-        """Returns the number of elements the map can hold without reallocating."""
+        """
+        Returns the number of elements the map can hold without reallocating.
+
+        Returns:
+            The current allocated capacity.
+        """
         ...
 
     def __len__(self) -> int:
-        """Returns the number of entries currently in the cache."""
+        """
+        Returns the number of entries currently in the cache.
+
+        Returns:
+            The number of entries in the cache.
+        """
         ...
 
     def __sizeof__(self) -> int: ...
@@ -79,19 +113,35 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
     def __contains__(self, key: KT) -> bool: ...
     def contains(self, key: KT) -> bool:
         """
-        Returns `true` if the cache contains an entry for `key`. Equals to `key in self`.
+        Returns ``True`` if the cache contains an entry for ``key``.
 
-        It's recommended to use this method instead of `key in self`, as it keeps code
-        compatible across different cache policies.
+        Equivalent to ``key in self``. Prefer this method over ``key in self``
+        to keep code compatible across different cache policies.
+
+        Args:
+            key: The key to look up.
+
+        Returns:
+            ``True`` if the key exists in the cache, ``False`` otherwise.
         """
         ...
 
     def is_empty(self) -> bool:
-        """Returns `True` if cache is empty. Exactly like `bool(self)`."""
+        """
+        Returns ``True`` if the cache is empty.
+
+        Returns:
+            ``True`` if the cache contains no entries.
+        """
         ...
 
     def is_full(self) -> bool:
-        """Returns `True` when the cumulative size has reached the maxsize limit."""
+        """
+        Returns ``True`` when the cumulative size has reached the maxsize limit.
+
+        Returns:
+            ``True`` if the cache is at capacity.
+        """
         ...
 
     def insert(
@@ -117,9 +167,17 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
     ) -> typing.Optional[VT | DT]: ...
     def pop(self, key: KT, default: DT = ...) -> typing.Union[VT, DT]:
         """
-        Removes specified key and returns the corresponding value.
+        Removes the specified key and returns the corresponding value.
 
-        If the key is not found, returns the `default` if given; otherwise, raise a KeyError.
+        Args:
+            key: The key to remove.
+            default: Value to return if the key is not found.
+
+        Returns:
+            The value associated with ``key``, or ``default`` if not found.
+
+        Raises:
+            KeyError: If the key is not found and no ``default`` is provided.
         """
         ...
 
@@ -127,7 +185,13 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
     def popitem(self) -> typing.Tuple[KT, VT]: ...
     def drain(self, n: int) -> int:
         """
-        Calls the `popitem()` `n` times and returns count of removed items.
+        Calls ``popitem()`` ``n`` times and returns the count of removed items.
+
+        Args:
+            n: The number of items to remove.
+
+        Returns:
+            The number of items successfully removed.
         """
         ...
 
@@ -137,9 +201,11 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
 
     def clear(self, *, reuse: bool = False) -> None:
         """
-        Removes all items from cache.
+        Removes all items from the cache.
 
-        If `reuse` is True, will not free the memory for reusing in the future.
+        Args:
+            reuse: If ``True``, retains the allocated memory for future reuse
+                rather than freeing it. Defaults to ``False``.
         """
         ...
 
@@ -156,62 +222,73 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
 class Cache(BaseCacheImpl[KT, VT]):
     """
     A thread-safe, memory-efficient key-value cache with no eviction policy.
-    items remain in the cache until manually removed or the cache is cleared.
 
-    ## How It Works
-    `Cache` is essentially a configurable hashmap-like store. When an item is inserted:
-    - It is stored directly without any ordering, priority tracking, or access metadata.
-    - If a maximum size is configured, insertions beyond that limit are rejected (raises OverflowError).
-    - All read and write operations are thread-safe, making it safe for concurrent access without
-      external locking.
+    Items remain in the cache until manually removed or the cache is cleared.
 
-    Because no eviction logic runs in the background, there is no overhead from tracking usage order,
-    frequency counters, or expiry timestamps.
+    ``Cache`` is essentially a configurable hashmap-like store. When an item is
+    inserted, it is stored directly without any ordering, priority tracking, or
+    access metadata. If a maximum size is configured, insertions beyond that
+    limit are rejected with an ``OverflowError``. All read and write operations
+    are thread-safe.
 
-    ### Pros
-    - Minimal overhead - no bookkeeping for eviction means lower CPU and memory usage per entry compared
-      to policy-based caches.
-    - Predictable behavior - items are never silently removed, so cache hits are deterministic once an
-      item is stored.
-    - Thread-safe - safe for concurrent reads and writes out of the box.
-    - Configurable capacity - a hard size limit prevents unbounded memory growth.
+    Because no eviction logic runs in the background, there is no overhead from
+    tracking usage order, frequency counters, or expiry timestamps.
 
-    ### Cons
-    - No automatic eviction - the cache can fill up and stop accepting new entries if a max size is set,
-      requiring manual management.
-    - Unordered - unlike a standard dict (Python 3.7+), insertion order is not preserved.
-    - Not suitable for volatile data - stale entries persist forever unless explicitly invalidated.
+    Pros:
+        - Minimal overhead: no bookkeeping for eviction means lower CPU and
+          memory usage per entry compared to policy-based caches.
+        - Predictable behavior: items are never silently removed, so cache hits
+          are deterministic once an item is stored.
+        - Thread-safe: safe for concurrent reads and writes out of the box.
+        - Configurable capacity: a hard size limit prevents unbounded memory
+          growth.
 
-    ## When to Use It
-    `Cache` is the right choice when:
-    - You have a fixed, well-known set of keys that are expensive to compute and never go stale
-      (e.g., parsed config values, compiled regex patterns, loaded templates).
-    - The cached data has no meaningful expiry - it's either always valid or always explicitly invalidated.
-    - You need the lowest possible overhead and can guarantee the cache won't grow uncontrollably.
+    Cons:
+        - No automatic eviction: the cache can fill up and stop accepting new
+          entries if a max size is set, requiring manual management.
+        - Unordered: unlike a standard ``dict`` (Python 3.7+), insertion order
+          is not preserved.
+        - Not suitable for volatile data: stale entries persist forever unless
+          explicitly invalidated.
 
-    Avoid it when cached data can become stale, when the working set is unpredictable in size, or when you need automatic
-    memory pressure relief.
+    Use ``Cache`` when you have a fixed, well-known set of keys that are
+    expensive to compute and never go stale (e.g. parsed config values,
+    compiled regex patterns, loaded templates), and when the lowest possible
+    overhead is required.
+
+    Avoid it when cached data can become stale, when the working set is
+    unpredictable in size, or when automatic memory pressure relief is needed.
     """
 
     def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
         """
-        Equals to `self[key] = value`, but returns a value:
+        Inserts a key-value pair and returns the previous value if present.
 
-        - If the cache did not have this key present, None is returned.
-        - If the cache did have this key present, the value is updated,
-          and the old value is returned. The key is not updated, though;
+        Equivalent to ``self[key] = value``, but returns a value. Prefer this
+        method over direct assignment to keep code compatible across different
+        cache policies.
 
-        It's recommended to use this method instead of `self[key] = value`, as it keeps code
-        compatible across different cache policies.
+        Args:
+            key: The key to insert or update.
+            value: The value to associate with ``key``.
 
-        Note: raises `OverflowError` if the cache reached the maxsize limit,
-        because this class does not have any algorithm.
+        Returns:
+            ``None`` if the key was not previously present; the old value if
+            the key already existed (the key itself is not updated).
+
+        Raises:
+            OverflowError: If the cache has reached its ``maxsize`` limit,
+                since this class has no eviction algorithm.
         """
         ...
 
     def update(self, iterable: _IterableType[KT, VT]) -> None:
         """
-        Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
+        Updates the cache with elements from a dictionary or iterable of key-value pairs.
+
+        Args:
+            iterable: A dictionary, object supporting ``items()``, another
+                cache instance, or an iterable of ``(key, value)`` tuples.
         """
         ...
 
@@ -223,8 +300,12 @@ class Cache(BaseCacheImpl[KT, VT]):
         """
         Retrieves the value for a given key from the cache.
 
-        Returns the value associated with the key if present, otherwise returns the specified default value.
-        Equivalent to `self[key]`, but provides a fallback default if the key is not found.
+        Args:
+            key: The key to look up.
+            default: Value to return if the key is not found.
+
+        Returns:
+            The value associated with ``key``, or ``default`` if not found.
         """
         ...
 
@@ -234,109 +315,131 @@ class Cache(BaseCacheImpl[KT, VT]):
         default: typing.Optional[DT] = None,
     ) -> typing.Optional[VT | DT]:
         """
-        Inserts key with a value of default if key is not in the cache.
+        Inserts ``key`` with ``default`` as its value if the key is absent.
 
-        Returns the value for key if key is in the cache, else default.
+        Args:
+            key: The key to look up or insert.
+            default: The value to insert if ``key`` is not in the cache.
+                Defaults to ``None``.
+
+        Returns:
+            The existing value if ``key`` is present, otherwise ``default``.
         """
         ...
 
     def popitem(self) -> typing.Tuple[KT, VT]:
-        """Always raises `OverflowError` because `Cache` has neither policy nor algorithm to evict items."""
+        """
+        Always raises ``OverflowError``.
+
+        ``Cache`` has no policy or algorithm to select an item for eviction.
+
+        Raises:
+            OverflowError: Always, because ``Cache`` has no eviction policy.
+        """
         ...
 
     def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
         """
-        Returns an iterable object of the cache's items (key-value pairs).
+        Returns an iterable of the cache's ``(key, value)`` pairs.
 
-        Notes:
-        - You should not make any changes in cache while using this iterable object.
-        - Items are not ordered.
+        Warning:
+            Do not modify the cache while iterating. Items are not ordered.
+
+        Returns:
+            An iterable of ``(key, value)`` tuples.
         """
         ...
 
     def keys(self) -> typing.Iterable[KT]:
         """
-        Returns an iterable object of the cache's keys.
+        Returns an iterable of the cache's keys.
 
-        Notes:
-        - You should not make any changes in cache while using this iterable object.
-        - Keys are not ordered.
+        Warning:
+            Do not modify the cache while iterating. Keys are not ordered.
+
+        Returns:
+            An iterable of keys.
         """
         ...
 
     def values(self) -> typing.Iterable[VT]:
         """
-        Returns an iterable object of the cache's values.
+        Returns an iterable of the cache's values.
 
-        Notes:
-        - You should not make any changes in cache while using this iterable object.
-        - Values are not ordered.
+        Warning:
+            Do not modify the cache while iterating. Values are not ordered.
+
+        Returns:
+            An iterable of values.
         """
         ...
 
 class FIFOCache(BaseCacheImpl[KT, VT]):
     """
-    A First-In-First-Out (FIFO) cache eviction policy: when the cache is full, the oldest
-    inserted item is always the first to be removed, regardless of how often it has been accessed.
+    A cache with a First-In-First-Out (FIFO) eviction policy.
 
-    ## How It Works
-    The FIFO algorithm is one of the simplest cache eviction strategies. Items are stored in
-    insertion order, and when the cache reaches capacity, the item that has been there the
-    longest is evicted to make room. There is no concept of "recently used" or "frequently used"
-    - age alone determines eviction order. Conceptually, it behaves like a queue: new items
-    join the back, and evictions come from the front.
+    When the cache is full, the oldest inserted item is always the first to be
+    removed, regardless of how often it has been accessed.
 
-    This implementation backs that queue with a `double-ended queue` for O(1) front removal,
-    paired with a `hash map` for O(1) key lookups. Rather than storing physical indices into
-    the deque (which shift every time an item is evicted from the front), the table stores
-    logical indices - a monotonically increasing counter assigned at insertion time.
-    A separate `front_offset` counter tracks how many items have ever been evicted; the physical
-    position of any key is recovered at read time as `entries[table[key] - front_offset]`,
-    keeping both eviction and lookup O(1) without any per-eviction rewriting of the table.
+    Items are stored in insertion order. When capacity is reached, the item
+    that has been present the longest is evicted. There is no concept of
+    "recently used" or "frequently used" — age alone determines eviction order.
+    Conceptually it behaves like a queue: new items join the back and evictions
+    come from the front.
 
-    ### Pros
-    - Insert, lookup, and evict are all O(1) amortized: the `front_offset` trick eliminates the O(n)
-      index-shifting that a native implementation would require on every eviction.
-    - Eviction order is fully deterministic: the oldest item always goes first, independent of access
-      patterns, making behaviour easy to reason about and reproduce in tests.
-    - No per-read overhead. Unlike LRU, FIFO requires no bookkeeping on cache hits.
+    This implementation backs that queue with a double-ended queue for O(1)
+    front removal, paired with a hash map for O(1) key lookups. Logical indices
+    (a monotonically increasing counter) are stored in the table rather than
+    physical deque positions, so eviction never requires rewriting the index.
+    A ``front_offset`` counter recovers physical positions at read time as
+    ``entries[table[key] - front_offset]``.
 
-    ### Cons
-    - Access-blind eviction. A hot item accessed thousands of times is evicted just as readily as one
-      that has never been read. Hit rates suffer on workloads with strong temporal locality.
-    - The logical-index indirection adds a layer of internal complexity compared to a naïve queue-based cache.
-    - The rare O(n) index rebase (triggered when `front_offset` nears `usize::MAX - isize::MAX`) introduces
-      an occasional latency spike. Amortized cost is negligible, but worst-case latency is unbounded in principle.
+    Pros:
+        - Insert, lookup, and evict are all O(1) amortized.
+        - Eviction order is fully deterministic and easy to reason about.
+        - No per-read overhead: unlike LRU, FIFO requires no bookkeeping on
+          cache hits.
 
-    ## When to use it
-    Reach for `FIFOPolicy` when:
-    - Eviction order must be predictable and auditable: streaming pipelines, sequential batch processors, or
-      any context where deterministic behaviour simplifies debugging.
-    - Access patterns are roughly uniform, so there is no meaningful "hot" subset of keys that a recency or
-      frequency-aware policy could exploit.
-    - Read overhead must be minimal: FIFO's zero-cost hits make it preferable to LRU in insert-heavy workloads
-      with infrequent re-reads.
+    Cons:
+        - Access-blind eviction: a hot item is evicted just as readily as one
+          never read, hurting hit rates on workloads with temporal locality.
+        - Logical-index indirection adds internal complexity vs. a naive queue.
+        - A rare O(n) index rebase (when ``front_offset`` nears
+          ``usize::MAX - isize::MAX``) introduces an occasional latency spike.
 
-    Avoid it when your workload has strong temporal locality. If recently or frequently accessed items are likely
-    to be needed again soon, an LRU or LFU policy will deliver meaningfully better hit rates.
+    Use ``FIFOCache`` when eviction order must be predictable and auditable,
+    access patterns are roughly uniform, or read overhead must be minimal
+    (insert-heavy workloads with infrequent re-reads).
+
+    Avoid it when the workload has strong temporal locality; in those cases LRU
+    or LFU will deliver meaningfully better hit rates.
     """
 
     def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
         """
-        Equals to `self[key] = value`, but returns a value:
+        Inserts a key-value pair and returns the previous value if present.
 
-        - If the cache did not have this key present, None is returned.
-        - If the cache did have this key present, the value is updated,
-          and the old value is returned. The key is not updated, though;
+        Equivalent to ``self[key] = value``, but returns a value. Prefer this
+        method over direct assignment to keep code compatible across different
+        cache policies.
 
-        It's recommended to use this method instead of `self[key] = value`, as it keeps code
-        compatible across different cache policies.
+        Args:
+            key: The key to insert or update.
+            value: The value to associate with ``key``.
+
+        Returns:
+            ``None`` if the key was not previously present; the old value if
+            the key already existed (the key itself is not updated).
         """
         ...
 
     def update(self, iterable: _IterableType[KT, VT]) -> None:
         """
-        Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
+        Updates the cache with elements from a dictionary or iterable of key-value pairs.
+
+        Args:
+            iterable: A dictionary, object supporting ``items()``, another
+                cache instance, or an iterable of ``(key, value)`` tuples.
         """
         ...
 
@@ -346,126 +449,154 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         default: typing.Optional[DT] = None,
     ) -> typing.Optional[VT | DT]:
         """
-        Inserts key with a value of default if key is not in the cache.
+        Inserts ``key`` with ``default`` as its value if the key is absent.
 
-        Returns the value for key if key is in the cache, else default.
+        Args:
+            key: The key to look up or insert.
+            default: The value to insert if ``key`` is not in the cache.
+                Defaults to ``None``.
+
+        Returns:
+            The existing value if ``key`` is present, otherwise ``default``.
         """
         ...
 
     def popitem(self) -> typing.Tuple[KT, VT]:
         """
-        Removes the element that has been in the cache the longest.
+        Removes and returns the oldest item in the cache.
+
+        Returns:
+            A ``(key, value)`` tuple for the item that was inserted first.
+
+        Raises:
+            KeyError: If the cache is empty.
         """
         ...
 
     def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
         """
-        Returns an iterable object of the cache's items (key-value pairs).
+        Returns an ordered iterable of the cache's ``(key, value)`` pairs.
 
-        Notes:
-        - You should not make any changes in cache while using this iterable object.
-        - Items are ordered.
+        Warning:
+            Do not modify the cache while iterating.
+
+        Returns:
+            An iterable of ``(key, value)`` tuples in insertion order.
         """
         ...
 
     def keys(self) -> typing.Iterable[KT]:
         """
-        Returns an iterable object of the cache's keys.
+        Returns an ordered iterable of the cache's keys.
 
-        Notes:
-        - You should not make any changes in cache while using this iterable object.
-        - Keys are ordered.
+        Warning:
+            Do not modify the cache while iterating.
+
+        Returns:
+            An iterable of keys in insertion order.
         """
         ...
 
     def values(self) -> typing.Iterable[VT]:
         """
-        Returns an iterable object of the cache's values.
+        Returns an ordered iterable of the cache's values.
 
-        Notes:
-        - You should not make any changes in cache while using this iterable object.
-        - Values are ordered.
+        Warning:
+            Do not modify the cache while iterating.
+
+        Returns:
+            An iterable of values in insertion order.
         """
         ...
 
     def first(self, n: int = 0) -> typing.Optional[KT]:
         """
-        Returns the first key in cache; this is the one which will be removed by `popitem()` (if n == 0).
-        By using `n` parameter, you can browse order index by index.
+        Returns the key at position ``n`` in insertion order.
 
-        Raises `IndexError` if cache is empty, or `n` is out of range.
+        The key at position 0 is the one that will be removed by ``popitem()``.
+
+        Args:
+            n: The index to look up. Defaults to 0 (the oldest item).
+
+        Returns:
+            The key at the given index.
+
+        Raises:
+            IndexError: If the cache is empty or ``n`` is out of range.
         """
         ...
 
     def last(self) -> typing.Optional[KT]:
         """
-        Returns the last key in cache. Equals to `self.first(-1)`.
+        Returns the most recently inserted key. Equivalent to ``self.first(-1)``.
 
-        Raises `IndexError` if cache is empty.
+        Returns:
+            The key of the most recently inserted item.
+
+        Raises:
+            IndexError: If the cache is empty.
         """
         ...
 
 class RRCache(BaseCacheImpl[KT, VT]):
-    """
-    A thread-safe, memory-efficient key-value cache with Random Replacement eviction policy.
-    When the cache reaches its maximum size, an item is randomly selected and
+    """A thread-safe, memory-efficient cache with a Random Replacement eviction policy.
+
+    When the cache reaches its maximum size, a randomly selected item is
     evicted to make room for new entries.
 
-    ## How It Works
-    `RRCache` is a configurable hashmap-like store with automatic eviction. When an item is inserted:
-    - It is stored directly without any ordering or priority tracking.
-    - If a maximum size is configured and the cache is full, a random entry is evicted to make room
-      for the new item.
-    - All read and write operations are thread-safe, making it safe for concurrent access without
-      external locking.
+    Items are stored without any ordering or priority tracking. The Random
+    Replacement policy selects entries for eviction uniformly at random,
+    ensuring fair treatment across all cached items regardless of access
+    patterns.
 
-    The Random Replacement policy selects entries for eviction uniformly at random, ensuring fair
-    treatment across all cached items regardless of access patterns.
+    Pros:
+        - Low overhead: computationally cheap compared to tracking access order
+          or frequency.
+        - Thread-safe: safe for concurrent reads and writes out of the box.
+        - Configurable capacity: a hard size limit prevents unbounded memory
+          growth while allowing new entries through automatic eviction.
+        - No indefinite staleness: items are eventually replaced by the
+          eviction policy.
 
-    ### Pros
-    - Low overhead: Random Replacement is computationally cheap compared to tracking access order or frequency.
-    - Thread-safe: safe for concurrent reads and writes out of the box.
-    - Configurable capacity: a hard size limit prevents unbounded memory growth while allowing new entries
-      through automatic eviction.
-    - No staleness issues: items persist only as long as they remain unselected by the eviction policy,
-      preventing indefinite accumulation of stale data.
+    Cons:
+        - Non-deterministic eviction: random selection means recently cached or
+          frequently accessed items may be unexpectedly removed.
+        - Unordered: insertion order is not preserved.
+        - Less optimal than LRU/LFU on skewed access patterns.
 
-    ### Cons
-    - Non-deterministic eviction: random selection means you cannot predict which entry will be removed,
-      potentially evicting recently cached or frequently accessed items.
-    - Unordered: insertion order is not preserved.
-    - Less optimal than LRU/LFU: for workloads with skewed access patterns, Random Replacement will
-      evict frequently used items more often than policy-aware caches.
+    Use ``RRCache`` when the working set can grow unpredictably, access
+    patterns are roughly uniform, and low overhead with simple eviction logic
+    is preferred.
 
-    ## When to Use It
-    `RRCache` is the right choice when:
-    - You have a working set that can grow unpredictably and requires automatic memory management.
-    - Access patterns are relatively uniform and predictable, so random eviction is not significantly
-      worse than smarter policies.
-    - You need low computational overhead and simple eviction logic.
-    - You want to prevent unbounded memory growth without the complexity of tracking usage metadata.
-
-    Avoid it when you have highly skewed access patterns (where certain items are accessed far more
-    frequently than others), when cache hits are mission-critical and predictability matters, or when
-    you need fine-grained control over what gets evicted.
+    Avoid it when access patterns are highly skewed, cache hits are
+    mission-critical, or fine-grained eviction control is required.
     """
 
     def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
         """
-        Equals to `self[key] = value`, but returns a value:
+        Inserts a key-value pair and returns the previous value if present.
 
-        - If the cache did not have this key present, None is returned.
-        - If the cache did have this key present, the value is updated,
-          and the old value is returned. The key is not updated, though;
+        Equivalent to ``self[key] = value``, but returns a value. Prefer this
+        method over direct assignment to keep code compatible across different
+        cache policies.
 
-        It's recommended to use this method instead of `self[key] = value`, as it keeps code
-        compatible across different cache policies.
+        Args:
+            key: The key to insert or update.
+            value: The value to associate with ``key``.
+
+        Returns:
+            ``None`` if the key was not previously present; the old value if
+            the key already existed (the key itself is not updated).
         """
         ...
 
     def update(self, iterable: _IterableType[KT, VT]) -> None:
         """
-        Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
+        Updates the cache with elements from a dictionary or iterable of key-value pairs.
+
+        Args:
+            iterable: A dictionary, object supporting ``items()``, another
+                cache instance, or an iterable of ``(key, value)`` tuples.
         """
         ...
 
@@ -477,8 +608,12 @@ class RRCache(BaseCacheImpl[KT, VT]):
         """
         Retrieves the value for a given key from the cache.
 
-        Returns the value associated with the key if present, otherwise returns the specified default value.
-        Equivalent to `self[key]`, but provides a fallback default if the key is not found.
+        Args:
+            key: The key to look up.
+            default: Value to return if the key is not found.
+
+        Returns:
+            The value associated with ``key``, or ``default`` if not found.
         """
         ...
 
@@ -488,141 +623,143 @@ class RRCache(BaseCacheImpl[KT, VT]):
         default: typing.Optional[DT] = None,
     ) -> typing.Optional[VT | DT]:
         """
-        Inserts key with a value of default if key is not in the cache.
+        Inserts ``key`` with ``default`` as its value if the key is absent.
 
-        Returns the value for key if key is in the cache, else default.
+        Args:
+            key: The key to look up or insert.
+            default: The value to insert if ``key`` is not in the cache.
+                Defaults to ``None``.
+
+        Returns:
+            The existing value if ``key`` is present, otherwise ``default``.
         """
         ...
 
     def popitem(self) -> typing.Tuple[KT, VT]:
-        """Randomly selects and removes a (key, value) pair from the cache."""
+        """
+        Randomly selects, removes, and returns a ``(key, value)`` pair.
+
+        Returns:
+            A randomly chosen ``(key, value)`` tuple.
+
+        Raises:
+            KeyError: If the cache is empty.
+        """
         ...
 
     def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
         """
-        Returns an iterable object of the cache's items (key-value pairs).
+        Returns an iterable of the cache's ``(key, value)`` pairs.
 
-        Notes:
-        - You should not make any changes in cache while using this iterable object.
-        - Items are not ordered.
+        Warning:
+            Do not modify the cache while iterating. Items are not ordered.
+
+        Returns:
+            An iterable of ``(key, value)`` tuples.
         """
         ...
 
     def keys(self) -> typing.Iterable[KT]:
         """
-        Returns an iterable object of the cache's keys.
+        Returns an iterable of the cache's keys.
 
-        Notes:
-        - You should not make any changes in cache while using this iterable object.
-        - Keys are not ordered.
+        Warning:
+            Do not modify the cache while iterating. Keys are not ordered.
+
+        Returns:
+            An iterable of keys.
         """
         ...
 
     def values(self) -> typing.Iterable[VT]:
         """
-        Returns an iterable object of the cache's values.
+        Returns an iterable of the cache's values.
 
-        Notes:
-        - You should not make any changes in cache while using this iterable object.
-        - Values are not ordered.
+        Warning:
+            Do not modify the cache while iterating. Values are not ordered.
+
+        Returns:
+            An iterable of values.
         """
         ...
 
     def random_key(self) -> KT:
         """
         Randomly selects and returns a key from the cache.
-        Raises `KeyError` If the cache is empty.
+
+        Returns:
+            A randomly chosen key.
+
+        Raises:
+            KeyError: If the cache is empty.
         """
         ...
 
 class LRUCache(BaseCacheImpl[KT, VT]):
     """
-    A Least-Recently-Used (LRU) cache eviction policy: when the cache is full,
-    the item that has not been accessed for the longest time is removed first,
-    regardless of how many times it was accessed in the past.
+    A cache with a Least-Recently-Used (LRU) eviction policy.
 
-    ## How It Works
-    The LRU algorithm is one of the most widely used cache eviction strategies in
-    practice. Items are tracked by their access recency—every time an item is read
-    or written, it becomes the most recently used. When the cache reaches capacity,
-    the least recently used item (the one that was accessed longest ago) is
-    evicted to make room for new entries.
+    When the cache is full, the item that has not been accessed for the longest
+    time is removed first, regardless of how many times it was accessed in the
+    past.
 
-    This implementation pairs a doubly-linked list with a hash map. The linked list
-    maintains items in access order: the most recently used item sits at the back,
-    and the least recently used at the front. The hash map stores pointers (cursors)
-    into this list, enabling O(1) key lookups. On every access—read or write—the
-    accessed item is moved to the back of the list, promoting it to "most recently used"
-    status. When eviction is needed, the front item is removed.
+    Items are tracked by access recency — every read or write promotes an item
+    to "most recently used". When capacity is reached, the least recently used
+    item (accessed longest ago) is evicted.
 
-    The doubly-linked list structure is critical: it permits O(1) removal and
-    reinsertion of any item anywhere in the ordering, without requiring a full rebuild
-    or index shifting. A running total tracks the current size of cached items,
-    allowing capacity checks in constant time.
+    This implementation pairs a doubly-linked list with a hash map. The list
+    maintains items in access order (most recently used at the back, least
+    recently used at the front); the hash map stores cursors into the list for
+    O(1) lookups. On every access the item is moved to the back. On eviction
+    the front item is removed. A running total enables O(1) capacity checks.
 
-    ### Pros
-    - **Excellent hit rates on temporal locality.** Workloads where recently or
-      frequently accessed items are likely to be needed again soon benefit dramatically
-      from LRU's recency-aware eviction. Real-world caches (CPU L1/L2, database
-      buffers, CDN edges) rely on this principle.
-    - **Insert, lookup, and evict are all O(1) amortized.** The doubly-linked list
-      and hash map combination guarantees no per-operation index shifting or traversals.
-    - **Automatic adaptation to access patterns.** Hot keys naturally migrate to the
-      back of the list and stay there, while cold keys drift toward eviction. No
-      manual tuning of weights or thresholds is needed.
-    - **Per-hit cost is minimal.** While LRU does require bookkeeping on reads (moving
-      an item to the back), this bookkeeping is O(1) and adds negligible overhead to most
-      workloads.
+    Pros:
+        - Excellent hit rates on temporal-locality workloads.
+        - Insert, lookup, and evict are all O(1) amortized.
+        - Automatically adapts to access patterns without manual tuning.
+        - Per-hit cost is minimal (O(1) linked-list manipulation).
 
-    ### Cons
-    - **Per-read overhead.** Every cache hit requires updating the linked list (removing
-      the item from its current position and reinserting it at the back), which is
-      measurably slower than FIFO's zero-cost hits on read-heavy workloads.
-    - **Burst traffic can skew eviction.** A single item accessed many times in rapid
-      succession will be kept alive indefinitely, even if other keys have better long-term
-      utility. Recency is a proxy for future use, not a guarantee.
-    - **Implementation complexity.** The doubly-linked list and cursor-based hash table add
-      internal complexity compared to simpler policies like FIFO.
-    - **Memory overhead.** Storing doubly-linked pointers (prev/next) for every cached item
-      consumes extra memory compared to array-based alternatives.
+    Cons:
+        - Per-read overhead from updating the linked list on every cache hit.
+        - Burst traffic can keep a transiently hot item alive at the expense of
+          items with better long-term utility.
+        - Implementation complexity from doubly-linked list and cursor-based
+          hash table.
+        - Memory overhead from storing prev/next pointers for every entry.
 
-    ## When to use it
-    Reach for `LRUPolicy` when:
-    - Your workload exhibits temporal locality—recently accessed items are likely to be
-      needed again soon. Databases, web caches, and CPU caches all exhibit this pattern.
-    - Hit rate is your primary metric. If maximizing the proportion of requests served
-      from the cache matters more than minimizing per-hit latency, LRU is typically the
-      best general-purpose choice.
-    - Access patterns are unknown or unpredictable. LRU's automatic adaptation makes it a safe
-      default when you cannot statically analyze what keys will be hot.
-    - You need a standard, battle-tested algorithm. LRU is the de facto eviction policy in most
-      production systems; it is well-understood, widely supported, and easy to reason about.
+    Use ``LRUCache`` when the workload exhibits temporal locality, hit rate is
+    the primary metric, or access patterns are unknown or unpredictable.
 
-    Avoid it when:
-    - Your workload is write-heavy with few or no re-reads. FIFO's zero per-hit bookkeeping
-      will outperform LRU if the cache is rarely hit.
-    - You need sub-microsecond latency on every operation. The linked-list manipulation on each
-      read can add measurable overhead in ultra-low-latency systems.
-    - Access patterns are bimodal or exhibit frequency-heavy behavior (a small set of items is
-      accessed far more often than others). An LFU policy may deliver better hit rates in such cases.
+    Avoid it for write-heavy workloads with few re-reads, ultra-low-latency
+    requirements, or frequency-heavy bimodal access patterns (consider LFU
+    instead).
     """
 
     def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
         """
-        Equals to `self[key] = value`, but returns a value:
+        Inserts a key-value pair and returns the previous value if present.
 
-        - If the cache did not have this key present, None is returned.
-        - If the cache did have this key present, the value is updated,
-          and the old value is returned. The key is not updated, though;
+        Equivalent to ``self[key] = value``, but returns a value. Prefer this
+        method over direct assignment to keep code compatible across different
+        cache policies.
 
-        It's recommended to use this method instead of `self[key] = value`, as it keeps code
-        compatible across different cache policies.
+        Args:
+            key: The key to insert or update.
+            value: The value to associate with ``key``.
+
+        Returns:
+            ``None`` if the key was not previously present; the old value if
+            the key already existed (the key itself is not updated).
         """
         ...
 
     def update(self, iterable: _IterableType[KT, VT]) -> None:
         """
-        Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
+        Updates the cache with elements from a dictionary or iterable of key-value pairs.
+
+        Args:
+            iterable: A dictionary, object supporting ``items()``, another
+                cache instance, or an iterable of ``(key, value)`` tuples.
         """
         ...
 
@@ -634,8 +771,12 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         """
         Retrieves the value for a given key from the cache.
 
-        Returns the value associated with the key if present, otherwise returns the specified default value.
-        Equivalent to `self[key]`, but provides a fallback default if the key is not found.
+        Args:
+            key: The key to look up.
+            default: Value to return if the key is not found.
+
+        Returns:
+            The value associated with ``key``, or ``default`` if not found.
         """
         ...
 
@@ -645,46 +786,63 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         default: typing.Optional[DT] = None,
     ) -> typing.Optional[VT | DT]:
         """
-        Inserts key with a value of default if key is not in the cache.
+        Inserts ``key`` with ``default`` as its value if the key is absent.
 
-        Returns the value for key if key is in the cache, else default.
+        Args:
+            key: The key to look up or insert.
+            default: The value to insert if ``key`` is not in the cache.
+                Defaults to ``None``.
+
+        Returns:
+            The existing value if ``key`` is present, otherwise ``default``.
         """
         ...
 
     def popitem(self) -> typing.Tuple[KT, VT]:
         """
-        Removes the least recently used item from the cache and returns it as a (key, value) tuple.
-        Raises KeyError if the cache is empty.
+        Removes and returns the least recently used item.
+
+        Returns:
+            A ``(key, value)`` tuple for the least recently used item.
+
+        Raises:
+            KeyError: If the cache is empty.
         """
         ...
 
     def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
         """
-        Returns an iterable object of the cache's items (key-value pairs).
+        Returns an ordered iterable of the cache's ``(key, value)`` pairs.
 
-        Notes:
-        - You should not make any changes in cache while using this iterable object.
-        - Items are ordered.
+        Warning:
+            Do not modify the cache while iterating.
+
+        Returns:
+            An iterable of ``(key, value)`` tuples in access order.
         """
         ...
 
     def keys(self) -> typing.Iterable[KT]:
         """
-        Returns an iterable object of the cache's keys.
+        Returns an ordered iterable of the cache's keys.
 
-        Notes:
-        - You should not make any changes in cache while using this iterable object.
-        - Keys are ordered.
+        Warning:
+            Do not modify the cache while iterating.
+
+        Returns:
+            An iterable of keys in access order.
         """
         ...
 
     def values(self) -> typing.Iterable[VT]:
         """
-        Returns an iterable object of the cache's values.
+        Returns an ordered iterable of the cache's values.
 
-        Notes:
-        - You should not make any changes in cache while using this iterable object.
-        - Values are ordered.
+        Warning:
+            Do not modify the cache while iterating.
+
+        Returns:
+            An iterable of values in access order.
         """
         ...
 
@@ -694,103 +852,110 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         default: typing.Optional[DT] = ...,
     ) -> typing.Union[VT, DT]:
         """
-        Retrieves the value for a given key from the cache (without promoting the key).
+        Retrieves the value for a key without updating its recency.
+
+        Args:
+            key: The key to look up.
+            default: Value to return if the key is not found.
+
+        Returns:
+            The value associated with ``key``, or ``default`` if not found.
         """
+        ...
 
     def least_recently_used(self) -> typing.Optional[KT]:
         """
-        Returns the key in the cache that has not been accessed in the longest time.
+        Returns the key that has not been accessed for the longest time.
 
-        Raises `KeyError` if cache is empty.
+        Returns:
+            The least recently used key.
+
+        Raises:
+            KeyError: If the cache is empty.
         """
         ...
 
     def most_recently_used(self) -> typing.Optional[KT]:
         """
-        Returns the key in the cache that has been accessed in the shortest time.
+        Returns the key that was accessed most recently.
 
-        Raises `KeyError` if cache is empty.
+        Returns:
+            The most recently used key.
+
+        Raises:
+            KeyError: If the cache is empty.
         """
         ...
 
 class LFUCache(BaseCacheImpl[KT, VT]):
     """
-    A Least-Frequently-Used (LFU) cache eviction policy: when the cache is full, the item
-    with the lowest access count is evicted first. Ties in frequency are broken by recency -
-    among equally rare items, the oldest is evicted.
+    A cache with a Least-Frequently-Used (LFU) eviction policy.
 
-    ## How It Works
-    The LFU algorithm tracks how many times each cached item has been accessed, and always
-    evicts the item with the smallest count. This makes it well-suited for workloads where
-    some items are structurally "hot" and where that frequency signal is stable enough to
-    be worth preserving across cache pressure events.
+    When the cache is full, the item with the lowest access count is evicted
+    first. Ties in frequency are broken by recency — among equally rare items,
+    the oldest is evicted.
 
-    This implementation uses a `lazy binary min-heap` keyed on access frequency, paired with
-    a `hash map` that maps each key to its cursor (a stable pointer into the heap's backing
-    buffer). The heap is "lazy" in the sense that it does not restore the heap invariant after
-    every frequency increment; instead it sets a dirty flag and defers the full re-sort until
-    the next eviction. This amortises the cost of heap maintenance across many hits, so
-    read-heavy workloads pay far less per operation than a classic eager heap would require.
+    Access counts are tracked per key. This implementation uses a lazy binary
+    min-heap keyed on access frequency, paired with a hash map that maps each
+    key to its cursor (a stable pointer into the heap's backing buffer). The
+    heap is "lazy": it does not restore the heap invariant after every frequency
+    increment; instead it sets a dirty flag and defers re-sorting until the
+    next eviction, amortising heap-maintenance cost across many hits.
 
-    On a cache hit, the item's frequency counter is incremented in O(1) and the heap is marked
-    dirty. On eviction, the heap is sorted if dirty, and the minimum-frequency item is popped
-    in O(n log n) worst-case (amortised O(log n) under typical access distributions). Lookups
-    are O(1) via the hash map.
+    On a cache hit the frequency counter is incremented in O(1) and the heap is
+    marked dirty. On eviction the heap is sorted if dirty, then the
+    minimum-frequency item is popped in O(n log n) worst-case (amortised
+    O(log n) under typical distributions). Lookups are O(1) via the hash map.
 
-    ### Pros
-    - Frequency-aware eviction. Items that are accessed often are protected from eviction even
-      under heavy cache pressure, leading to higher hit rates on skewed workloads.
-    - O(1) cache hits. Incrementing a counter and marking the heap dirty is constant-time work,
-      with no structural reorganisation on the hot path.
-    - Lazy heap sorting amortises O(n log n) sort cost across many inserts and hits, keeping
-      the average cost per operation much lower than a naive eager implementation.
+    Pros:
+        - Frequency-aware eviction protects hot items under heavy cache
+          pressure.
+        - O(1) cache hits: incrementing a counter and marking the heap dirty
+          is constant-time work with no structural reorganisation.
+        - Lazy heap sorting amortises the O(n log n) sort cost across many
+          inserts and hits.
 
-    ### Cons
-    - Eviction is O(n log n) worst-case. If the heap is maximally dirty (every entry modified
-      since last sort), a single eviction triggers a full re-sort over all entries. This is
-      amortised away in practice but introduces latency spikes under adversarial access patterns.
-    - Frequency counters accumulate indefinitely. A key that was hot during an early burst remains
-      privileged long after traffic shifts, causing "cache pollution" - stale items that monopolise
-      capacity because of historical frequency, not current utility.
-    - Access patterns must be skewed for LFU to outperform simpler policies. On uniform workloads,
-      frequency counters provide no signal and the extra bookkeeping is pure overhead.
+    Cons:
+        - Eviction is O(n log n) worst-case, introducing latency spikes under
+          adversarial access patterns.
+        - Frequency counters accumulate indefinitely, causing "cache pollution"
+          where historically hot but currently cold items monopolise capacity.
+        - Access patterns must be skewed for LFU to outperform simpler
+          policies; on uniform workloads the extra bookkeeping is pure overhead.
 
-    ## When to use it
-    Reach for `LFUPolicy` when:
-    - Your workload has a stable hot set: a minority of keys that are accessed disproportionately
-      often and whose relative popularity changes slowly over time.
-    - Cache pollution from one-time scans is a concern: LFU naturally resists large sequential reads
-      from displacing frequently accessed items, because freshly inserted keys start at count 1 and
-      are evicted before any item with accumulated hits.
-    - Hit rate matters more than worst-case eviction latency: the amortised cost is low, but if your
-      system has hard real-time latency requirements, the occasional sort spike may be unacceptable.
+    Use ``LFUCache`` when the workload has a stable hot set, cache pollution
+    from one-time scans is a concern, or hit rate matters more than worst-case
+    eviction latency.
 
-    Avoid it when access patterns shift rapidly. If the "hot" subset of keys changes frequently,
-    frequency counters become stale signals and LFU will evict items that have recently become
-    popular. In those cases, an LRU policy - which tracks recency rather than frequency - will
-    adapt faster and typically deliver better hit rates.
-
-    Avoid it on uniform workloads where all keys are accessed with roughly equal probability.
-    The frequency signal provides no meaningful discrimination, and the overhead of maintaining
-    counters and a heap is wasted compared to the simpler bookkeeping of FIFO or LRU.
+    Avoid it when access patterns shift rapidly (use LRU instead) or when all
+    keys are accessed with roughly equal probability.
     """
 
     def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
         """
-        Equals to `self[key] = value`, but returns a value:
+        Inserts a key-value pair and returns the previous value if present.
 
-        - If the cache did not have this key present, None is returned.
-        - If the cache did have this key present, the value is updated,
-          and the old value is returned. The key is not updated, though;
+        Equivalent to ``self[key] = value``, but returns a value. Prefer this
+        method over direct assignment to keep code compatible across different
+        cache policies.
 
-        It's recommended to use this method instead of `self[key] = value`, as it keeps code
-        compatible across different cache policies.
+        Args:
+            key: The key to insert or update.
+            value: The value to associate with ``key``.
+
+        Returns:
+            ``None`` if the key was not previously present; the old value if
+            the key already existed (the key itself is not updated).
         """
         ...
 
     def update(self, iterable: _IterableType[KT, VT]) -> None:
         """
-        Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
+        Updates the cache with elements from a dictionary or iterable of key-value pairs.
+
+        Args:
+            iterable: A dictionary, object supporting ``items()``, another
+                cache instance, or an iterable of ``(key, value)`` tuples.
         """
         ...
 
@@ -802,8 +967,12 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         """
         Retrieves the value for a given key from the cache.
 
-        Returns the value associated with the key if present, otherwise returns the specified default value.
-        Equivalent to `self[key]`, but provides a fallback default if the key is not found.
+        Args:
+            key: The key to look up.
+            default: Value to return if the key is not found.
+
+        Returns:
+            The value associated with ``key``, or ``default`` if not found.
         """
         ...
 
@@ -813,46 +982,63 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         default: typing.Optional[DT] = None,
     ) -> typing.Optional[VT | DT]:
         """
-        Inserts key with a value of default if key is not in the cache.
+        Inserts ``key`` with ``default`` as its value if the key is absent.
 
-        Returns the value for key if key is in the cache, else default.
+        Args:
+            key: The key to look up or insert.
+            default: The value to insert if ``key`` is not in the cache.
+                Defaults to ``None``.
+
+        Returns:
+            The existing value if ``key`` is present, otherwise ``default``.
         """
         ...
 
     def popitem(self) -> typing.Tuple[KT, VT]:
         """
-        Removes the least recently used item from the cache and returns it as a (key, value) tuple.
-        Raises `KeyError` if the cache is empty.
+        Removes and returns the least frequently used item.
+
+        Returns:
+            A ``(key, value)`` tuple for the item with the lowest access count.
+
+        Raises:
+            KeyError: If the cache is empty.
         """
         ...
 
     def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
         """
-        Returns an iterable object of the cache's items (key-value pairs).
+        Returns an ordered iterable of the cache's ``(key, value)`` pairs.
 
-        Notes:
-        - You should not make any changes in cache while using this iterable object.
-        - Items are ordered.
+        Warning:
+            Do not modify the cache while iterating.
+
+        Returns:
+            An iterable of ``(key, value)`` tuples in frequency order.
         """
         ...
 
     def keys(self) -> typing.Iterable[KT]:
         """
-        Returns an iterable object of the cache's keys.
+        Returns an ordered iterable of the cache's keys.
 
-        Notes:
-        - You should not make any changes in cache while using this iterable object.
-        - Keys are ordered.
+        Warning:
+            Do not modify the cache while iterating.
+
+        Returns:
+            An iterable of keys in frequency order.
         """
         ...
 
     def values(self) -> typing.Iterable[VT]:
         """
-        Returns an iterable object of the cache's values.
+        Returns an ordered iterable of the cache's values.
 
-        Notes:
-        - You should not make any changes in cache while using this iterable object.
-        - Values are ordered.
+        Warning:
+            Do not modify the cache while iterating.
+
+        Returns:
+            An iterable of values in frequency order.
         """
         ...
 
@@ -862,23 +1048,45 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         default: typing.Optional[DT] = ...,
     ) -> typing.Union[VT, DT]:
         """
-        Retrieves the value for a given key from the cache (without frequency increment).
+        Retrieves the value for a key without incrementing its frequency counter.
+
+        Args:
+            key: The key to look up.
+            default: Value to return if the key is not found.
+
+        Returns:
+            The value associated with ``key``, or ``default`` if not found.
         """
         ...
 
     def least_frequently_used(self, n: int = 0) -> KT:
         """
-        Returns the key in the cache that has been accessed the least. If n is given, returns the nth least frequently used key.
+        Returns the key with the lowest access count.
 
-        Raises `IndexError` if cache is empty, or `n` is out of range.
+        Args:
+            n: If given, returns the ``n``-th least frequently used key
+                (0-indexed). Defaults to 0.
 
-        Notes:
-            - This method may re-sort the cache which can cause iterators to be stopped.
-            - Do not use this method while using iterators.
+        Returns:
+            The key with the ``n``-th lowest access count.
+
+        Raises:
+            IndexError: If the cache is empty or ``n`` is out of range.
+
+        Warning:
+            This method may re-sort the cache. Do not call it while iterating
+            over the cache.
         """
         ...
 
 class TTLCache(BaseCacheImpl[KT, VT]):
+    """
+    A cache with time-to-live (TTL) expiration.
+
+    Items expire automatically after a configurable duration. Eviction follows
+    a FIFO order among non-expired items when the cache is full.
+    """
+
     def __init__(
         self,
         maxsize: int,
@@ -887,28 +1095,53 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         *,
         capacity: int = 0,
         getsizeof: typing.Callable[[KT, VT]] | None = None,
-    ) -> None: ...
+    ) -> None:
+        """
+        Initializes a new TTLCache instance.
+
+        Args:
+            maxsize: Maximum number of elements the cache can hold. If zero,
+                the limit is set to ``sys.maxsize`` internally.
+            global_ttl: Default time-to-live for all entries, in seconds or as
+                a ``timedelta``.
+            iterable: Initial data to populate the cache.
+            capacity: Pre-allocate cache capacity to minimize reallocations.
+                Defaults to 0.
+            getsizeof: A callable that computes the size of a key-value pair.
+                When ``None``, each entry is assumed to have a size of 1.
+        """
+        ...
+
     @property
     def global_ttl(self) -> float:
-        """Returns the specified `global_ttl`"""
+        """The configured ``global_ttl`` in seconds."""
         ...
 
     def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
         """
-        Equals to `self[key] = value`, but returns a value:
+        Inserts a key-value pair and returns the previous value if present.
 
-        - If the cache did not have this key present, None is returned.
-        - If the cache did have this key present, the value is updated,
-          and the old value is returned. The key is not updated, though;
+        Equivalent to ``self[key] = value``, but returns a value. Prefer this
+        method over direct assignment to keep code compatible across different
+        cache policies.
 
-        It's recommended to use this method instead of `self[key] = value`, as it keeps code
-        compatible across different cache policies.
+        Args:
+            key: The key to insert or update.
+            value: The value to associate with ``key``.
+
+        Returns:
+            ``None`` if the key was not previously present; the old value if
+            the key already existed (the key itself is not updated).
         """
         ...
 
     def update(self, iterable: _IterableType[KT, VT]) -> None:
         """
-        Updates the cache with elements from a dictionary or an iterable object of key/value pairs.
+        Updates the cache with elements from a dictionary or iterable of key-value pairs.
+
+        Args:
+            iterable: A dictionary, object supporting ``items()``, another
+                cache instance, or an iterable of ``(key, value)`` tuples.
         """
         ...
 
@@ -918,70 +1151,102 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         default: typing.Optional[DT] = None,
     ) -> typing.Optional[VT | DT]:
         """
-        Inserts key with a value of default if key is not in the cache.
+        Inserts ``key`` with ``default`` as its value if the key is absent.
 
-        Returns the value for key if key is in the cache, else default.
+        Args:
+            key: The key to look up or insert.
+            default: The value to insert if ``key`` is not in the cache.
+                Defaults to ``None``.
+
+        Returns:
+            The existing value if ``key`` is present, otherwise ``default``.
         """
         ...
 
     def popitem(self) -> typing.Tuple[KT, VT]:
         """
-        Removes the element that has been in the cache the longest.
+        Removes and returns the item that has been in the cache the longest.
+
+        Returns:
+            A ``(key, value)`` tuple for the oldest item.
+
+        Raises:
+            KeyError: If the cache is empty.
         """
         ...
 
     def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
         """
-        Returns an iterable object of the cache's items (key-value pairs).
+        Returns an ordered iterable of the cache's ``(key, value)`` pairs.
 
-        Notes:
-        - You should not make any changes in cache while using this iterable object.
-        - Items are ordered.
+        Warning:
+            Do not modify the cache while iterating.
+
+        Returns:
+            An iterable of ``(key, value)`` tuples in insertion order.
         """
         ...
 
     def keys(self) -> typing.Iterable[KT]:
         """
-        Returns an iterable object of the cache's keys.
+        Returns an ordered iterable of the cache's keys.
 
-        Notes:
-        - You should not make any changes in cache while using this iterable object.
-        - Keys are ordered.
+        Warning:
+            Do not modify the cache while iterating.
+
+        Returns:
+            An iterable of keys in insertion order.
         """
         ...
 
     def values(self) -> typing.Iterable[VT]:
         """
-        Returns an iterable object of the cache's values.
+        Returns an ordered iterable of the cache's values.
 
-        Notes:
-        - You should not make any changes in cache while using this iterable object.
-        - Values are ordered.
+        Warning:
+            Do not modify the cache while iterating.
+
+        Returns:
+            An iterable of values in insertion order.
         """
         ...
 
     def first(self, n: int = 0) -> typing.Optional[KT]:
         """
-        Returns the first key in cache; this is the one which will be removed by `popitem()` (if n == 0).
-        By using `n` parameter, you can browse order index by index.
+        Returns the key at position ``n`` in insertion order.
 
-        Raises `IndexError` if cache is empty, or `n` is out of range.
+        The key at position 0 is the one that will be removed by ``popitem()``.
+
+        Args:
+            n: The index to look up. Defaults to 0 (the oldest item).
+
+        Returns:
+            The key at the given index.
+
+        Raises:
+            IndexError: If the cache is empty or ``n`` is out of range.
         """
         ...
 
     def last(self) -> typing.Optional[KT]:
         """
-        Returns the last key in cache. Equals to `self.first(-1)`.
+        Returns the most recently inserted key. Equivalent to ``self.first(-1)``.
 
-        Raises `IndexError` if cache is empty.
+        Returns:
+            The key of the most recently inserted item.
+
+        Raises:
+            IndexError: If the cache is empty.
         """
         ...
 
     def expire(self, *, reuse: bool = False) -> None:
         """
-        Manually removes expired key-value pairs from cache.
+        Manually removes all expired key-value pairs from the cache.
 
-        If `reuse` is True, will not free the memory for reusing in the future.
+        Args:
+            reuse: If ``True``, retains the allocated memory for future reuse
+                rather than freeing it. Defaults to ``False``.
         """
         ...
 
@@ -991,7 +1256,16 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         default: typing.Optional[DT] = None,
     ) -> typing.Tuple[typing.Union[VT, DT], float]:
         """
-        Works exactly like `.get()`, but also returns expiration duration for a given key from the cache (or 0.0 if not found).
+        Retrieves a value along with its remaining TTL.
+
+        Args:
+            key: The key to look up.
+            default: Value to return if the key is not found.
+
+        Returns:
+            A tuple of ``(value, remaining_ttl)`` where ``remaining_ttl`` is
+            the expiration duration in seconds, or ``0.0`` if the key was not
+            found.
         """
         ...
 
@@ -1001,22 +1275,41 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         default: typing.Optional[DT] = None,
     ) -> typing.Tuple[typing.Union[VT, DT], float]:
         """
-        Works exactly like `.pop()`, but also returns expiration duration for a given key from the cache (or 0.0 if not found).
+        Removes a key and returns its value along with its remaining TTL.
+
+        Args:
+            key: The key to remove.
+            default: Value to return if the key is not found.
+
+        Returns:
+            A tuple of ``(value, remaining_ttl)`` where ``remaining_ttl`` is
+            the expiration duration in seconds, or ``0.0`` if the key was not
+            found.
         """
         ...
 
     def popitem_with_expire(self) -> typing.Tuple[VT, DT, float]:
         """
-        Works exactly like `.popitem()`, but also returns expiration duration for a given key from the cache.
+        Removes and returns the oldest item along with its remaining TTL.
+
+        Returns:
+            A tuple of ``(key, value, remaining_ttl)`` where ``remaining_ttl``
+            is the expiration duration in seconds.
+
+        Raises:
+            KeyError: If the cache is empty.
         """
         ...
 
     def items_with_expire(self) -> typing.Iterable[typing.Tuple[KT, VT, float]]:
         """
-        Returns an iterable object of the cache's items (key-value pairs) with their expiration duration.
+        Returns an ordered iterable of items with their remaining TTL.
 
-        Notes:
-        - You should not make any changes in cache while using this iterable object.
-        - Items are ordered.
+        Warning:
+            Do not modify the cache while iterating.
+
+        Returns:
+            An iterable of ``(key, value, remaining_ttl)`` tuples in insertion
+            order, where ``remaining_ttl`` is in seconds.
         """
         ...

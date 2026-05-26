@@ -96,7 +96,6 @@ pub trait PolicyExt {
     /// Looks up a handle by `hash` and `eq`, applying policy side-effects on hit.
     ///
     /// # Errors
-    ///
     /// Returns `Err` if `eq` raises a Python exception.
     fn get(
         &mut self,
@@ -107,7 +106,6 @@ pub trait PolicyExt {
     /// Returns a [`PolicyEntry`] for the slot at `hash` / `eq`.
     ///
     /// # Errors
-    ///
     /// Returns `Err` if `eq` raises a Python exception.
     fn entry<'a>(
         &'a mut self,

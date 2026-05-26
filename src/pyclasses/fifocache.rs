@@ -36,7 +36,7 @@ implement_pyclass! {
     /// ### Cons
     /// - Access-blind eviction. A hot item accessed thousands of times is evicted just as readily as one
     ///   that has never been read. Hit rates suffer on workloads with strong temporal locality.
-    /// - The logical-index indirection adds a layer of internal complexity compared to a naïve queue-based cache.
+    /// - The logical-index indirection adds a layer of internal complexity compared to a naive queue-based cache.
     /// - The rare O(n) index rebase (triggered when `front_offset` nears `usize::MAX - isize::MAX`) introduces
     ///   an occasional latency spike. Amortized cost is negligible, but worst-case latency is unbounded in principle.
     ///
@@ -97,21 +97,25 @@ impl PyFIFOCache {
             fifopolicy::Shared::new(maxsize, getsizeof),
         );
 
-        if let Some(iterable) = iterable {
-            let getsizeof = wrapped.shared().getsizeof().clone_ref(py);
+        // Populate cache if `iterable` passed
+        let extend_result = {
+            if let Some(iterable) = iterable {
+                let getsizeof = wrapped.shared().getsizeof().clone_ref(py);
 
-            let result = wrapped.extend(
-                // iterable object
-                iterable,
-                // transform function
-                |key, value| fifopolicy::Handle::new(py, &getsizeof, key, value),
-            );
-            self.0.set(wrapped);
-            result
-        } else {
-            self.0.set(wrapped);
-            Ok(())
-        }
+                let result = wrapped.extend(
+                    // iterable object
+                    iterable,
+                    // transform function
+                    |key, value| fifopolicy::Handle::new(py, &getsizeof, key, value),
+                );
+                result
+            } else {
+                Ok(())
+            }
+        };
+
+        self.0.set(wrapped);
+        extend_result
     }
 
     #[getter]

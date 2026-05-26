@@ -37,7 +37,7 @@ implement_pyclass! {
     ///
     /// ### Pros
     /// - Insert, lookup, and evict are all O(1) amortized: the `front_offset` trick eliminates the O(n)
-    ///   index-shifting that a naïve implementation would require on every eviction.
+    ///   index-shifting that a naive implementation would require on every eviction.
     /// - Entries expire automatically without any background thread or explicit invalidation call.
     ///   Stale data is never returned to the caller.
     /// - TTL expiry and insertion-order eviction compose cleanly: the oldest entry is always evicted

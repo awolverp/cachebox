@@ -29,14 +29,14 @@ pub struct FrequencyHandle {
 }
 
 impl FrequencyHandle {
-    /// Creates a new [`FrequencyHandle`]
+    /// Creates a new [`FrequencyHandle`] with an initial frequency (always is zero, except
+    /// in loading pickle states).
     #[inline]
     pub fn new(
         py: pyo3::Python<'_>,
         getsizeof: &utils::GetsizeofFunction,
         key: alias::PyObject,
         value: alias::PyObject,
-        // initial frequency
         frequency: u128,
     ) -> pyo3::PyResult<Self> {
         Self::with_precomputed_hash_key(
@@ -48,14 +48,14 @@ impl FrequencyHandle {
         )
     }
 
-    /// Creates a new [`FrequencyHandle`] from an already-hashed key.
+    /// Creates a new [`FrequencyHandle`] from an already-hashed key,
+    /// with an initial frequency (always is zero, except in loading pickle states).
     #[inline]
     pub fn with_precomputed_hash_key(
         py: pyo3::Python<'_>,
         getsizeof: &utils::GetsizeofFunction,
         key: utils::PrecomputedHashObject,
         value: alias::PyObject,
-        // initial frequency
         frequency: u128,
     ) -> pyo3::PyResult<Self> {
         let size = getsizeof.call(py, key.as_ref(), &value)?;

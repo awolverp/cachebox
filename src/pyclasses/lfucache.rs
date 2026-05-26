@@ -113,21 +113,25 @@ impl PyLFUCache {
             lfupolicy::Shared::new(maxsize, getsizeof),
         );
 
-        if let Some(iterable) = iterable {
-            let getsizeof = wrapped.shared().getsizeof().clone_ref(py);
+        // Populate cache if `iterable` passed
+        let extend_result = {
+            if let Some(iterable) = iterable {
+                let getsizeof = wrapped.shared().getsizeof().clone_ref(py);
 
-            let result = wrapped.extend(
-                // iterable object
-                iterable,
-                // transform function
-                |key, value| lfupolicy::FrequencyHandle::new(py, &getsizeof, key, value, 1),
-            );
-            self.0.set(wrapped);
-            result
-        } else {
-            self.0.set(wrapped);
-            Ok(())
-        }
+                let result = wrapped.extend(
+                    // iterable object
+                    iterable,
+                    // transform function
+                    |key, value| lfupolicy::FrequencyHandle::new(py, &getsizeof, key, value, 0),
+                );
+                result
+            } else {
+                Ok(())
+            }
+        };
+
+        self.0.set(wrapped);
+        extend_result
     }
 
     #[getter]
@@ -239,7 +243,7 @@ impl PyLFUCache {
     ) -> pyo3::PyResult<Option<alias::PyObject>> {
         let inner = self.0.get();
         let handle =
-            lfupolicy::FrequencyHandle::new(py, inner.shared().getsizeof(), key, value, 1)?;
+            lfupolicy::FrequencyHandle::new(py, inner.shared().getsizeof(), key, value, 0)?;
 
         let old_handle = inner.insert(py, handle)?.map(|x| x.into_value());
         Ok(old_handle)
@@ -262,7 +266,7 @@ impl PyLFUCache {
             // iterable object
             iterable.into_bound(py),
             // transform function
-            move |key, value| lfupolicy::FrequencyHandle::new(py, &getsizeof, key, value, 1),
+            move |key, value| lfupolicy::FrequencyHandle::new(py, &getsizeof, key, value, 0),
         )
     }
 

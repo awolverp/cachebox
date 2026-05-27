@@ -56,6 +56,13 @@ impl PyTTLCache {
     ) -> pyo3::PyResult<()> {
         let global_ttl = global_ttl.into_duration()?;
 
+        if global_ttl == std::time::Duration::ZERO {
+            return Err(new_py_error!(
+                PyValueError,
+                "global_ttl must be positive and non-zero"
+            ));
+        }
+
         let wrapped = Wrapped::new(ttlpolicy::TTLPolicy::new(capacity), unsafe {
             ttlpolicy::Shared::with_ttl(maxsize, getsizeof, Some(global_ttl.into()))
         });

@@ -1473,3 +1473,67 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
                 rather than freeing it. Defaults to ``False``.
         """
         ...
+
+    def get_with_expire(
+        self,
+        key: KT,
+        default: typing.Optional[DT] = None,
+    ) -> typing.Tuple[typing.Union[VT, DT], float | None]:
+        """
+        Retrieves a value along with its remaining TTL.
+
+        Args:
+            key: The key to look up.
+            default: Value to return if the key is not found.
+
+        Returns:
+            A tuple of ``(value, remaining_ttl)`` where ``remaining_ttl`` is
+            the expiration duration in seconds, or ``0.0`` if the key was not
+            found.
+        """
+        ...
+
+    def pop_with_expire(
+        self,
+        key: KT,
+        default: typing.Optional[DT] = None,
+    ) -> typing.Tuple[typing.Union[VT, DT], float | None]:
+        """
+        Removes a key and returns its value along with its remaining TTL.
+
+        Args:
+            key: The key to remove.
+            default: Value to return if the key is not found.
+
+        Returns:
+            A tuple of ``(value, remaining_ttl)`` where ``remaining_ttl`` is
+            the expiration duration in seconds, or ``0.0`` if the key was not
+            found.
+        """
+        ...
+
+    def popitem_with_expire(self) -> typing.Tuple[VT, DT, float | None]:
+        """
+        Removes and returns the oldest item along with its remaining TTL.
+
+        Returns:
+            A tuple of ``(key, value, remaining_ttl)`` where ``remaining_ttl``
+            is the expiration duration in seconds.
+
+        Raises:
+            KeyError: If the cache is empty.
+        """
+        ...
+
+    def items_with_expire(self) -> typing.Iterable[typing.Tuple[KT, VT, float | None]]:
+        """
+        Returns an ordered iterable of items with their remaining TTL.
+
+        Warning:
+            Do not modify the cache while iterating.
+
+        Returns:
+            An iterable of ``(key, value, remaining_ttl)`` tuples in insertion
+            order, where ``remaining_ttl`` is in seconds.
+        """
+        ...

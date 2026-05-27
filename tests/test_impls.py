@@ -1619,3 +1619,93 @@ class TestVTTLCachePolicy(mixins.BaseMixin):
         keys = [k for k, _ in c.items()]
         assert "exp" not in keys
         assert "live" in keys
+
+    def test_get_with_expire(self):
+        obj = self.create_cache(2)
+
+        obj.insert(1, 1, 10)
+        time.sleep(0.1)
+        value, dur = obj.get_with_expire(1)
+        assert 1 == value
+        assert isinstance(dur, float) and 10 > dur > 9, (
+            "10 > dur > 9 failed [dur: %f]" % dur
+        )
+
+        obj.insert(1, 1, None)
+        time.sleep(0.1)
+        value, dur = obj.get_with_expire(1)
+        assert 1 == value
+        assert dur is None, "dur is None failed [dur: {}]".format(dur)
+
+        value, dur = obj.get_with_expire("no-exists")
+        assert value is None
+        assert dur is None
+
+        value, dur = obj.get_with_expire("no-exists", "value")
+        assert "value" == value
+        assert dur is None
+
+    def test_pop_with_expire(self):
+        obj = self.create_cache(2)
+
+        obj.insert(1, 1, 10)
+        time.sleep(0.1)
+        value, dur = obj.pop_with_expire(1)
+        assert 1 == value
+        assert isinstance(dur, float) and 10 > dur > 9, (
+            "10 > dur > 9 failed [dur: %f]" % dur
+        )
+
+        obj.insert(1, 1, None)
+        time.sleep(0.1)
+        value, dur = obj.pop_with_expire(1)
+        assert 1 == value
+        assert dur is None, "dur is None failed [dur: {}]".format(dur)
+
+        value, dur = obj.pop_with_expire("no-exists", None)
+        assert value is None
+        assert dur is None
+
+        value, dur = obj.pop_with_expire("no-exists", "value")
+        assert "value" == value
+        assert dur is None
+
+    def test_popitem_with_expire(self):
+        obj = self.create_cache(2)
+
+        obj.insert(1, 1, 10)
+        obj.insert(2, 2, 20)
+        time.sleep(0.1)
+        key, value, dur = obj.popitem_with_expire()
+        assert (1, 1) == (key, value)
+        assert isinstance(dur, float) and 10 > dur > 9, (
+            "10 > dur > 9 failed [dur: %f]" % dur
+        )
+
+        key, value, dur = obj.popitem_with_expire()
+        assert (2, 2) == (key, value)
+        assert isinstance(dur, float) and 20 > dur > 19, (
+            "20 > dur > 19 failed [dur: %f]" % dur
+        )
+
+        with pytest.raises(KeyError):
+            obj.popitem_with_expire()
+
+    def test_items_with_expire(self):
+        # no need to test completely items_with_expire
+        # because it's tested in test_iterators
+        obj = self.create_cache(10, {1: 2, 3: 4})
+        for key, val, ttl in obj.items_with_expire():
+            assert key in obj
+            assert val == obj[key]
+            assert isinstance(ttl, float)
+
+    def test_sweep_interval(self):
+        obj = cachebox.VTTLCache(10, {1: 1, 2: 2, 3: 3}, 3, sweep_interval=3)
+
+        # __len__ doesn't call expire itself
+        assert len(obj) == 3
+        time.sleep(3.5)
+        assert len(obj) == 0
+
+    # TODO: more tests for sweep_interval

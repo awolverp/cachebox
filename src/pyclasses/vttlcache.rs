@@ -1,3 +1,5 @@
+use pyo3::IntoPyObjectExt;
+
 use crate::internal::alias;
 use crate::internal::lazyheap;
 use crate::internal::onceinit;
@@ -589,7 +591,125 @@ impl PyVTTLCache {
         }
     }
 
-    // TODO: items_with_expire, get_with_expire, pop_with_expire, popitem_with_expire
+    #[pyo3(signature = (key, default=utils::OptionalArgument::Undefined))]
+    fn get_with_expire(
+        &self,
+        py: pyo3::Python,
+        key: alias::PyObject,
+        default: utils::OptionalArgument,
+    ) -> pyo3::PyResult<(alias::PyObject, alias::PyObject)> {
+        let key = utils::PrecomputedHashObject::new(py, key)?;
+
+        let inner = self.0.get();
+        let mut policy = inner.policy();
+
+        if let Some(handle) = policy.get(py, &key)? {
+            let dur = match handle.expires_at() {
+                Some(x) => {
+                    let secs = x
+                        .duration_since(std::time::SystemTime::now())
+                        .unwrap_or_default()
+                        .as_secs_f64();
+
+                    secs.into_py_any(py)?
+                }
+                None => py.None(),
+            };
+
+            return Ok((handle.value().clone_ref(py), dur));
+        }
+
+        match default {
+            utils::OptionalArgument::Defined(x) => Ok((x, py.None())),
+            utils::OptionalArgument::Undefined => unsafe {
+                // SAFETY: None is immortal, so reference counting has no meaning
+                Ok((
+                    pyo3::Bound::from_owned_ptr(py, pyo3::ffi::Py_None()).unbind(),
+                    py.None(),
+                ))
+            },
+        }
+    }
+
+    #[pyo3(signature = (key, default=utils::OptionalArgument::Undefined))]
+    fn pop_with_expire(
+        &self,
+        py: pyo3::Python,
+        key: alias::PyObject,
+        default: utils::OptionalArgument,
+    ) -> pyo3::PyResult<(alias::PyObject, alias::PyObject)> {
+        let key = utils::PrecomputedHashObject::new(py, key)?;
+
+        let inner = self.0.get();
+
+        if let Some(handle) = inner.remove(py, &key)? {
+            let dur = match handle.expires_at() {
+                Some(x) => {
+                    let secs = x
+                        .duration_since(std::time::SystemTime::now())
+                        .unwrap_or_default()
+                        .as_secs_f64();
+
+                    secs.into_py_any(py)?
+                }
+                None => py.None(),
+            };
+
+            return Ok((handle.into_value(), dur));
+        }
+
+        match default {
+            utils::OptionalArgument::Defined(x) => Ok((x, py.None())),
+            utils::OptionalArgument::Undefined => Err(new_py_error!(
+                PyKeyError,
+                Into::<alias::PyObject>::into(key)
+            )),
+        }
+    }
+
+    fn popitem_with_expire(
+        &self,
+        py: pyo3::Python,
+    ) -> pyo3::PyResult<(alias::PyObject, alias::PyObject, alias::PyObject)> {
+        let inner = self.0.get();
+        let mut policy = inner.policy();
+
+        let handle = policy.evict(inner.shared())?;
+        drop(policy);
+
+        let dur = match handle.expires_at() {
+            Some(x) => {
+                let secs = x
+                    .duration_since(std::time::SystemTime::now())
+                    .unwrap_or_default()
+                    .as_secs_f64();
+
+                secs.into_py_any(py)?
+            }
+            None => py.None(),
+        };
+
+        let (key, val) = handle.into_pair();
+        Ok((key.into(), val, dur))
+    }
+
+    fn items_with_expire(
+        &self,
+        py: pyo3::Python,
+    ) -> pyo3::PyResult<pyo3::Py<PyVTTLCacheItemsWithExpire>> {
+        let inner = self.0.get();
+        let mut policy = inner.policy();
+
+        let gv = inner.shared().generation_version();
+        let iter = policy.iter(gv);
+
+        let result = PyVTTLCacheItemsWithExpire {
+            iter: parking_lot::Mutex::new(iter),
+            gv: gv.clone(),
+            initial_gv: gv.get(),
+        };
+        pyo3::Py::new(py, result)
+    }
 
     fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
         let inner = self.0.get();
@@ -667,6 +787,24 @@ implement_iterator!(
     fn(py, handle) -> (alias::PyObject, alias::PyObject) {{
         let (key, val) = handle.clone_ref(py).into_pair();
         (key.into(), val)
+    }}
+
+    PyVTTLCacheItemsWithExpire as "vttlcache_items_with_expire"
+    fn(py, handle) -> (alias::PyObject, alias::PyObject, alias::PyObject) {{
+        let dur = match handle.expires_at() {
+            Some(x) => {
+                let secs = x
+                    .duration_since(std::time::SystemTime::now())
+                    .unwrap_or_default()
+                    .as_secs_f64();
+
+                secs.into_py_any(py)?
+            }
+            None => py.None(),
+        };
+
+        let (key, val) = handle.clone_ref(py).into_pair();
+        (key.into(), val, dur)
     }}
 
     PyVTTLCacheKeys as "vttlcache_keys"

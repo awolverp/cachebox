@@ -1431,6 +1431,15 @@ class TestVTTLCachePolicy(mixins.BaseMixin):
         c.insert("k", "v", ttl=past)
         assert "k" not in c
 
+        c.insert("k", "v", ttl=-0.1)
+        assert "k" not in c
+
+        c.insert("k", "v", ttl=-1)
+        assert "k" not in c
+
+        c.insert("k", "v", ttl=timedelta(days=-1))
+        assert "k" not in c
+
     def test_items_have_independent_ttls(self):
         c = self.create_cache()
         c.insert("short", "s", ttl=0.1)

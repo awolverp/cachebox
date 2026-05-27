@@ -222,54 +222,35 @@ impl<'a, 'py> pyo3::FromPyObject<'a, 'py> for OptionalArgument {
     }
 }
 
-/// It can use as PyO3 function argument. Accepts Python `float`, `dateime.timedelta`, and `datetime.datetime`.
 #[derive(pyo3::FromPyObject, Debug)]
 pub enum TimeToLiveArgument {
     Float(f64),
-    Timedelta(std::time::Duration),
+    Timedelta(chrono::TimeDelta),
     DatetimeUtc(chrono::DateTime<chrono::Utc>),
     DatetimeNaive(chrono::NaiveDateTime),
 }
 
 impl TimeToLiveArgument {
-    /// Consumes self and returns [`ExpiresAt`].
-    ///
-    /// In this method, [`Self::Datetime`] is allowed.
     #[inline(always)]
     pub fn into_expires_at(self) -> pyo3::PyResult<ExpiresAt> {
         match self {
-            Self::Float(secs) if secs > 0.0 => Ok(ExpiresAt::Duration(
-                std::time::Duration::from_secs_f64(secs),
-            )),
-            Self::Timedelta(delta) if delta > std::time::Duration::ZERO => {
-                Ok(ExpiresAt::Duration(delta))
-            }
-            Self::DatetimeUtc(until) if until > chrono::Utc::now() => Ok(ExpiresAt::from(until)),
-            Self::DatetimeNaive(until) if until > chrono::Local::now().naive_local() => {
-                Ok(ExpiresAt::from(until))
-            }
-            _ => Err(new_py_error!(
-                PyValueError,
-                "time-to-live must be positive and non-zero"
-            )),
+            Self::Float(secs) => Ok(ExpiresAt::Duration(std::time::Duration::from_secs_f64(
+                secs.max(0.0),
+            ))),
+            Self::Timedelta(delta) => Ok(ExpiresAt::from(delta)),
+            Self::DatetimeUtc(until) => Ok(ExpiresAt::from(until)),
+            Self::DatetimeNaive(until) => Ok(ExpiresAt::from(until)),
         }
     }
 
-    /// Consumes self and returns [`std::time::Duration`].
-    ///
-    /// In this method, [`Self::Datetime`] is not allowed.
     #[inline(always)]
     pub fn into_duration(self) -> pyo3::PyResult<std::time::Duration> {
         match self {
-            Self::Float(secs) if secs > 0.0 => Ok(std::time::Duration::from_secs_f64(secs)),
-            Self::Timedelta(delta) if delta > std::time::Duration::ZERO => Ok(delta),
+            Self::Float(secs) => Ok(std::time::Duration::from_secs_f64(secs.max(0.0))),
+            Self::Timedelta(delta) => Ok(delta.to_std().unwrap_or(std::time::Duration::ZERO)),
             Self::DatetimeUtc(_) | Self::DatetimeNaive(_) => Err(new_py_error!(
                 PyTypeError,
-                "expected dateime.timedelta or float, got datetime.datetime"
-            )),
-            _ => Err(new_py_error!(
-                PyValueError,
-                "time-to-live must be positive and non-zero"
+                "expected datetime.timedelta or float, got datetime.datetime"
             )),
         }
     }
@@ -277,8 +258,8 @@ impl TimeToLiveArgument {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ExpiresAt {
-    SystemTime(std::time::SystemTime),
     Duration(std::time::Duration),
+    Instant(chrono::DateTime<chrono::Utc>),
 }
 
 impl From<std::time::Duration> for ExpiresAt {
@@ -288,39 +269,39 @@ impl From<std::time::Duration> for ExpiresAt {
     }
 }
 
-impl From<std::time::SystemTime> for ExpiresAt {
+impl From<chrono::TimeDelta> for ExpiresAt {
     #[inline]
-    fn from(value: std::time::SystemTime) -> Self {
-        Self::SystemTime(value)
+    fn from(value: chrono::TimeDelta) -> Self {
+        // Negative or zero timedelta collapses to ZERO duration (expire immediately)
+        Self::Duration(value.to_std().unwrap_or(std::time::Duration::ZERO))
     }
 }
 
 impl From<chrono::DateTime<chrono::Utc>> for ExpiresAt {
     #[inline]
     fn from(value: chrono::DateTime<chrono::Utc>) -> Self {
-        Self::SystemTime(value.into())
+        Self::Instant(value)
     }
 }
 
 impl From<chrono::NaiveDateTime> for ExpiresAt {
     #[inline]
     fn from(value: chrono::NaiveDateTime) -> Self {
-        // Treat naive as local time, consistent with Python's datetime.now()
         let utc: chrono::DateTime<chrono::Utc> = value
             .and_local_timezone(chrono::Local)
             .single()
             .map(|dt| dt.with_timezone(&chrono::Utc))
             .unwrap_or_else(|| value.and_utc());
-
-        Self::SystemTime(utc.into())
+        Self::Instant(utc)
     }
 }
 
 impl From<ExpiresAt> for std::time::SystemTime {
+    #[inline]
     fn from(value: ExpiresAt) -> Self {
         match value {
             ExpiresAt::Duration(dur) => std::time::SystemTime::now() + dur,
-            ExpiresAt::SystemTime(until) => until,
+            ExpiresAt::Instant(until) => until.into(),
         }
     }
 }

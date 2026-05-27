@@ -753,6 +753,15 @@ class FuzzyMixin(BaseMixin):
         c2.insert(new_key, new_value)
         assert not c.contains(new_key)
 
+    @given(key=hashable_keys, value=any_value)
+    def test_fuzzy_chain_methods(self, key, value):
+        c = self.create_cache(maxsize=0)
+        assert c.insert(key, value) is None
+        assert c.setdefault(key, value) == value
+        assert c.get(key) == value
+        assert c[key] == value
+        assert c.pop(key) == value
+
 
 class BenchmarkMixin(BaseMixin):
     @pytest.fixture(autouse=True)

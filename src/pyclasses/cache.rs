@@ -570,9 +570,8 @@ impl PyCache {
 
         let items = utils::items_to_str(iter, policy.table().len()).unwrap();
         format!(
-            "{}[{}/{}]({})",
+            "{}[maxsize={}]({})",
             unsafe { utils::get_type_name(py, slf.as_ptr()) },
-            policy.current_size(),
             shared.maxsize(),
             items
         )

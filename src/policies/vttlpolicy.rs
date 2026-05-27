@@ -21,29 +21,6 @@ macro_rules! compare_fn {
     };
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum ExpiresAt {
-    SystemTime(std::time::SystemTime),
-    Duration(std::time::Duration),
-}
-
-impl From<f64> for ExpiresAt {
-    #[inline]
-    fn from(value: f64) -> Self {
-        Self::Duration(std::time::Duration::from_secs_f64(value))
-    }
-}
-
-impl From<ExpiresAt> for std::time::SystemTime {
-    #[inline]
-    fn from(value: ExpiresAt) -> Self {
-        match value {
-            ExpiresAt::Duration(x) => std::time::SystemTime::now() + x,
-            ExpiresAt::SystemTime(x) => x,
-        }
-    }
-}
-
 /// A key-value pair with a precomputed hash and combined size.
 pub struct ExpiringHandle {
     /// The cache key together with its precomputed hash, avoiding repeated
@@ -63,7 +40,7 @@ impl ExpiringHandle {
     pub fn new(
         py: pyo3::Python<'_>,
         getsizeof: &utils::GetsizeofFunction,
-        expires_at: Option<ExpiresAt>,
+        expires_at: Option<utils::ExpiresAt>,
         key: alias::PyObject,
         value: alias::PyObject,
     ) -> pyo3::PyResult<Self> {
@@ -84,7 +61,7 @@ impl ExpiringHandle {
     pub fn with_precomputed_hash_key(
         py: pyo3::Python<'_>,
         getsizeof: &utils::GetsizeofFunction,
-        expires_at: Option<ExpiresAt>,
+        expires_at: Option<utils::ExpiresAt>,
         key: utils::PrecomputedHashObject,
         value: alias::PyObject,
     ) -> pyo3::PyResult<Self> {

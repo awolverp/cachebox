@@ -66,8 +66,8 @@ impl PyVTTLCache {
         // Populate cache if `iterable` passed
         let extend_result = {
             if let Some(iterable) = iterable {
-                let ttl: Option<vttlpolicy::ExpiresAt> = match ttl {
-                    Some(x) => Some(x.into_seconds_f64(true)?.into()),
+                let ttl: Option<utils::ExpiresAt> = match ttl {
+                    Some(x) => Some(x.into_expires_at()?),
                     None => None,
                 };
 
@@ -206,19 +206,13 @@ impl PyVTTLCache {
         ttl: Option<utils::TimeToLiveArgument>,
     ) -> pyo3::PyResult<Option<alias::PyObject>> {
         let ttl = match ttl {
-            Some(x) => Some(x.into_seconds_f64(true)?),
+            Some(x) => Some(x.into_expires_at()?),
             None => None,
         };
 
         let inner = self.0.get();
         let shared = inner.shared();
-        let handle = vttlpolicy::ExpiringHandle::new(
-            py,
-            shared.getsizeof(),
-            ttl.map(Into::into),
-            key,
-            value,
-        )?;
+        let handle = vttlpolicy::ExpiringHandle::new(py, shared.getsizeof(), ttl, key, value)?;
 
         let old_handle = inner.insert(py, handle)?.map(|x| x.into_value());
         Ok(old_handle)
@@ -236,8 +230,8 @@ impl PyVTTLCache {
             return Ok(());
         }
 
-        let ttl: Option<vttlpolicy::ExpiresAt> = match ttl {
-            Some(x) => Some(x.into_seconds_f64(true)?.into()),
+        let ttl = match ttl {
+            Some(x) => Some(x.into_expires_at()?),
             None => None,
         };
 
@@ -319,8 +313,8 @@ impl PyVTTLCache {
         // 1. Try to get value
         // 2. If exists -> return it
         // 3. Else -> insert default -> return default
-        let ttl: Option<vttlpolicy::ExpiresAt> = match ttl {
-            Some(x) => Some(x.into_seconds_f64(true)?.into()),
+        let ttl = match ttl {
+            Some(x) => Some(x.into_expires_at()?),
             None => None,
         };
         let key = utils::PrecomputedHashObject::new(py, key)?;
@@ -574,9 +568,8 @@ impl PyVTTLCache {
 
         let items = utils::items_to_str(iter, policy.table().len()).unwrap();
         format!(
-            "{}[{}/{}]({})",
+            "{}[maxsize={}]({})",
             unsafe { utils::get_type_name(py, slf.as_ptr()) },
-            policy.current_size(),
             shared.maxsize(),
             items
         )

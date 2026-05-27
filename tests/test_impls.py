@@ -1,6 +1,6 @@
 import time
 import typing
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -1343,4 +1343,270 @@ class TestVTTLCache(
             getsizeof=getsizeof,
         )
 
-    # TODO: complete vttlcache tests
+
+class TestVTTLCachePolicy(mixins.BaseMixin):
+    def create_cache(
+        self,
+        maxsize: int = 10,
+        iterable: typing.Any = None,
+        capacity: int = 0,
+        getsizeof: typing.Any = None,
+    ) -> cachebox.VTTLCache:
+        return cachebox.VTTLCache(
+            maxsize,
+            iterable,
+            100,
+            capacity=capacity,
+            getsizeof=getsizeof,
+        )
+
+    def test_item_accessible_before_ttl(self):
+        c = self.create_cache()
+        c.insert("k", "v", ttl=0.5)
+        assert c["k"] == "v"
+
+    def test_item_expires_after_ttl(self):
+        c = self.create_cache()
+        c.insert("k", "v", ttl=0.1)
+        time.sleep(0.15)
+        assert "k" not in c
+
+    def test_expired_item_not_returned_by_get(self):
+        c = self.create_cache()
+        c.insert("k", "v", ttl=0.1)
+        time.sleep(0.15)
+        assert c.get("k") is None
+        assert c.get("k", "default") == "default"
+
+    def test_expired_item_raises_on_getitem(self):
+        c = self.create_cache()
+        c.insert("k", "v", ttl=0.1)
+        time.sleep(0.15)
+        with pytest.raises(KeyError):
+            _ = c["k"]
+
+    def test_no_ttl_item_never_expires(self):
+        c = self.create_cache()
+        c.insert("k", "v")  # no TTL
+        time.sleep(0.1)
+        assert c["k"] == "v"
+
+    # def test_expired_item_excluded_from_len(self):
+    #     c = self.create_cache()
+    #     c.insert("a", 1, ttl=0.1)
+    #     c.insert("b", 2)
+    #     time.sleep(0.15)
+    #     assert len(c) == 1
+
+    def test_expired_key_not_in_contains(self):
+        c = self.create_cache()
+        c.insert("k", "v", ttl=0.1)
+        time.sleep(0.15)
+        assert not c.contains("k")
+        assert "k" not in c
+
+    def test_ttl_as_float(self):
+        c = self.create_cache()
+        c.insert("k", "v", ttl=0.1)
+        time.sleep(0.15)
+        assert "k" not in c
+
+    def test_ttl_as_timedelta(self):
+        c = self.create_cache()
+        c.insert("k", "v", ttl=timedelta(milliseconds=100))
+        time.sleep(0.15)
+        assert "k" not in c
+
+    def test_ttl_as_datetime(self):
+        c = self.create_cache()
+        expiry = datetime.now() + timedelta(milliseconds=100)
+        c.insert("k", "v", ttl=expiry)
+        assert "k" in c
+        time.sleep(0.15)
+        assert "k" not in c
+
+    def test_datetime_in_the_past_expires_immediately(self):
+        c = self.create_cache()
+        past = datetime.now() - timedelta(seconds=1)
+        c.insert("k", "v", ttl=past)
+        assert "k" not in c
+
+    def test_items_have_independent_ttls(self):
+        c = self.create_cache()
+        c.insert("short", "s", ttl=0.1)
+        c.insert("long", "l", ttl=1.0)
+        time.sleep(0.15)
+        assert "short" not in c
+        assert "long" in c
+
+    def test_mixed_ttl_and_no_ttl(self):
+        c = self.create_cache()
+        c.insert("expires", "e", ttl=0.1)
+        c.insert("permanent", "p")
+        time.sleep(0.15)
+        assert "expires" not in c
+        assert "permanent" in c
+
+    def test_multiple_items_expire_independently(self):
+        c = self.create_cache()
+        c.insert("a", 1, ttl=0.1)
+        c.insert("b", 2, ttl=0.2)
+        c.insert("c", 3, ttl=0.3)
+        time.sleep(0.15)
+        assert "a" not in c
+        assert "b" in c
+        assert "c" in c
+        time.sleep(0.1)
+        assert "b" not in c
+        assert "c" in c
+
+    def test_reinsertion_resets_ttl(self):
+        c = self.create_cache()
+        c.insert("k", "v1", ttl=0.2)
+        time.sleep(0.1)
+        c.insert("k", "v2", ttl=0.2)  # reset
+        time.sleep(0.15)
+        # original TTL would have expired; new one should not
+        assert "k" in c
+        assert c["k"] == "v2"
+
+    def test_reinsertion_without_ttl_makes_permanent(self):
+        c = self.create_cache()
+        c.insert("k", "v1", ttl=0.1)
+        c.insert("k", "v2")  # no TTL — should become permanent
+        time.sleep(0.15)
+        assert "k" in c
+
+    def test_setitem_uses_no_ttl(self):
+        """__setitem__ inserts without TTL; previously TTL'd key should persist."""
+        c = self.create_cache()
+        c.insert("k", "v1", ttl=0.1)
+        c["k"] = "v2"
+        time.sleep(0.15)
+        assert "k" in c
+        assert c["k"] == "v2"
+
+    def test_update_applies_ttl_to_all_items(self):
+        c = self.create_cache()
+        c.update({"a": 1, "b": 2}, ttl=0.1)
+        time.sleep(0.15)
+        assert "a" not in c
+        assert "b" not in c
+
+    def test_update_without_ttl_items_are_permanent(self):
+        c = self.create_cache()
+        c.update({"a": 1, "b": 2})
+        time.sleep(0.1)
+        assert "a" in c
+        assert "b" in c
+
+    def test_update_mixes_with_existing_items(self):
+        c = self.create_cache()
+        c.insert("perm", 0)
+        c.update({"temp": 1}, ttl=0.1)
+        time.sleep(0.15)
+        assert "temp" not in c
+        assert "perm" in c
+
+    def test_setdefault_inserts_with_ttl_when_absent(self):
+        c = self.create_cache()
+        c.setdefault("k", "v", ttl=0.1)
+        assert c["k"] == "v"
+        time.sleep(0.15)
+        assert "k" not in c
+
+    def test_setdefault_does_not_update_existing_key(self):
+        c = self.create_cache()
+        c.insert("k", "original", ttl=1.0)
+        c.setdefault("k", "new", ttl=0.1)
+        time.sleep(0.15)
+        # should still be there with original TTL
+        assert c["k"] == "original"
+
+    def test_popitem_removes_soonest_expiring_item(self):
+        c = self.create_cache()
+        c.insert("soon", "s", ttl=0.1)
+        c.insert("later", "l", ttl=10.0)
+        key, _ = c.popitem()
+        assert key == "soon"
+
+    def test_popitem_prefers_expiring_over_permanent(self):
+        c = self.create_cache()
+        c.insert("perm", "p")
+        c.insert("temp", "t", ttl=0.5)
+        key, _ = c.popitem()
+        assert key == "temp"
+
+    def test_popitem_on_empty_raises(self):
+        c = self.create_cache()
+        with pytest.raises(KeyError):
+            c.popitem()
+
+    def test_expire_removes_stale_items(self):
+        c = self.create_cache()
+        c.insert("stale", "s", ttl=0.1)
+        c.insert("fresh", "f", ttl=10.0)
+        time.sleep(0.15)
+        c.expire()
+        assert "stale" not in c
+        assert "fresh" in c
+
+    def test_expire_does_not_remove_unexpired_items(self):
+        c = self.create_cache()
+        c.insert("a", 1, ttl=10.0)
+        c.insert("b", 2)
+        c.expire()
+        assert "a" in c
+        assert "b" in c
+
+    def test_expire_reuse_retains_capacity(self):
+        c = self.create_cache()
+        c.insert("k", "v", ttl=0.1)
+        cap_before = c.capacity()
+        time.sleep(0.15)
+        c.expire(reuse=True)
+        assert c.capacity() >= cap_before
+
+    def test_soonest_expiring_evicted_when_full(self):
+        c = self.create_cache(maxsize=2)
+        c.insert("a", 1, ttl=0.2)
+        c.insert("b", 2, ttl=10.0)
+        # inserting a third item must evict "a" (soonest expiry)
+        c.insert("c", 3, ttl=10.0)
+        assert "b" in c
+        assert "c" in c
+        assert "a" not in c
+
+    def test_expired_items_cleared_on_insert_when_full(self):
+        c = self.create_cache(maxsize=2)
+        c.insert("a", 1, ttl=0.1)
+        c.insert("b", 2, ttl=0.1)
+        time.sleep(0.15)
+        # both expired; inserting should succeed
+        c.insert("c", 3)
+        assert "c" in c
+
+    def test_keys_excludes_expired(self):
+        c = self.create_cache()
+        c.insert("exp", "e", ttl=0.1)
+        c.insert("live", "l")
+        time.sleep(0.15)
+        assert "exp" not in list(c.keys())
+        assert "live" in list(c.keys())
+
+    def test_values_excludes_expired(self):
+        c = self.create_cache()
+        c.insert("exp", "expired_val", ttl=0.1)
+        c.insert("live", "live_val")
+        time.sleep(0.15)
+        assert "expired_val" not in list(c.values())
+        assert "live_val" in list(c.values())
+
+    def test_items_excludes_expired(self):
+        c = self.create_cache()
+        c.insert("exp", "e", ttl=0.1)
+        c.insert("live", "l")
+        time.sleep(0.15)
+        keys = [k for k, _ in c.items()]
+        assert "exp" not in keys
+        assert "live" in keys

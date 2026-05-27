@@ -54,23 +54,30 @@ impl PyTTLCache {
         capacity: usize,
         getsizeof: Option<alias::PyObject>,
     ) -> pyo3::PyResult<()> {
-        let global_ttl = global_ttl.into_duration(false)?;
+        let global_ttl = global_ttl.into_duration()?;
 
         let wrapped = Wrapped::new(ttlpolicy::TTLPolicy::new(capacity), unsafe {
-            ttlpolicy::Shared::with_ttl(maxsize, getsizeof, Some(global_ttl))
+            ttlpolicy::Shared::with_ttl(maxsize, getsizeof, Some(global_ttl.into()))
         });
 
         // Populate cache if `iterable` passed
         let extend_result = {
             if let Some(iterable) = iterable {
-                let ttl: ttlpolicy::ExpiresAt = wrapped.shared().global_ttl().unwrap().into();
                 let getsizeof = wrapped.shared().getsizeof().clone_ref(py);
 
                 let result = wrapped.extend(
                     // iterable object
                     iterable,
                     // transform function
-                    |key, value| ttlpolicy::ExpiringHandle::new(py, &getsizeof, ttl, key, value),
+                    |key, value| {
+                        ttlpolicy::ExpiringHandle::new(
+                            py,
+                            &getsizeof,
+                            global_ttl.into(),
+                            key,
+                            value,
+                        )
+                    },
                 );
                 result
             } else {
@@ -230,7 +237,7 @@ impl PyTTLCache {
         let inner = slf.0.get();
         let shared = inner.shared();
 
-        let ttl: ttlpolicy::ExpiresAt = unsafe { shared.global_ttl().unwrap_unchecked().into() };
+        let ttl: utils::ExpiresAt = unsafe { shared.global_ttl().unwrap_unchecked().into() };
         let getsizeof = shared.getsizeof().clone_ref(py);
 
         inner.extend(
@@ -574,9 +581,8 @@ impl PyTTLCache {
 
         let items = utils::items_to_str(iter, policy.table().len()).unwrap();
         format!(
-            "{}[{}/{}]({})",
+            "{}[maxsize={}]({})",
             unsafe { utils::get_type_name(py, slf.as_ptr()) },
-            policy.current_size(),
             shared.maxsize(),
             items
         )

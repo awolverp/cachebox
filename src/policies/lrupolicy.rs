@@ -259,34 +259,28 @@ impl PolicyExt for LRUPolicy {
         }
 
         let mut error = None;
+
         let result = unsafe {
-            let mut iterator = self.table.iter().map(|x| x.as_ref());
+            self.table.iter().all(|x| {
+                let handle = x.as_ref().element();
+                let key = handle.key();
 
-            iterator.all(|cursor_1| {
-                let handle_1 = cursor_1.element();
-
-                let result = other.table.get(handle_1.key().hash(), |cursor| {
-                    handle_1.key().py_eq(py, cursor.element().key())
-                });
-
-                match result {
+                match other
+                    .table
+                    .get(key.hash(), |c| key.py_eq(py, c.element().key()))
+                {
                     Err(e) => {
                         error = Some(e);
-                        // Return false to break the `.all` loop
                         false
                     }
                     Ok(None) => false,
-                    Ok(Some(cursor_2)) => {
-                        let handle_2 = cursor_2.element();
-
-                        let value_1 = handle_1.value();
-                        let value_2 = handle_2.value();
-
-                        match utils::pyobject_equal(py, value_1.as_ptr(), value_2.as_ptr()) {
-                            Ok(result) => result,
+                    Ok(Some(cursor)) => {
+                        let v1 = handle.value();
+                        let v2 = cursor.element().value();
+                        match utils::pyobject_equal(py, v1.as_ptr(), v2.as_ptr()) {
+                            Ok(eq) => eq,
                             Err(e) => {
                                 error = Some(e);
-                                // Return false to break the `.all` loop
                                 false
                             }
                         }
@@ -295,10 +289,7 @@ impl PolicyExt for LRUPolicy {
             })
         };
 
-        if let Some(error) = error {
-            return Err(error);
-        }
-        Ok(result)
+        error.map_or(Ok(result), Err)
     }
 
     fn clone_ref(&mut self, py: pyo3::Python<'_>) -> Self {

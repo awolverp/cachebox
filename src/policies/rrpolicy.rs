@@ -208,30 +208,22 @@ impl PolicyExt for RRPolicy {
         }
 
         let mut error = None;
+
         let result = unsafe {
-            let mut iterator = self.table.iter().map(|x| x.as_ref());
+            self.table.iter().map(|x| x.as_ref()).all(|h1| {
+                let key = h1.key();
 
-            iterator.all(|handle_1| {
-                let result = other
-                    .table
-                    .get(handle_1.key().hash(), |x| handle_1.key().py_eq(py, x.key()));
-
-                match result {
+                match other.table.get(key.hash(), |x| key.py_eq(py, x.key())) {
                     Err(e) => {
                         error = Some(e);
-                        // Return false to break the `.all` loop
                         false
                     }
                     Ok(None) => false,
-                    Ok(Some(handle_2)) => {
-                        let value_1 = handle_1.value();
-                        let value_2 = handle_2.value();
-
-                        match utils::pyobject_equal(py, value_1.as_ptr(), value_2.as_ptr()) {
-                            Ok(result) => result,
+                    Ok(Some(h2)) => {
+                        match utils::pyobject_equal(py, h1.value().as_ptr(), h2.value().as_ptr()) {
+                            Ok(eq) => eq,
                             Err(e) => {
                                 error = Some(e);
-                                // Return false to break the `.all` loop
                                 false
                             }
                         }
@@ -240,10 +232,7 @@ impl PolicyExt for RRPolicy {
             })
         };
 
-        if let Some(error) = error {
-            return Err(error);
-        }
-        Ok(result)
+        error.map_or(Ok(result), Err)
     }
 
     fn clone_ref(&mut self, py: pyo3::Python<'_>) -> Self {

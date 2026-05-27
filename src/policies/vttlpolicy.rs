@@ -403,7 +403,6 @@ impl PolicyExt for VTTLPolicy {
         self.heap.shrink_to_fit();
     }
 
-    // TODO: considering expired handles
     fn py_eq(
         &self,
         py: pyo3::Python,
@@ -416,35 +415,36 @@ impl PolicyExt for VTTLPolicy {
         }
 
         let mut error = None;
+        let now = std::time::SystemTime::now();
+
         let result = unsafe {
-            let mut iterator = self.table.iter().map(|x| x.as_ref());
+            self.table.iter().all(|x| {
+                let handle = x.as_ref().element();
 
-            iterator.all(|cursor_1| {
-                let handle_1 = cursor_1.element();
+                if handle.is_expired(now) {
+                    return true;
+                }
 
-                let result = other.table.get(handle_1.key().hash(), |cursor| {
-                    handle_1.key().py_eq(py, cursor.element().key())
-                });
+                let key = handle.key();
 
-                match result {
+                match other
+                    .table
+                    .get(key.hash(), |c| key.py_eq(py, c.element().key()))
+                {
                     Err(e) => {
                         error = Some(e);
-                        // Return false to break the `.all` loop
                         false
                     }
                     Ok(None) => false,
-                    Ok(Some(cursor_2)) => {
-                        let handle_2 = cursor_2.element();
-
+                    Ok(Some(cursor)) => {
                         match utils::pyobject_equal(
                             py,
-                            handle_1.value.as_ptr(),
-                            handle_2.value.as_ptr(),
+                            handle.value.as_ptr(),
+                            cursor.element().value.as_ptr(),
                         ) {
-                            Ok(result) => result,
+                            Ok(eq) => eq,
                             Err(e) => {
                                 error = Some(e);
-                                // Return false to break the `.all` loop
                                 false
                             }
                         }
@@ -453,10 +453,7 @@ impl PolicyExt for VTTLPolicy {
             })
         };
 
-        if let Some(error) = error {
-            return Err(error);
-        }
-        Ok(result)
+        error.map_or(Ok(result), Err)
     }
 
     fn clone_ref(&mut self, py: pyo3::Python) -> Self {

@@ -1,6 +1,10 @@
 import dataclasses
 import sys
+import threading
+import time
 import typing
+from datetime import timedelta
+from unittest.mock import patch
 
 import pytest
 from hypothesis import assume, given
@@ -372,7 +376,75 @@ class IterationMixin(BaseMixin):
         cache.update({"x": 10, "y": 20})
         assert set(iter(cache)) == {"x", "y"}
 
-    # TODO: test generation version
+    def test_generation_version_on_remove(self):
+        cache = self.create_cache(10, {i: i for i in range(10)})
+
+        with pytest.raises(RuntimeError):
+            for _ in cache:
+                del cache[9]
+
+        with pytest.raises(RuntimeError):
+            for _ in cache.values():
+                del cache[8]
+
+        with pytest.raises(RuntimeError):
+            for _ in cache.items():
+                del cache[7]
+
+        for _ in cache:
+            # It should not increment the generation version
+            # because the key doesn't exist
+            cache.pop("hello", None)
+
+    def test_generation_version_on_insert(self):
+        cache = self.create_cache(10, {i: i for i in range(3)})
+
+        with pytest.raises(RuntimeError):
+            for _ in cache:
+                cache.insert("A", 1)
+
+        with pytest.raises(RuntimeError):
+            for _ in cache.values():
+                cache.insert("B", 1)
+
+        with pytest.raises(RuntimeError):
+            for _ in cache.items():
+                cache.insert("C", 1)
+
+        if isinstance(cache, cachebox.LRUCache):
+            return
+
+        for i in cache:
+            # It should not increment the generation version
+            # in replacing value
+            cache.insert(i, "hello")
+
+    def test_generation_version_on_shrink_to_fit(self):
+        cache = self.create_cache(10, {i: i for i in range(3)})
+
+        if isinstance(cache, cachebox.LRUCache):
+            pytest.skip("LRUCache is excluded")
+
+        with pytest.raises(RuntimeError):
+            for _ in cache:
+                cache.shrink_to_fit()
+
+    def test_generation_version_on_clear(self):
+        cache = self.create_cache(10, {i: i for i in range(3)})
+
+        with pytest.raises(RuntimeError):
+            for _ in cache:
+                cache.clear()
+
+    def test_generation_version_on_popitem(self):
+        cache = self.create_cache(10, {i: i for i in range(3)})
+
+        if isinstance(cache, cachebox.Cache):
+            pytest.skip("Cache doesn't implemented popitem")
+
+        with pytest.raises(RuntimeError):
+            for _ in cache:
+                cache.popitem()
 
 
 class DrainClearShrinkMixin(BaseMixin):
@@ -611,6 +683,174 @@ class IssuesMixin(BaseMixin):
         for i in range(size):
             cache.insert(EQ(val=i), i)
             cache.get(EQ(val=i))
+
+
+class SweepIntervalMixin(BaseMixin):
+    def _create_sweep_cache(
+        self, *args, **kwds
+    ) -> cachebox.TTLCache | cachebox.VTTLCache:
+        return typing.cast(
+            cachebox.TTLCache | cachebox.VTTLCache,
+            self.create_cache(*args, **kwds),
+        )
+
+    def test_none_by_default_no_thread(self):
+        cache = self._create_sweep_cache(maxsize=10)
+        assert cache.sweep_interval is None
+        assert cache._thread is None
+        assert cache._thread_is_running is False
+
+    def test_numeric_sweep_interval_starts_thread(self):
+        cache = self._create_sweep_cache(maxsize=10, sweep_interval=1)
+
+        try:
+            assert cache._thread is not None
+            assert cache._thread.is_alive()
+            assert cache._thread_is_running is True
+        finally:
+            cache.stop_sweeper()
+
+    def test_timedelta_sweep_interval_starts_thread(self):
+        cache = self._create_sweep_cache(
+            maxsize=10, sweep_interval=timedelta(seconds=1)
+        )
+        try:
+            assert cache._thread is not None
+            assert cache._thread.is_alive()
+        finally:
+            cache.stop_sweeper()
+
+    def test_timedelta_converted_to_seconds(self):
+        cache = self._create_sweep_cache(
+            maxsize=10, sweep_interval=timedelta(seconds=5)
+        )
+        try:
+            assert cache.sweep_interval == 5.0
+        finally:
+            cache.stop_sweeper()
+
+    def test_sweep_interval_stored_as_float(self):
+        cache = self._create_sweep_cache(maxsize=10, sweep_interval=2)
+        try:
+            assert cache.sweep_interval == 2.0
+        finally:
+            cache.stop_sweeper()
+
+    def test_sweep_interval_below_1_raises(self):
+        with pytest.raises(
+            ValueError, match="sweep_interval must be more than 1 seconds"
+        ):
+            self._create_sweep_cache(maxsize=10, sweep_interval=0.5)
+
+    def test_sweep_interval_zero_raises(self):
+        with pytest.raises(ValueError):
+            self._create_sweep_cache(maxsize=10, sweep_interval=0)
+
+    def test_sweep_interval_negative_raises(self):
+        with pytest.raises(ValueError):
+            self._create_sweep_cache(maxsize=10, sweep_interval=-1)
+
+    def test_sweep_interval_exactly_1_is_valid(self):
+        cache = self._create_sweep_cache(maxsize=10, sweep_interval=1)
+        try:
+            assert cache.sweep_interval == 1.0
+        finally:
+            cache.stop_sweeper()
+
+    def test_thread_is_daemon(self):
+        cache = self._create_sweep_cache(maxsize=10, sweep_interval=1)
+        try:
+            assert cache._thread.daemon is True  # type: ignore
+        finally:
+            cache.stop_sweeper()
+
+    def test_stop_sets_flag_false(self):
+        cache = self._create_sweep_cache(maxsize=10, sweep_interval=1)
+        assert cache._thread_is_running is True
+        cache.stop_sweeper()
+        assert cache._thread_is_running is False
+
+    def test_stop_on_cache_without_sweeper_is_safe(self):
+        cache = self._create_sweep_cache(maxsize=10)
+        cache.stop_sweeper()  # should not raise
+        assert cache._thread_is_running is False
+
+    def test_stop_idempotent(self):
+        cache = self._create_sweep_cache(maxsize=10, sweep_interval=1)
+        cache.stop_sweeper()
+        cache.stop_sweeper()  # second call must not raise
+        assert cache._thread_is_running is False
+
+    def test_thread_eventually_stops_after_signal(self):
+        cache = self._create_sweep_cache(maxsize=10, sweep_interval=1)
+        cache.stop_sweeper()
+        cache._thread.join(timeout=3)  # type: ignore
+        assert not cache._thread.is_alive()  # type: ignore
+
+    def test_expire_called_periodically(self):
+        """expire() should be invoked by the background thread on schedule."""
+        cache = self._create_sweep_cache(maxsize=10, sweep_interval=1)
+        try:
+            with patch.object(cache, "expire", wraps=cache.expire) as mock_expire:
+                time.sleep(2.5)
+            assert mock_expire.call_count >= 2
+        finally:
+            cache.stop_sweeper()
+
+    def test_expired_items_removed_by_sweeper(self):
+        """Items with elapsed TTLs should be absent after a sweep cycle."""
+        cache = self._create_sweep_cache(maxsize=50, sweep_interval=1)
+        try:
+            if isinstance(cache, cachebox.TTLCache):
+                cache.insert("b", 2)
+            else:
+                cache.insert("b", 2, 0.1)
+
+            time.sleep(2)
+            assert "b" not in cache
+        finally:
+            cache.stop_sweeper()
+
+    def test_concurrent_writes_with_sweeper_running(self):
+        """Concurrent inserts alongside the sweeper must not raise."""
+        cache = self._create_sweep_cache(maxsize=100, sweep_interval=1)
+        errors = []
+
+        def writer(start):
+            try:
+                for i in range(start, start + 50):
+                    cache[f"k{i}"] = i
+                    time.sleep(0.01)
+            except Exception as exc:
+                errors.append(exc)
+
+        threads = [threading.Thread(target=writer, args=(i * 50,)) for i in range(4)]
+        try:
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+            assert errors == [], f"Unexpected errors: {errors}"
+        finally:
+            cache.stop_sweeper()
+
+    def test_stop_sweeper_while_sleeping(self):
+        """stop_sweeper() called mid-sleep should clear the flag without hanging."""
+        cache = self._create_sweep_cache(maxsize=10, sweep_interval=30)  # long interval
+        thread = cache._thread
+        cache.stop_sweeper()
+        assert cache._thread_is_running is False
+        assert thread is not None
+
+    def test_del_stops_sweeper(self):
+        cache = self._create_sweep_cache(maxsize=10, sweep_interval=1)
+        assert cache._thread_is_running is True
+        cache.__del__()
+        assert cache._thread_is_running is False
+
+    def test_del_without_sweeper_is_safe(self):
+        cache = self._create_sweep_cache(maxsize=10)
+        cache.__del__()  # must not raise
 
 
 class FuzzyMixin(BaseMixin):

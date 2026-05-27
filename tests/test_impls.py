@@ -880,17 +880,17 @@ class TestLFUCache(
         c["d"] = 4
         assert "a" not in c
 
-    def test_insert_returns_none_for_new_key(self):
-        c = self.create_cache(5)
-        result = c.insert("x", 42)
-        assert result is None
+    def test_generation_version_on_least_frequently_used(self):
+        c = self.create_cache(5, {i: i for i in range(5)})
 
-    def test_insert_returns_old_value_for_existing_key(self):
-        c = self.create_cache(5)
-        c["x"] = 1
-        old = c.insert("x", 99)
-        assert old == 1
-        assert c["x"] == 99
+        self._hit(c, 1, 5)
+        self._hit(c, 2, 3)
+        self._hit(c, 4, 10)
+
+        # calling __iter__ causes sorts lazyheap
+        # so least_frequently_used shouldn't intrupt iteration
+        for _ in c:
+            c.least_frequently_used()
 
 
 class TestTTLCache(
@@ -925,30 +925,40 @@ class TestTTLCache(
         )
 
 
-class TestTTLCachePolicy:
+class TestTTLCachePolicy(mixins.SweepIntervalMixin):
     def create_cache(
         self,
         maxsize: int = 10,
-        ttl: float | timedelta = 10,
         iterable: typing.Any = None,
+        capacity: int = 0,
+        getsizeof: typing.Any = None,
+        global_ttl: float | timedelta = 1,
+        sweep_interval: float | timedelta | None = None,
     ) -> cachebox.TTLCache:
-        return cachebox.TTLCache(maxsize, ttl, iterable)
+        return cachebox.TTLCache(
+            maxsize,
+            global_ttl,
+            iterable,
+            capacity=capacity,
+            getsizeof=getsizeof,
+            sweep_interval=sweep_interval,
+        )
 
     def test_global_ttl_property(self):
-        c = self.create_cache(10, 5)
+        c = self.create_cache(10, global_ttl=5)
         assert c.global_ttl == 5
 
-        c = self.create_cache(10, timedelta(seconds=5))
+        c = self.create_cache(10, global_ttl=timedelta(seconds=5))
         assert c.global_ttl == 5
 
         with pytest.raises(ValueError):
-            c = self.create_cache(10, 0)
+            c = self.create_cache(10, global_ttl=0)
 
         with pytest.raises(ValueError):
-            c = self.create_cache(10, -1)
+            c = self.create_cache(10, global_ttl=-1)
 
     def test_global_ttl_with_iterable(self):
-        c = self.create_cache(10, 1, {"A": "B", "C": "D"})
+        c = self.create_cache(10, {"A": "B", "C": "D"}, global_ttl=1)
         assert c.global_ttl == 1
 
         assert "A" in c
@@ -968,14 +978,14 @@ class TestTTLCachePolicy:
 
     def test_oldest_item_evicted_on_overflow(self):
         """When capacity is exceeded, the first inserted key must be evicted."""
-        cache = self.create_cache(3, 10, [(1, "a"), (2, "b"), (3, "c")])
+        cache = self.create_cache(3, [(1, "a"), (2, "b"), (3, "c")], global_ttl=10)
         cache[4] = "d"  # triggers eviction of key 1
         assert 1 not in cache
         assert 4 in cache
 
     def test_eviction_is_strictly_insertion_ordered(self):
         """Keys evict in the exact order they were inserted, not access order."""
-        cache = self.create_cache(3, 10, [(1, "a"), (2, "b"), (3, "c")])
+        cache = self.create_cache(3, [(1, "a"), (2, "b"), (3, "c")], global_ttl=10)
 
         cache[4] = "d"  # evicts 1
         cache[5] = "e"  # evicts 2
@@ -991,7 +1001,7 @@ class TestTTLCachePolicy:
         Unlike LRU, a cache hit must NOT push the key to the back.
         Key 1 is accessed repeatedly but must still be the first evicted.
         """
-        cache = self.create_cache(3, 10, [(1, "a"), (2, "b"), (3, "c")])
+        cache = self.create_cache(3, [(1, "a"), (2, "b"), (3, "c")], global_ttl=10)
 
         _ = cache[1]
         _ = cache[1]
@@ -1005,7 +1015,7 @@ class TestTTLCachePolicy:
         Updating the value of an existing key must NOT change its insertion
         position in the eviction queue.
         """
-        cache = self.create_cache(3, 10, [(1, "a"), (2, "b"), (3, "c")])
+        cache = self.create_cache(3, [(1, "a"), (2, "b"), (3, "c")], global_ttl=10)
 
         cache[1] = "updated"  # update, not a new insertion
         cache[4] = "d"  # must still evict key 1
@@ -1015,7 +1025,7 @@ class TestTTLCachePolicy:
 
     def test_popitem_removes_oldest(self):
         """popitem() must always remove and return the oldest inserted entry."""
-        cache = self.create_cache(3, 10, [(10, "x"), (20, "y"), (30, "z")])
+        cache = self.create_cache(3, [(10, "x"), (20, "y"), (30, "z")], global_ttl=10)
         key, value = cache.popitem()
         assert key == 10
         assert value == "x"
@@ -1023,13 +1033,13 @@ class TestTTLCachePolicy:
     def test_popitem_successive_calls_follow_fifo(self):
         """Successive popitem() calls must yield keys in insertion order."""
         insertion_order = [(1, "a"), (2, "b"), (3, "c"), (4, "d")]
-        cache = self.create_cache(4, 10, insertion_order)
+        cache = self.create_cache(4, insertion_order, global_ttl=10)
         popped_keys = [cache.popitem()[0] for _ in range(4)]
         assert popped_keys == [1, 2, 3, 4]
 
     def test_drain_removes_n_oldest(self):
         """drain(n) must remove exactly n items, oldest-first."""
-        cache = self.create_cache(5, 10, [(i, str(i)) for i in range(1, 6)])
+        cache = self.create_cache(5, [(i, str(i)) for i in range(1, 6)], global_ttl=10)
         removed = cache.drain(3)
         assert removed == 3
         assert 1 not in cache
@@ -1039,16 +1049,18 @@ class TestTTLCachePolicy:
         assert 5 in cache
 
     def test_first_returns_oldest_key(self):
-        cache = self.create_cache(3, 10, [(7, "a"), (8, "b"), (9, "c")])
+        cache = self.create_cache(3, [(7, "a"), (8, "b"), (9, "c")], global_ttl=10)
         assert cache.first() == 7
 
     def test_last_returns_newest_key(self):
-        cache = self.create_cache(3, 10, [(7, "a"), (8, "b"), (9, "c")])
+        cache = self.create_cache(3, [(7, "a"), (8, "b"), (9, "c")], global_ttl=10)
         assert cache.last() == 9
 
     def test_first_with_positive_n_browses_in_insertion_order(self):
         """first(n) must walk forward through insertion order."""
-        cache = self.create_cache(4, 10, [(10, "a"), (20, "b"), (30, "c"), (40, "d")])
+        cache = self.create_cache(
+            4, [(10, "a"), (20, "b"), (30, "c"), (40, "d")], global_ttl=10
+        )
         assert cache.first(0) == 10
         assert cache.first(1) == 20
         assert cache.first(2) == 30
@@ -1056,23 +1068,25 @@ class TestTTLCachePolicy:
 
     def test_first_with_negative_n_browses_from_end(self):
         """first(-1) is an alias for last(); first(-2) is the second newest."""
-        cache = self.create_cache(4, 10, [(10, "a"), (20, "b"), (30, "c"), (40, "d")])
+        cache = self.create_cache(
+            4, [(10, "a"), (20, "b"), (30, "c"), (40, "d")], global_ttl=10
+        )
         assert cache.first(-1) == 40
         assert cache.first(-2) == 30
 
     def test_first_after_eviction_reflects_new_head(self):
         """After an eviction, first() must return the new oldest key."""
-        cache = self.create_cache(3, 10, [(1, "a"), (2, "b"), (3, "c")])
+        cache = self.create_cache(3, [(1, "a"), (2, "b"), (3, "c")], global_ttl=10)
         cache[4] = "d"  # evicts key 1
         assert cache.first() == 2
 
     def test_last_after_insertion_reflects_new_tail(self):
-        cache = self.create_cache(3, 10, [(1, "a"), (2, "b"), (3, "c")])
+        cache = self.create_cache(3, [(1, "a"), (2, "b"), (3, "c")], global_ttl=10)
         cache[4] = "d"
         assert cache.last() == 4
 
     def test_first_on_single_element_cache(self):
-        cache = self.create_cache(1, 10, [(42, "only")])
+        cache = self.create_cache(1, [(42, "only")], global_ttl=10)
         assert cache.first() == 42
         assert cache.last() == 42
 
@@ -1099,7 +1113,7 @@ class TestTTLCachePolicy:
 
     def test_no_phantom_keys_after_eviction(self):
         """Evicted keys must not linger in contains() or iteration."""
-        cache = self.create_cache(2, 10, [(1, "a"), (2, "b")])
+        cache = self.create_cache(2, [(1, "a"), (2, "b")], global_ttl=10)
         cache[3] = "c"  # evicts 1
 
         for key in cache:
@@ -1112,7 +1126,7 @@ class TestTTLCachePolicy:
         Re-inserting a previously evicted key must treat it as a brand-new
         entry positioned at the back of the queue.
         """
-        cache = self.create_cache(3, 10, [(1, "a"), (2, "b"), (3, "c")])
+        cache = self.create_cache(3, [(1, "a"), (2, "b"), (3, "c")], global_ttl=10)
         cache[4] = "d"  # evicts 1
         cache[1] = "re"  # re-insert 1 — should now be at the tail
         cache[5] = "e"  # must evict 2 (now the oldest), not 1
@@ -1122,7 +1136,7 @@ class TestTTLCachePolicy:
         assert cache[1] == "re"
 
     def test_is_full_triggers_at_maxsize(self):
-        cache = self.create_cache(3, 10, [(1, "a"), (2, "b"), (3, "c")])
+        cache = self.create_cache(3, [(1, "a"), (2, "b"), (3, "c")])
         assert cache.is_full()
         cache[4] = "d"  # eviction should keep it full, not overflow
         assert cache.is_full()
@@ -1137,7 +1151,7 @@ class TestTTLCachePolicy:
 
     def test_clear_resets_fifo_order(self):
         """After clear(), the insertion order restarts from scratch."""
-        cache = self.create_cache(3, 10, [(1, "a"), (2, "b"), (3, "c")])
+        cache = self.create_cache(3, [(1, "a"), (2, "b"), (3, "c")])
         cache.clear()
         cache[10] = "x"
         cache[20] = "y"
@@ -1206,7 +1220,7 @@ class TestTTLCachePolicy:
         assert oldest_val == oldest_key * 10
 
     def test_global_ttl_on_insert(self):
-        obj = self.create_cache(2, 0.5)
+        obj = self.create_cache(2, global_ttl=0.5)
         assert obj.global_ttl == 0.5
 
         obj.insert(0, 1)
@@ -1215,7 +1229,7 @@ class TestTTLCachePolicy:
         with pytest.raises(KeyError):
             obj[0]
 
-        obj = self.create_cache(2, 20)
+        obj = self.create_cache(2, global_ttl=20)
 
         obj.insert(0, 0)
         obj.insert(1, 1)
@@ -1225,7 +1239,7 @@ class TestTTLCachePolicy:
         assert (1, 1) == obj.popitem()
 
     def test_global_ttl_on_update(self):
-        obj = self.create_cache(2, 0.5)
+        obj = self.create_cache(2, global_ttl=0.5)
 
         # maxsize=2 - (1, 1) should be evicated because
         obj.update((i + 1, i + 1) for i in range(3))
@@ -1242,7 +1256,7 @@ class TestTTLCachePolicy:
             obj[3]
 
     def test_get_with_expire(self):
-        obj = self.create_cache(2, 10)
+        obj = self.create_cache(2, global_ttl=10)
 
         obj.insert(1, 1)
         time.sleep(0.1)
@@ -1259,7 +1273,7 @@ class TestTTLCachePolicy:
         assert 0 == dur
 
     def test_pop_with_expire(self):
-        obj = self.create_cache(2, 10)
+        obj = self.create_cache(2, global_ttl=10)
 
         obj.insert(1, 1)
         time.sleep(0.1)
@@ -1276,7 +1290,7 @@ class TestTTLCachePolicy:
         assert 0 == dur
 
     def test_popitem_with_expire(self):
-        obj = self.create_cache(2, 10)
+        obj = self.create_cache(2, global_ttl=10)
 
         obj.insert(1, 1)
         obj.insert(2, 2)
@@ -1295,7 +1309,7 @@ class TestTTLCachePolicy:
     def test_items_with_expire(self):
         # no need to test completely items_with_expire
         # because it's tested in test_iterators
-        obj = self.create_cache(10, 3, {1: 2, 3: 4})
+        obj = self.create_cache(10, {1: 2, 3: 4})
         for key, val, ttl in obj.items_with_expire():
             assert key in obj
             assert val == obj[key]
@@ -1308,8 +1322,6 @@ class TestTTLCachePolicy:
         assert len(obj) == 3
         time.sleep(3.5)
         assert len(obj) == 0
-
-    # TODO: more tests for sweep_interval
 
 
 class TestVTTLCache(
@@ -1344,13 +1356,14 @@ class TestVTTLCache(
         )
 
 
-class TestVTTLCachePolicy(mixins.BaseMixin):
+class TestVTTLCachePolicy(mixins.SweepIntervalMixin):
     def create_cache(
         self,
         maxsize: int = 10,
         iterable: typing.Any = None,
         capacity: int = 0,
         getsizeof: typing.Any = None,
+        sweep_interval: float | timedelta | None = None,
     ) -> cachebox.VTTLCache:
         return cachebox.VTTLCache(
             maxsize,
@@ -1358,6 +1371,7 @@ class TestVTTLCachePolicy(mixins.BaseMixin):
             100,
             capacity=capacity,
             getsizeof=getsizeof,
+            sweep_interval=sweep_interval,
         )
 
     def test_item_accessible_before_ttl(self):
@@ -1390,13 +1404,6 @@ class TestVTTLCachePolicy(mixins.BaseMixin):
         c.insert("k", "v")  # no TTL
         time.sleep(0.1)
         assert c["k"] == "v"
-
-    # def test_expired_item_excluded_from_len(self):
-    #     c = self.create_cache()
-    #     c.insert("a", 1, ttl=0.1)
-    #     c.insert("b", 2)
-    #     time.sleep(0.15)
-    #     assert len(c) == 1
 
     def test_expired_key_not_in_contains(self):
         c = self.create_cache()
@@ -1707,5 +1714,3 @@ class TestVTTLCachePolicy(mixins.BaseMixin):
         assert len(obj) == 3
         time.sleep(3.5)
         assert len(obj) == 0
-
-    # TODO: more tests for sweep_interval

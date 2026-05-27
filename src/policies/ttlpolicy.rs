@@ -460,7 +460,6 @@ impl PolicyExt for TTLPolicy {
         self.front_offset = 0;
     }
 
-    // TODO: considering expired handles
     fn py_eq(
         &self,
         py: pyo3::Python,
@@ -468,42 +467,38 @@ impl PolicyExt for TTLPolicy {
         other: &Self,
         other_shared: &Self::Shared,
     ) -> pyo3::PyResult<bool> {
-        if shared.maxsize() != other_shared.maxsize()
-            || shared.global_ttl() != other_shared.global_ttl()
-            || self.table.len() != other.table.len()
-        {
+        if shared.maxsize() != other_shared.maxsize() || self.table.len() != other.table.len() {
             return Ok(false);
         }
 
         let mut error = None;
+        let now = std::time::SystemTime::now();
+
         let result = unsafe {
-            let mut iterator = self.table.iter().map(|x| x.as_ref());
+            self.table.iter().all(|x| {
+                let handle = get_handle!(&self, *x.as_ref());
+                if handle.is_expired(now) {
+                    return true;
+                }
 
-            iterator.all(|index_1| {
-                let handle_1 = get_handle!(&self, *index_1);
+                let key = handle.key();
 
-                let result = other.table.get(handle_1.key().hash(), |index| {
-                    handle_1.key().py_eq(py, get_handle!(&other, *index).key())
-                });
-
-                match result {
+                match other
+                    .table
+                    .get(key.hash(), |i| key.py_eq(py, get_handle!(&other, *i).key()))
+                {
                     Err(e) => {
                         error = Some(e);
-                        // Return false to break the `.all` loop
                         false
                     }
                     Ok(None) => false,
-                    Ok(Some(index_2)) => {
-                        let handle_2 = get_handle!(&other, *index_2);
-
-                        let value_1 = handle_1.value();
-                        let value_2 = handle_2.value();
-
-                        match utils::pyobject_equal(py, value_1.as_ptr(), value_2.as_ptr()) {
-                            Ok(result) => result,
+                    Ok(Some(i)) => {
+                        let v1 = handle.value();
+                        let v2 = get_handle!(&other, *i).value();
+                        match utils::pyobject_equal(py, v1.as_ptr(), v2.as_ptr()) {
+                            Ok(eq) => eq,
                             Err(e) => {
                                 error = Some(e);
-                                // Return false to break the `.all` loop
                                 false
                             }
                         }
@@ -512,10 +507,7 @@ impl PolicyExt for TTLPolicy {
             })
         };
 
-        if let Some(error) = error {
-            return Err(error);
-        }
-        Ok(result)
+        error.map_or(Ok(result), Err)
     }
 
     fn clone_ref(&mut self, py: pyo3::Python<'_>) -> Self {

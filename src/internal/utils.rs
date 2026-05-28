@@ -395,6 +395,7 @@ impl From<PrecomputedHashObject> for alias::PyObject {
 }
 /// Holds and manage `getsizeof` function which is a callable used to measure the
 /// size of each key-value pair.
+#[derive(pyo3::FromPyObject)]
 #[repr(transparent)]
 pub struct GetsizeofFunction(Option<alias::PyObject>);
 

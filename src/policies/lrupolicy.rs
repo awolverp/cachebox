@@ -1,4 +1,5 @@
 use crate::hashbrown;
+use crate::internal::alias;
 use crate::internal::linked_list;
 use crate::internal::utils;
 use crate::policies::traits;
@@ -155,6 +156,8 @@ impl PolicyExt for LRUPolicy {
     where
         Self: 'a;
 
+    const PICKLE_SIZE: isize = 1;
+
     #[inline]
     fn current_size(&self) -> usize {
         self.currsize
@@ -309,5 +312,22 @@ impl PolicyExt for LRUPolicy {
             list: entries,
             currsize: self.currsize,
         }
+    }
+
+    fn build_pickle(
+        &self,
+        py: pyo3::Python,
+        tuple: &mut crate::internal::pickle::TupleBuilder,
+    ) -> pyo3::PyResult<()> {
+        todo!()
+    }
+
+    fn from_pickle(
+        maxsize: usize,
+        getsizeof: Option<alias::PyObject>,
+        global_ttl: Option<std::time::Duration>,
+        builded: pyo3::Bound<'_, pyo3::types::PyTuple>,
+    ) -> pyo3::PyResult<(Self::Shared, Self)> {
+        todo!()
     }
 }

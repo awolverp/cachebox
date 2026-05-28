@@ -1,4 +1,6 @@
+import copy as stdcopy
 import dataclasses
+import pickle
 import sys
 import threading
 import time
@@ -505,6 +507,69 @@ class CopyMixin(BaseMixin):
         c2 = cache.copy()
         assert c2.maxsize == cache.maxsize
 
+    def test_copy_is_shallow(self):
+        cache = self.create_cache()
+
+        cache["A"] = [1, 2]
+        cache["B"] = {1: 1, 2: 2}
+
+        c2 = cache.copy()
+
+        assert len(cache["A"]) == 2
+        assert len(cache["B"]) == 2
+        assert len(c2["A"]) == 2
+        assert len(c2["B"]) == 2
+
+        c2["A"].append(3)
+        c2["B"][3] = 3
+
+        assert len(cache["A"]) == 3
+        assert len(cache["B"]) == 3
+        assert len(c2["A"]) == 3
+        assert len(c2["B"]) == 3
+
+    def test_deepcopy_has_same_items(self):
+        cache = self.create_cache()
+
+        cache.update({"a": 1, "b": 2})
+        c2 = stdcopy.deepcopy(cache)
+        assert set(c2.items()) == set(cache.items())
+
+    def test_deepcopy_is_independent(self):
+        cache = self.create_cache()
+
+        cache.insert("a", 1)
+        c2 = stdcopy.deepcopy(cache)
+        c2.insert("b", 2)
+        assert not cache.contains("b")
+
+    def test_deepcopy_preserves_maxsize(self):
+        cache = self.create_cache()
+
+        c2 = stdcopy.deepcopy(cache)
+        assert c2.maxsize == cache.maxsize
+
+    def test_deepcopy_is_not_shallow(self):
+        cache = self.create_cache()
+
+        cache["A"] = [1, 2]
+        cache["B"] = {1: 1, 2: 2}
+
+        c2 = stdcopy.deepcopy(cache)
+
+        assert len(cache["A"]) == 2
+        assert len(cache["B"]) == 2
+        assert len(c2["A"]) == 2
+        assert len(c2["B"]) == 2
+
+        c2["A"].append(3)
+        c2["B"][3] = 3
+
+        assert len(cache["A"]) == 2
+        assert len(cache["B"]) == 2
+        assert len(c2["A"]) == 3
+        assert len(c2["B"]) == 3
+
 
 @dataclasses.dataclass
 class Sized:
@@ -1001,6 +1066,32 @@ class FuzzyMixin(BaseMixin):
         assert c.get(key) == value
         assert c[key] == value
         assert c.pop(key) == value
+
+    @given(pairs=st.lists(st.tuples(hashable_keys, any_value), max_size=20))
+    def test_fuzzy_getstate_setstate(self, pairs):
+        original = self.create_cache(20, pairs)
+
+        if not hasattr(original, "__setstate__"):
+            pytest.skip(f"{original.__class__} doesn't support __setstate__")
+
+        state = original.__getstate__()
+
+        pickled = original.__class__.__new__(original.__class__)
+        pickled.__setstate__(state)
+
+        assert pickled == original
+
+    @given(pairs=st.lists(st.tuples(hashable_keys, any_value), max_size=20))
+    def test_fuzzy_pickle_loads_dumps(self, pairs):
+        original = self.create_cache(20, pairs)
+
+        if not hasattr(original, "__setstate__"):
+            pytest.skip(f"{original.__class__} doesn't support pickle")
+
+        state = pickle.dumps(original)
+        pickled = pickle.loads(state)
+
+        assert pickled == original
 
 
 class BenchmarkMixin(BaseMixin):

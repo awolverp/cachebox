@@ -568,6 +568,17 @@ impl PyTTLCache {
         self.copy(py)
     }
 
+    fn __getstate__(&self, py: pyo3::Python) -> pyo3::PyResult<alias::PyObject> {
+        let inner = self.0.get();
+        inner.build_pickle(py).map(|x| x.into())
+    }
+
+    fn __setstate__(&self, py: pyo3::Python, state: alias::PyObject) -> pyo3::PyResult<()> {
+        let wrapped = Wrapped::from_pickle(py, state)?;
+        self.0.set(wrapped);
+        Ok(())
+    }
+
     fn __repr__(slf: pyo3::PyRef<'_, Self>, py: pyo3::Python) -> String {
         let inner = slf.0.get();
         let shared = inner.shared();

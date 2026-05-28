@@ -1,3 +1,5 @@
+use crate::internal::alias;
+use crate::internal::pickle;
 use crate::internal::utils;
 
 pub trait HandleExt {
@@ -76,7 +78,7 @@ pub trait SharedExt: Send + Sync {
     fn clone_ref(&self, py: pyo3::Python) -> Self;
 }
 
-pub trait PolicyExt {
+pub trait PolicyExt: Sized {
     /// Read-only variables, we keep this type separated from the main policy implementation,
     /// because we need to access them outside of `Mutex`s.
     type Shared: SharedExt;
@@ -89,6 +91,8 @@ pub trait PolicyExt {
     type Vacant<'a>: VacantExt<Handle = Self::Handle, Shared = Self::Shared> + 'a
     where
         Self: 'a;
+
+    const PICKLE_SIZE: isize;
 
     /// Returns the current total cumulative size consumed by all stored entries.
     fn current_size(&self) -> usize;
@@ -134,4 +138,20 @@ pub trait PolicyExt {
 
     /// Make a clone of `self`.
     fn clone_ref(&mut self, py: pyo3::Python) -> Self;
+
+    /// Buildes the pickle.
+    /// Should not add items to pickle more than the configured [`Self::PICKLE_SIZE`].
+    fn build_pickle(
+        &self,
+        py: pyo3::Python,
+        tuple: &mut pickle::TupleBuilder,
+    ) -> pyo3::PyResult<()>;
+
+    /// Loads the builded pickle.
+    fn from_pickle(
+        maxsize: usize,
+        getsizeof: Option<alias::PyObject>,
+        global_ttl: Option<std::time::Duration>,
+        builded: pyo3::Bound<'_, pyo3::types::PyTuple>,
+    ) -> pyo3::PyResult<(Self::Shared, Self)>;
 }

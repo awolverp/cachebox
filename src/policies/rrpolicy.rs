@@ -1,4 +1,5 @@
 use crate::hashbrown;
+use crate::internal::alias;
 use crate::internal::utils;
 use crate::policies::traits;
 use crate::policies::traits::HandleExt;
@@ -121,6 +122,8 @@ impl PolicyExt for RRPolicy {
         = Vacant<'a>
     where
         Self: 'a;
+
+    const PICKLE_SIZE: isize = 1;
 
     #[inline]
     fn current_size(&self) -> usize {
@@ -248,5 +251,52 @@ impl PolicyExt for RRPolicy {
             table,
             currsize: self.currsize,
         }
+    }
+
+    fn build_pickle(
+        &self,
+        py: pyo3::Python,
+        tuple: &mut crate::internal::pickle::TupleBuilder,
+    ) -> pyo3::PyResult<()> {
+        tuple.push_dict(py, |dict| unsafe {
+            for handle in self.table.iter().map(|x| x.as_ref()) {
+                dict.entry(py, handle.key().as_ref(), handle.value())?;
+            }
+            Ok(())
+        })?;
+        Ok(())
+    }
+
+    fn from_pickle(
+        maxsize: usize,
+        getsizeof: Option<alias::PyObject>,
+        _global_ttl: Option<std::time::Duration>,
+        builded: pyo3::Bound<'_, pyo3::types::PyTuple>,
+    ) -> pyo3::PyResult<(Self::Shared, Self)> {
+        use pyo3::types::PyDictMethods;
+        use pyo3::types::PyTupleMethods;
+
+        let dict = builded.get_item(0)?.cast_into::<pyo3::types::PyDict>()?;
+        let dict_length = dict.len();
+
+        if dict_length > maxsize {
+            return Err(new_py_error!(
+                PyValueError,
+                "dict size is incompatible with maxsize"
+            ));
+        }
+
+        let shared = Shared::new(maxsize, getsizeof);
+        let mut slf = Self::new(dict.len());
+
+        for (key, value) in dict.iter() {
+            let handle = Handle::new(key.py(), shared.getsizeof(), key.unbind(), value.unbind())?;
+
+            unsafe {
+                slf.table.insert_no_grow(handle.key().hash(), handle);
+            }
+        }
+
+        Ok((shared, slf))
     }
 }

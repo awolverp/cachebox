@@ -1,4 +1,8 @@
+use pyo3::types::PyAnyMethods;
+use pyo3::types::PyTupleMethods;
+
 use crate::internal::alias;
+use crate::internal::pickle;
 use crate::policies::traits::HandleExt;
 use crate::policies::traits::OccupiedExt;
 use crate::policies::traits::PolicyEntry;
@@ -250,5 +254,39 @@ impl<P: PolicyExt> Wrapped<P> {
             shared,
             inner: parking_lot::Mutex::new(policy),
         }
+    }
+
+    pub fn build_pickle(&self, py: pyo3::Python) -> pyo3::PyResult<pickle::Pickle> {
+        let mut builder = pickle::Pickle::builder(py, 4)?;
+
+        let getsizeof: Option<alias::PyObject> = self.shared.getsizeof().clone_ref(py).into();
+
+        builder
+            .push(py, self.shared.maxsize())?
+            .push(py, getsizeof)?
+            .push(py, self.shared.global_ttl())?;
+
+        let policy = self.inner.lock();
+        builder.push_tuple(py, P::PICKLE_SIZE, |tuple| policy.build_pickle(py, tuple))?;
+
+        Ok(builder.finish(py))
+    }
+}
+
+impl<P: PolicyExt> Wrapped<P> {
+    pub fn from_pickle(py: pyo3::Python<'_>, state: alias::PyObject) -> pyo3::PyResult<Self> {
+        let tuple = state.into_bound(py).cast_into::<pyo3::types::PyTuple>()?;
+
+        let maxsize: usize = tuple.get_item(0)?.extract()?;
+        let getsizeof: Option<alias::PyObject> = tuple.get_item(1)?.extract()?;
+        let global_ttl: Option<std::time::Duration> = tuple.get_item(2)?.extract()?;
+        let builded = tuple.get_item(3)?.cast_into::<pyo3::types::PyTuple>()?;
+
+        let (shared, inner) = P::from_pickle(maxsize, getsizeof, global_ttl, builded)?;
+
+        Ok(Self {
+            shared,
+            inner: parking_lot::Mutex::new(inner),
+        })
     }
 }

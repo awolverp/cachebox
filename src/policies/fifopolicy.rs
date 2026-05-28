@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 
 use crate::hashbrown;
+use crate::internal::alias;
 use crate::internal::utils;
 use crate::policies::traits;
 use crate::policies::traits::HandleExt;
@@ -242,6 +243,8 @@ impl PolicyExt for FIFOPolicy {
     where
         Self: 'a;
 
+    const PICKLE_SIZE: isize = 2;
+
     #[inline]
     fn current_size(&self) -> usize {
         self.currsize
@@ -389,5 +392,22 @@ impl PolicyExt for FIFOPolicy {
             currsize: self.currsize,
             front_offset: self.front_offset,
         }
+    }
+
+    fn build_pickle(
+        &self,
+        py: pyo3::Python,
+        tuple: &mut crate::internal::pickle::TupleBuilder,
+    ) -> pyo3::PyResult<()> {
+        todo!()
+    }
+
+    fn from_pickle(
+        maxsize: usize,
+        getsizeof: Option<alias::PyObject>,
+        global_ttl: Option<std::time::Duration>,
+        builded: pyo3::Bound<'_, pyo3::types::PyTuple>,
+    ) -> pyo3::PyResult<(Self::Shared, Self)> {
+        todo!()
     }
 }

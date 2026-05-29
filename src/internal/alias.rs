@@ -1,4 +1,4 @@
-//! There are type aliases that are used whole the library
+//! There are type aliases that are used across the library
 
 /// Type alias for `pyo3::Py<pyo3::PyAny>`
 pub type PyObject = pyo3::Py<pyo3::PyAny>;

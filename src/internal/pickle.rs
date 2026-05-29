@@ -79,7 +79,7 @@ impl<'a> PyPickleVal<'a> {
     ///
     /// # Safety
     /// The caller is responsible for exactly one `Py_DECREF` (or transferring ownership to a container).
-    unsafe fn into_py_raw(self, py: pyo3::Python<'_>) -> pyo3::PyResult<*mut pyo3::ffi::PyObject> {
+    unsafe fn into_raw(self, py: pyo3::Python<'_>) -> pyo3::PyResult<*mut pyo3::ffi::PyObject> {
         let ptr = match self {
             Self::Owned(v) => v.into_ptr(),
             Self::Borrowed(v) => {
@@ -128,8 +128,8 @@ pub struct Pickle(alias::PyObject);
 impl Pickle {
     /// Begin building a top-level pickle tuple with exactly `size` slots.
     #[inline]
-    pub fn builder(py: pyo3::Python<'_>, size: usize) -> pyo3::PyResult<PickleBuilder> {
-        PickleBuilder::new(py, size as isize)
+    pub fn builder<'py>(py: pyo3::Python<'py>, size: usize) -> pyo3::PyResult<PickleBuilder<'py>> {
+        PickleBuilder::new(py, size)
     }
 
     /// Borrow the inner [`alias::PyObject`] without consuming `self`.
@@ -162,107 +162,38 @@ impl From<Pickle> for alias::PyObject {
     }
 }
 
-/// Most of builders expose the same `push` / `push_tuple` / `push_list` / `push_dict` surface.
-/// Rather than repeating three times, generate them with a macro.
-///
-/// Each builder must provide a method:
-/// ```ignore
-///   unsafe fn push_owned_impl(
-///       &mut self,
-///       py: pyo3::Python<'_>,
-///       item: *mut pyo3::ffi::PyObject,   // caller hands over ownership
-///   ) -> pyo3::PyResult<()>
-/// ```
-macro_rules! impl_push_methods {
-    ($ty:ident) => {
-        impl $ty {
-            /// Push a scalar [`PyPickleVal`] (or anything that converts `Into<PyPickleVal>`).
-            ///
-            /// ```rust,ignore
-            /// builder.push(py, 42isize)?
-            ///        .push(py, "hello")?
-            ///        .push(py, 3.14f64)?;
-            /// ```
-            pub fn push<'a, V>(&mut self, py: pyo3::Python<'_>, val: V) -> pyo3::PyResult<&mut Self>
-            where
-                V: Into<PyPickleVal<'a>>,
-            {
-                let raw = unsafe { val.into().into_py_raw(py)? };
-                unsafe {
-                    self.push_owned_impl(py, raw)?;
-                }
-                Ok(self)
-            }
+mod sealed {
+    /// Accepts a single raw owned pointer from a finished child builder.
+    pub trait Receive {
+        /// # Safety
+        /// `item` must have refcount == 1; ownership is fully transferred.
+        unsafe fn receive(&mut self, item: *mut pyo3::ffi::PyObject) -> pyo3::PyResult<()>;
+    }
+}
 
-            /// Push a nested tuple whose items are filled by the closure `f`.
-            ///
-            /// `size` must equal the exact number of items `f` will push.
-            ///
-            /// ```rust,ignore
-            /// builder.push_tuple(py, 2, |t| {
-            ///     t.push(py, 3isize)?.push(py, 4isize)?;
-            ///     Ok(())
-            /// })?;
-            /// ```
-            pub fn push_tuple<F>(
-                &mut self,
-                py: pyo3::Python<'_>,
-                size: isize,
-                f: F,
-            ) -> pyo3::PyResult<&mut Self>
-            where
-                F: FnOnce(&mut TupleBuilder) -> pyo3::PyResult<()>,
-            {
-                let mut b = TupleBuilder::new(py, size)?;
-                f(&mut b)?;
-                // into_raw transfers ownership; Drop becomes a no-op.
-                unsafe {
-                    self.push_owned_impl(py, b.into_raw())?;
-                }
-                Ok(self)
-            }
+pub trait Builder: Sized + sealed::Receive {
+    fn py(&self) -> pyo3::Python<'_>;
 
-            /// Push a nested list whose items are filled by the closure `f`.
-            ///
-            /// ```rust,ignore
-            /// builder.push_list(py, |l| {
-            ///     l.push(py, 1isize)?.push(py, "A")?;
-            ///     Ok(())
-            /// })?;
-            /// ```
-            pub fn push_list<F>(&mut self, py: pyo3::Python<'_>, f: F) -> pyo3::PyResult<&mut Self>
-            where
-                F: FnOnce(&mut ListBuilder) -> pyo3::PyResult<()>,
-            {
-                let mut b = ListBuilder::new(py)?;
-                f(&mut b)?;
-                unsafe {
-                    self.push_owned_impl(py, b.into_raw())?;
-                }
-                Ok(self)
-            }
-
-            /// Push a nested dict whose entries are filled by the closure `f`.
-            ///
-            /// ```rust,ignore
-            /// builder.push_dict(py, |d| {
-            ///     d.entry(py, "key", 42isize)?;
-            ///     Ok(())
-            /// })?;
-            /// ```
-            pub fn push_dict<F>(&mut self, py: pyo3::Python<'_>, f: F) -> pyo3::PyResult<&mut Self>
-            where
-                F: FnOnce(&mut DictBuilder) -> pyo3::PyResult<()>,
-            {
-                let mut b = DictBuilder::new(py)?;
-                f(&mut b)?;
-                unsafe {
-                    self.push_owned_impl(py, b.into_raw())?;
-                }
-                Ok(self)
-            }
+    fn push<'a, V: Into<PyPickleVal<'a>>>(&mut self, val: V) -> pyo3::PyResult<&mut Self> {
+        let raw = unsafe { val.into().into_raw(self.py())? };
+        unsafe {
+            self.receive(raw)?;
         }
-    };
+
+        Ok(self)
+    }
+
+    fn begin_tuple<'a>(&'a mut self, size: usize) -> pyo3::PyResult<TupleBuilder<'a, Self>> {
+        TupleBuilder::new(self, size)
+    }
+
+    fn begin_list<'a>(&'a mut self) -> pyo3::PyResult<ListBuilder<'a, Self>> {
+        ListBuilder::new(self)
+    }
+
+    fn begin_dict<'a>(&'a mut self) -> pyo3::PyResult<DictBuilder<'a, Self>> {
+        DictBuilder::new(self)
+    }
 }
 
 /// Builds the top-level Python tuple that represents a pickle state.
@@ -273,36 +204,41 @@ macro_rules! impl_push_methods {
 ///
 /// If the builder is dropped before `finish` is called, the partially-built
 /// tuple is correctly decreffed and all already-inserted items are released.
-pub struct PickleBuilder {
-    /// `None` only after `finish()` has transferred ownership.
+pub struct PickleBuilder<'py> {
+    py: pyo3::Python<'py>,
     inner: Option<ptr::NonNull<pyo3::ffi::PyObject>>,
     size: isize,
     current: isize,
 }
 
-// private methods
-impl PickleBuilder {
-    fn new(py: pyo3::Python<'_>, size: isize) -> pyo3::PyResult<Self> {
-        let raw = unsafe { pyo3::ffi::PyTuple_New(size) };
+impl<'py> PickleBuilder<'py> {
+    fn new(py: pyo3::Python<'py>, size: usize) -> pyo3::PyResult<Self> {
+        let raw = unsafe { pyo3::ffi::PyTuple_New(size as isize) };
         if raw.is_null() {
-            Err(pyo3::PyErr::fetch(py))
-        } else {
-            Ok(Self {
-                inner: Some(unsafe { ptr::NonNull::new_unchecked(raw) }),
-                size,
-                current: 0,
-            })
+            return Err(pyo3::PyErr::fetch(py));
         }
+        Ok(Self {
+            py,
+            inner: Some(unsafe { ptr::NonNull::new_unchecked(raw) }),
+            size: size as isize,
+            current: 0,
+        })
     }
 
-    /// # Safety
-    /// `PyTuple_SetItem` **steals** `item` on success and **decrefs** it on
-    /// failure, so this function must not touch `item`'s refcount after the call.
-    unsafe fn push_owned_impl(
-        &mut self,
-        py: pyo3::Python<'_>,
-        item: *mut pyo3::ffi::PyObject,
-    ) -> pyo3::PyResult<()> {
+    pub fn finish(mut self) -> Pickle {
+        debug_assert_eq!(
+            self.current,
+            self.size,
+            "PickleBuilder::finish: {} unfilled slot(s)",
+            self.size - self.current
+        );
+        let ptr = self.inner.take().expect("already consumed").as_ptr();
+        Pickle(unsafe { pyo3::Bound::from_owned_ptr(self.py, ptr) }.unbind())
+    }
+}
+
+impl sealed::Receive for PickleBuilder<'_> {
+    unsafe fn receive(&mut self, item: *mut pyo3::ffi::PyObject) -> pyo3::PyResult<()> {
         debug_assert!(
             self.current < self.size,
             "PickleBuilder: pushed more items than `size`"
@@ -310,39 +246,21 @@ impl PickleBuilder {
         let ptr = self.inner.expect("PickleBuilder already consumed").as_ptr();
         if pyo3::ffi::PyTuple_SetItem(ptr, self.current, item) != 0 {
             // item was already decreffed by PyTuple_SetItem on failure
-            return Err(pyo3::PyErr::fetch(py));
+            return Err(pyo3::PyErr::fetch(self.py));
         }
         self.current += 1;
         Ok(())
     }
 }
 
-impl PickleBuilder {
-    /// Finalise the builder into a [`Pickle`].
-    pub fn finish(mut self, py: pyo3::Python<'_>) -> Pickle {
-        debug_assert_eq!(
-            self.current,
-            self.size,
-            "PickleBuilder::finish called with {} unfilled slot(s)",
-            self.size - self.current,
-        );
-
-        // Take ownership
-        // `.take()` makes Drop no-op
-        let ptr = self
-            .inner
-            .take()
-            .expect("PickleBuilder already consumed")
-            .as_ptr();
-
-        let bound = unsafe { pyo3::Bound::from_owned_ptr(py, ptr) };
-        Pickle(bound.unbind())
+impl<'py> Builder for PickleBuilder<'py> {
+    #[inline]
+    fn py(&self) -> pyo3::Python<'py> {
+        self.py
     }
 }
 
-impl_push_methods!(PickleBuilder);
-
-impl Drop for PickleBuilder {
+impl Drop for PickleBuilder<'_> {
     fn drop(&mut self) {
         // Releases the tuple and all items already inserted into it.
         if let Some(nn) = self.inner.take() {
@@ -353,62 +271,68 @@ impl Drop for PickleBuilder {
     }
 }
 
-/// Builds a Python tuple for embedding inside another container.
-pub struct TupleBuilder {
+pub struct TupleBuilder<'a, P: Builder> {
+    parent: &'a mut P,
     inner: Option<ptr::NonNull<pyo3::ffi::PyObject>>,
     size: isize,
     current: isize,
 }
 
-// private methods
-impl TupleBuilder {
-    /// Consume the builder and surrender ownership of the raw pointer to the
-    /// caller (used internally to insert into a parent container).
-    fn into_raw(mut self) -> *mut pyo3::ffi::PyObject {
-        // Drop becomes a no-op because `inner` is now None.
-        self.inner
-            .take()
-            .expect("TupleBuilder already consumed")
-            .as_ptr()
+impl<'a, P: Builder> TupleBuilder<'a, P> {
+    fn new(parent: &'a mut P, size: usize) -> pyo3::PyResult<Self> {
+        let raw = unsafe { pyo3::ffi::PyTuple_New(size as isize) };
+        if raw.is_null() {
+            return Err(pyo3::PyErr::fetch(parent.py()));
+        }
+
+        Ok(Self {
+            parent,
+            inner: Some(unsafe { ptr::NonNull::new_unchecked(raw) }),
+            size: size as isize,
+            current: 0,
+        })
     }
 
-    unsafe fn push_owned_impl(
-        &mut self,
-        py: pyo3::Python<'_>,
-        item: *mut pyo3::ffi::PyObject,
-    ) -> pyo3::PyResult<()> {
-        debug_assert!(
-            self.current < self.size,
-            "TupleBuilder: pushed more items than `size`"
+    #[inline]
+    pub fn end(mut self) -> pyo3::PyResult<()> {
+        debug_assert_eq!(
+            self.current,
+            self.size,
+            "TupleBuilder::end: {} unfilled slot(s)",
+            self.size - self.current
         );
-        let ptr = self.inner.expect("TupleBuilder already consumed").as_ptr();
-        if pyo3::ffi::PyTuple_SetItem(ptr, self.current, item) != 0 {
-            return Err(pyo3::PyErr::fetch(py));
+        let item = self.inner.take().expect("already consumed").as_ptr();
+        unsafe {
+            self.parent.receive(item)?;
+        }
+        Ok(())
+    }
+}
+
+impl<P: Builder> sealed::Receive for TupleBuilder<'_, P> {
+    unsafe fn receive(&mut self, item: *mut pyo3::ffi::PyObject) -> pyo3::PyResult<()> {
+        debug_assert!(self.current < self.size, "TupleBuilder: too many items");
+        if pyo3::ffi::PyTuple_SetItem(
+            self.inner.expect("already consumed").as_ptr(),
+            self.current,
+            item,
+        ) != 0
+        {
+            return Err(pyo3::PyErr::fetch(self.parent.py()));
         }
         self.current += 1;
         Ok(())
     }
 }
 
-impl TupleBuilder {
-    /// Allocate a new tuple with `size` pre-allocated slots.
-    pub fn new(py: pyo3::Python<'_>, size: isize) -> pyo3::PyResult<Self> {
-        let raw = unsafe { pyo3::ffi::PyTuple_New(size) };
-        if raw.is_null() {
-            Err(pyo3::PyErr::fetch(py))
-        } else {
-            Ok(Self {
-                inner: Some(unsafe { ptr::NonNull::new_unchecked(raw) }),
-                size,
-                current: 0,
-            })
-        }
+impl<P: Builder> Builder for TupleBuilder<'_, P> {
+    #[inline]
+    fn py(&self) -> pyo3::Python<'_> {
+        self.parent.py()
     }
 }
 
-impl_push_methods!(TupleBuilder);
-
-impl Drop for TupleBuilder {
+impl<P: Builder> Drop for TupleBuilder<'_, P> {
     fn drop(&mut self) {
         if let Some(nn) = self.inner.take() {
             unsafe {
@@ -418,234 +342,270 @@ impl Drop for TupleBuilder {
     }
 }
 
-/// Builds a Python list of arbitrary length.
-///
-/// Unlike [`TupleBuilder`], no size is required upfront; items are appended
-/// one by one via [`PyList_Append`].
-pub struct ListBuilder {
-    /// `None` only after `into_raw()` or `build()`.
+pub struct ListBuilder<'a, P: Builder> {
+    parent: &'a mut P,
     inner: Option<ptr::NonNull<pyo3::ffi::PyObject>>,
 }
 
-// private methods
-impl ListBuilder {
-    fn into_raw(mut self) -> *mut pyo3::ffi::PyObject {
-        self.inner
-            .take()
-            .expect("ListBuilder already consumed")
-            .as_ptr()
+impl<'a, P: Builder> ListBuilder<'a, P> {
+    fn new(parent: &'a mut P) -> pyo3::PyResult<Self> {
+        let raw = unsafe { pyo3::ffi::PyList_New(0) };
+        if raw.is_null() {
+            return Err(pyo3::PyErr::fetch(parent.py()));
+        }
+        Ok(Self {
+            parent,
+            inner: Some(unsafe { ptr::NonNull::new_unchecked(raw) }),
+        })
     }
 
-    /// # Safety
-    /// `PyList_Append` does **not** steal `item`; it increments `item`'s refcount
-    /// on success.  We therefore always decref our owned ref after the call,
-    /// regardless of success or failure.
-    unsafe fn push_owned_impl(
-        &mut self,
-        py: pyo3::Python<'_>,
-        item: *mut pyo3::ffi::PyObject,
-    ) -> pyo3::PyResult<()> {
-        let ptr = self.inner.expect("ListBuilder already consumed").as_ptr();
-        let result = pyo3::ffi::PyList_Append(ptr, item);
-        pyo3::ffi::Py_DECREF(item); // release our owned ref in all cases
-        if result != 0 {
-            return Err(pyo3::PyErr::fetch(py));
+    #[inline]
+    pub fn end(mut self) -> pyo3::PyResult<()> {
+        let item = self.inner.take().expect("already consumed").as_ptr();
+        unsafe {
+            self.parent.receive(item)?;
         }
         Ok(())
     }
 }
 
-impl ListBuilder {
-    /// Create a new, empty list.
-    pub fn new(py: pyo3::Python<'_>) -> pyo3::PyResult<Self> {
-        let raw = unsafe { pyo3::ffi::PyList_New(0) };
-        if raw.is_null() {
-            return Err(pyo3::PyErr::fetch(py));
-        }
-        Ok(Self {
-            inner: Some(unsafe { ptr::NonNull::new_unchecked(raw) }),
-        })
-    }
-}
-
-impl_push_methods!(ListBuilder);
-
-impl Drop for ListBuilder {
-    fn drop(&mut self) {
-        if let Some(nn) = self.inner.take() {
-            unsafe {
-                pyo3::ffi::Py_DECREF(nn.as_ptr());
-            }
-        }
-    }
-}
-
-/// Builds a Python dict.
-///
-/// Keys must be [`PyPickleVal`] scalars (integers, floats, bools, strings, `None`).
-/// Values may be scalars **or** nested containers built via the `entry_tuple`,
-/// `entry_list`, and `entry_dict` methods.
-pub struct DictBuilder {
-    inner: Option<ptr::NonNull<pyo3::ffi::PyObject>>,
-}
-
-// private methods
-impl DictBuilder {
-    fn into_raw(mut self) -> *mut pyo3::ffi::PyObject {
-        self.inner
-            .take()
-            .expect("DictBuilder already consumed")
-            .as_ptr()
-    }
-
-    /// # Safety
-    /// `PyDict_SetItem` does **not** steal either `key` or `val`.
-    /// This helper takes ownership of both and decrefs them unconditionally.
-    unsafe fn set_kv(
-        &mut self,
-        py: pyo3::Python<'_>,
-        key: *mut pyo3::ffi::PyObject,
-        val: *mut pyo3::ffi::PyObject,
-    ) -> pyo3::PyResult<()> {
-        let ptr = self.inner.expect("DictBuilder already consumed").as_ptr();
-        let result = pyo3::ffi::PyDict_SetItem(ptr, key, val);
-        // Always release our owned refs regardless of success/failure.
-        pyo3::ffi::Py_DECREF(key);
-        pyo3::ffi::Py_DECREF(val);
-        if result != 0 {
-            Err(pyo3::PyErr::fetch(py))
+impl<P: Builder> sealed::Receive for ListBuilder<'_, P> {
+    unsafe fn receive(&mut self, item: *mut pyo3::ffi::PyObject) -> pyo3::PyResult<()> {
+        let rc = pyo3::ffi::PyList_Append(self.inner.expect("already consumed").as_ptr(), item);
+        pyo3::ffi::Py_DECREF(item); // PyList_Append does not steal
+        if rc != 0 {
+            Err(pyo3::PyErr::fetch(self.parent.py()))
         } else {
             Ok(())
         }
     }
 }
 
-impl DictBuilder {
-    /// Create a new, empty dict.
-    pub fn new(py: pyo3::Python<'_>) -> pyo3::PyResult<Self> {
-        let raw = unsafe { pyo3::ffi::PyDict_New() };
-        if raw.is_null() {
-            return Err(pyo3::PyErr::fetch(py));
-        }
-        Ok(Self {
-            inner: Some(unsafe { ptr::NonNull::new_unchecked(raw) }),
-        })
-    }
-
-    /// Insert `key → val` where both are [`PyPickleVal`] scalars.
-    pub fn entry<'k, 'v, K, V>(
-        &mut self,
-        py: pyo3::Python<'_>,
-        key: K,
-        val: V,
-    ) -> pyo3::PyResult<&mut Self>
-    where
-        K: Into<PyPickleVal<'k>>,
-        V: Into<PyPickleVal<'v>>,
-    {
-        unsafe {
-            let kptr = key.into().into_py_raw(py)?;
-            let vptr = match val.into().into_py_raw(py) {
-                Ok(v) => v,
-                Err(e) => {
-                    pyo3::ffi::Py_DECREF(kptr); // clean up key we already allocated
-                    return Err(e);
-                }
-            };
-            self.set_kv(py, kptr, vptr)?;
-        }
-        Ok(self)
-    }
-
-    /// Insert `key → (nested tuple)`.
-    pub fn entry_tuple<'k, K, F>(
-        &mut self,
-        py: pyo3::Python<'_>,
-        key: K,
-        size: isize,
-        f: F,
-    ) -> pyo3::PyResult<&mut Self>
-    where
-        K: Into<PyPickleVal<'k>>,
-        F: FnOnce(&mut TupleBuilder) -> pyo3::PyResult<()>,
-    {
-        let mut b = TupleBuilder::new(py, size)?;
-        f(&mut b)?;
-        let vptr = b.into_raw(); // transfer ownership out of TupleBuilder
-        unsafe {
-            let kptr = match key.into().into_py_raw(py) {
-                Ok(k) => k,
-                Err(e) => {
-                    pyo3::ffi::Py_DECREF(vptr); // release value we built
-                    return Err(e);
-                }
-            };
-            self.set_kv(py, kptr, vptr)?;
-        }
-        Ok(self)
-    }
-
-    /// Insert `key → [nested list]`.
-    pub fn entry_list<'k, K, F>(
-        &mut self,
-        py: pyo3::Python<'_>,
-        key: K,
-        f: F,
-    ) -> pyo3::PyResult<&mut Self>
-    where
-        K: Into<PyPickleVal<'k>>,
-        F: FnOnce(&mut ListBuilder) -> pyo3::PyResult<()>,
-    {
-        let mut b = ListBuilder::new(py)?;
-        f(&mut b)?;
-        let vptr = b.into_raw();
-        unsafe {
-            let kptr = match key.into().into_py_raw(py) {
-                Ok(k) => k,
-                Err(e) => {
-                    pyo3::ffi::Py_DECREF(vptr);
-                    return Err(e);
-                }
-            };
-            self.set_kv(py, kptr, vptr)?;
-        }
-        Ok(self)
-    }
-
-    /// Insert `key → {nested dict}`.
-    pub fn entry_dict<'k, K, F>(
-        &mut self,
-        py: pyo3::Python<'_>,
-        key: K,
-        f: F,
-    ) -> pyo3::PyResult<&mut Self>
-    where
-        K: Into<PyPickleVal<'k>>,
-        F: FnOnce(&mut DictBuilder) -> pyo3::PyResult<()>,
-    {
-        let mut b = DictBuilder::new(py)?;
-        f(&mut b)?;
-        let vptr = b.into_raw();
-        unsafe {
-            let kptr = match key.into().into_py_raw(py) {
-                Ok(k) => k,
-                Err(e) => {
-                    pyo3::ffi::Py_DECREF(vptr);
-                    return Err(e);
-                }
-            };
-            self.set_kv(py, kptr, vptr)?;
-        }
-        Ok(self)
+impl<P: Builder> Builder for ListBuilder<'_, P> {
+    #[inline]
+    fn py(&self) -> pyo3::Python<'_> {
+        self.parent.py()
     }
 }
 
-impl Drop for DictBuilder {
+impl<P: Builder> Drop for ListBuilder<'_, P> {
     fn drop(&mut self) {
         if let Some(nn) = self.inner.take() {
             unsafe {
                 pyo3::ffi::Py_DECREF(nn.as_ptr());
             }
         }
+    }
+}
+
+pub struct DictBuilder<'a, P: Builder> {
+    parent: &'a mut P,
+    inner: Option<ptr::NonNull<pyo3::ffi::PyObject>>,
+}
+
+impl<'a, P: Builder> DictBuilder<'a, P> {
+    fn new(parent: &'a mut P) -> pyo3::PyResult<Self> {
+        let raw = unsafe { pyo3::ffi::PyDict_New() };
+        if raw.is_null() {
+            return Err(pyo3::PyErr::fetch(parent.py()));
+        }
+        Ok(Self {
+            parent,
+            inner: Some(unsafe { ptr::NonNull::new_unchecked(raw) }),
+        })
+    }
+
+    pub fn entry<'k, 'v, K, V>(&mut self, key: K, val: V) -> pyo3::PyResult<&mut Self>
+    where
+        K: Into<PyPickleVal<'k>>,
+        V: Into<PyPickleVal<'v>>,
+    {
+        let kptr = unsafe { key.into().into_raw(self.parent.py())? };
+        let vptr = unsafe {
+            match val.into().into_raw(self.parent.py()) {
+                Ok(v) => v,
+                Err(e) => {
+                    pyo3::ffi::Py_DECREF(kptr);
+                    return Err(e);
+                }
+            }
+        };
+        unsafe {
+            self.set_kv(kptr, vptr)?;
+        }
+        Ok(self)
+    }
+
+    #[inline]
+    pub fn end(mut self) -> pyo3::PyResult<()> {
+        let item = self.inner.take().expect("already consumed").as_ptr();
+        unsafe {
+            self.parent.receive(item)?;
+        }
+        Ok(())
+    }
+
+    unsafe fn set_kv(
+        &mut self,
+        key: *mut pyo3::ffi::PyObject,
+        val: *mut pyo3::ffi::PyObject,
+    ) -> pyo3::PyResult<()> {
+        let rc =
+            pyo3::ffi::PyDict_SetItem(self.inner.expect("already consumed").as_ptr(), key, val);
+        pyo3::ffi::Py_DECREF(key);
+        pyo3::ffi::Py_DECREF(val);
+        if rc != 0 {
+            Err(pyo3::PyErr::fetch(self.parent.py()))
+        } else {
+            Ok(())
+        }
+    }
+}
+
+// DictBuilder also implements Builder so that begin_tuple/list/dict work
+// as value-builders inside a dict value context.
+impl<P: Builder> sealed::Receive for DictBuilder<'_, P> {
+    #[inline]
+    unsafe fn receive(&mut self, item: *mut pyo3::ffi::PyObject) -> pyo3::PyResult<()> {
+        pyo3::ffi::Py_DECREF(item);
+        Err(pyo3::exceptions::PyTypeError::new_err(
+            "use entry() or entry_*() to insert into a DictBuilder",
+        ))
+    }
+}
+
+impl<P: Builder> Builder for DictBuilder<'_, P> {
+    #[inline]
+    fn py(&self) -> pyo3::Python<'_> {
+        self.parent.py()
+    }
+}
+
+impl<P: Builder> Drop for DictBuilder<'_, P> {
+    fn drop(&mut self) {
+        if let Some(nn) = self.inner.take() {
+            unsafe {
+                pyo3::ffi::Py_DECREF(nn.as_ptr());
+            }
+        }
+    }
+}
+
+impl<'a, P: Builder> DictBuilder<'a, P> {
+    pub fn entry_tuple<'k, K, F>(&mut self, key: K, size: usize, f: F) -> pyo3::PyResult<&mut Self>
+    where
+        K: Into<PyPickleVal<'k>>,
+        F: FnOnce(&mut TupleBuilder<Sink>) -> pyo3::PyResult<()>,
+    {
+        let mut sink = Sink(
+            // SAFETY: the GIL is held for the entire lifetime of this builder because
+            // the root PickleBuilder<'py> (which does own the 'py borrow) is kept alive
+            // as our `parent`.
+            unsafe { std::mem::transmute(self.parent.py()) },
+        );
+
+        let vptr = {
+            let mut b = TupleBuilder::new(&mut sink, size)?;
+            f(&mut b)?;
+            b.inner.take().expect("already consumed").as_ptr()
+        };
+
+        let kptr = unsafe {
+            match key.into().into_raw(self.parent.py()) {
+                Ok(k) => k,
+                Err(e) => {
+                    pyo3::ffi::Py_DECREF(vptr);
+                    return Err(e);
+                }
+            }
+        };
+
+        unsafe {
+            self.set_kv(kptr, vptr)?;
+        }
+        Ok(self)
+    }
+
+    pub fn entry_list<'k, K, F>(&mut self, key: K, f: F) -> pyo3::PyResult<&mut Self>
+    where
+        K: Into<PyPickleVal<'k>>,
+        F: FnOnce(&mut ListBuilder<Sink>) -> pyo3::PyResult<()>,
+    {
+        let mut sink = Sink(
+            // SAFETY: the GIL is held for the entire lifetime of this builder because
+            // the root PickleBuilder<'py> (which does own the 'py borrow) is kept alive
+            // as our `parent`.
+            unsafe { std::mem::transmute(self.parent.py()) },
+        );
+
+        let vptr = {
+            let mut b = ListBuilder::new(&mut sink)?;
+            f(&mut b)?;
+            b.inner.take().expect("already consumed").as_ptr()
+        };
+        let kptr = unsafe {
+            match key.into().into_raw(self.parent.py()) {
+                Ok(k) => k,
+                Err(e) => {
+                    pyo3::ffi::Py_DECREF(vptr);
+                    return Err(e);
+                }
+            }
+        };
+        unsafe {
+            self.set_kv(kptr, vptr)?;
+        }
+        Ok(self)
+    }
+
+    pub fn entry_dict<'k, K, F>(&mut self, key: K, f: F) -> pyo3::PyResult<&mut Self>
+    where
+        K: Into<PyPickleVal<'k>>,
+        F: FnOnce(&mut DictBuilder<Sink>) -> pyo3::PyResult<()>,
+    {
+        let mut sink = Sink(
+            // SAFETY: the GIL is held for the entire lifetime of this builder because
+            // the root PickleBuilder<'py> (which does own the 'py borrow) is kept alive
+            // as our `parent`.
+            unsafe { std::mem::transmute(self.parent.py()) },
+        );
+
+        let vptr = {
+            let mut b = DictBuilder::new(&mut sink)?;
+            f(&mut b)?;
+            b.inner.take().expect("already consumed").as_ptr()
+        };
+        let kptr = unsafe {
+            match key.into().into_raw(self.parent.py()) {
+                Ok(k) => k,
+                Err(e) => {
+                    pyo3::ffi::Py_DECREF(vptr);
+                    return Err(e);
+                }
+            }
+        };
+        unsafe {
+            self.set_kv(kptr, vptr)?;
+        }
+        Ok(self)
+    }
+}
+
+/// A parent that simply discards the pointer it receives.
+/// Used only inside `entry_*` closures where the container
+/// extracts the raw pointer directly before `end()` is called.
+pub struct Sink(pyo3::Python<'static>);
+
+impl sealed::Receive for Sink {
+    unsafe fn receive(&mut self, item: *mut pyo3::ffi::PyObject) -> pyo3::PyResult<()> {
+        pyo3::ffi::Py_DECREF(item);
+        Ok(())
+    }
+}
+
+impl Builder for Sink {
+    #[inline]
+    fn py(&self) -> pyo3::Python<'_> {
+        self.0
     }
 }

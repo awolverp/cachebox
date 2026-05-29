@@ -506,6 +506,7 @@ class CopyMixin(BaseMixin):
 
         c2 = cache.copy()
         assert c2.maxsize == cache.maxsize
+        assert c2.current_size() == cache.current_size()
 
     def test_copy_is_shallow(self):
         cache = self.create_cache()
@@ -548,6 +549,7 @@ class CopyMixin(BaseMixin):
 
         c2 = stdcopy.deepcopy(cache)
         assert c2.maxsize == cache.maxsize
+        assert c2.current_size() == cache.current_size()
 
     def test_deepcopy_is_not_shallow(self):
         cache = self.create_cache()
@@ -1079,6 +1081,7 @@ class FuzzyMixin(BaseMixin):
         pickled = original.__class__.__new__(original.__class__)
         pickled.__setstate__(state)
 
+        assert pickled.current_size() == original.current_size()
         assert pickled == original
 
     @given(pairs=st.lists(st.tuples(hashable_keys, any_value), max_size=20))
@@ -1091,6 +1094,7 @@ class FuzzyMixin(BaseMixin):
         state = pickle.dumps(original)
         pickled = pickle.loads(state)
 
+        assert pickled.current_size() == original.current_size()
         assert pickled == original
 
 

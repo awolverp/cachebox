@@ -3,6 +3,7 @@ use pyo3::types::PyTupleMethods;
 
 use crate::internal::alias;
 use crate::internal::pickle;
+use crate::internal::pickle::Builder;
 use crate::policies::traits::HandleExt;
 use crate::policies::traits::OccupiedExt;
 use crate::policies::traits::PolicyEntry;
@@ -262,14 +263,15 @@ impl<P: PolicyExt> Wrapped<P> {
         let getsizeof: Option<alias::PyObject> = self.shared.getsizeof().clone_ref(py).into();
 
         builder
-            .push(py, self.shared.maxsize())?
-            .push(py, getsizeof)?
-            .push(py, self.shared.global_ttl())?;
+            .push(self.shared.maxsize())?
+            .push(getsizeof)?
+            .push(self.shared.global_ttl())?;
 
-        let policy = self.inner.lock();
-        builder.push_tuple(py, P::PICKLE_SIZE, |tuple| policy.build_pickle(py, tuple))?;
+        let mut tuple = builder.begin_tuple(P::PICKLE_SIZE)?;
+        self.inner.lock().build_pickle(&mut tuple)?;
+        tuple.end()?;
 
-        Ok(builder.finish(py))
+        Ok(builder.finish())
     }
 }
 

@@ -1,5 +1,6 @@
 use crate::hashbrown;
 use crate::internal::alias;
+use crate::internal::pickle::Builder;
 use crate::internal::utils;
 use crate::policies::traits;
 use crate::policies::traits::HandleExt;
@@ -121,7 +122,7 @@ impl traits::PolicyExt for NoPolicy {
     where
         Self: 'a;
 
-    const PICKLE_SIZE: isize = 1;
+    const PICKLE_SIZE: usize = 1;
 
     #[inline]
     fn current_size(&self) -> usize {
@@ -244,16 +245,20 @@ impl traits::PolicyExt for NoPolicy {
 
     fn build_pickle(
         &self,
-        py: pyo3::Python,
-        tuple: &mut crate::internal::pickle::TupleBuilder,
+        tuple: &mut crate::internal::pickle::TupleBuilder<
+            '_,
+            crate::internal::pickle::PickleBuilder,
+        >,
     ) -> pyo3::PyResult<()> {
-        tuple.push_dict(py, |dict| unsafe {
+        let mut dict = tuple.begin_dict()?;
+
+        unsafe {
             for handle in self.table.iter().map(|x| x.as_ref()) {
-                dict.entry(py, handle.key().as_ref(), handle.value())?;
+                dict.entry(handle.key().as_ref(), handle.value())?;
             }
-            Ok(())
-        })?;
-        Ok(())
+        }
+
+        dict.end()
     }
 
     fn from_pickle(
@@ -281,6 +286,7 @@ impl traits::PolicyExt for NoPolicy {
         for (key, value) in dict.iter() {
             let handle = Handle::new(key.py(), shared.getsizeof(), key.unbind(), value.unbind())?;
 
+            slf.currsize = slf.currsize.saturating_add(handle.size());
             unsafe {
                 slf.table.insert_no_grow(handle.key().hash(), handle);
             }

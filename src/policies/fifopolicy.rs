@@ -1,7 +1,10 @@
 use std::collections::VecDeque;
 
+use pyo3::types::PyAnyMethods;
+
 use crate::hashbrown;
 use crate::internal::alias;
+use crate::internal::pickle::Builder;
 use crate::internal::utils;
 use crate::policies::traits;
 use crate::policies::traits::HandleExt;
@@ -243,7 +246,7 @@ impl PolicyExt for FIFOPolicy {
     where
         Self: 'a;
 
-    const PICKLE_SIZE: isize = 2;
+    const PICKLE_SIZE: usize = 1;
 
     #[inline]
     fn current_size(&self) -> usize {
@@ -396,18 +399,62 @@ impl PolicyExt for FIFOPolicy {
 
     fn build_pickle(
         &self,
-        py: pyo3::Python,
-        tuple: &mut crate::internal::pickle::TupleBuilder,
+        tuple: &mut crate::internal::pickle::TupleBuilder<
+            '_,
+            crate::internal::pickle::PickleBuilder,
+        >,
     ) -> pyo3::PyResult<()> {
-        todo!()
+        let mut list = tuple.begin_list()?;
+
+        for handle in self.entries.iter() {
+            let mut tuple = list.begin_tuple(2)?;
+            tuple.push(handle.key().as_ref())?;
+            tuple.push(handle.value())?;
+            tuple.end()?;
+        }
+
+        list.end()
     }
 
     fn from_pickle(
         maxsize: usize,
-        getsizeof: Option<alias::PyObject>,
-        global_ttl: Option<std::time::Duration>,
+        getsizeof: Option<crate::internal::alias::PyObject>,
+        _global_ttl: Option<std::time::Duration>,
         builded: pyo3::Bound<'_, pyo3::types::PyTuple>,
     ) -> pyo3::PyResult<(Self::Shared, Self)> {
-        todo!()
+        use pyo3::types::PyListMethods;
+        use pyo3::types::PyTupleMethods;
+
+        let list = builded.get_item(0)?.cast_into::<pyo3::types::PyList>()?;
+        let list_length = list.len();
+
+        if list_length > maxsize {
+            return Err(new_py_error!(
+                PyValueError,
+                "list size is incompatible with maxsize"
+            ));
+        }
+
+        let shared = Shared::new(maxsize, getsizeof);
+        let mut slf = Self::new(list.len());
+
+        for bound in list.iter() {
+            let (key, value) = bound.extract::<(alias::PyObject, alias::PyObject)>()?;
+
+            let handle = Handle::new(bound.py(), shared.getsizeof(), key, value)?;
+
+            slf.currsize = slf.currsize.saturating_add(handle.size());
+
+            unsafe {
+                slf.table.insert_no_grow(
+                    handle.key().hash(),
+                    // Adding `slf.front_offset` is unnecessary here
+                    slf.entries.len(),
+                );
+            }
+            slf.entries.push_back(handle);
+        }
+
+        Ok((shared, slf))
     }
 }

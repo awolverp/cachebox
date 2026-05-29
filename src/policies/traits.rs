@@ -92,7 +92,7 @@ pub trait PolicyExt: Sized {
     where
         Self: 'a;
 
-    const PICKLE_SIZE: isize;
+    const PICKLE_SIZE: usize;
 
     /// Returns the current total cumulative size consumed by all stored entries.
     fn current_size(&self) -> usize;
@@ -143,9 +143,10 @@ pub trait PolicyExt: Sized {
     /// Should not add items to pickle more than the configured [`Self::PICKLE_SIZE`].
     fn build_pickle(
         &self,
-        py: pyo3::Python,
-        tuple: &mut pickle::TupleBuilder,
-    ) -> pyo3::PyResult<()>;
+        tuple: &mut pickle::TupleBuilder<'_, pickle::PickleBuilder>,
+    ) -> pyo3::PyResult<()> {
+        todo!()
+    }
 
     /// Loads the builded pickle.
     fn from_pickle(
@@ -153,5 +154,7 @@ pub trait PolicyExt: Sized {
         getsizeof: Option<alias::PyObject>,
         global_ttl: Option<std::time::Duration>,
         builded: pyo3::Bound<'_, pyo3::types::PyTuple>,
-    ) -> pyo3::PyResult<(Self::Shared, Self)>;
+    ) -> pyo3::PyResult<(Self::Shared, Self)> {
+        todo!()
+    }
 }

@@ -281,10 +281,20 @@ impl<P: PolicyExt> Wrapped<P> {
 
         let maxsize: usize = tuple.get_item(0)?.extract()?;
         let getsizeof: Option<alias::PyObject> = tuple.get_item(1)?.extract()?;
-        let global_ttl: Option<std::time::Duration> = tuple.get_item(2)?.extract()?;
+        let global_ttl: Option<f64> = tuple.get_item(2)?.extract()?;
+
+        if global_ttl.is_some_and(|x| x < 0.0) {
+            return Err(new_py_error!(PyValueError, "global_ttl is negative"));
+        }
+
         let builded = tuple.get_item(3)?.cast_into::<pyo3::types::PyTuple>()?;
 
-        let (shared, inner) = P::from_pickle(maxsize, getsizeof, global_ttl, builded)?;
+        let (shared, inner) = P::from_pickle(
+            maxsize,
+            getsizeof,
+            global_ttl.map(|x| std::time::Duration::from_secs_f64(x)),
+            builded,
+        )?;
 
         Ok(Self {
             shared,

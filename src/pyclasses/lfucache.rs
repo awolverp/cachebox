@@ -683,6 +683,10 @@ impl PyLFUCache {
     }
 
     fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
+        if self.0.is_initialized() {
+            return Ok(());
+        }
+
         let inner = self.0.get();
         let policy = inner.policy();
 
@@ -696,6 +700,10 @@ impl PyLFUCache {
     }
 
     fn __clear__(&self) {
+        if self.0.is_initialized() {
+            return;
+        }
+
         let inner = self.0.get();
         let mut policy = inner.policy();
         policy.clear(inner.shared());

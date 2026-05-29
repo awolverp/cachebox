@@ -144,9 +144,7 @@ pub trait PolicyExt: Sized {
     fn build_pickle(
         &self,
         tuple: &mut pickle::TupleBuilder<'_, pickle::PickleBuilder>,
-    ) -> pyo3::PyResult<()> {
-        todo!()
-    }
+    ) -> pyo3::PyResult<()>;
 
     /// Loads the builded pickle.
     fn from_pickle(
@@ -154,7 +152,5 @@ pub trait PolicyExt: Sized {
         getsizeof: Option<alias::PyObject>,
         global_ttl: Option<std::time::Duration>,
         builded: pyo3::Bound<'_, pyo3::types::PyTuple>,
-    ) -> pyo3::PyResult<(Self::Shared, Self)> {
-        todo!()
-    }
+    ) -> pyo3::PyResult<(Self::Shared, Self)>;
 }

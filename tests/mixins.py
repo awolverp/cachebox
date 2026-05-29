@@ -1073,9 +1073,6 @@ class FuzzyMixin(BaseMixin):
     def test_fuzzy_getstate_setstate(self, pairs):
         original = self.create_cache(20, pairs)
 
-        if not hasattr(original, "__setstate__"):
-            pytest.skip(f"{original.__class__} doesn't support __setstate__")
-
         state = original.__getstate__()
 
         pickled = original.__class__.__new__(original.__class__)
@@ -1087,9 +1084,6 @@ class FuzzyMixin(BaseMixin):
     @given(pairs=st.lists(st.tuples(hashable_keys, any_value), max_size=20))
     def test_fuzzy_pickle_loads_dumps(self, pairs):
         original = self.create_cache(20, pairs)
-
-        if not hasattr(original, "__setstate__"):
-            pytest.skip(f"{original.__class__} doesn't support pickle")
 
         state = pickle.dumps(original)
         pickled = pickle.loads(state)

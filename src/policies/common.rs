@@ -114,15 +114,12 @@ impl Shared {
     /// Creates a new [`Shared`].
     #[inline]
     pub fn new(maxsize: usize, getsizeof: Option<alias::PyObject>) -> Self {
-        unsafe { Self::with_ttl(maxsize, getsizeof, None) }
+        Self::with_ttl(maxsize, getsizeof, None)
     }
 
     /// Creates a new [`Shared`] with configured TTL.
-    ///
-    /// # Safety
-    /// `ttl` should not be negative or zero.
     #[inline]
-    pub unsafe fn with_ttl(
+    pub fn with_ttl(
         maxsize: usize,
         getsizeof: Option<alias::PyObject>,
         ttl: Option<std::time::Duration>,

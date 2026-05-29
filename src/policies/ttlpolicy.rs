@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 
 use crate::hashbrown;
 use crate::internal::alias;
+use crate::internal::pickle::Builder;
 use crate::internal::utils;
 use crate::policies::traits;
 use crate::policies::traits::HandleExt;
@@ -523,5 +524,84 @@ impl PolicyExt for TTLPolicy {
             currsize: self.currsize,
             front_offset: self.front_offset,
         }
+    }
+
+    fn build_pickle(
+        &self,
+        tuple: &mut crate::internal::pickle::TupleBuilder<
+            '_,
+            crate::internal::pickle::PickleBuilder,
+        >,
+    ) -> pyo3::PyResult<()> {
+        let mut list = tuple.begin_list()?;
+
+        for handle in self.entries.iter() {
+            let mut tuple = list.begin_tuple(3)?;
+            tuple.push(handle.key().as_ref())?;
+            tuple.push(handle.value())?;
+            tuple.push(
+                handle
+                    .expires_at
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap(),
+            )?;
+            tuple.end()?;
+        }
+
+        list.end()
+    }
+
+    fn from_pickle(
+        maxsize: usize,
+        getsizeof: Option<crate::internal::alias::PyObject>,
+        global_ttl: Option<std::time::Duration>,
+        builded: pyo3::Bound<'_, pyo3::types::PyTuple>,
+    ) -> pyo3::PyResult<(Self::Shared, Self)> {
+        use pyo3::types::PyAnyMethods;
+        use pyo3::types::PyListMethods;
+        use pyo3::types::PyTupleMethods;
+
+        if global_ttl.is_none_or(|x| x.is_zero()) {
+            return Err(new_py_error!(PyValueError, "global_ttl is zero"));
+        }
+
+        let list = builded.get_item(0)?.cast_into::<pyo3::types::PyList>()?;
+        let list_length = list.len();
+
+        if list_length > maxsize {
+            return Err(new_py_error!(
+                PyValueError,
+                "list size is incompatible with maxsize"
+            ));
+        }
+
+        let shared = Shared::with_ttl(maxsize, getsizeof, global_ttl);
+        let mut slf = Self::new(list.len());
+
+        for bound in list.iter() {
+            let (key, value, timestamp) =
+                bound.extract::<(alias::PyObject, alias::PyObject, f64)>()?;
+
+            let handle = ExpiringHandle::new(
+                bound.py(),
+                shared.getsizeof(),
+                (std::time::UNIX_EPOCH + std::time::Duration::from_secs_f64(timestamp)).into(),
+                key,
+                value,
+            )?;
+
+            slf.currsize = slf.currsize.saturating_add(handle.size());
+
+            unsafe {
+                slf.table.insert_no_grow(
+                    handle.key().hash(),
+                    // Adding `slf.front_offset` is unnecessary here
+                    slf.entries.len(),
+                );
+            }
+            slf.entries.push_back(handle);
+        }
+
+        Ok((shared, slf))
     }
 }

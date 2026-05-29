@@ -296,6 +296,13 @@ impl From<chrono::NaiveDateTime> for ExpiresAt {
     }
 }
 
+impl From<std::time::SystemTime> for ExpiresAt {
+    #[inline]
+    fn from(value: std::time::SystemTime) -> Self {
+        Self::Instant(value.into())
+    }
+}
+
 impl From<ExpiresAt> for std::time::SystemTime {
     #[inline]
     fn from(value: ExpiresAt) -> Self {

@@ -63,6 +63,11 @@ impl<T> OnceInit<T> {
         .into()
     }
 
+    #[inline]
+    pub fn is_initialized(&self) -> bool {
+        self.0.state.load(atomic::Ordering::Acquire) == INIT
+    }
+
     /// Initializes the container with `val`, transitioning state from `UNINIT` to `INIT`.
     ///
     /// Intended to be called from the PyO3 `__init__` handler once the Python-side

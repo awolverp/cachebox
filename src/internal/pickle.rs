@@ -1,11 +1,14 @@
 use std::ptr;
 
+use pyo3::IntoPyObject;
+
 use crate::internal::alias;
 
 pub enum PyPickleVal<'a> {
     Owned(alias::PyObject),
     Borrowed(&'a alias::PyObject),
     Str(&'a str),
+    UnsignedBig(u128),
     Unsigned(usize),
     Signed(isize),
     Float(f64),
@@ -17,6 +20,12 @@ impl From<usize> for PyPickleVal<'static> {
     #[inline]
     fn from(v: usize) -> Self {
         PyPickleVal::Unsigned(v)
+    }
+}
+impl From<u128> for PyPickleVal<'static> {
+    #[inline]
+    fn from(v: u128) -> Self {
+        PyPickleVal::UnsignedBig(v)
     }
 }
 impl From<isize> for PyPickleVal<'static> {
@@ -87,6 +96,7 @@ impl<'a> PyPickleVal<'a> {
                 pyo3::ffi::Py_INCREF(ptr);
                 ptr
             }
+            Self::UnsignedBig(v) => v.into_pyobject(py)?.into_ptr(),
             Self::Unsigned(v) => pyo3::ffi::PyLong_FromSize_t(v),
             Self::Signed(v) => pyo3::ffi::PyLong_FromSsize_t(v),
             Self::Float(v) => pyo3::ffi::PyFloat_FromDouble(v),

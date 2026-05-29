@@ -306,7 +306,7 @@ class TestFIFOCachePolicy(mixins.BaseMixin):
         assert cache.last() == 30
 
     @pytest.mark.skipif(
-        not hasattr(cachebox, "_fifocache_small_offset"),
+        cachebox._small_offset_feature,
         reason="requires small-offset feature flag",
     )
     def test_edge_case_of_front_offset_overflow(self):
@@ -1160,7 +1160,7 @@ class TestTTLCachePolicy(mixins.SweepIntervalMixin):
         assert cache.last() == 30
 
     @pytest.mark.skipif(
-        not hasattr(cachebox, "_fifocache_small_offset"),
+        cachebox._small_offset_feature,
         reason="requires small-offset feature flag",
     )
     def test_edge_case_of_front_offset_overflow(self):

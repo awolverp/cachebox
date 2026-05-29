@@ -3,6 +3,9 @@ from datetime import datetime, timedelta
 
 from _typeshed import SupportsItems
 
+_small_offset_feature: typing.Final[bool]
+__version__: typing.Final[str]
+
 KT = typing.TypeVar("KT", bound=typing.Hashable)
 VT = typing.TypeVar("VT")
 DT = typing.TypeVar("DT")
@@ -52,7 +55,7 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
             getsizeof: A callable that computes the size of a key-value pair.
                 When ``None``, each entry is assumed to have a size of 1
                 (equivalent to ``lambda k, v: 1``). Use this to implement
-                weighted caching — for example, sizing entries by memory
+                weighted caching - for example, sizing entries by memory
                 footprint or byte length.
 
         Note:
@@ -385,7 +388,7 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
 
     Items are stored in insertion order. When capacity is reached, the item
     that has been present the longest is evicted. There is no concept of
-    "recently used" or "frequently used" — age alone determines eviction order.
+    "recently used" or "frequently used" - age alone determines eviction order.
     Conceptually it behaves like a queue: new items join the back and evictions
     come from the front.
 
@@ -705,7 +708,7 @@ class LRUCache(BaseCacheImpl[KT, VT]):
     time is removed first, regardless of how many times it was accessed in the
     past.
 
-    Items are tracked by access recency — every read or write promotes an item
+    Items are tracked by access recency - every read or write promotes an item
     to "most recently used". When capacity is reached, the least recently used
     item (accessed longest ago) is evicted.
 
@@ -894,7 +897,7 @@ class LFUCache(BaseCacheImpl[KT, VT]):
     A cache with a Least-Frequently-Used (LFU) eviction policy.
 
     When the cache is full, the item with the lowest access count is evicted
-    first. Ties in frequency are broken by recency — among equally rare items,
+    first. Ties in frequency are broken by recency - among equally rare items,
     the oldest is evicted.
 
     Access counts are tracked per key. This implementation uses a lazy binary

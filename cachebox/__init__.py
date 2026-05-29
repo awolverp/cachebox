@@ -6,10 +6,5 @@ from ._cachebox import LRUCache as LRUCache
 from ._cachebox import RRCache as RRCache
 from ._cachebox import TTLCache as TTLCache
 from ._cachebox import VTTLCache as VTTLCache
-
-try:
-    from ._core import (
-        _fifocache_small_offset as _fifocache_small_offset,  # type: ignore
-    )
-except ImportError:
-    pass
+from ._core import __version__ as __version__
+from ._core import _small_offset_feature as _small_offset_feature

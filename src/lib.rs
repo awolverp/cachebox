@@ -82,8 +82,13 @@ mod _core {
     pub fn init(m: &pyo3::Bound<'_, pyo3::types::PyModule>) -> pyo3::PyResult<()> {
         typeref::initialize_typeref(m.py());
 
+        m.add("__version__", env!("CARGO_PKG_VERSION"))?;
+
         #[cfg(feature = "small-offset")]
-        m.add("_fifocache_small_offset", true)?;
+        m.add("_small_offset_feature", true)?;
+
+        #[cfg(not(feature = "small-offset"))]
+        m.add("_small_offset_feature", false)?;
 
         Ok(())
     }

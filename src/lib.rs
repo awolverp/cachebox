@@ -11,9 +11,6 @@ pub mod internal;
 pub mod policies;
 pub mod pyclasses;
 
-// TODO: refactor pickle
-// TODO: refactor deepcopy
-
 #[pyo3::pymodule]
 mod _core {
     #[allow(unused_imports)]

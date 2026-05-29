@@ -1,5 +1,7 @@
 use crate::hashbrown;
+use crate::internal::alias;
 use crate::internal::linked_list;
+use crate::internal::pickle::Builder;
 use crate::internal::utils;
 use crate::policies::traits;
 use crate::policies::traits::HandleExt;
@@ -311,5 +313,67 @@ impl PolicyExt for LRUPolicy {
             list: entries,
             currsize: self.currsize,
         }
+    }
+
+    fn build_pickle(
+        &self,
+        tuple: &mut crate::internal::pickle::TupleBuilder<
+            '_,
+            crate::internal::pickle::PickleBuilder,
+        >,
+    ) -> pyo3::PyResult<()> {
+        let mut list = tuple.begin_list()?;
+
+        for cursor in unsafe { self.list.iter() } {
+            let handle = unsafe { cursor.element() };
+
+            let mut tuple = list.begin_tuple(2)?;
+            tuple.push(handle.key().as_ref())?;
+            tuple.push(handle.value())?;
+            tuple.end()?;
+        }
+
+        list.end()
+    }
+
+    fn from_pickle(
+        maxsize: usize,
+        getsizeof: Option<crate::internal::alias::PyObject>,
+        _global_ttl: Option<std::time::Duration>,
+        builded: pyo3::Bound<'_, pyo3::types::PyTuple>,
+    ) -> pyo3::PyResult<(Self::Shared, Self)> {
+        use pyo3::types::PyAnyMethods;
+        use pyo3::types::PyListMethods;
+        use pyo3::types::PyTupleMethods;
+
+        let list = builded.get_item(0)?.cast_into::<pyo3::types::PyList>()?;
+        let list_length = list.len();
+
+        if list_length > maxsize {
+            return Err(new_py_error!(
+                PyValueError,
+                "list size is incompatible with maxsize"
+            ));
+        }
+
+        let shared = Shared::new(maxsize, getsizeof);
+        let mut slf = Self::new(list.len());
+
+        for bound in list.iter() {
+            let (key, value) = bound.extract::<(alias::PyObject, alias::PyObject)>()?;
+
+            let handle = Handle::new(bound.py(), shared.getsizeof(), key, value)?;
+
+            slf.currsize = slf.currsize.saturating_add(handle.size());
+
+            let hash = handle.key().hash();
+            let cursor = slf.list.push_back(handle);
+
+            unsafe {
+                slf.table.insert_no_grow(hash, cursor);
+            }
+        }
+
+        Ok((shared, slf))
     }
 }

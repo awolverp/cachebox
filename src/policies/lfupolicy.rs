@@ -1,5 +1,3 @@
-use pyo3::types::PyAnyMethods;
-
 use crate::hashbrown;
 use crate::internal::alias;
 use crate::internal::lazyheap;
@@ -504,6 +502,7 @@ impl PolicyExt for LFUPolicy {
         _global_ttl: Option<std::time::Duration>,
         builded: pyo3::Bound<'_, pyo3::types::PyTuple>,
     ) -> pyo3::PyResult<(Self::Shared, Self)> {
+        use pyo3::types::PyAnyMethods;
         use pyo3::types::PyListMethods;
         use pyo3::types::PyTupleMethods;
 

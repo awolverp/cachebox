@@ -521,7 +521,7 @@ impl PyLRUCache {
             .map(|x| !x)
     }
 
-    fn items(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyLRUCacheItems>> {
+    fn items(&self) -> pyo3::PyResult<pyo3::Py<PyLRUCacheItems>> {
         let inner = self.0.get();
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
@@ -532,10 +532,10 @@ impl PyLRUCache {
             gv,
             initial_gv,
         };
-        pyo3::Py::new(py, result)
+        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
     }
 
-    fn values(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyLRUCacheValues>> {
+    fn values(&self) -> pyo3::PyResult<pyo3::Py<PyLRUCacheValues>> {
         let inner = self.0.get();
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
@@ -546,10 +546,10 @@ impl PyLRUCache {
             gv,
             initial_gv,
         };
-        pyo3::Py::new(py, result)
+        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
     }
 
-    fn keys(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyLRUCacheKeys>> {
+    fn keys(&self) -> pyo3::PyResult<pyo3::Py<PyLRUCacheKeys>> {
         let inner = self.0.get();
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
@@ -560,12 +560,12 @@ impl PyLRUCache {
             gv,
             initial_gv,
         };
-        pyo3::Py::new(py, result)
+        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
     }
 
     #[inline]
-    fn __iter__(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyLRUCacheKeys>> {
-        self.keys(py)
+    fn __iter__(&self) -> pyo3::PyResult<pyo3::Py<PyLRUCacheKeys>> {
+        self.keys()
     }
 
     fn copy(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<Self>> {

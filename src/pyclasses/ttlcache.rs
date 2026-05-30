@@ -499,7 +499,7 @@ impl PyTTLCache {
             .map(|x| !x)
     }
 
-    fn items(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyTTLCacheItems>> {
+    fn items(&self) -> pyo3::PyResult<pyo3::Py<PyTTLCacheItems>> {
         let inner = self.0.get();
 
         let iter = inner.policy().iter(inner.shared());
@@ -513,10 +513,10 @@ impl PyTTLCache {
             gv,
             initial_gv,
         };
-        pyo3::Py::new(py, result)
+        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
     }
 
-    fn values(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyTTLCacheValues>> {
+    fn values(&self) -> pyo3::PyResult<pyo3::Py<PyTTLCacheValues>> {
         let inner = self.0.get();
 
         let iter = inner.policy().iter(inner.shared());
@@ -530,10 +530,10 @@ impl PyTTLCache {
             gv,
             initial_gv,
         };
-        pyo3::Py::new(py, result)
+        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
     }
 
-    fn keys(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyTTLCacheKeys>> {
+    fn keys(&self) -> pyo3::PyResult<pyo3::Py<PyTTLCacheKeys>> {
         let inner = self.0.get();
 
         let iter = inner.policy().iter(inner.shared());
@@ -547,12 +547,12 @@ impl PyTTLCache {
             gv,
             initial_gv,
         };
-        pyo3::Py::new(py, result)
+        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
     }
 
     #[inline]
-    fn __iter__(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyTTLCacheKeys>> {
-        self.keys(py)
+    fn __iter__(&self) -> pyo3::PyResult<pyo3::Py<PyTTLCacheKeys>> {
+        self.keys()
     }
 
     fn copy(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<Self>> {
@@ -735,10 +735,7 @@ impl PyTTLCache {
         Ok((key.into(), val, dur.as_secs_f64()))
     }
 
-    fn items_with_expire(
-        &self,
-        py: pyo3::Python,
-    ) -> pyo3::PyResult<pyo3::Py<PyTTLCacheItemsWithExpire>> {
+    fn items_with_expire(&self) -> pyo3::PyResult<pyo3::Py<PyTTLCacheItemsWithExpire>> {
         let inner = self.0.get();
 
         let iter = inner.policy().iter(inner.shared());
@@ -752,7 +749,7 @@ impl PyTTLCache {
             gv,
             initial_gv,
         };
-        pyo3::Py::new(py, result)
+        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
     }
 
     fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {

@@ -480,7 +480,7 @@ impl PyVTTLCache {
             .map(|x| !x)
     }
 
-    fn items(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyVTTLCacheItems>> {
+    fn items(&self) -> pyo3::PyResult<pyo3::Py<PyVTTLCacheItems>> {
         let inner = self.0.get();
         let mut policy = inner.policy();
 
@@ -492,10 +492,10 @@ impl PyVTTLCache {
             gv: gv.clone(),
             initial_gv: gv.get(),
         };
-        pyo3::Py::new(py, result)
+        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
     }
 
-    fn values(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyVTTLCacheValues>> {
+    fn values(&self) -> pyo3::PyResult<pyo3::Py<PyVTTLCacheValues>> {
         let inner = self.0.get();
         let mut policy = inner.policy();
 
@@ -507,10 +507,10 @@ impl PyVTTLCache {
             gv: gv.clone(),
             initial_gv: gv.get(),
         };
-        pyo3::Py::new(py, result)
+        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
     }
 
-    fn keys(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyVTTLCacheKeys>> {
+    fn keys(&self) -> pyo3::PyResult<pyo3::Py<PyVTTLCacheKeys>> {
         let inner = self.0.get();
         let mut policy = inner.policy();
 
@@ -522,12 +522,12 @@ impl PyVTTLCache {
             gv: gv.clone(),
             initial_gv: gv.get(),
         };
-        pyo3::Py::new(py, result)
+        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
     }
 
     #[inline]
-    fn __iter__(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyVTTLCacheKeys>> {
-        self.keys(py)
+    fn __iter__(&self) -> pyo3::PyResult<pyo3::Py<PyVTTLCacheKeys>> {
+        self.keys()
     }
 
     fn copy(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<Self>> {
@@ -704,10 +704,7 @@ impl PyVTTLCache {
         Ok((key.into(), val, dur))
     }
 
-    fn items_with_expire(
-        &self,
-        py: pyo3::Python,
-    ) -> pyo3::PyResult<pyo3::Py<PyVTTLCacheItemsWithExpire>> {
+    fn items_with_expire(&self) -> pyo3::PyResult<pyo3::Py<PyVTTLCacheItemsWithExpire>> {
         let inner = self.0.get();
         let mut policy = inner.policy();
 
@@ -719,7 +716,7 @@ impl PyVTTLCache {
             gv: gv.clone(),
             initial_gv: gv.get(),
         };
-        pyo3::Py::new(py, result)
+        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
     }
 
     fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {

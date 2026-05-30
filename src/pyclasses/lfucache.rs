@@ -512,7 +512,7 @@ impl PyLFUCache {
             .map(|x| !x)
     }
 
-    fn items(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyLFUCacheItems>> {
+    fn items(&self) -> pyo3::PyResult<pyo3::Py<PyLFUCacheItems>> {
         let inner = self.0.get();
         let mut policy = inner.policy();
 
@@ -524,10 +524,10 @@ impl PyLFUCache {
             gv: gv.clone(),
             initial_gv: gv.get(),
         };
-        pyo3::Py::new(py, result)
+        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
     }
 
-    fn values(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyLFUCacheValues>> {
+    fn values(&self) -> pyo3::PyResult<pyo3::Py<PyLFUCacheValues>> {
         let inner = self.0.get();
         let mut policy = inner.policy();
 
@@ -539,10 +539,10 @@ impl PyLFUCache {
             gv: gv.clone(),
             initial_gv: gv.get(),
         };
-        pyo3::Py::new(py, result)
+        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
     }
 
-    fn keys(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyLFUCacheKeys>> {
+    fn keys(&self) -> pyo3::PyResult<pyo3::Py<PyLFUCacheKeys>> {
         let inner = self.0.get();
         let mut policy = inner.policy();
 
@@ -554,18 +554,15 @@ impl PyLFUCache {
             gv: gv.clone(),
             initial_gv: gv.get(),
         };
-        pyo3::Py::new(py, result)
+        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
     }
 
     #[inline]
-    fn __iter__(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyLFUCacheKeys>> {
-        self.keys(py)
+    fn __iter__(&self) -> pyo3::PyResult<pyo3::Py<PyLFUCacheKeys>> {
+        self.keys()
     }
 
-    fn items_with_frequency(
-        &self,
-        py: pyo3::Python,
-    ) -> pyo3::PyResult<pyo3::Py<PyLFUCacheItemsWithFrequency>> {
+    fn items_with_frequency(&self) -> pyo3::PyResult<pyo3::Py<PyLFUCacheItemsWithFrequency>> {
         let inner = self.0.get();
         let mut policy = inner.policy();
 
@@ -577,7 +574,7 @@ impl PyLFUCache {
             gv: gv.clone(),
             initial_gv: gv.get(),
         };
-        pyo3::Py::new(py, result)
+        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
     }
 
     fn copy(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<Self>> {

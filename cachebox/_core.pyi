@@ -67,7 +67,7 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
 
     @property
     def maxsize(self) -> int:
-        """int: The configured ``maxsize``."""
+        """The configured ``maxsize``."""
         ...
 
     @property

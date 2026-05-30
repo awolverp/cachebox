@@ -489,7 +489,7 @@ impl PyCache {
             .map(|x| !x)
     }
 
-    fn items(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyCacheItems>> {
+    fn items(&self) -> pyo3::PyResult<pyo3::Py<PyCacheItems>> {
         let inner = self.0.get();
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
@@ -500,10 +500,11 @@ impl PyCache {
             gv,
             initial_gv,
         };
-        pyo3::Py::new(py, result)
+
+        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
     }
 
-    fn values(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyCacheValues>> {
+    fn values(&self) -> pyo3::PyResult<pyo3::Py<PyCacheValues>> {
         let inner = self.0.get();
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
@@ -514,10 +515,10 @@ impl PyCache {
             gv,
             initial_gv,
         };
-        pyo3::Py::new(py, result)
+        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
     }
 
-    fn keys(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyCacheKeys>> {
+    fn keys(&self) -> pyo3::PyResult<pyo3::Py<PyCacheKeys>> {
         let inner = self.0.get();
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
@@ -528,12 +529,12 @@ impl PyCache {
             gv,
             initial_gv,
         };
-        pyo3::Py::new(py, result)
+        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
     }
 
     #[inline]
-    fn __iter__(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<PyCacheKeys>> {
-        self.keys(py)
+    fn __iter__(&self) -> pyo3::PyResult<pyo3::Py<PyCacheKeys>> {
+        self.keys()
     }
 
     fn copy(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<Self>> {

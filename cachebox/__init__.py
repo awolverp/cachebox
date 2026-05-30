@@ -8,3 +8,6 @@ from ._cachebox import TTLCache as TTLCache
 from ._cachebox import VTTLCache as VTTLCache
 from ._core import __version__ as __version__
 from ._core import _small_offset_feature as _small_offset_feature
+
+# utils
+from .utils import Frozen as Frozen

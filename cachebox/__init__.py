@@ -8,18 +8,18 @@ from ._cachebox import TTLCache as TTLCache
 from ._cachebox import VTTLCache as VTTLCache
 from ._core import __version__ as __version__
 from ._core import _small_offset_feature as _small_offset_feature
-
-# Utils
+from .utils import EVENT_HIT as EVENT_HIT
+from .utils import EVENT_MISS as EVENT_MISS
 from .utils import Frozen as Frozen
 from .utils import cached as cached
+from .utils import clear_cached_cache as clear_cached_cache
+from .utils import get_cached_cache as get_cached_cache
+from .utils import get_cached_cache_info as get_cached_cache_info
+from .utils import get_cached_callback as get_cached_callback
 from .utils import is_cached as is_cached
-
-# Key maker functions
 from .utils import make_hash_key as make_hash_key
 from .utils import make_key as make_key
 from .utils import make_typed_key as make_typed_key
-
-# Postprocess functions
 from .utils import postprocess_copy as postprocess_copy
 from .utils import postprocess_copy_mutables as postprocess_copy_mutables
 from .utils import postprocess_deepcopy as postprocess_deepcopy

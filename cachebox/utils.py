@@ -17,7 +17,8 @@ VT = typing.TypeVar("VT")
 DT = typing.TypeVar("DT")
 FT = typing.TypeVar("FT", bound=typing.Callable[..., typing.Any])
 
-_PostProcess: typing.TypeAlias = typing.Callable[[typing.Any], typing.Any] | None
+_PostProcess: typing.TypeAlias = typing.Callable[[typing.Any], typing.Any]
+_Callback: typing.TypeAlias = typing.Callable[[int, typing.Any, typing.Any], typing.Any]
 
 
 _COPY_TYPES = frozenset((dict, list, set))
@@ -380,7 +381,7 @@ def _cached_wrapper(
     key_maker: typing.Callable[[tuple, dict], typing.Hashable],
     clear_reuse: bool,
     callback: typing.Callable[[int, typing.Any, typing.Any], None] | None,
-    postprocess: _PostProcess,
+    postprocess: _PostProcess | None,
 ):
     cache_is_fn = callable(cache)
 
@@ -481,8 +482,8 @@ def _async_cached_wrapper(
     cache: BaseCacheImpl | typing.Callable,
     key_maker: typing.Callable[..., typing.Hashable],
     clear_reuse: bool,
-    callback: typing.Callable | None,
-    postprocess: _PostProcess,
+    callback: _Callback | None,
+    postprocess: _PostProcess | None,
 ):
     cache_is_fn = callable(cache)
     _make_key = (
@@ -577,8 +578,8 @@ def cached(
     cache: BaseCacheImpl | dict | typing.Callable[..., BaseCacheImpl] | None = None,
     key_maker: typing.Callable[..., typing.Hashable] = make_key,
     clear_reuse: bool = False,
-    callback: typing.Callable[[int, typing.Any, typing.Any], typing.Any] | None = None,
-    postprocess: _PostProcess = postprocess_copy_mutables,
+    callback: _Callback | None = None,
+    postprocess: _PostProcess | None = postprocess_copy_mutables,
 ) -> typing.Callable[[FT], FT]:
     """
     Decorator to memoize function/method results.
@@ -603,7 +604,11 @@ def cached(
                      * :func:`postprocess_deepcopy` - deep-copy.
                      * :func:`postprocess_deepcopy_mutables` - deep-copy only `dict`, `list` and `set`.
 
-    Pass ``cachebox__ignore=True`` at call-time to bypass the cache.
+    Note:
+        Pass ``cachebox__ignore=True`` at call-time to bypass the cache.
+        If *cache* isn't a lambda/function, these attributes will be attached to
+        your function: ``cache`` (property), ``cache_info`` (callable), ``clear_cache`` (callable),
+        and ``callback`` (property).
 
     Examples::
 
@@ -642,5 +647,66 @@ def cached(
 
 
 def is_cached(func: object) -> bool:
-    """Return ``True`` if *func* was decorated with :func:`cached`."""
+    """
+    Return ``True`` if *func* was decorated with :func:`cached`.
+
+    Args:
+        func: an object or function to check.
+    """
     return hasattr(func, "cache") and isinstance(func.cache, BaseCacheImpl)  # type: ignore[union-attr]
+
+
+def get_cached_cache(cached_func: object) -> BaseCacheImpl:
+    """
+    A way to get ``cached_func.cache``, without type-hint warnings.
+
+    Args:
+        cached_func: a function decorated with :func:`cached`.
+
+    Warning:
+        If *func* wasn't decorated with :func:`cached`, or you passed a lambda/function as *cache*
+        to :func:`cached` decorator, raises ``AttributeError``.
+    """
+    return cached_func.cache  # type: ignore
+
+
+def get_cached_cache_info(cached_func: object) -> CacheInfo:
+    """
+    A way to get ``cached_func.cache_info()``, without type-hint warnings.
+
+    Args:
+        cached_func: a function decorated with :func:`cached`.
+
+    Warning:
+        If *func* wasn't decorated with :func:`cached`, or you passed a lambda/function as *cache*
+        to :func:`cached` decorator, raises ``AttributeError``.
+    """
+    return cached_func.cache_info()  # type: ignore
+
+
+def get_cached_callback(cached_func: object) -> _Callback | None:
+    """
+    A way to get ``cached_func.callback``, without type-hint warnings.
+
+    Args:
+        cached_func: a function decorated with :func:`cached`.
+
+    Warning:
+        If *func* wasn't decorated with :func:`cached`, or you passed a lambda/function as *cache*
+        to :func:`cached` decorator, raises ``AttributeError``.
+    """
+    return cached_func.callback  # type: ignore
+
+
+def clear_cached_cache(cached_func: object) -> BaseCacheImpl:
+    """
+    A way to call ``cached_func.cache_clear()``, without type-hint warnings.
+
+    Args:
+        cached_func: a function decorated with :func:`cached`.
+
+    Warning:
+        If *func* wasn't decorated with :func:`cached`, or you passed a lambda/function as *cache*
+        to :func:`cached` decorator, raises ``AttributeError``.
+    """
+    return cached_func.cache_clear()  # type: ignore

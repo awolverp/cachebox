@@ -2,4 +2,4 @@ maturin
 pytest
 hypothesis
 pytest-benchmark
-pygal
+pytest-asyncio

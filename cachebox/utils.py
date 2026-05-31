@@ -591,23 +591,23 @@ def cached(
 
     Args:
         cache: Cache instance, ``dict``, or callable ``(self) -> cache`` for
-               per-instance caches. ``None`` defaults to an unbounded
-               :class:`LRUCache`.
+            per-instance caches. ``None`` defaults to an unbounded
+            :class:`LRUCache`.
         key_maker: Converts ``(args, kwds)`` to a hashable key. Built-ins:
-                   :func:`make_key` (default), :func:`make_hash_key`,
-                   :func:`make_typed_key`.
+            :func:`make_key` (default), :func:`make_hash_key`,
+            :func:`make_typed_key`.
         clear_reuse: Pass ``reuse=True`` to ``cache.clear()`` when
-                     :func:`cache_clear` is called.
+            :func:`cache_clear` is called.
         callback: Called as ``callback(event, key, value)`` on every hit/miss.
-                  May be a coroutine in async contexts.
+            May be a coroutine in async contexts.
         postprocess: Optional ``(value) -> value`` transform applied before
-                     returning a result to the caller. Ready-to-use options:
+            returning a result to the caller. Ready-to-use options:
 
-                     * ``None`` - return the cached object as-is.
-                     * :func:`postprocess_copy` - shallow-copy.
-                     * :func:`postprocess_copy_mutables` - shallow-copy only `dict`, `list` and `set` (default).
-                     * :func:`postprocess_deepcopy` - deep-copy.
-                     * :func:`postprocess_deepcopy_mutables` - deep-copy only `dict`, `list` and `set`.
+            * ``None`` - return the cached object as-is.
+            * :func:`postprocess_copy` - shallow-copy.
+            * :func:`postprocess_copy_mutables` - shallow-copy only `dict`, `list` and `set` (default).
+            * :func:`postprocess_deepcopy` - deep-copy.
+            * :func:`postprocess_deepcopy_mutables` - deep-copy only `dict`, `list` and `set`.
 
     Note:
         Pass ``cachebox__ignore=True`` at call-time to bypass the cache.
@@ -703,7 +703,7 @@ def get_cached_callback(cached_func: object) -> _Callback | None:
     return cached_func.callback  # type: ignore
 
 
-def clear_cached_cache(cached_func: object) -> BaseCacheImpl:
+def clear_cached_cache(cached_func: object) -> None:
     """
     A way to call ``cached_func.cache_clear()``, without type-hint warnings.
 

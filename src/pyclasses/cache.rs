@@ -9,41 +9,42 @@ use crate::policies::wrapped::Wrapped;
 
 implement_pyclass! {
     /// A thread-safe, memory-efficient key-value cache with no eviction policy.
-    /// items remain in the cache until manually removed or the cache is cleared.
     ///
-    /// ## How It Works
-    /// `Cache` is essentially a configurable hashmap-like store. When an item is inserted:
-    /// - It is stored directly without any ordering, priority tracking, or access metadata.
-    /// - If a maximum size is configured, insertions beyond that limit are rejected (raises OverflowError).
-    /// - All read and write operations are thread-safe, making it safe for concurrent access without
-    ///   external locking.
+    /// Items remain in the cache until manually removed or the cache is cleared.
     ///
-    /// Because no eviction logic runs in the background, there is no overhead from tracking usage order,
-    /// frequency counters, or expiry timestamps.
+    /// ``Cache`` is essentially a configurable hashmap-like store. When an item is
+    /// inserted, it is stored directly without any ordering, priority tracking, or
+    /// access metadata. If a maximum size is configured, insertions beyond that
+    /// limit are rejected with an ``OverflowError``. All read and write operations
+    /// are thread-safe.
     ///
-    /// ### Pros
-    /// - Minimal overhead: no bookkeeping for eviction means lower CPU and memory usage per entry compared
-    ///   to policy-based caches.
-    /// - Predictable behavior: items are never silently removed, so cache hits are deterministic once an
-    ///   item is stored.
-    /// - Thread-safe: safe for concurrent reads and writes out of the box.
-    /// - Configurable capacity: a hard size limit prevents unbounded memory growth.
+    /// Because no eviction logic runs in the background, there is no overhead from
+    /// tracking usage order, frequency counters, or expiry timestamps.
     ///
-    /// ### Cons
-    /// - No automatic eviction: the cache can fill up and stop accepting new entries if a max size is set,
-    ///   requiring manual management.
-    /// - Unordered: unlike a standard dict (Python 3.7+), insertion order is not preserved.
-    /// - Not suitable for volatile data: stale entries persist forever unless explicitly invalidated.
+    /// Pros:
+    ///     - Minimal overhead: no bookkeeping for eviction means lower CPU and
+    ///       memory usage per entry compared to policy-based caches.
+    ///     - Predictable behavior: items are never silently removed, so cache hits
+    ///       are deterministic once an item is stored.
+    ///     - Thread-safe: safe for concurrent reads and writes out of the box.
+    ///     - Configurable capacity: a hard size limit prevents unbounded memory
+    ///       growth.
     ///
-    /// ## When to Use It
-    /// `Cache` is the right choice when:
-    /// - You have a fixed, well-known set of keys that are expensive to compute and never go stale
-    ///   (e.g., parsed config values, compiled regex patterns, loaded templates).
-    /// - The cached data has no meaningful expiry - it's either always valid or always explicitly invalidated.
-    /// - You need the lowest possible overhead and can guarantee the cache won't grow uncontrollably.
+    /// Cons:
+    ///     - No automatic eviction: the cache can fill up and stop accepting new
+    ///       entries if a max size is set, requiring manual management.
+    ///     - Unordered: unlike a standard ``dict`` (Python 3.7+), insertion order
+    ///       is not preserved.
+    ///     - Not suitable for volatile data: stale entries persist forever unless
+    ///       explicitly invalidated.
     ///
-    /// Avoid it when cached data can become stale, when the working set is unpredictable in size, or when you need automatic
-    /// memory pressure relief.
+    /// Use ``Cache`` when you have a fixed, well-known set of keys that are
+    /// expensive to compute and never go stale (e.g. parsed config values,
+    /// compiled regex patterns, loaded templates), and when the lowest possible
+    /// overhead is required.
+    ///
+    /// Avoid it when cached data can become stale, when the working set is
+    /// unpredictable in size, or when automatic memory pressure relief is needed.
     [subclass, extends=crate::pyclasses::base::PyBaseCacheImpl, generic, frozen]
     PyCache as "Cache" (onceinit::OnceInit<Wrapped<nopolicy::NoPolicy>>);
 }

@@ -72,7 +72,7 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
 
     @property
     def getsizeof(self) -> typing.Callable[[KT, VT], int] | None:
-        """Callable or None: The configured ``getsizeof`` function."""
+        """The configured ``getsizeof`` function."""
         ...
 
     def current_size(self) -> int:

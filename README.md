@@ -33,7 +33,7 @@ This can make your application a lot faster and it can be a good choice in compl
 - 🤝 Compatible with Python 3.10+ (PyPy and CPython)
 - 📦 Supports 7 advanced caching algorithms
 
-### When do I need caching and `cachebox`?
+### When do I need caching?
 - 📈 **Frequent Data Access** \
   If you need to access the same data multiple times, caching can help reduce the number of database queries or API calls, improving performance.
 

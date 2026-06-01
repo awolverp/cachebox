@@ -484,7 +484,14 @@ def _cached_wrapper(
 
     if not cache_is_fn:
         _wrapped.cache = cache  # type: ignore[attr-defined]
-        _wrapped.cache_info = lambda: CacheInfo(hits, misses, cache.maxsize, len(cache))  # type: ignore[attr-defined]
+        _wrapped.cache_info = lambda: CacheInfo(  # type: ignore[attr-defined]
+            hits,
+            misses,
+            cache.maxsize,
+            cache.current_size(),
+            len(cache),
+            cache.__sizeof__(),
+        )
 
         def cache_clear() -> None:
             nonlocal hits, misses

@@ -56,7 +56,7 @@ You can use ready-to-use functions, or create a custom one.
 
 === "Standard way"
   
-    ```python hl_lines="5"
+    ```python hl_lines="3 4 8"
     import cachebox
     
     def path_key(request):
@@ -85,15 +85,15 @@ You can use ready-to-use functions, or create a custom one.
 
 Ready to use key makers are:
 
-- [make_key function](cachebox.utils.make_key)
-- [make_typed_key function](cachebox.utils.make_typed_key)
-- [make_hash_key function](cachebox.utils.make_hash_key)
+- [make_key function](api/utils.md#cachebox.utils.make_key)
+- [make_typed_key function](api/utils.md#cachebox.utils.make_typed_key)
+- [make_hash_key function](api/utils.md#cachebox.utils.make_hash_key)
 
 
 ### Callbacks on Cache Events
 The `@cached` decorator supports callback on every hit/miss, using `callback` parameter.
 
-```python hl_lines="11"
+```python hl_lines="3 4 5 6 7 11"
 import cachebox
 
 def on_cache_event(event: int, key, value):
@@ -123,9 +123,9 @@ The `@cached` decorator also supports postprocessors, using `postprocess` parame
 It can be used as a transformer which applied before returning a result to the caller.
 
 There are 3 ready-to-use key maker functions, and by default the `@cached` decorator uses
-[`postprocess_copy_mutable` function](cachebox.utils.postprocess_copy_mutable).
+[`postprocess_copy_mutables` function](api/utils.md#cachebox.utils.postprocess_copy_mutables).
 
-```python hl_lines="9"
+```python hl_lines="3 4 5 9"
 import cachebox
 
 def postprocess(result):
@@ -144,10 +144,10 @@ add(1, 2)   # RESULT: 3
 
 Ready to use postprocessors:
 
-- [postprocess_copy function](cachebox.utils.postprocess_copy)
-- [postprocess_copy_mutable function](cachebox.utils.postprocess_copy_mutable)
-- [postprocess_deepcopy function](cachebox.utils.postprocess_deepcopy)
-- [postprocess_deepcopy_mutable function](cachebox.utils.postprocess_deepcopy_mutable)
+- [postprocess_copy function](api/utils.md#cachebox.utils.postprocess_copy)
+- [postprocess_copy_mutables function](api/utils.md#cachebox.utils.postprocess_copy_mutables)
+- [postprocess_deepcopy function](api/utils.md#cachebox.utils.postprocess_deepcopy)
+- [postprocess_deepcopy_mutables function](api/utils.md#cachebox.utils.postprocess_deepcopy_mutables)
 
 !!! note
 
@@ -180,7 +180,8 @@ assert svc.compute("a") == "aaaaa"
 
 ## Using a Cache Implemetations
 You can use all cache implementations without `@cached` method.
-You only need to import the classes you want and can work with them like a regular dictionaries (except for [`VTTLCache`](cachebox.VTTLCache), this have some differences).
+You only need to import the classes you want and can work with them like a regular dictionaries
+(except for [`VTTLCache`](api/impls.md#cachebox._cachebox.VTTLCache), this have some differences).
 
 ```python
 from cachebox import FIFOCache
@@ -226,4 +227,4 @@ assert cache == loaded
 
 - Browse the full [API Reference](api/index.md) for every class and method.
 - Check [Tips & Notes](tips.md) for copying caches and advanced patterns.
-- Read the [Migration Guide](migration.md) if upgrading from v4.
+- Read the [Migration Guide](migration.md) if upgrading from v5.

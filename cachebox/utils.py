@@ -117,6 +117,26 @@ class Frozen(BaseCacheImpl[KT, VT]):  # pragma: no cover
 
     This class provides a read-only view of a cache, optionally allowing silent
     suppression of modification attempts instead of raising exceptions.
+
+    Example::
+
+        from cachebox import Frozen, FIFOCache
+
+        cache = FIFOCache(10, {1:1, 2:2, 3:3})
+
+        frozen = Frozen(cache, ignore=True)
+        print(frozen[1]) # 1
+        print(len(frozen)) # 3
+
+        # Frozen ignores this action and do nothing
+        frozen.insert("key", "value")
+        print(len(frozen)) # 3
+
+        # Let's try with ignore=False
+        frozen = Frozen(cache, ignore=False)
+
+        frozen.insert("key", "value")
+        # TypeError: This cache is frozen.
     """
 
     __slots__ = ("__cache", "ignore")
@@ -370,7 +390,9 @@ class _AsyncLock:
         self._lock.release()
 
 
-CacheInfo = namedtuple("CacheInfo", ["hits", "misses", "maxsize", "size"])
+CacheInfo = namedtuple(
+    "CacheInfo", ("hits", "misses", "maxsize", "current_size", "length", "memory")
+)
 EVENT_MISS = 1
 EVENT_HIT = 2
 
@@ -564,6 +586,8 @@ def _async_cached_wrapper(
             misses,
             cache.maxsize,
             cache.current_size(),
+            len(cache),
+            cache.__sizeof__(),
         )
 
         def cache_clear() -> None:
@@ -584,6 +608,7 @@ def cached(
     key_maker: typing.Callable[..., typing.Hashable] = make_key,
     clear_reuse: bool = False,
     callback: _Callback | None = None,
+    copy_level: int = 1,
     postprocess: _PostProcess | None = postprocess_copy_mutables,
 ) -> typing.Callable[[FT], FT]:
     """
@@ -600,6 +625,8 @@ def cached(
             :func:`cache_clear` is called.
         callback: Called as ``callback(event, key, value)`` on every hit/miss.
             May be a coroutine in async contexts.
+        copy_level: It has been deprecated and no longer has any effect. Use
+            the postprocess parameter instead.
         postprocess: Optional ``(value) -> value`` transform applied before
             returning a result to the caller. Ready-to-use options:
 
@@ -630,6 +657,14 @@ def cached(
             def compute(self, n):
                 return n * 2
     """
+    if copy_level != 1:
+        import warnings
+
+        warnings.warn(
+            "`copy_level` parameter has been deprecated and no longer has any effect. Use the `postprocess` parameter instead",
+            category=DeprecationWarning,
+        )
+
     if cache is None:
         cache = LRUCache(0)
     elif type(cache) is dict:

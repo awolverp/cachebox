@@ -162,10 +162,12 @@ impl PyRRCache {
 
     #[inline]
     fn __sizeof__(&self) -> usize {
+        const FIXED_SIZE: usize = std::mem::size_of::<Wrapped<rrpolicy::RRPolicy>>();
+
         let inner = self.0.get();
         let policy = inner.policy();
 
-        policy.table().capacity() * std::mem::size_of::<rrpolicy::Handle>()
+        FIXED_SIZE + policy.table().capacity() * std::mem::size_of::<rrpolicy::Handle>()
     }
 
     #[inline]

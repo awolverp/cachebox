@@ -157,6 +157,8 @@ impl PyTTLCache {
 
     #[inline]
     fn __sizeof__(&self) -> usize {
+        const FIXED_SIZE: usize = std::mem::size_of::<Wrapped<ttlpolicy::TTLPolicy>>();
+
         let inner = self.0.get();
         let policy = inner.policy();
 
@@ -164,7 +166,7 @@ impl PyTTLCache {
         let vecdeque_cap =
             policy.entries().capacity() * std::mem::size_of::<ttlpolicy::ExpiringHandle>();
 
-        table_cap + vecdeque_cap
+        FIXED_SIZE + table_cap + vecdeque_cap
     }
 
     #[inline]

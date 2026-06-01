@@ -191,13 +191,15 @@ impl PyLRUCache {
 
     #[inline]
     fn __sizeof__(&self) -> usize {
+        const FIXED_SIZE: usize = std::mem::size_of::<Wrapped<lrupolicy::LRUPolicy>>();
+
         let inner = self.0.get();
         let policy = inner.policy();
 
         let table_cap = policy.table().capacity() * 8;
         let list_cap = policy.list().len() * std::mem::size_of::<lrupolicy::Handle>();
 
-        table_cap + list_cap
+        FIXED_SIZE + table_cap + list_cap
     }
 
     #[inline]

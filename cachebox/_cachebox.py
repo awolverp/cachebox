@@ -55,6 +55,10 @@ class TTLCache(_CoreTTLCache[KT, VT]):
     ``sweep_interval`` is set, a background thread performs the sweep on that
     interval instead, reclaiming expired entries independent of method calls.
 
+    |              | get   | insert  | delete           | popitem |
+    | ------------ | ----- | ------- | ---------------- | ------- |
+    | Worse-case   | O(1)  | O(1)    | O(min(i, n-i))   | O(n) - very rare |
+
     Pros:
         - Insert, lookup, and evict are all O(1) amortized: the
           ``front_offset`` trick eliminates the O(n) index-shifting that a
@@ -90,6 +94,23 @@ class TTLCache(_CoreTTLCache[KT, VT]):
     Avoid it when strong temporal locality makes LRU a better fit, when
     per-entry TTL granularity is required (consider ``VTTLCache`` instead), or
     when the system clock is unreliable or subject to adjustment.
+
+    Example::
+
+        from cachebox import TTLCache
+        import time
+
+        cache = TTLCache(0, global_ttl=2)
+        cache.update({i:str(i) for i in range(10)})
+
+        print(cache.get_with_expire(2)) # ('2', 1.99)
+
+        # Returns the oldest key in cache; this is the one which will be removed by `popitem()`
+        print(cache.first()) # 0
+
+        cache["mykey"] = "value"
+        time.sleep(2)
+        cache["mykey"] # KeyError
     """
 
     def __init__(
@@ -204,6 +225,10 @@ class VTTLCache(_CoreVTTLCache[KT, VT]):
     no TTL are the last resort and are evicted only when all expiring items
     have been exhausted.
 
+    |              | get   | insert  | delete(i)      | popitem |
+    | ------------ | ----- | ------- | -------------- | ------- |
+    | Worse-case   | O(1)~ | O(1)~   | O(min(i, n-i)) | O(1)~   |
+
     Pros:
         - Per-item TTL control: each entry can have a different lifetime.
         - Expired items are reclaimed before live items, maximising useful
@@ -237,6 +262,28 @@ class VTTLCache(_CoreVTTLCache[KT, VT]):
     when strict and immediate expiry is a hard requirement, or when memory pressure
     from temporarily lingering stale entries is unacceptable and a background thread
     is not an option.
+
+    Example::
+
+        from cachebox import VTTLCache
+        import time
+
+        cache = VTTLCache(100, iterable={i:i for i in range(4)}, ttl=3)
+        print(len(cache)) # 4
+        time.sleep(3)
+        print(len(cache)) # 0
+
+        # The "key1" is exists for 5 seconds
+        cache.insert("key1", "value", ttl=5)
+        # The "key2" is exists for 2 seconds
+        cache.insert("key2", "value", ttl=2)
+
+        time.sleep(2)
+        # "key1" is exists for 3 seconds
+        print(cache.get("key1")) # value
+
+        # "key2" has expired
+        print(cache.get("key2")) # None
     """
 
     def __init__(

@@ -1497,7 +1497,7 @@ class TestVTTLCachePolicy(mixins.SweepIntervalMixin):
         assert "a" not in c
         assert "b" in c
         assert "c" in c
-        time.sleep(0.1)
+        time.sleep(0.4)
         assert "b" not in c
         assert "c" in c
 

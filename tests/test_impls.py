@@ -306,32 +306,79 @@ class TestFIFOCachePolicy(mixins.BaseMixin):
         assert cache.last() == 30
 
     @pytest.mark.skipif(
-        not cachebox._small_offset_feature,
-        reason="requires small-offset feature flag",
+        not cachebox._use_small_offset_feature,
+        reason="requires use-small-offset feature flag",
     )
-    def test_edge_case_of_front_offset_overflow(self):
+    def test_edge_case_of_front_offset_overflow_entries_scan(self):
         """
         Verifies that FIFOCache correctly rebases its internal `front_offset`
-        counter when it approaches `u8::MAX` (255 in the small-offset test build).
+        counter when it approaches `u8::MAX` (255 in the use-small-offset test build).
         """
         U8_MAX = 255
-        CACHE_SIZE = 10
-
-        total_insertions = U8_MAX + CACHE_SIZE  # 265
-
-        # Phase 1
-        cache = self.create_cache(CACHE_SIZE)
-        for i in range(total_insertions):
-            cache.insert(i, i * 10)
-
-        # Call popitem 2 times
-        for i in range(total_insertions, total_insertions + 2):
-            cache.insert(i, i * 10)
+        CACHE_SIZE = 2
 
         # Phase 2
         cache = self.create_cache(CACHE_SIZE)
 
         # drive front_offset to the rebase boundary
+        total_insertions = U8_MAX + CACHE_SIZE  # 265
+        for i in range(total_insertions):
+            cache.insert(i, i * 10)
+
+        # Snapshot what *should* be alive: the last CACHE_SIZE keys inserted
+        expected_keys = set(range(total_insertions - CACHE_SIZE, total_insertions))
+
+        # verify the cache is structurally sound after the rebase
+        assert len(cache) == CACHE_SIZE
+        assert cache.is_full()
+
+        # Exact contents — no phantom or missing keys
+        assert set(cache.keys()) == expected_keys
+
+        # FIFO ordering must be intact
+        assert cache.first() == min(expected_keys)
+        assert cache.last() == max(expected_keys)
+
+        # All surviving values are correct
+        for key in expected_keys:
+            assert cache[key] == key * 10
+
+        # All evicted keys are truly gone
+        for evicted in range(total_insertions - CACHE_SIZE):
+            assert evicted not in cache
+
+        # Prove the cache keeps working normally after the rebase
+
+        # New insertions must evict the oldest surviving key (min of expected_keys)
+        next_key = total_insertions  # 265
+        oldest_before = cache.first()
+        cache.insert(next_key, next_key * 10)
+
+        assert oldest_before not in cache  # oldest was evicted
+        assert cache[next_key] == next_key * 10  # new entry is present
+        assert cache.last() == next_key  # sits at the tail
+        assert len(cache) == CACHE_SIZE  # size is unchanged
+
+        # Ordering of the remainder is still correct
+        assert cache.first() == min(expected_keys) + 1
+
+        # popitem() must still yield the oldest entry
+        oldest_key, oldest_val = cache.popitem()
+        assert oldest_val == oldest_key * 10
+
+    @pytest.mark.skipif(
+        not cachebox._use_small_offset_feature,
+        reason="requires use-small-offset feature flag",
+    )
+    def test_edge_case_of_front_offset_overflow_table_scan(self):
+        U8_MAX = 255
+        CACHE_SIZE = 20
+
+        # Phase 2
+        cache = self.create_cache(CACHE_SIZE)
+
+        # drive front_offset to the rebase boundary
+        total_insertions = U8_MAX + CACHE_SIZE  # 265
         for i in range(total_insertions):
             cache.insert(i, i * 10)
 
@@ -1171,35 +1218,79 @@ class TestTTLCachePolicy(mixins.SweepIntervalMixin):
         assert cache.last() == 30
 
     @pytest.mark.skipif(
-        not cachebox._small_offset_feature,
-        reason="requires small-offset feature flag",
+        not cachebox._use_small_offset_feature,
+        reason="requires use-small-offset feature flag",
     )
-    def test_edge_case_of_front_offset_overflow(self):
+    def test_edge_case_of_front_offset_overflow_entries_scan(self):
         """
         Verifies that FIFOCache correctly rebases its internal `front_offset`
-        counter when it approaches `u8::MAX` (255 in the small-offset test build).
+        counter when it approaches `u8::MAX` (255 in the use-small-offset test build).
         """
         U8_MAX = 255
-        CACHE_SIZE = 10
-
-        U8_MAX = 255
-        CACHE_SIZE = 10
-
-        total_insertions = U8_MAX + CACHE_SIZE  # 265
-
-        # Phase 1
-        cache = self.create_cache(CACHE_SIZE)
-        for i in range(total_insertions):
-            cache.insert(i, i * 10)
-
-        # Call popitem 2 times
-        for i in range(total_insertions, total_insertions + 2):
-            cache.insert(i, i * 10)
+        CACHE_SIZE = 2
 
         # Phase 2
         cache = self.create_cache(CACHE_SIZE)
 
         # drive front_offset to the rebase boundary
+        total_insertions = U8_MAX + CACHE_SIZE  # 265
+        for i in range(total_insertions):
+            cache.insert(i, i * 10)
+
+        # Snapshot what *should* be alive: the last CACHE_SIZE keys inserted
+        expected_keys = set(range(total_insertions - CACHE_SIZE, total_insertions))
+
+        # verify the cache is structurally sound after the rebase
+        assert len(cache) == CACHE_SIZE
+        assert cache.is_full()
+
+        # Exact contents — no phantom or missing keys
+        assert set(cache.keys()) == expected_keys
+
+        # FIFO ordering must be intact
+        assert cache.first() == min(expected_keys)
+        assert cache.last() == max(expected_keys)
+
+        # All surviving values are correct
+        for key in expected_keys:
+            assert cache[key] == key * 10
+
+        # All evicted keys are truly gone
+        for evicted in range(total_insertions - CACHE_SIZE):
+            assert evicted not in cache
+
+        # Prove the cache keeps working normally after the rebase
+
+        # New insertions must evict the oldest surviving key (min of expected_keys)
+        next_key = total_insertions  # 265
+        oldest_before = cache.first()
+        cache.insert(next_key, next_key * 10)
+
+        assert oldest_before not in cache  # oldest was evicted
+        assert cache[next_key] == next_key * 10  # new entry is present
+        assert cache.last() == next_key  # sits at the tail
+        assert len(cache) == CACHE_SIZE  # size is unchanged
+
+        # Ordering of the remainder is still correct
+        assert cache.first() == min(expected_keys) + 1
+
+        # popitem() must still yield the oldest entry
+        oldest_key, oldest_val = cache.popitem()
+        assert oldest_val == oldest_key * 10
+
+    @pytest.mark.skipif(
+        not cachebox._use_small_offset_feature,
+        reason="requires use-small-offset feature flag",
+    )
+    def test_edge_case_of_front_offset_overflow_table_scan(self):
+        U8_MAX = 255
+        CACHE_SIZE = 20
+
+        # Phase 2
+        cache = self.create_cache(CACHE_SIZE)
+
+        # drive front_offset to the rebase boundary
+        total_insertions = U8_MAX + CACHE_SIZE  # 265
         for i in range(total_insertions):
             cache.insert(i, i * 10)
 

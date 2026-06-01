@@ -44,7 +44,7 @@ jobs:
 
       - run: pip install virtualenv pytest pytest-asyncio hypothesis maturin
       - run: virtualenv --no-vcs-ignore .venv
-      - run: maturin develop --features small-offset
+      - run: maturin develop --features use-small-offset
       - run: pytest -v
         env:
           HYPOTHESIS_PROFILE: slow
@@ -69,7 +69,7 @@ jobs:
 
       - run: pip install virtualenv pytest pytest-asyncio hypothesis maturin
       - run: virtualenv --no-vcs-ignore .venv
-      - run: maturin develop --features small-offset
+      - run: maturin develop --features use-small-offset
       - run: pytest -v
         env:
           HYPOTHESIS_PROFILE: slow

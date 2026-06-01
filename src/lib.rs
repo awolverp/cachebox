@@ -84,11 +84,11 @@ mod _core {
 
         m.add("__version__", env!("CARGO_PKG_VERSION"))?;
 
-        #[cfg(feature = "small-offset")]
-        m.add("_small_offset_feature", true)?;
+        #[cfg(feature = "use-small-offset")]
+        m.add("_use_small_offset_feature", true)?;
 
-        #[cfg(not(feature = "small-offset"))]
-        m.add("_small_offset_feature", false)?;
+        #[cfg(not(feature = "use-small-offset"))]
+        m.add("_use_small_offset_feature", false)?;
 
         Ok(())
     }

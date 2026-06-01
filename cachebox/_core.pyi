@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 from _typeshed import SupportsItems
 
-_small_offset_feature: typing.Final[bool]
+_use_small_offset_feature: typing.Final[bool]
 __version__: typing.Final[str]
 
 KT = typing.TypeVar("KT", bound=typing.Hashable)

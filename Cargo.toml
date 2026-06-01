@@ -36,7 +36,9 @@ pyo3-build-config = {version="0.28.3", default-features=false, features=["resolv
 default = ["inline-more", "extension-module"]
 inline-more = []
 extension-module = ["pyo3/extension-module"]
-small-offset = []
+
+# testing features
+use-small-offset = []
 
 [lints.clippy]
 dbg_macro = "warn"

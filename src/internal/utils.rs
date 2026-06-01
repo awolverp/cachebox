@@ -81,11 +81,11 @@ pub unsafe fn call_getsizeof(
             return Err(pyo3::PyErr::fetch(py));
         }
 
-        // PyTuple_SET_ITEM steals the reference, so we need to increment first.
+        // PyTuple_SetItem steals the reference, so we need to increment first.
         pyo3::ffi::Py_INCREF(key);
         pyo3::ffi::Py_INCREF(value);
-        pyo3::ffi::PyTuple_SET_ITEM(args, 0, key);
-        pyo3::ffi::PyTuple_SET_ITEM(args, 1, value);
+        pyo3::ffi::PyTuple_SetItem(args, 0, key);
+        pyo3::ffi::PyTuple_SetItem(args, 1, value);
 
         let result = pyo3::ffi::PyObject_Call(getsizeof.as_ptr(), args, std::ptr::null_mut());
         pyo3::ffi::Py_DECREF(args);

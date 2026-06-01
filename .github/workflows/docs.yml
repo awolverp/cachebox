@@ -1,0 +1,48 @@
+name: Deploy Docs
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6.2.0
+        with:
+          python-version: 3.14
+
+      - run: pip install "mkdocs-material" "mkdocstrings[python]"
+      - run: mkdocs gh-deploy --config-file docs/mkdocs.yml --force
+
+  deploy_mkdocs:
+    needs: build
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          ref: gh-pages
+
+      - uses: actions/configure-pages@v6.0.0
+
+      - uses: actions/upload-pages-artifact@v5.0.0
+        with:
+          path: "."
+
+      - id: deployment
+        uses: actions/deploy-pages@v5.0.0

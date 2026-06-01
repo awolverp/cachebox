@@ -165,7 +165,6 @@ impl FIFOPolicy {
         #[cfg(not(feature = "small-offset"))]
         const MAX_FRONT_OFFSET: usize = usize::MAX - isize::MAX as usize;
 
-        // Use u8::MAX as maximum front offset, useful for tests
         #[cfg(feature = "small-offset")]
         const MAX_FRONT_OFFSET: usize = u8::MAX as usize;
 
@@ -176,44 +175,45 @@ impl FIFOPolicy {
             return;
         }
 
-        // Snapshot so the borrow checker doesn't complain about `self` inside the loops.
-        let fo = self.front_offset;
-
-        if (end - start) > self.table.num_buckets() / 2 {
-            // Table-scan path: already O(n), so fold normalization in for free.
-            // One pass: normalize every index (subtract fo) and decrement those in [start, end).
+        if (end - start) > self.table.capacity() / 2 {
+            // Table-scan
+            // normalize every index (subtract fo) and decrement those in range [start, end).
             unsafe {
                 for bucket in self.table.iter() {
                     let i = bucket.as_mut();
-                    let vd_idx = *i - fo; // raw VecDeque index
+
+                    let vd_idx = *i - self.front_offset;
+
                     *i = if start <= vd_idx && vd_idx < end {
                         vd_idx - 1 // normalize + decrement
                     } else {
-                        vd_idx // normalize only
+                        vd_idx // normalize
                     };
                 }
             }
         } else {
-            // Entries-scan path: O(range) decrement pass, then O(n) normalization pass.
-            //
-            // Pass 1: decrement the logical indices for entries in [start, end).
+            // Entries-scan
+            // decrement the logical indices for entries in range [start, end).
             let shifted = self.entries.range(start..end);
             for (i, entry) in (start..end).zip(shifted) {
                 let result = unsafe {
                     self.table
-                        .get_mut(entry.key().hash(), |x| Ok::<_, pyo3::PyErr>((*x) - fo == i))
+                        .get_mut(entry.key().hash(), |x| {
+                            Ok::<_, pyo3::PyErr>((*x) - self.front_offset == i)
+                        })
                         .unwrap_unchecked()
+                        .expect("index not found")
                 };
-                *result.expect("index not found") -= 1;
+                *result -= 1;
             }
 
-            // Pass 2: normalize every stored index by subtracting `fo`.
-            //   • Entries in  [start, end): (vd_idx + fo - 1) - fo  =  vd_idx - 1
-            //   • All others:  (vd_idx + fo)     - fo               =  vd_idx
-            if fo != 0 {
+            // normalize every stored index by subtracting `fo`.
+            //   - Entries in  [start, end): (vd_idx + fo - 1) - fo  =  vd_idx - 1
+            //   - All others:               (vd_idx + fo)     - fo  =  vd_idx
+            if self.front_offset != 0 {
                 unsafe {
                     for bucket in self.table.iter() {
-                        *bucket.as_mut() -= fo;
+                        *bucket.as_mut() -= self.front_offset;
                     }
                 }
             }
@@ -298,17 +298,17 @@ impl PolicyExt for FIFOPolicy {
 
         let front = unsafe { front.unwrap_unchecked() };
 
-        let eq = |index: &usize| Ok::<_, pyo3::PyErr>((*index - self.front_offset) == 0);
+        let eq = |index: &usize| Ok::<_, pyo3::PyErr>(*index - self.front_offset == 0);
         if std::hint::unlikely(self.table.remove_entry(front.key().hash(), eq)?.is_none()) {
             unreachable!("popitem key not found in table");
         }
 
         shared.generation_version().increment();
 
+        self.decrement_indexes(1, self.entries.len());
         let front = unsafe { self.entries.pop_front().unwrap_unchecked() };
 
         self.currsize = self.currsize.saturating_sub(front.size());
-        self.decrement_indexes(1, self.entries.len());
 
         Ok(front)
     }

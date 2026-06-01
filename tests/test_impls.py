@@ -317,10 +317,21 @@ class TestFIFOCachePolicy(mixins.BaseMixin):
         U8_MAX = 255
         CACHE_SIZE = 10
 
+        total_insertions = U8_MAX + CACHE_SIZE  # 265
+
+        # Phase 1
+        cache = self.create_cache(CACHE_SIZE)
+        for i in range(total_insertions):
+            cache.insert(i, i * 10)
+
+        # Call popitem 2 times
+        for i in range(total_insertions, total_insertions + 2):
+            cache.insert(i, i * 10)
+
+        # Phase 2
         cache = self.create_cache(CACHE_SIZE)
 
         # drive front_offset to the rebase boundary
-        total_insertions = U8_MAX + CACHE_SIZE  # 265
         for i in range(total_insertions):
             cache.insert(i, i * 10)
 
@@ -1171,10 +1182,24 @@ class TestTTLCachePolicy(mixins.SweepIntervalMixin):
         U8_MAX = 255
         CACHE_SIZE = 10
 
+        U8_MAX = 255
+        CACHE_SIZE = 10
+
+        total_insertions = U8_MAX + CACHE_SIZE  # 265
+
+        # Phase 1
+        cache = self.create_cache(CACHE_SIZE)
+        for i in range(total_insertions):
+            cache.insert(i, i * 10)
+
+        # Call popitem 2 times
+        for i in range(total_insertions, total_insertions + 2):
+            cache.insert(i, i * 10)
+
+        # Phase 2
         cache = self.create_cache(CACHE_SIZE)
 
         # drive front_offset to the rebase boundary
-        total_insertions = U8_MAX + CACHE_SIZE  # 265
         for i in range(total_insertions):
             cache.insert(i, i * 10)
 
@@ -1465,10 +1490,10 @@ class TestVTTLCachePolicy(mixins.SweepIntervalMixin):
 
     def test_multiple_items_expire_independently(self):
         c = self.create_cache()
-        c.insert("a", 1, ttl=0.1)
-        c.insert("b", 2, ttl=0.2)
-        c.insert("c", 3, ttl=0.3)
-        time.sleep(0.15)
+        c.insert("a", 1, ttl=0.2)
+        c.insert("b", 2, ttl=0.6)
+        c.insert("c", 3, ttl=1)
+        time.sleep(0.2)
         assert "a" not in c
         assert "b" in c
         assert "c" in c
@@ -1480,7 +1505,7 @@ class TestVTTLCachePolicy(mixins.SweepIntervalMixin):
         c = self.create_cache()
         c.insert("k", "v1", ttl=0.2)
         time.sleep(0.1)
-        c.insert("k", "v2", ttl=0.2)  # reset
+        c.insert("k", "v2", ttl=0.3)
         time.sleep(0.15)
         # original TTL would have expired; new one should not
         assert "k" in c

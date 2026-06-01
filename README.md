@@ -16,7 +16,7 @@
 -------
 
 > [!WARNING]\
-> The new version v6 has incompatibilities with v5. For more info see [Incompatible changes](#incompatible-changes).
+> The new version v6 has incompatibilities with v5. For more info see [Migration Guide](https://awolverp.github.io/cachebox/migration).
 
 ### What does it do?
 You can easily perform powerful caching operations in Python as fast as possible.
@@ -24,7 +24,7 @@ This can make your application a lot faster and it can be a good choice in compl
 **Ideal for optimizing large-scale applications** with efficient, low-overhead caching.
 
 **Key Features:**
-- 🚀 Extremely fast (10-50x faster than other caching libraries -- [*benchmarks*](https://github.com/awolverp/cachebox-benchmark))
+- 🚀 Extremely fast (10-50x faster than other caching libraries - [*benchmarks*](https://github.com/awolverp/cachebox-benchmark))
 - 📊 Minimal memory footprint
 - 🔥 Full-featured and user-friendly
 - 🧶 Completely thread-safe

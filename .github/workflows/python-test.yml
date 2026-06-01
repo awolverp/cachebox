@@ -1,7 +1,6 @@
 name: Python Test
 
 on:
-  push:
   pull_request:
   workflow_dispatch:
 
@@ -48,13 +47,10 @@ jobs:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
 
-      - run: pip install pytest pytest-asyncio hypothesis maturin
-
+      - run: pip install virtualenv pytest pytest-asyncio hypothesis maturin
+      - run: virtualenv --no-vcs-ignore .venv
       - run: maturin develop --features small-offset
-
-      - run: pip freeze
-
-      - run: pytest -vv
+      - run: pytest -v
         env:
           HYPOTHESIS_PROFILE: slow
 
@@ -81,12 +77,9 @@ jobs:
           python-version: "3.13"
           allow-prereleases: true
 
-      - run: pip install pytest pytest-asyncio hypothesis maturin
-
+      - run: pip install virtualenv pytest pytest-asyncio hypothesis maturin
+      - run: virtualenv --no-vcs-ignore .venv
       - run: maturin develop --features small-offset
-
-      - run: pip freeze
-
-      - run: pytest -vv
+      - run: pytest -v
         env:
           HYPOTHESIS_PROFILE: slow

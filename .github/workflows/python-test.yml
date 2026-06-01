@@ -16,11 +16,6 @@ env:
 
 jobs:
   test-python:
-    if: >-
-      contains(github.event.head_commit.message, '!test') ||
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'pull_request'
-
     name: test ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     continue-on-error: ${{ endsWith(matrix.python-version, 't') }}
@@ -55,11 +50,6 @@ jobs:
           HYPOTHESIS_PROFILE: slow
 
   test-os:
-    if: >-
-      contains(github.event.head_commit.message, '!test') ||
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'pull_request'
-
     name: test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}-latest
     strategy:

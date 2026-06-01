@@ -1,7 +1,6 @@
 maturin
 pytest
 hypothesis
-pytest-benchmark
 pytest-asyncio
 mkdocs-material
 mkdocstrings[python]

@@ -1229,7 +1229,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         iterable: _IterableType[KT, VT] | None = None,
         *,
         capacity: int = 0,
-        getsizeof: typing.Callable[[KT, VT]] | None = None,
+        getsizeof: typing.Callable[[KT, VT], int] | None = None,
     ) -> None:
         """
         Initializes a new TTLCache instance.
@@ -1466,7 +1466,7 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         ttl: float | timedelta | datetime | None = None,
         *,
         capacity: int = 0,
-        getsizeof: typing.Callable[[KT, VT]] | None = None,
+        getsizeof: typing.Callable[[KT, VT], int] | None = None,
     ) -> None:
         """
         Initializes a new TTLCache instance.

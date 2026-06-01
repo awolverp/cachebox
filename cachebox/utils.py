@@ -267,7 +267,7 @@ class Frozen(BaseCacheImpl[KT, VT]):  # pragma: no cover
 
     def update(
         self,
-        iterable: _IterableType[KT, VT],
+        iterable: "_IterableType[KT, VT]",
         *args: typing.Any,
         **kwargs: typing.Any,
     ) -> None:

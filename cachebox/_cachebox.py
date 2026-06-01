@@ -117,10 +117,10 @@ class TTLCache(_CoreTTLCache[KT, VT]):
         self,
         maxsize: int,
         global_ttl: float | timedelta,
-        iterable: _IterableType[KT, VT] | None = None,
+        iterable: typing.Optional["_IterableType[KT, VT]"] = None,
         *,
         capacity: int = 0,
-        getsizeof: typing.Callable[[KT, VT]] | None = None,
+        getsizeof: typing.Callable[[KT, VT], int] | None = None,
         sweep_interval: float | timedelta | None = None,
     ) -> None:
         """
@@ -289,11 +289,11 @@ class VTTLCache(_CoreVTTLCache[KT, VT]):
     def __init__(
         self,
         maxsize: int,
-        iterable: _IterableType[KT, VT] | None = None,
+        iterable: typing.Optional["_IterableType[KT, VT]"] = None,
         ttl: float | timedelta | datetime | None = None,
         *,
         capacity: int = 0,
-        getsizeof: typing.Callable[[KT, VT]] | None = None,
+        getsizeof: typing.Callable[[KT, VT], int] | None = None,
         sweep_interval: float | timedelta | None = None,
     ) -> None:
         """

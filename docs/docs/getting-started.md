@@ -149,10 +149,6 @@ Ready to use postprocessors:
 - [postprocess_deepcopy function](api/utils.md#cachebox.utils.postprocess_deepcopy)
 - [postprocess_deepcopy_mutables function](api/utils.md#cachebox.utils.postprocess_deepcopy_mutables)
 
-!!! note
-
-    Added since v6.0.0, and the `copy_level` parameter removed due to this feature.
-
 ### Bypass the Cache for a Single Call
 Pass `cachebox__ignore=True` to skip the cache entirely:
 

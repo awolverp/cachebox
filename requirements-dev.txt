@@ -1,0 +1,6 @@
+maturin
+pytest
+hypothesis
+pytest-asyncio
+mkdocs-material
+mkdocstrings[python]

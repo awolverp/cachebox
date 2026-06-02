@@ -1,7 +1,12 @@
-pub mod fifo;
-pub mod lfu;
-pub mod lru;
+pub mod common;
+pub mod traits;
+
+pub mod fifopolicy;
+pub mod lfupolicy;
+pub mod lrupolicy;
 pub mod nopolicy;
-pub mod random;
-pub mod ttl;
-pub mod vttl;
+pub mod rrpolicy;
+pub mod ttlpolicy;
+pub mod vttlpolicy;
+
+pub mod wrapped;

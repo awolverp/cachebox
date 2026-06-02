@@ -1,17 +1,24 @@
-name: python-test
+name: Python Test
 
 on:
-  push:
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUST_BACKTRACE: 1
+
 jobs:
   test-python:
-    if: ${{ contains(github.event.head_commit.message, '!test') || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' }}
     name: test ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ endsWith(matrix.python-version, 't') }}
     strategy:
       fail-fast: false
       matrix:
@@ -25,68 +32,44 @@ jobs:
           - "3.14t"
           - "pypy3.11"
 
-    runs-on: ubuntu-latest
-    continue-on-error: ${{ endsWith(matrix.python-version, 't') }}
-
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
 
-      - name: install rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: nightly
+      - uses: dtolnay/rust-toolchain@nightly
 
-      - name: set up python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6.2.0
         with:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
 
-      - run: pip install pytest pytest-asyncio "maturin[patchelf]"
-
-      - run: pip install -e .
+      - run: pip install virtualenv pytest pytest-asyncio hypothesis maturin
+      - run: virtualenv --no-vcs-ignore .venv
+      - run: maturin develop --features use-small-offset
+      - run: pytest -v
         env:
-          RUST_BACKTRACE: 1
-
-      - run: pip freeze
-
-      - run: pytest -vv
-        env:
-          RUST_BACKTRACE: 1
           HYPOTHESIS_PROFILE: slow
 
   test-os:
-    if: ${{ contains(github.event.head_commit.message, '!test') || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' }}
     name: test on ${{ matrix.os }}
-
+    runs-on: ${{ matrix.os }}-latest
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu, macos, windows]
 
-    runs-on: ${{ matrix.os }}-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
 
-      - name: install rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: nightly
+      - uses: dtolnay/rust-toolchain@nightly
 
-      - name: set up python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6.2.0
         with:
           python-version: "3.13"
+          allow-prereleases: true
 
-      - run: pip install pytest pytest-asyncio maturin
-
-      - run: pip install -e .
+      - run: pip install virtualenv pytest pytest-asyncio hypothesis maturin
+      - run: virtualenv --no-vcs-ignore .venv
+      - run: maturin develop --features use-small-offset
+      - run: pytest -v
         env:
-          RUST_BACKTRACE: 1
-
-      - run: pip freeze
-
-      - run: pytest -vv
-        env:
-          RUST_BACKTRACE: 1
           HYPOTHESIS_PROFILE: slow

@@ -10,10 +10,10 @@ use crate::policies::traits::SharedExt;
 pub use super::common::Handle;
 pub use super::common::Shared;
 
-/// A view into an occupied entry in [`NoPolicy`].
+/// A view into an occupied entry in [`RRPolicy`].
 pub struct Occupied<'a> {
     /// The parent storage that owns the hash table.
-    policy: &'a mut NoPolicy,
+    policy: &'a mut RRPolicy,
     /// The shared configuration
     shared: &'a Shared,
     /// Raw bucket pointing to the occupied slot within the hash table.
@@ -24,6 +24,7 @@ impl traits::OccupiedExt for Occupied<'_> {
     type Shared = Shared;
     type Handle = Handle;
 
+    #[inline]
     fn remove(self) -> Self::Handle {
         self.shared.generation_version().increment();
 
@@ -32,6 +33,7 @@ impl traits::OccupiedExt for Occupied<'_> {
         h
     }
 
+    #[inline]
     fn replace(self, new: Self::Handle) -> Self::Handle {
         self.policy.currsize = self.policy.currsize.saturating_add(new.size());
         let old = unsafe { std::mem::replace(self.bucket.as_mut(), new) };
@@ -41,10 +43,10 @@ impl traits::OccupiedExt for Occupied<'_> {
     }
 }
 
-/// A view into a vacant slot in [`NoPolicy`].
+/// A view into a vacant slot in [`RRPolicy`].
 pub struct Vacant<'a> {
     /// The parent policy that owns the hash table.
-    policy: &'a mut NoPolicy,
+    policy: &'a mut RRPolicy,
     /// The shared configuration
     shared: &'a Shared,
     /// If true, means we used `.evict()` method, and empty slots are available
@@ -82,15 +84,15 @@ impl traits::VacantExt for Vacant<'_> {
     }
 }
 
-pub struct NoPolicy {
+pub struct RRPolicy {
     /// The raw hash table storing all live [`Handle`] entries.
     table: hashbrown::raw::RawTable<Handle>,
     /// Running total of all stored handles' sizes, maintained incrementally.
     currsize: usize,
 }
 
-impl NoPolicy {
-    /// Creates a new [`NoPolicy`].
+impl RRPolicy {
+    /// Creates a new [`RRPolicy`].
     ///
     /// The underlying hash table is pre-allocated to hold at least `capacity` entries
     /// without reallocation.
@@ -108,7 +110,7 @@ impl NoPolicy {
     }
 }
 
-impl traits::PolicyExt for NoPolicy {
+impl PolicyExt for RRPolicy {
     type Shared = Shared;
     type Handle = Handle;
 
@@ -166,11 +168,20 @@ impl traits::PolicyExt for NoPolicy {
     }
 
     #[inline]
-    fn evict(&mut self, _shared: &Self::Shared) -> pyo3::PyResult<Self::Handle> {
-        Err(new_py_error!(
-            PyOverflowError,
-            "The cache has no algorithm to evict items"
-        ))
+    fn evict(&mut self, shared: &Self::Shared) -> pyo3::PyResult<Self::Handle> {
+        if self.table.is_empty() {
+            Err(new_py_error!(PyKeyError, "cache is empty"))
+        } else {
+            let nth = fastrand::usize(0..self.table.len());
+
+            let bucket = unsafe { self.table.iter().nth(nth).unwrap_unchecked() };
+
+            shared.generation_version().increment();
+
+            let (handle, _) = unsafe { self.table.remove(bucket) };
+            self.currsize = self.currsize.saturating_sub(handle.size());
+            Ok(handle)
+        }
     }
 
     #[inline]

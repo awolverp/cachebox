@@ -1,0 +1,95 @@
+site_name: Cachebox
+site_description: The fastest caching Python library written in Rust
+site_url: https://awolverp.github.io/cachebox
+repo_url: https://github.com/awolverp/cachebox
+repo_name: awolverp/cachebox
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: deep orange
+      accent: orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: deep orange
+      accent: orange
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+  features:
+    - table
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tabs
+    - navigation.prune
+    - toc.integrate
+    - search
+    - search.suggest
+    - search.share
+    - projects
+    - optimize
+    - content.code.copy
+    - content.code.select
+    - content.code.annotate
+    - navigation.footer
+
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [cachebox]
+          options:
+            docstring_style: google
+            docstring_section_style: list
+            signature_crossrefs: true
+            inherited_members: true
+            parameter_headings: true
+            type_parameter_headings: true
+            show_root_heading: true
+            show_root_full_path: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            merge_init_into_class: true
+            show_signature_annotations: true
+            show_signature_type_parameters: true
+            show_bases: false
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Getting Started: getting-started.md
+  - Tips & Notes: tips.md
+  - Migration Guide: migration.md
+  - API Reference:
+      - API Reference: api/index.md
+      - Classes: api/impls.md
+      - Utilities: api/utils.md

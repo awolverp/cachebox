@@ -87,10 +87,9 @@ nav:
   - Home: index.md
   - Installation: installation.md
   - Getting Started: getting-started.md
-  - API Reference:
-      - Overview: api/index.md
-      - Implementations: api/impls.md
-      - Utilities: api/utils.md
-
-  - Migration Guide: migration.md
   - Tips & Notes: tips.md
+  - Migration Guide: migration.md
+  - API Reference:
+      - API Reference: api/index.md
+      - Classes: api/impls.md
+      - Utilities: api/utils.md

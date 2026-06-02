@@ -268,25 +268,25 @@ class Cache(BaseCacheImpl[KT, VT]):
     Avoid it when cached data can become stale, when the working set is
     unpredictable in size, or when automatic memory pressure relief is needed.
 
-    Example::
+    ```python
+    from cachebox import Cache
 
-        from cachebox import Cache
+    cache = Cache(maxsize=100, iterable=None, capacity=100)
 
-        cache = Cache(maxsize=100, iterable=None, capacity=100)
+    # behaves like a regular dict
+    cache["key"] = "value"
+    # using `.insert(key, value)` is recommended
+    cache.insert("key", "value")
 
-        # behaves like a regular dict
-        cache["key"] = "value"
-        # using `.insert(key, value)` is recommended
-        cache.insert("key", "value")
+    print(cache["key"])  # value
 
-        print(cache["key"])  # value
+    del cache["key"]
+    cache["key"]  # KeyError: key
 
-        del cache["key"]
-        cache["key"]  # KeyError: key
-
-        # cachebox.Cache does not have any policy, so will raise OverflowError if the capacity is exceeded
-        cache.update({i:i for i in range(200)})
-        # OverflowError: The cache has reached the bound.
+    # cachebox.Cache does not have any policy, so will raise OverflowError if the capacity is exceeded
+    cache.update({i:i for i in range(200)})
+    # OverflowError: The cache has reached the bound.
+    ```
     """
 
     # | Class | get | insert | delete | popitem |
@@ -457,23 +457,23 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
     Avoid it when the workload has strong temporal locality; in those cases LRU
     or LFU will deliver meaningfully better hit rates.
 
-    Example::
+    ```python
+    from cachebox import FIFOCache
 
-        from cachebox import FIFOCache
+    cache = FIFOCache(5, {i:i*2 for i in range(5)})
 
-        cache = FIFOCache(5, {i:i*2 for i in range(5)})
+    print(len(cache)) # 5
+    cache["new-key"] = "new-value"
+    print(len(cache)) # 5
 
-        print(len(cache)) # 5
-        cache["new-key"] = "new-value"
-        print(len(cache)) # 5
+    print(cache.get(3, "default-val")) # 6
+    print(cache.get(6, "default-val")) # default-val
 
-        print(cache.get(3, "default-val")) # 6
-        print(cache.get(6, "default-val")) # default-val
+    print(cache.popitem()) # (1, 2)
 
-        print(cache.popitem()) # (1, 2)
-
-        # Returns the first key in cache; this is the one which will be removed by `popitem()`.
-        print(cache.first())
+    # Returns the first key in cache; this is the one which will be removed by `popitem()`.
+    print(cache.first())
+    ```
     """
 
     def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
@@ -636,16 +636,16 @@ class RRCache(BaseCacheImpl[KT, VT]):
     Avoid it when access patterns are highly skewed, cache hits are
     mission-critical, or fine-grained eviction control is required.
 
-    Example::
+    ```python
+    from cachebox import RRCache
 
-        from cachebox import RRCache
+    cache = RRCache(10, {i:i for i in range(10)})
+    print(cache.is_full()) # True
+    print(cache.is_empty()) # False
 
-        cache = RRCache(10, {i:i for i in range(10)})
-        print(cache.is_full()) # True
-        print(cache.is_empty()) # False
-
-        # Returns a random key
-        print(cache.random_key()) # 4
+    # Returns a random key
+    print(cache.random_key()) # 4
+    ```
     """
 
     def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
@@ -814,20 +814,20 @@ class LRUCache(BaseCacheImpl[KT, VT]):
     requirements, or frequency-heavy bimodal access patterns (consider LFU
     instead).
 
-    Example::
+    ```python
+    from cachebox import LRUCache
 
-        from cachebox import LRUCache
+    cache = LRUCache(0, {i:i*2 for i in range(10)})
 
-        cache = LRUCache(0, {i:i*2 for i in range(10)})
+    # access `1`
+    print(cache[0]) # 0
+    print(cache.least_recently_used()) # 1
+    print(cache.popitem()) # (1, 2)
 
-        # access `1`
-        print(cache[0]) # 0
-        print(cache.least_recently_used()) # 1
-        print(cache.popitem()) # (1, 2)
-
-        # .peek() searches for a key-value in the cache and returns it without moving the key to recently used.
-        print(cache.peek(2)) # 4
-        print(cache.popitem()) # (3, 6)
+    # .peek() searches for a key-value in the cache and returns it without moving the key to recently used.
+    print(cache.peek(2)) # 4
+    print(cache.popitem()) # (3, 6)
+    ```
     """
 
     def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
@@ -1029,28 +1029,28 @@ class LFUCache(BaseCacheImpl[KT, VT]):
     Avoid it when access patterns shift rapidly (use LRU instead) or when all
     keys are accessed with roughly equal probability.
 
-    Example::
+    ```python
+    from cachebox import LFUCache
 
-        from cachebox import LFUCache
+    cache = cachebox.LFUCache(5)
+    cache.insert('first', 'A')
+    cache.insert('second', 'B')
 
-        cache = cachebox.LFUCache(5)
-        cache.insert('first', 'A')
-        cache.insert('second', 'B')
+    # access 'first' twice
+    cache['first']
+    cache['first']
 
-        # access 'first' twice
-        cache['first']
-        cache['first']
+    # access 'second' once
+    cache['second']
 
-        # access 'second' once
-        cache['second']
+    assert cache.least_frequently_used() == 'second'
+    assert cache.least_frequently_used(2) is None # 2 is out of range
 
-        assert cache.least_frequently_used() == 'second'
-        assert cache.least_frequently_used(2) is None # 2 is out of range
-
-        for item in cache.items_with_frequency():
-            print(item)
-        # ('second', 'B', 1)
-        # ('first', 'A', 2)
+    for item in cache.items_with_frequency():
+        print(item)
+    # ('second', 'B', 1)
+    # ('first', 'A', 2)
+    ```
     """
 
     def insert(self, key: KT, value: VT) -> typing.Optional[VT]:

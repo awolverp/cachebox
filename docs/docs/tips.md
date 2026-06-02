@@ -22,6 +22,10 @@ assert cache == loaded
 assert cache.capacity() == loaded.capacity()
 ```
 
+!!! note
+
+    Don't set `lambda` as `getsizeof` for caches when you want to pickle them.
+
 ## Copying a Cache
 All cache classes support Python's `copy` module, both shallow-copy and deep-copy:
 
@@ -34,12 +38,6 @@ cache = cachebox.LRUCache(100, {i: i for i in range(10)})
 shallow = copy.copy(cache)       # shallow copy
 deep    = copy.deepcopy(cache)   # deep copy
 ```
-
-## Avoiding Cache Stampede
-Cachebox uses a distributed lock system internally to prevent the
-[cache stampede](https://en.wikipedia.org/wiki/Cache_stampede) problem —
-multiple concurrent requests recomputing the same missing entry simultaneously.
-No additional configuration is required.
 
 ## Pre-allocating Capacity
 If you know roughly how many items a cache will hold, set `capacity` to avoid

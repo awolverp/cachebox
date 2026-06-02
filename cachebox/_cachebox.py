@@ -95,22 +95,22 @@ class TTLCache(_CoreTTLCache[KT, VT]):
     per-entry TTL granularity is required (consider ``VTTLCache`` instead), or
     when the system clock is unreliable or subject to adjustment.
 
-    Example::
+    ```python
+    from cachebox import TTLCache
+    import time
 
-        from cachebox import TTLCache
-        import time
+    cache = TTLCache(0, global_ttl=2)
+    cache.update({i:str(i) for i in range(10)})
 
-        cache = TTLCache(0, global_ttl=2)
-        cache.update({i:str(i) for i in range(10)})
+    print(cache.get_with_expire(2)) # ('2', 1.99)
 
-        print(cache.get_with_expire(2)) # ('2', 1.99)
+    # Returns the oldest key in cache; this is the one which will be removed by `popitem()`
+    print(cache.first()) # 0
 
-        # Returns the oldest key in cache; this is the one which will be removed by `popitem()`
-        print(cache.first()) # 0
-
-        cache["mykey"] = "value"
-        time.sleep(2)
-        cache["mykey"] # KeyError
+    cache["mykey"] = "value"
+    time.sleep(2)
+    cache["mykey"] # KeyError
+    ```
     """
 
     def __init__(
@@ -263,27 +263,27 @@ class VTTLCache(_CoreVTTLCache[KT, VT]):
     from temporarily lingering stale entries is unacceptable and a background thread
     is not an option.
 
-    Example::
+    ```python
+    from cachebox import VTTLCache
+    import time
 
-        from cachebox import VTTLCache
-        import time
+    cache = VTTLCache(100, iterable={i:i for i in range(4)}, ttl=3)
+    print(len(cache)) # 4
+    time.sleep(3)
+    print(len(cache)) # 0
 
-        cache = VTTLCache(100, iterable={i:i for i in range(4)}, ttl=3)
-        print(len(cache)) # 4
-        time.sleep(3)
-        print(len(cache)) # 0
+    # The "key1" is exists for 5 seconds
+    cache.insert("key1", "value", ttl=5)
+    # The "key2" is exists for 2 seconds
+    cache.insert("key2", "value", ttl=2)
 
-        # The "key1" is exists for 5 seconds
-        cache.insert("key1", "value", ttl=5)
-        # The "key2" is exists for 2 seconds
-        cache.insert("key2", "value", ttl=2)
+    time.sleep(2)
+    # "key1" is exists for 3 seconds
+    print(cache.get("key1")) # value
 
-        time.sleep(2)
-        # "key1" is exists for 3 seconds
-        print(cache.get("key1")) # value
-
-        # "key2" has expired
-        print(cache.get("key2")) # None
+    # "key2" has expired
+    print(cache.get("key2")) # None
+    ```
     """
 
     def __init__(

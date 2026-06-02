@@ -16,7 +16,7 @@ def factorial(number: int) -> int:
         fact *= num
     return fact
 
-assert factorial(5) == 125
+assert factorial(5) == 120
 ```
 
 The first parameter `cache`, you can specify the cache instance it should use for caching.
@@ -33,7 +33,7 @@ def factorial(number: int) -> int:
         fact *= num
     return fact
 
-assert factorial(5) == 125
+assert factorial(5) == 120
 ```
 
 ### Async Functions
@@ -115,7 +115,7 @@ add(1, 2)   # HIT   key=(1, 2)
 
 !!! tip
 
-    May be a coroutine in async contexts.
+    `callback`s can be a coroutine in async contexts.
 
 
 ### Setting a Postprocessor
@@ -149,14 +149,30 @@ Ready to use postprocessors:
 - [postprocess_deepcopy function](api/utils.md#cachebox.utils.postprocess_deepcopy)
 - [postprocess_deepcopy_mutables function](api/utils.md#cachebox.utils.postprocess_deepcopy_mutables)
 
-### Bypass the Cache for a Single Call
-Pass `cachebox__ignore=True` to skip the cache entirely:
+### Bypass the Cache for a Call
+Sometimes you need to execute the wrapped function without reading from or writing to the cache.
+Pass `cachebox__ignore=True` when calling the function:
 
 ```python
-result = my_func(10, 20, cachebox__ignore=True)
+import cachebox
+
+@cachebox.cached(cachebox.LRUCache(128))
+def add(a, b):
+    print("computing...")
+    return a + b
+
+add(1, 2)  # computing...
+add(1, 2)  # returned from cache
+
+add(1, 2, cachebox__ignore=True)
+# computing...
 ```
 
-### Cache on an Instance Method
+This affects only the current call. Future calls continue to use the cache normally.
+
+### Caching Methods
+
+For instance methods, each object often needs its own cache. The cache can be stored on the instance and provided dynamically using a callable.
 
 ```python hl_lines="6 8"
 import cachebox
@@ -164,15 +180,93 @@ import cachebox
 class MyService:
     def __init__(self, multiplier: int):
         self.multiplier = multiplier
-        self._cache = cachebox.TTLCache(20, ttl=10)
+        self._cache = cachebox.TTLCache(20, 10)
 
     @cachebox.cached(lambda self: self._cache)
     def compute(self, char: str):
         return char * self.multiplier
 
 svc = MyService(5)
+
 assert svc.compute("a") == "aaaaa"
+assert svc.compute("a") == "aaaaa"  # cached
 ```
+
+Using a cache stored on the instance ensures that each object maintains its own cached values:
+
+```python
+svc1 = MyService(2)
+svc2 = MyService(5)
+
+assert svc1.compute("x") == "xx"
+assert svc2.compute("x") == "xxxxx"
+```
+
+Because each instance has a separate cache, entries created by `svc1` are not visible to `svc2`.
+
+### Caching `@staticmethod`s
+`@staticmethod`s behave like normal functions attached to a class. Since they do not receive `self` or `cls`, you can provide a cache instance directly.
+
+```python
+import cachebox
+
+class TextUtils:
+    @staticmethod
+    @cachebox.cached(cachebox.LRUCache(128))
+    def normalize(text: str) -> str:
+        print("normalizing...")
+        return text.strip().lower()
+
+TextUtils.normalize(" Hello ")
+TextUtils.normalize(" Hello ")  # cached
+```
+
+The cache is shared by all callers because the method does not belong to a specific instance.
+
+### Caching `@classmethod`s
+`@classmethod`s receive the class (`cls`) as their first argument.
+The cache can be shared across the class or selected dynamically based on the class.
+
+```python
+import cachebox
+
+class UserRepository:
+    _cache = cachebox.LRUCache(128)
+
+    @classmethod
+    @cachebox.cached(lambda cls: cls._cache)
+    def get_user(cls, user_id: int):
+        print("loading user...")
+        return {"id": user_id}
+
+UserRepository.get_user(1)
+UserRepository.get_user(1)  # cached
+```
+
+This pattern is useful when the cache should be associated with the class itself rather than with
+individual instances.
+Class methods can also be used with inheritance. Each subclass may provide its own cache:
+
+```python
+import cachebox
+
+class BaseRepository:
+    _cache = cachebox.LRUCache(128)
+
+    @classmethod
+    @cachebox.cached(lambda cls: cls._cache)
+    def get_item(cls, item_id):
+        return f"{cls.__name__}:{item_id}"
+
+class ProductRepository(BaseRepository):
+    _cache = cachebox.LRUCache(128)
+
+class OrderRepository(BaseRepository):
+    _cache = cachebox.LRUCache(128)
+```
+
+In this example, each repository class maintains an independent cache while reusing
+the same cached method implementation.
 
 ## Using a Cache Implemetations
 You can use all cache implementations without `@cached` method.
@@ -187,6 +281,8 @@ cache["key"] = "value"
 assert cache["key"] == "value"
 assert cache.get("missing", "default") == "default"
 ```
+
+You can see examples of each cache implementation in [API Reference](api/impls.md). Also these examples are exist in their docstrings.
 
 ## Immutable (Frozen) Cache
 

@@ -1,11 +1,13 @@
-use super::super::{BitMask, Tag};
-use core::{mem, ptr};
+use super::super::BitMask;
+use super::super::Tag;
+use core::mem;
+use core::ptr;
 
 // Use the native word size as the group size. Using a 64-bit group size on
 // a 32-bit architecture will just end up being more expensive because
 // shifts and multiplies will need to be emulated.
 
-cfg_if! {
+cfg_if::cfg_if! {
     if #[cfg(any(
         target_pointer_width = "64",
         target_arch = "aarch64",

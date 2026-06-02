@@ -46,7 +46,7 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
-          paths: [cachebox]
+          paths: [..]
           options:
             docstring_style: google
             docstring_section_style: list

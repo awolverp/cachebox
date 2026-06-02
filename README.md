@@ -4,7 +4,7 @@
 
 *The fastest caching Python library written in Rust*
 
-[**Documentation**](https://awolverp.github.com/cachebox) | [**Releases**](https://github.com/awolverp/cachebox/releases) | 
+[**Documentation**](https://awolverp.github.io/cachebox) | [**Releases**](https://github.com/awolverp/cachebox/releases) | 
 [**Benchmarks**](https://github.com/awolverp/cachebox-benchmark) | 
 [**Issues**](https://github.com/awolverp/cachebox/issues/new)
 

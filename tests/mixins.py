@@ -1,5 +1,6 @@
 import copy as stdcopy
 import dataclasses
+import gc
 import pickle
 import sys
 import threading
@@ -86,6 +87,14 @@ class InitializeMixin(BaseMixin):
 
         c = self.create_cache(maxsize=100, getsizeof=sizer)
         assert c.getsizeof is sizer
+
+    def test_gc_traverse_clear(self):
+        c = self.create_cache(maxsize=100)
+        gc.collect(0)
+
+        c_type = type(c)
+        c = c_type.__new__(c_type)
+        gc.collect(0)
 
 
 class InsertAndGetMixin(BaseMixin):

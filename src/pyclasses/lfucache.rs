@@ -682,7 +682,7 @@ impl PyLFUCache {
     }
 
     fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
-        if self.0.is_initialized() {
+        if !self.0.is_initialized() {
             return Ok(());
         }
 
@@ -699,7 +699,7 @@ impl PyLFUCache {
     }
 
     fn __clear__(&self) {
-        if self.0.is_initialized() {
+        if !self.0.is_initialized() {
             return;
         }
 

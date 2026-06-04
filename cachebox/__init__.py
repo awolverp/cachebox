@@ -8,8 +8,8 @@ from ._cachebox import TTLCache as TTLCache
 from ._cachebox import VTTLCache as VTTLCache
 from ._core import __version__ as __version__
 from ._core import _use_small_offset_feature as _use_small_offset_feature
-from .utils import EVENT_HIT as EVENT_HIT
-from .utils import EVENT_MISS as EVENT_MISS
+from ._wrappers import EVENT_HIT as EVENT_HIT
+from ._wrappers import EVENT_MISS as EVENT_MISS
 from .utils import Frozen as Frozen
 from .utils import cached as cached
 from .utils import clear_cached_cache as clear_cached_cache

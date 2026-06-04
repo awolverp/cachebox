@@ -1,13 +1,21 @@
-import _thread
-import asyncio
 import functools
 import inspect
 import typing
-from collections import namedtuple
 from copy import copy as _shallow_copy
 from copy import deepcopy as _deep_copy
 
 from ._cachebox import BaseCacheImpl, LRUCache
+from ._wrappers import (
+    AbstractAsyncContextManager,
+    AbstractContextManager,
+    CacheInfo,
+    _async_cached_wrapper,
+    _async_cached_wrapper_without_lock,
+    _cached_wrapper,
+    _cached_wrapper_without_lock,
+    _Callback,
+    _PostProcess,
+)
 
 if typing.TYPE_CHECKING:
     from ._core import _IterableType
@@ -16,9 +24,6 @@ KT = typing.TypeVar("KT")
 VT = typing.TypeVar("VT")
 DT = typing.TypeVar("DT")
 FT = typing.TypeVar("FT", bound=typing.Callable[..., typing.Any])
-
-_PostProcess: typing.TypeAlias = typing.Callable[[typing.Any], typing.Any]
-_Callback: typing.TypeAlias = typing.Callable[[int, typing.Any, typing.Any], typing.Any]
 
 
 _COPY_TYPES = frozenset((dict, list, set))
@@ -358,256 +363,49 @@ class Frozen(BaseCacheImpl[KT, VT]):  # pragma: no cover
         return "Frozen(%s)" % repr(self.__cache)
 
 
-class _Lock:
-    __slots__ = ("_lock", "waiters")
-
-    def __init__(self) -> None:
-        self._lock = _thread.allocate_lock()
-        self.waiters = 0
-
-    def __enter__(self) -> None:
-        self.waiters += 1
-        self._lock.acquire()
-
-    def __exit__(self, *_) -> None:
-        self.waiters -= 1
-        self._lock.release()
-
-
-class _AsyncLock:
-    __slots__ = ("_lock", "waiters")
-
-    def __init__(self) -> None:
-        self._lock = asyncio.Lock()
-        self.waiters = 0
-
-    async def __aenter__(self) -> None:
-        self.waiters += 1
-        await self._lock.acquire()
-
-    async def __aexit__(self, *_) -> None:
-        self.waiters -= 1
-        self._lock.release()
-
-
-CacheInfo = namedtuple(
-    "CacheInfo", ("hits", "misses", "maxsize", "current_size", "length", "memory")
-)
-EVENT_MISS = 1
-EVENT_HIT = 2
-
-
-def _cached_wrapper(
-    func,
-    cache: BaseCacheImpl | typing.Callable,
-    key_maker: typing.Callable[[tuple, dict], typing.Hashable],
-    clear_reuse: bool,
-    callback: typing.Callable[[int, typing.Any, typing.Any], None] | None,
-    postprocess: _PostProcess | None,
+def _cast_lock(
+    iscoroutinefunction: bool,
+    lock: (
+        typing.Type[AbstractContextManager]
+        | typing.Type[AbstractAsyncContextManager]
+        | bool
+        | None
+    ) = True,
+) -> (
+    typing.Type[AbstractContextManager]
+    | typing.Type[AbstractAsyncContextManager]
+    | None
 ):
-    cache_is_fn = callable(cache)
+    import _thread
+    import asyncio
+    import threading
 
-    # Per-instance caches receive `self` as args[0]; exclude it from the ke
-    _make_key = (
-        (lambda a, k: key_maker(*a[1:], **k))
-        if cache_is_fn
-        else (lambda a, k: key_maker(*a, **k))
-    )
+    if lock is None or lock is False:
+        return None
 
-    hits = misses = 0
-    locks: dict[typing.Hashable, _Lock] = {}
-    pending_errors: dict[typing.Hashable, BaseException] = {}
+    if lock is True:
+        return asyncio.Lock if iscoroutinefunction else threading.Lock
 
-    def _wrapped(*args, **kwds):
-        nonlocal hits, misses
+    if iscoroutinefunction:
+        if not hasattr(lock, "__aenter__"):
+            raise TypeError(
+                "For async functions, you cannot use a regular synchronous lock."
+            )
 
-        # Passing `cachebox__ignore=True` bypasses the cache and
-        # calls the function directly.
-        if kwds.pop("cachebox__ignore", False):
-            return func(*args, **kwds)
+        return typing.cast(typing.Type[AbstractAsyncContextManager], lock)
 
-        _cache: BaseCacheImpl = cache(args[0]) if cache_is_fn else cache  # type: ignore[arg-type]
-        key = _make_key(args, kwds)
+    # threading.Lock, threading.RLock and _thread.allocate_lock are function
+    if (
+        lock is threading.Lock
+        or lock is threading.RLock
+        or lock is _thread.allocate_lock
+    ):
+        return typing.cast(typing.Type[AbstractContextManager], lock)
 
-        # Most calls are expected to hit the cache; avoid acquiring a lock.
-        # Implementations are thread-safe.
-        try:
-            result = _cache[key]
-            hits += 1
-            if callback is not None:
-                callback(EVENT_HIT, key, result)
+    if not hasattr(lock, "__enter__"):
+        raise TypeError("For sync functions, you cannot use a asynchronous lock.")
 
-            return postprocess(result) if postprocess is not None else result
-        except KeyError:
-            pass
-
-        lock = locks.get(key)
-        if lock is None:
-            locks[key] = lock = _Lock()
-
-        # Acquire the per-key lock so that only one task computes the value
-        # while the rest wait.
-        with lock:
-            # Re-raise any exception stored by a previous owner so that all
-            # waiters fail with the same error.
-            err = pending_errors.get(key)
-            if err is not None:
-                if lock.waiters == 0:
-                    del pending_errors[key]
-                raise err
-
-            # Re-check the cache; a previous waiter may have already populated
-            # it while we were waiting for the lock.
-            try:
-                result = _cache[key]
-                hits += 1
-                event = EVENT_HIT
-            except KeyError:
-                try:
-                    result = func(*args, **kwds)
-                except Exception as exc:
-                    if lock.waiters > 0:
-                        pending_errors[key] = exc
-                    raise
-                else:
-                    _cache[key] = result
-                    misses += 1
-                    event = EVENT_MISS
-
-            if lock.waiters == 0:
-                locks.pop(key, None)
-
-        if callback is not None:
-            callback(event, key, result)
-
-        return postprocess(result) if postprocess is not None else result
-
-    if not cache_is_fn:
-        _wrapped.cache = cache  # type: ignore[attr-defined]
-        _wrapped.cache_info = lambda: CacheInfo(  # type: ignore[attr-defined]
-            hits,
-            misses,
-            cache.maxsize,
-            cache.current_size(),
-            len(cache),
-            cache.__sizeof__(),
-        )
-
-        def cache_clear() -> None:
-            nonlocal hits, misses
-            cache.clear(reuse=clear_reuse)  # type: ignore[union-attr]
-            hits = misses = 0
-            locks.clear()
-            pending_errors.clear()
-
-        _wrapped.cache_clear = cache_clear  # type: ignore[attr-defined]
-
-    _wrapped.callback = callback  # type: ignore[attr-defined]
-    return _wrapped
-
-
-def _async_cached_wrapper(
-    func,
-    cache: BaseCacheImpl | typing.Callable,
-    key_maker: typing.Callable[..., typing.Hashable],
-    clear_reuse: bool,
-    callback: _Callback | None,
-    postprocess: _PostProcess | None,
-):
-    cache_is_fn = callable(cache)
-    _make_key = (
-        (lambda a, k: key_maker(*a[1:], **k))
-        if cache_is_fn
-        else (lambda a, k: key_maker(*a, **k))
-    )
-
-    hits = misses = 0
-    locks: dict[typing.Hashable, _AsyncLock] = {}
-    pending_errors: dict[typing.Hashable, BaseException] = {}
-
-    async def _wrapped(*args, **kwds):
-        nonlocal hits, misses
-
-        # Passing `cachebox__ignore=True` bypasses the cache and
-        # calls the function directly.
-        if kwds.pop("cachebox__ignore", False):
-            return await func(*args, **kwds)
-
-        _cache: BaseCacheImpl = cache(args[0]) if cache_is_fn else cache  # type: ignore[arg-type]
-        key = _make_key(args, kwds)
-
-        # Hot path - no lock needed.
-        try:
-            result = _cache[key]
-            hits += 1
-            if callback is not None:
-                ret = callback(EVENT_HIT, key, result)
-                if inspect.isawaitable(ret):
-                    await ret
-            return postprocess(result) if postprocess is not None else result
-        except KeyError:
-            pass
-
-        lock = locks.get(key)
-        if lock is None:
-            locks[key] = lock = _AsyncLock()
-
-        async with lock:
-            err = pending_errors.get(key)
-            if err is not None:
-                if lock.waiters == 0:
-                    del pending_errors[key]
-
-                raise err
-
-            try:
-                result = _cache[key]
-                hits += 1
-                event = EVENT_HIT
-            except KeyError:
-                try:
-                    result = await func(*args, **kwds)
-                except Exception as exc:
-                    if lock.waiters > 0:
-                        pending_errors[key] = exc
-                    raise
-                else:
-                    _cache[key] = result
-                    misses += 1
-                    event = EVENT_MISS
-
-            if lock.waiters == 0:
-                locks.pop(key, None)
-
-        if callback is not None:
-            ret = callback(event, key, result)
-            if inspect.isawaitable(ret):
-                await ret
-
-        return postprocess(result) if postprocess is not None else result
-
-    if not cache_is_fn:
-        _wrapped.cache = cache  # type: ignore[attr-defined]
-        _wrapped.cache_info = lambda: CacheInfo(  # type: ignore[attr-defined]
-            hits,
-            misses,
-            cache.maxsize,
-            cache.current_size(),
-            len(cache),
-            cache.__sizeof__(),
-        )
-
-        def cache_clear() -> None:
-            nonlocal hits, misses
-            cache.clear(reuse=clear_reuse)  # type: ignore[union-attr]
-            hits = misses = 0
-            locks.clear()
-            pending_errors.clear()
-
-        _wrapped.cache_clear = cache_clear  # type: ignore[attr-defined]
-
-    _wrapped.callback = callback  # type: ignore[attr-defined]
-    return _wrapped
+    return typing.cast(typing.Type[AbstractContextManager], lock)
 
 
 def cached(
@@ -617,6 +415,12 @@ def cached(
     callback: _Callback | None = None,
     copy_level: int = 1,
     postprocess: _PostProcess | None = postprocess_copy_mutables,
+    lock: (
+        typing.Type[AbstractContextManager]
+        | typing.Type[AbstractAsyncContextManager]
+        | bool
+        | None
+    ) = True,
 ) -> typing.Callable[[FT], FT]:
     """
     Decorator to memoize function/method results.
@@ -642,8 +446,13 @@ def cached(
             * :func:`postprocess_copy_mutables` - shallow-copy only `dict`, `list` and `set` (default).
             * :func:`postprocess_deepcopy` - deep-copy.
             * :func:`postprocess_deepcopy_mutables` - deep-copy only `dict`, `list` and `set`.
+        lock: If ``None`` or ``False``, cache stampede preventation get disabled, but process is still thread-safe.
+            If ``True``, will use ``threading.Lock`` or ``asyncio.Lock`` depends on wrapped function.
+            Also you can pass anything that implemented ``contextlib.AbstractContextManager``
+            (or ``contextlib.AbstractAsyncContextManager`` for async functions).
+            (default is ``True``).
 
-    Note:
+    Tip:
         Pass ``cachebox__ignore=True`` at call-time to bypass the cache.
         If *cache* isn't a lambda/function, these attributes will be attached to
         your function: ``cache`` (property), ``cache_info`` (callable), ``clear_cache`` (callable),
@@ -682,12 +491,41 @@ def cached(
         raise TypeError("expected a cachebox cache or a callable, got %r" % (cache,))
 
     def decorator(func: FT) -> FT:
-        builder = (
-            _async_cached_wrapper
-            if inspect.iscoroutinefunction(func)
-            else _cached_wrapper
-        )
-        wrapper = builder(func, cache, key_maker, clear_reuse, callback, postprocess)  # type: ignore[arg-type]
+        iscoroutinefunction = inspect.iscoroutinefunction(func)
+        lock_type = _cast_lock(iscoroutinefunction, lock)
+
+        if not iscoroutinefunction and inspect.iscoroutinefunction(callback):
+            raise TypeError(
+                "For sync functions, you cannot use a asynchronous callback"
+            )
+
+        if lock_type:
+            builder = _async_cached_wrapper if iscoroutinefunction else _cached_wrapper
+
+            wrapper = builder(
+                func,
+                cache,  # type: ignore
+                key_maker,
+                clear_reuse,
+                callback,
+                postprocess,
+                lock_type,  # type: ignore
+            )
+        else:
+            builder = (
+                _async_cached_wrapper_without_lock
+                if iscoroutinefunction
+                else _cached_wrapper_without_lock
+            )
+            wrapper = builder(
+                func,
+                cache,  # type: ignore
+                key_maker,
+                clear_reuse,
+                callback,
+                postprocess,
+            )
+
         return functools.update_wrapper(wrapper, func)  # type: ignore[return-value]
 
     return decorator

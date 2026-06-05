@@ -762,9 +762,7 @@ class IssuesMixin(BaseMixin):
 
 
 class SweepIntervalMixin(BaseMixin):
-    def _create_sweep_cache(
-        self, *args, **kwds
-    ) -> cachebox.TTLCache | cachebox.VTTLCache:
+    def _create_sweep_cache(self, *args, **kwds) -> cachebox.TTLCache | cachebox.VTTLCache:
         return typing.cast(
             cachebox.TTLCache | cachebox.VTTLCache,
             self.create_cache(*args, **kwds),
@@ -787,9 +785,7 @@ class SweepIntervalMixin(BaseMixin):
             cache.stop_sweeper()
 
     def test_timedelta_sweep_interval_starts_thread(self):
-        cache = self._create_sweep_cache(
-            maxsize=10, sweep_interval=timedelta(seconds=1)
-        )
+        cache = self._create_sweep_cache(maxsize=10, sweep_interval=timedelta(seconds=1))
         try:
             assert cache._thread is not None
             assert cache._thread.is_alive()
@@ -797,9 +793,7 @@ class SweepIntervalMixin(BaseMixin):
             cache.stop_sweeper()
 
     def test_timedelta_converted_to_seconds(self):
-        cache = self._create_sweep_cache(
-            maxsize=10, sweep_interval=timedelta(seconds=5)
-        )
+        cache = self._create_sweep_cache(maxsize=10, sweep_interval=timedelta(seconds=5))
         try:
             assert cache.sweep_interval == 5.0
         finally:
@@ -813,9 +807,7 @@ class SweepIntervalMixin(BaseMixin):
             cache.stop_sweeper()
 
     def test_sweep_interval_below_1_raises(self):
-        with pytest.raises(
-            ValueError, match="sweep_interval must be more than 1 seconds"
-        ):
+        with pytest.raises(ValueError, match="sweep_interval must be more than 1 seconds"):
             self._create_sweep_cache(maxsize=10, sweep_interval=0.5)
 
     def test_sweep_interval_zero_raises(self):
@@ -1032,9 +1024,7 @@ class FuzzyMixin(BaseMixin):
         cache_items = dict(c.items())
         assert cache_items == truth
         assert set(c.keys()) == set(truth.keys())
-        assert sorted(str(v) for v in c.values()) == sorted(
-            str(v) for v in truth.values()
-        )
+        assert sorted(str(v) for v in c.values()) == sorted(str(v) for v in truth.values())
 
     @given(key=hashable_keys, existing=any_value, default=any_value)
     def test_fuzzy_setdefault_never_overwrites_existing(self, key, existing, default):
@@ -1056,12 +1046,8 @@ class FuzzyMixin(BaseMixin):
             c.insert(k, v)
         assert c.copy() == c
 
-    @given(
-        key=hashable_keys, value=any_value, new_key=hashable_keys, new_value=any_value
-    )
-    def test_fuzzy_copy_is_independent_of_original(
-        self, key, value, new_key, new_value
-    ):
+    @given(key=hashable_keys, value=any_value, new_key=hashable_keys, new_value=any_value)
+    def test_fuzzy_copy_is_independent_of_original(self, key, value, new_key, new_value):
         assume(new_key != key)
         c = self.create_cache(maxsize=0)
         c.insert(key, value)

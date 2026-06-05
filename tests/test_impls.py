@@ -1116,9 +1116,7 @@ class TestTTLCachePolicy(mixins.SweepIntervalMixin):
 
     def test_first_with_positive_n_browses_in_insertion_order(self):
         """first(n) must walk forward through insertion order."""
-        cache = self.create_cache(
-            4, [(10, "a"), (20, "b"), (30, "c"), (40, "d")], global_ttl=10
-        )
+        cache = self.create_cache(4, [(10, "a"), (20, "b"), (30, "c"), (40, "d")], global_ttl=10)
         assert cache.first(0) == 10
         assert cache.first(1) == 20
         assert cache.first(2) == 30
@@ -1126,9 +1124,7 @@ class TestTTLCachePolicy(mixins.SweepIntervalMixin):
 
     def test_first_with_negative_n_browses_from_end(self):
         """first(-1) is an alias for last(); first(-2) is the second newest."""
-        cache = self.create_cache(
-            4, [(10, "a"), (20, "b"), (30, "c"), (40, "d")], global_ttl=10
-        )
+        cache = self.create_cache(4, [(10, "a"), (20, "b"), (30, "c"), (40, "d")], global_ttl=10)
         assert cache.first(-1) == 40
         assert cache.first(-2) == 30
 
@@ -1750,9 +1746,7 @@ class TestVTTLCachePolicy(mixins.SweepIntervalMixin):
         time.sleep(0.1)
         value, dur = obj.get_with_expire(1)
         assert 1 == value
-        assert isinstance(dur, float) and 10 > dur > 9, (
-            "10 > dur > 9 failed [dur: %f]" % dur
-        )
+        assert isinstance(dur, float) and 10 > dur > 9, "10 > dur > 9 failed [dur: %f]" % dur
 
         obj.insert(1, 1, None)
         time.sleep(0.1)
@@ -1775,9 +1769,7 @@ class TestVTTLCachePolicy(mixins.SweepIntervalMixin):
         time.sleep(0.1)
         value, dur = obj.pop_with_expire(1)
         assert 1 == value
-        assert isinstance(dur, float) and 10 > dur > 9, (
-            "10 > dur > 9 failed [dur: %f]" % dur
-        )
+        assert isinstance(dur, float) and 10 > dur > 9, "10 > dur > 9 failed [dur: %f]" % dur
 
         obj.insert(1, 1, None)
         time.sleep(0.1)
@@ -1801,15 +1793,11 @@ class TestVTTLCachePolicy(mixins.SweepIntervalMixin):
         time.sleep(0.1)
         key, value, dur = obj.popitem_with_expire()
         assert (1, 1) == (key, value)
-        assert isinstance(dur, float) and 10 > dur > 9, (
-            "10 > dur > 9 failed [dur: %f]" % dur
-        )
+        assert isinstance(dur, float) and 10 > dur > 9, "10 > dur > 9 failed [dur: %f]" % dur
 
         key, value, dur = obj.popitem_with_expire()
         assert (2, 2) == (key, value)
-        assert isinstance(dur, float) and 20 > dur > 19, (
-            "20 > dur > 19 failed [dur: %f]" % dur
-        )
+        assert isinstance(dur, float) and 20 > dur > 19, "20 > dur > 19 failed [dur: %f]" % dur
 
         with pytest.raises(KeyError):
             obj.popitem_with_expire()

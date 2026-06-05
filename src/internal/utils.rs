@@ -17,7 +17,7 @@ pub unsafe fn pyobject_hash(
     let py_hash = pyo3::ffi::PyObject_Hash(arg1);
     if std::hint::unlikely(py_hash == -1) {
         // SAFETY: PyObject_Hash never returns -1 on success.
-        return Err(pyo3::PyErr::take(py).unwrap_unchecked());
+        return Err(pyo3::PyErr::take(py).unwrap());
     }
 
     Ok(py_hash as u64)

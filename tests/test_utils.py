@@ -1,4 +1,5 @@
 import asyncio
+import platform
 import threading
 import time
 import typing
@@ -574,6 +575,10 @@ def _run_recursive_cached_func_with_thread(cached_func, key):
     assert "err" in result
 
 
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy",
+    reason="https://github.com/PyO3/pyo3/issues/6109",
+)
 def test_recursive_cached_issue_54(random_cache_impl: type[cachebox.BaseCacheImpl]):
     # https://github.com/awolverp/cachebox/issues/54
 
@@ -609,6 +614,10 @@ async def _run_recursive_cached_func_with_asyncio(cached_func, key):
     assert "err" in result
 
 
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy",
+    reason="https://github.com/PyO3/pyo3/issues/6109",
+)
 @pytest.mark.asyncio
 async def test_async_recursive_cached_issue_54(
     random_cache_impl: type[cachebox.BaseCacheImpl],

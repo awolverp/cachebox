@@ -71,9 +71,7 @@ def _cached_wrapper_without_lock(
 
     # Per-instance caches receive `self` as args[0]; exclude it from the ke
     _make_key = (
-        (lambda a, k: key_maker(*a[1:], **k))
-        if cache_is_fn
-        else (lambda a, k: key_maker(*a, **k))
+        (lambda a, k: key_maker(*a[1:], **k)) if cache_is_fn else (lambda a, k: key_maker(*a, **k))
     )
 
     hits = 0
@@ -145,9 +143,7 @@ def _async_cached_wrapper_without_lock(
 
     # Per-instance caches receive `self` as args[0]; exclude it from the ke
     _make_key = (
-        (lambda a, k: key_maker(*a[1:], **k))
-        if cache_is_fn
-        else (lambda a, k: key_maker(*a, **k))
+        (lambda a, k: key_maker(*a[1:], **k)) if cache_is_fn else (lambda a, k: key_maker(*a, **k))
     )
 
     hits = 0
@@ -209,9 +205,7 @@ def _cached_wrapper(
 
     # Per-instance caches receive `self` as args[0]; exclude it from the key
     _make_key = (
-        (lambda a, k: key_maker(*a[1:], **k))
-        if cache_is_fn
-        else (lambda a, k: key_maker(*a, **k))
+        (lambda a, k: key_maker(*a[1:], **k)) if cache_is_fn else (lambda a, k: key_maker(*a, **k))
     )
 
     hits = 0
@@ -313,9 +307,7 @@ def _async_cached_wrapper(
 ):
     cache_is_fn = callable(cache)
     _make_key = (
-        (lambda a, k: key_maker(*a[1:], **k))
-        if cache_is_fn
-        else (lambda a, k: key_maker(*a, **k))
+        (lambda a, k: key_maker(*a[1:], **k)) if cache_is_fn else (lambda a, k: key_maker(*a, **k))
     )
 
     hits = 0

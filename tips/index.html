@@ -571,17 +571,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#thread-safety" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Thread Safety
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#ttl-and-frozen-caches" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -608,6 +597,17 @@
     <span class="md-ellipsis">
       
         TTLCache/VTTLCache background thread
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cache-stampede-prevention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cache Stampede Prevention
       
     </span>
   </a>
@@ -758,9 +758,6 @@
 hash table rehashing during initial population:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">10_000</span><span class="p">,</span> <span class="n">capacity</span><span class="o">=</span><span class="mi">10_000</span><span class="p">)</span>
 </span></code></pre></div>
-<h2 id="thread-safety">Thread Safety<a class="headerlink" href="#thread-safety" title="Permanent link">&para;</a></h2>
-<p>All cache operations (reads, writes, eviction) are protected by internal Rust mutexes.
-You do <strong>not</strong> need to add external synchronisation.</p>
 <h2 id="ttl-and-frozen-caches">TTL and Frozen Caches<a class="headerlink" href="#ttl-and-frozen-caches" title="Permanent link">&para;</a></h2>
 <p><code>Frozen</code> cannot prevent TTL expiration in <code>TTLCache</code> or <code>VTTLCache</code>.
 Items will still expire naturally even when the cache is frozen.</p>
@@ -916,6 +913,76 @@ lifecycle control is required.</p>
 - The cache sees regular traffic and on-access cleanup is sufficient.
 - You want to avoid any background thread overhead.
 - Memory pressure from temporarily lingering stale entries is acceptable.</p>
+<h2 id="cache-stampede-prevention">Cache Stampede Prevention<a class="headerlink" href="#cache-stampede-prevention" title="Permanent link">&para;</a></h2>
+<p>A cache stampede occurs when many concurrent requests find the same key missing from the cache
+and all proceed to recompute the value simultaneously that causing redundant work, resource spikes,
+or even cascading failures under heavy load. The <code>@cached</code> decorator prevents this by default
+using a per-key lock: once one caller begins computing a missing value, all other callers for the
+same key wait for it to finish and then reuse the result.</p>
+<p>Lock-based stampede prevention is enabled by default (<code>lock=True</code>). For sync
+functions this uses <code>threading.Lock</code>; for async functions it uses <code>asyncio.Lock</code>:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Sync</label><label for="__tabbed_2_2">Async</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-python highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">256</span><span class="p">))</span>
+</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">fetch_user</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>    <span class="c1"># Only called once per user_id, even under concurrent load</span>
+</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>    <span class="k">return</span> <span class="n">expensive_db_query</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-python highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">256</span><span class="p">))</span>
+</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">fetch_user</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>    <span class="c1"># Uses asyncio.Lock automatically for async functions</span>
+</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>    <span class="k">return</span> <span class="k">await</span> <span class="n">expensive_db_query</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+</div>
+</div>
+<p>You can use your own lock type. anything that implements <code>contextlib.AbstractContextManager</code> for sync functions, or
+<code>contextlib.AbstractAsyncContextManager</code> for async functions:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>
+</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="c1"># Use an RLock (re-entrant lock) instead of the default Lock</span>
+</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">256</span><span class="p">),</span> <span class="n">lock</span><span class="o">=</span><span class="n">threading</span><span class="o">.</span><span class="n">RLock</span><span class="p">)</span>
+</span><span id="__span-18-6"><a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">fetch_user</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="__span-18-7"><a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>    <span class="k">return</span> <span class="n">expensive_db_query</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+</span></code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Passing a synchronous lock to an async function (or vice versa) raises
+a TypeError at decoration time.</p>
+</div>
+<p>If your workload doesn't require it you can disable the lock entirely with <code>lock=False</code> or <code>lock=None</code>.
+While the default lock is safe for most use cases, there are situations where keeping it enabled causes
+problems or is simply unnecessary. <em>Recursive functions</em> are the most common case. Because <code>threading.Lock</code> is
+non-reentrant, a cached recursive function will deadlock the moment it calls itself.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="c1"># ❌ Deadlocks on any recursive call</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">256</span><span class="p">))</span>
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">factorial</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>    <span class="k">return</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;=</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">n</span> <span class="o">*</span> <span class="n">factorial</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Other cases where disabling the lock is reasonable:</p>
+<ul>
+<li><em>Cheap computations</em>: if recomputing a value is nearly free, the overhead of
+lock contention outweighs the benefit of preventing duplicate work.</li>
+<li><em>Single-threaded environments</em>: no concurrency means no stampedes; the lock
+is pure overhead.</li>
+<li><em>Already-serialised callers</em>: if your architecture guarantees that only one
+caller can request a given key at a time (e.g. a task queue), the lock adds
+nothing.</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Disabling the lock does not make cache operations unsafe. all reads and
+writes are still protected by internal Rust mutexes. It only means that
+multiple threads may compute the same missing value simultaneously.</p>
+</div>
 
 
 

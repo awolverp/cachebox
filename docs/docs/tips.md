@@ -47,10 +47,6 @@ hash table rehashing during initial population:
 cache = cachebox.LRUCache(maxsize=10_000, capacity=10_000)
 ```
 
-## Thread Safety
-All cache operations (reads, writes, eviction) are protected by internal Rust mutexes.
-You do **not** need to add external synchronisation.
-
 ## TTL and Frozen Caches
 `Frozen` cannot prevent TTL expiration in `TTLCache` or `VTTLCache`.
 Items will still expire naturally even when the cache is frozen.
@@ -236,3 +232,79 @@ Stick with **lazy expiry** when:
 - The cache sees regular traffic and on-access cleanup is sufficient.
 - You want to avoid any background thread overhead.
 - Memory pressure from temporarily lingering stale entries is acceptable.
+
+## Cache Stampede Prevention
+A cache stampede occurs when many concurrent requests find the same key missing from the cache
+and all proceed to recompute the value simultaneously that causing redundant work, resource spikes,
+or even cascading failures under heavy load. The `@cached` decorator prevents this by default
+using a per-key lock: once one caller begins computing a missing value, all other callers for the
+same key wait for it to finish and then reuse the result.
+
+Lock-based stampede prevention is enabled by default (`lock=True`). For sync
+functions this uses `threading.Lock`; for async functions it uses `asyncio.Lock`:
+
+=== "Sync"
+
+    ```python
+    import cachebox
+    
+    @cachebox.cached(cachebox.LRUCache(maxsize=256))
+    def fetch_user(user_id: int) -> dict:
+        # Only called once per user_id, even under concurrent load
+        return expensive_db_query(user_id)
+    ```
+
+=== "Async"
+
+    ```python
+    import cachebox
+    
+    @cachebox.cached(cachebox.LRUCache(maxsize=256))
+    async def fetch_user(user_id: int) -> dict:
+        # Uses asyncio.Lock automatically for async functions
+        return await expensive_db_query(user_id)
+    ```
+
+You can use your own lock type. anything that implements `contextlib.AbstractContextManager` for sync functions, or
+`contextlib.AbstractAsyncContextManager` for async functions:
+
+```python
+import threading
+import cachebox
+
+# Use an RLock (re-entrant lock) instead of the default Lock
+@cachebox.cached(cachebox.LRUCache(maxsize=256), lock=threading.RLock)
+def fetch_user(user_id: int) -> dict:
+    return expensive_db_query(user_id)
+```
+
+!!! warning
+    Passing a synchronous lock to an async function (or vice versa) raises
+    a TypeError at decoration time.
+
+If your workload doesn't require it you can disable the lock entirely with `lock=False` or `lock=None`.
+While the default lock is safe for most use cases, there are situations where keeping it enabled causes
+problems or is simply unnecessary. *Recursive functions* are the most common case. Because `threading.Lock` is
+non-reentrant, a cached recursive function will deadlock the moment it calls itself.
+
+```python
+# ❌ Deadlocks on any recursive call
+@cachebox.cached(cachebox.LRUCache(maxsize=256))
+def factorial(n: int) -> int:
+    return 1 if n <= 1 else n * factorial(n - 1)
+```
+
+Other cases where disabling the lock is reasonable:
+
+- *Cheap computations*: if recomputing a value is nearly free, the overhead of
+lock contention outweighs the benefit of preventing duplicate work.
+- *Single-threaded environments*: no concurrency means no stampedes; the lock
+is pure overhead.
+- *Already-serialised callers*: if your architecture guarantees that only one
+caller can request a given key at a time (e.g. a task queue), the lock adds
+nothing.
+
+!!! note
+    Disabling the lock does not make cache operations unsafe. all reads and
+    writes are still protected by internal Rust mutexes. It only means that
+    multiple threads may compute the same missing value simultaneously.

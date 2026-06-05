@@ -430,11 +430,12 @@ def cached(
             * :func:`postprocess_copy_mutables` - shallow-copy only `dict`, `list` and `set` (default).
             * :func:`postprocess_deepcopy` - deep-copy.
             * :func:`postprocess_deepcopy_mutables` - deep-copy only `dict`, `list` and `set`.
-        lock: If ``None`` or ``False``, cache stampede preventation get disabled, but process is still thread-safe.
+        lock: If ``None`` or ``False``, cache stampede prevention get disabled, but process is still thread-safe.
             If ``True``, will use ``threading.Lock`` or ``asyncio.Lock`` depends on wrapped function.
             Also you can pass anything that implemented ``contextlib.AbstractContextManager``
             (or ``contextlib.AbstractAsyncContextManager`` for async functions).
-            (default is ``True``).
+            (default is ``True``). See [cache stampede prevention](http://awolverp.github.io/cachebox/tips/#cache-stampede-prevention)
+            for more.
 
     Tip:
         Pass ``cachebox__ignore=True`` at call-time to bypass the cache.

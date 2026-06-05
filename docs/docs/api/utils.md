@@ -10,10 +10,6 @@
 
 ::: cachebox.utils.Frozen
 
-::: cachebox.utils.CacheInfo
-::: cachebox.utils.EVENT_MISS
-::: cachebox.utils.EVENT_HIT
-
 ::: cachebox.utils.cached
 ::: cachebox.utils.is_cached
 ::: cachebox.utils.get_cached_cache

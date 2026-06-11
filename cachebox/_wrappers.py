@@ -19,9 +19,9 @@ class _Lock:
     def __enter__(self) -> None:
         self.waiters += 1
         self._lock.__enter__()
+        self.waiters -= 1
 
     def __exit__(self, *_) -> None:
-        self.waiters -= 1
         self._lock.__exit__(*_)
 
 
@@ -35,9 +35,9 @@ class _AsyncLock:
     async def __aenter__(self) -> None:
         self.waiters += 1
         await self._lock.__aenter__()
+        self.waiters -= 1
 
     async def __aexit__(self, *_) -> None:
-        self.waiters -= 1
         await self._lock.__aexit__(*_)
 
 

@@ -703,3 +703,42 @@ async def test_recursive_asyncio_cached():
         10,
     )
     assert result == ([3628800] * 8)
+
+
+def test_handling_pending_errors():
+    # https://github.com/awolverp/cachebox/issues/57
+
+    def key(a, b, c, exception: bool):
+        return f"{a},{b},{c}"
+
+    @cachebox.cached(cachebox.TTLCache(1024, 1), key_maker=key)
+    def calc(a, b, c, exception: bool):
+        if exception:
+            raise ValueError("first call")
+
+        return a + b + c
+
+    with pytest.raises(ValueError):
+        calc(1, 2, 3, exception=True)
+
+    assert calc(1, 2, 3, exception=False) == 6
+
+
+@pytest.mark.asyncio
+async def test_async_handling_pending_errors():
+    # https://github.com/awolverp/cachebox/issues/57
+
+    def key(a, b, c, exception: bool):
+        return f"{a},{b},{c}"
+
+    @cachebox.cached(cachebox.TTLCache(1024, 1), key_maker=key)
+    async def calc(a, b, c, exception: bool):
+        if exception:
+            raise ValueError("first call")
+
+        return a + b + c
+
+    with pytest.raises(ValueError):
+        await calc(1, 2, 3, exception=True)
+
+    assert await calc(1, 2, 3, exception=False) == 6

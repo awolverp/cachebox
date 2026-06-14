@@ -74,9 +74,19 @@ mod _core {
     use crate::pyclasses::ttlcache::PyTTLCacheKeys;
     #[pymodule_export]
     use crate::pyclasses::ttlcache::PyTTLCacheValues;
+    #[pymodule_export]
+    use crate::pyclasses::ttlcache::PyTTLCacheItemsWithExpire;
 
     #[pymodule_export]
     use crate::pyclasses::vttlcache::PyVTTLCache;
+    #[pymodule_export]
+    use crate::pyclasses::vttlcache::PyVTTLCacheItems;
+    #[pymodule_export]
+    use crate::pyclasses::vttlcache::PyVTTLCacheKeys;
+    #[pymodule_export]
+    use crate::pyclasses::vttlcache::PyVTTLCacheValues;
+    #[pymodule_export]
+    use crate::pyclasses::vttlcache::PyVTTLCacheItemsWithExpire;
 
     #[pymodule_init]
     pub fn init(m: &pyo3::Bound<'_, pyo3::types::PyModule>) -> pyo3::PyResult<()> {

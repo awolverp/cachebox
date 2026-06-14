@@ -26,11 +26,11 @@ cfg-if = "1.0.4"
 chrono = "0.4.44"
 fastrand = "2.4.1"
 parking_lot = {version="0.12.5", default-features=false}
-pyo3 = {version="0.28.3", default-features=false, features=["macros", "generate-import-lib", "chrono"]}
+pyo3 = {version="0.29", default-features=false, features=["macros", "chrono"]}
 # tokio = {version="1.52.3", default-features=false, features=["sync"]}
 
 [build-dependencies]
-pyo3-build-config = {version="0.28.3", default-features=false, features=["resolve-config"]}
+pyo3-build-config = {version="0.29", default-features=false, features=["resolve-config"]}
 
 [features]
 default = ["inline-more", "extension-module"]

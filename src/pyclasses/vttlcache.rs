@@ -29,11 +29,9 @@ impl PyVTTLCache {
     fn __new__(
         args: alias::ArgsType,
         kwds: Option<alias::KwdsType>,
-    ) -> (Self, crate::pyclasses::base::PyBaseCacheImpl) {
-        (
-            Self(onceinit::OnceInit::uninit()),
-            crate::pyclasses::base::PyBaseCacheImpl,
-        )
+    ) -> pyo3::PyClassInitializer<Self> {
+        pyo3::PyClassInitializer::from(crate::pyclasses::base::PyBaseCacheImpl)
+            .add_subclass(Self(onceinit::OnceInit::uninit()))
     }
 
     /// Initialize a new `PyTTLCache` instance.

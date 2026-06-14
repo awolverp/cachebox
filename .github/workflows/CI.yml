@@ -19,27 +19,27 @@ jobs:
         platform:
           - {
               target: x86_64,
-              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
+              interpreter: "3.10 3.11 3.12 3.13 3.14 3.14t 3.15 3.15t pypy3.11",
             }
           - {
               target: x86,
-              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
+              interpreter: "3.10 3.11 3.12 3.13 3.14 3.14t 3.15 3.15t pypy3.11",
             }
           - {
               target: aarch64,
-              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
+              interpreter: "3.10 3.11 3.12 3.13 3.14 3.14t 3.15 3.15t pypy3.11",
             }
           - {
               target: armv7,
-              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
+              interpreter: "3.10 3.11 3.12 3.13 3.14 3.14t 3.15 3.15t pypy3.11",
             }
           - {
               target: s390x,
-              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
+              interpreter: "3.10 3.11 3.12 3.13 3.14 3.14t 3.15 3.15t pypy3.11",
             }
           - {
               target: ppc64le,
-              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
+              interpreter: "3.10 3.11 3.12 3.13 3.14 3.14t 3.15 3.15t pypy3.11",
             }
 
     steps:
@@ -71,19 +71,19 @@ jobs:
         platform:
           - {
               target: x86_64,
-              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
+              interpreter: "3.10 3.11 3.12 3.13 3.14 3.14t 3.15 3.15t pypy3.11",
             }
           - {
               target: x86,
-              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
+              interpreter: "3.10 3.11 3.12 3.13 3.14 3.14t 3.15 3.15t pypy3.11",
             }
           - {
               target: aarch64,
-              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
+              interpreter: "3.10 3.11 3.12 3.13 3.14 3.14t 3.15 3.15t pypy3.11",
             }
           - {
               target: armv7,
-              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
+              interpreter: "3.10 3.11 3.12 3.13 3.14 3.14t 3.15 3.15t pypy3.11",
             }
 
     steps:
@@ -115,9 +115,9 @@ jobs:
         platform:
           - {
               target: x64,
-              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
+              interpreter: "3.10 3.11 3.12 3.13 3.14 3.14t 3.15 3.15t pypy3.11",
             }
-          - { target: x86, interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t" }
+          - { target: x86, interpreter: "3.10 3.11 3.12 3.13 3.14 3.14t 3.15 3.15t" }
 
     steps:
       - uses: actions/checkout@v6.0.2
@@ -148,11 +148,11 @@ jobs:
         platform:
           - {
               target: x86_64,
-              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
+              interpreter: "3.10 3.11 3.12 3.13 3.14 3.14t 3.15 3.15t pypy3.11",
             }
           - {
               target: aarch64,
-              interpreter: "3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11",
+              interpreter: "3.10 3.11 3.12 3.13 3.14 3.14t 3.15 3.15t pypy3.11",
             }
 
     steps:

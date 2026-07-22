@@ -130,7 +130,7 @@ assert cache.get("key") == "value"
 ```
 
 ## Learn more
-Read the documentation for full information and learn more: [**Documentation**](https://awolverp.github.com/cachebox)
+Read the documentation for full information and learn more: [**Documentation**](https://awolverp.github.io/cachebox/)
 
 ## License
 This repository is licensed under the [MIT License](LICENSE)

@@ -19,6 +19,7 @@
         - get
         - __getitem__
         - setdefault
+        - setdefault_with
         - pop
         - __delitem__
         - popitem
@@ -41,6 +42,7 @@
         - update
         - get
         - setdefault
+        - setdefault_with
         - pop
         - popitem
         - items
@@ -54,6 +56,7 @@
         - update
         - get
         - setdefault
+        - setdefault_with
         - pop
         - popitem
         - items
@@ -69,6 +72,7 @@
         - update
         - get
         - setdefault
+        - setdefault_with
         - pop
         - popitem
         - items
@@ -82,6 +86,7 @@
         - update
         - get
         - setdefault
+        - setdefault_with
         - pop
         - popitem
         - items
@@ -98,6 +103,7 @@
         - update
         - get
         - setdefault
+        - setdefault_with
         - pop
         - popitem
         - items
@@ -118,6 +124,7 @@
         - update
         - get
         - setdefault
+        - setdefault_with
         - pop
         - popitem
         - items
@@ -140,6 +147,7 @@
         - insert
         - update
         - setdefault
+        - setdefault_with
         - popitem
         - items
         - values

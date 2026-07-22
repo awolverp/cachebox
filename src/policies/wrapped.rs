@@ -122,13 +122,24 @@ impl<P: PolicyExt> Wrapped<P> {
     /// - If the key was already present, the old handle is replaced and returned as `Some`.
     /// - If the key was absent, the handle is inserted and `None` is returned.
     #[inline]
+    pub fn insert_no_lock(
+        &self,
+        policy: &mut parking_lot::MutexGuard<'_, P>,
+        py: pyo3::Python<'_>,
+        handle: P::Handle,
+    ) -> pyo3::PyResult<Option<P::Handle>> {
+        insert_inner(policy, &self.shared, py, handle)
+    }
+
+    /// See [Self::insert_no_lock]
+    #[inline]
     pub fn insert(
         &self,
         py: pyo3::Python<'_>,
         handle: P::Handle,
     ) -> pyo3::PyResult<Option<P::Handle>> {
         let mut lock = self.inner.lock();
-        insert_inner(&mut lock, &self.shared, py, handle)
+        self.insert_no_lock(&mut lock, py, handle)
     }
 
     /// Removes the entry for `key` from the cache, returning its [`Handle`](PolicyExt::Handle)

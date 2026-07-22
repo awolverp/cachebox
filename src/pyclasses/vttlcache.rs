@@ -328,7 +328,6 @@ impl PyVTTLCache {
         if let Some(x) = policy.get(py, &key)? {
             return Ok(x.value().clone_ref(py));
         }
-        drop(policy);
 
         let default_object = match default {
             utils::OptionalArgument::Defined(x) => x,
@@ -345,8 +344,45 @@ impl PyVTTLCache {
             key,
             default_object.clone_ref(py),
         )?;
+        inner.insert_no_lock(&mut policy, py, handle)?;
+        Ok(default_object)
+    }
 
-        inner.insert(py, handle)?;
+    #[pyo3(signature = (key, factory, ttl=None))]
+    fn setdefault_with(
+        &self,
+        py: pyo3::Python,
+        key: alias::PyObject,
+        factory: alias::PyObject,
+        ttl: Option<utils::TimeToLiveArgument>,
+    ) -> pyo3::PyResult<alias::PyObject> {
+        // 1. Try to get value
+        // 2. If exists -> return it
+        // 3. Else -> insert default -> return default
+        let ttl = match ttl {
+            Some(x) => Some(x.into_expires_at()?),
+            None => None,
+        };
+        let key = utils::PrecomputedHashObject::new(py, key)?;
+
+        let inner = self.0.get();
+        let shared = inner.shared();
+        let mut policy = inner.policy();
+
+        if let Some(x) = policy.get(py, &key)? {
+            return Ok(x.value().clone_ref(py));
+        }
+
+        let default_object = factory.call0(py)?;
+
+        let handle = vttlpolicy::ExpiringHandle::with_precomputed_hash_key(
+            py,
+            shared.getsizeof(),
+            ttl,
+            key,
+            default_object.clone_ref(py),
+        )?;
+        inner.insert_no_lock(&mut policy, py, handle)?;
         Ok(default_object)
     }
 

@@ -157,7 +157,9 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
         *args: typing.Any,
         **kwargs: typing.Any,
     ) -> None: ...
-    def get(self, key: KT, default: typing.Optional[DT] = None) -> typing.Union[VT, DT]: ...
+    def get(
+        self, key: KT, default: typing.Optional[DT] = None
+    ) -> typing.Union[VT, DT]: ...
     def __getitem__(self, key: KT) -> VT: ...
     def setdefault(
         self,
@@ -166,6 +168,13 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
         *args: typing.Any,
         **kwargs: typing.Any,
     ) -> typing.Optional[VT | DT]: ...
+    def setdefault_with(
+        self,
+        key: KT,
+        factory: typing.Callable[[], DT],
+        *args: typing.Any,
+        **kwargs: typing.Any,
+    ) -> VT | DT: ...
     def pop(self, key: KT, default: DT = ...) -> typing.Union[VT, DT]:
         """
         Removes the specified key and returns the corresponding value.
@@ -352,15 +361,40 @@ class Cache(BaseCacheImpl[KT, VT]):
         default: typing.Optional[DT] = None,
     ) -> typing.Optional[VT | DT]:
         """
-        Inserts ``key`` with ``default`` as its value if the key is absent.
+        Get `key`s value, or atomatically insert `default` and return it.
+        If `key` exists, its current value is returned and `default` is ignored.
+        Otherwise `default` is inserted for `key` and returned.
 
         Args:
             key: The key to look up or insert.
             default: The value to insert if ``key`` is not in the cache.
                 Defaults to ``None``.
 
-        Returns:
-            The existing value if ``key`` is present, otherwise ``default``.
+        Note:
+            Use `setdefault_with`, if computing the value is expensive or has side
+            effectes.
+        """
+        ...
+
+    def setdefault_with(
+        self,
+        key: KT,
+        factory: typing.Callable[[], DT],
+    ) -> VT | DT:
+        """
+        Get `key`s value, or atomatically create and insert one via `factory`.
+        If `key` exists, its current value is returned and `factory` is not called.
+        Otherwise `factory` is called exactly once under an internal lock, its
+        result is inserted and returned.
+
+        Args:
+            key: The key to look up or insert.
+            factory: The factory to call and get default value from if ``key`` is not in the cache.
+
+        Warning:
+            `factory` must not call back into this cache (deadlock risk) or block
+            for long. If `factory` raises, nothing is inserted and the exception
+            propagates.
         """
         ...
 
@@ -508,15 +542,40 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         default: typing.Optional[DT] = None,
     ) -> typing.Optional[VT | DT]:
         """
-        Inserts ``key`` with ``default`` as its value if the key is absent.
+        Get `key`s value, or atomatically insert `default` and return it.
+        If `key` exists, its current value is returned and `default` is ignored.
+        Otherwise `default` is inserted for `key` and returned.
 
         Args:
             key: The key to look up or insert.
             default: The value to insert if ``key`` is not in the cache.
                 Defaults to ``None``.
 
-        Returns:
-            The existing value if ``key`` is present, otherwise ``default``.
+        Note:
+            Use `setdefault_with`, if computing the value is expensive or has side
+            effectes.
+        """
+        ...
+
+    def setdefault_with(
+        self,
+        key: KT,
+        factory: typing.Callable[[], DT],
+    ) -> VT | DT:
+        """
+        Get `key`s value, or atomatically create and insert one via `factory`.
+        If `key` exists, its current value is returned and `factory` is not called.
+        Otherwise `factory` is called exactly once under an internal lock, its
+        result is inserted and returned.
+
+        Args:
+            key: The key to look up or insert.
+            factory: The factory to call and get default value from if ``key`` is not in the cache.
+
+        Warning:
+            `factory` must not call back into this cache (deadlock risk) or block
+            for long. If `factory` raises, nothing is inserted and the exception
+            propagates.
         """
         ...
 
@@ -697,15 +756,40 @@ class RRCache(BaseCacheImpl[KT, VT]):
         default: typing.Optional[DT] = None,
     ) -> typing.Optional[VT | DT]:
         """
-        Inserts ``key`` with ``default`` as its value if the key is absent.
+        Get `key`s value, or atomatically insert `default` and return it.
+        If `key` exists, its current value is returned and `default` is ignored.
+        Otherwise `default` is inserted for `key` and returned.
 
         Args:
             key: The key to look up or insert.
             default: The value to insert if ``key`` is not in the cache.
                 Defaults to ``None``.
 
-        Returns:
-            The existing value if ``key`` is present, otherwise ``default``.
+        Note:
+            Use `setdefault_with`, if computing the value is expensive or has side
+            effectes.
+        """
+        ...
+
+    def setdefault_with(
+        self,
+        key: KT,
+        factory: typing.Callable[[], DT],
+    ) -> VT | DT:
+        """
+        Get `key`s value, or atomatically create and insert one via `factory`.
+        If `key` exists, its current value is returned and `factory` is not called.
+        Otherwise `factory` is called exactly once under an internal lock, its
+        result is inserted and returned.
+
+        Args:
+            key: The key to look up or insert.
+            factory: The factory to call and get default value from if ``key`` is not in the cache.
+
+        Warning:
+            `factory` must not call back into this cache (deadlock risk) or block
+            for long. If `factory` raises, nothing is inserted and the exception
+            propagates.
         """
         ...
 
@@ -879,15 +963,40 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         default: typing.Optional[DT] = None,
     ) -> typing.Optional[VT | DT]:
         """
-        Inserts ``key`` with ``default`` as its value if the key is absent.
+        Get `key`s value, or atomatically insert `default` and return it.
+        If `key` exists, its current value is returned and `default` is ignored.
+        Otherwise `default` is inserted for `key` and returned.
 
         Args:
             key: The key to look up or insert.
             default: The value to insert if ``key`` is not in the cache.
                 Defaults to ``None``.
 
-        Returns:
-            The existing value if ``key`` is present, otherwise ``default``.
+        Note:
+            Use `setdefault_with`, if computing the value is expensive or has side
+            effectes.
+        """
+        ...
+
+    def setdefault_with(
+        self,
+        key: KT,
+        factory: typing.Callable[[], DT],
+    ) -> VT | DT:
+        """
+        Get `key`s value, or atomatically create and insert one via `factory`.
+        If `key` exists, its current value is returned and `factory` is not called.
+        Otherwise `factory` is called exactly once under an internal lock, its
+        result is inserted and returned.
+
+        Args:
+            key: The key to look up or insert.
+            factory: The factory to call and get default value from if ``key`` is not in the cache.
+
+        Warning:
+            `factory` must not call back into this cache (deadlock risk) or block
+            for long. If `factory` raises, nothing is inserted and the exception
+            propagates.
         """
         ...
 
@@ -1102,15 +1211,40 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         default: typing.Optional[DT] = None,
     ) -> typing.Optional[VT | DT]:
         """
-        Inserts ``key`` with ``default`` as its value if the key is absent.
+        Get `key`s value, or atomatically insert `default` and return it.
+        If `key` exists, its current value is returned and `default` is ignored.
+        Otherwise `default` is inserted for `key` and returned.
 
         Args:
             key: The key to look up or insert.
             default: The value to insert if ``key`` is not in the cache.
                 Defaults to ``None``.
 
-        Returns:
-            The existing value if ``key`` is present, otherwise ``default``.
+        Note:
+            Use `setdefault_with`, if computing the value is expensive or has side
+            effectes.
+        """
+        ...
+
+    def setdefault_with(
+        self,
+        key: KT,
+        factory: typing.Callable[[], DT],
+    ) -> VT | DT:
+        """
+        Get `key`s value, or atomatically create and insert one via `factory`.
+        If `key` exists, its current value is returned and `factory` is not called.
+        Otherwise `factory` is called exactly once under an internal lock, its
+        result is inserted and returned.
+
+        Args:
+            key: The key to look up or insert.
+            factory: The factory to call and get default value from if ``key`` is not in the cache.
+
+        Warning:
+            `factory` must not call back into this cache (deadlock risk) or block
+            for long. If `factory` raises, nothing is inserted and the exception
+            propagates.
         """
         ...
 
@@ -1284,15 +1418,40 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         default: typing.Optional[DT] = None,
     ) -> typing.Optional[VT | DT]:
         """
-        Inserts ``key`` with ``default`` as its value if the key is absent.
+        Get `key`s value, or atomatically insert `default` and return it.
+        If `key` exists, its current value is returned and `default` is ignored.
+        Otherwise `default` is inserted for `key` and returned.
 
         Args:
             key: The key to look up or insert.
             default: The value to insert if ``key`` is not in the cache.
                 Defaults to ``None``.
 
-        Returns:
-            The existing value if ``key`` is present, otherwise ``default``.
+        Note:
+            Use `setdefault_with`, if computing the value is expensive or has side
+            effectes.
+        """
+        ...
+
+    def setdefault_with(
+        self,
+        key: KT,
+        factory: typing.Callable[[], DT],
+    ) -> VT | DT:
+        """
+        Get `key`s value, or atomatically create and insert one via `factory`.
+        If `key` exists, its current value is returned and `factory` is not called.
+        Otherwise `factory` is called exactly once under an internal lock, its
+        result is inserted and returned.
+
+        Args:
+            key: The key to look up or insert.
+            factory: The factory to call and get default value from if ``key`` is not in the cache.
+
+        Warning:
+            `factory` must not call back into this cache (deadlock risk) or block
+            for long. If `factory` raises, nothing is inserted and the exception
+            propagates.
         """
         ...
 
@@ -1524,16 +1683,43 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         ttl: float | timedelta | datetime | None = None,
     ) -> typing.Optional[VT | DT]:
         """
-        Inserts ``key`` with ``default`` as its value if the key is absent.
+        Get `key`s value, or atomatically insert `default` and return it.
+        If `key` exists, its current value is returned and `default` is ignored.
+        Otherwise `default` is inserted for `key` and returned.
+
+        Note:
+            Use `setdefault_with`, if computing the value is expensive or has side
+            effectes.
 
         Args:
             key: The key to look up or insert.
             default: The value to insert if ``key`` is not in the cache.
                 Defaults to ``None``.
-            ttl: An optional time-to-live duration for items.
+            ttl: An optional time-to-live duration for item.
+        """
+        ...
 
-        Returns:
-            The existing value if ``key`` is present, otherwise ``default``.
+    def setdefault_with(
+        self,
+        key: KT,
+        factory: typing.Callable[[], DT],
+        ttl: float | timedelta | datetime | None = None,
+    ) -> VT | DT:
+        """
+        Get `key`s value, or atomatically create and insert one via `factory`.
+        If `key` exists, its current value is returned and `factory` is not called.
+        Otherwise `factory` is called exactly once under an internal lock, its
+        result is inserted and returned.
+
+        Args:
+            key: The key to look up or insert.
+            factory: The factory to call and get default value from if ``key`` is not in the cache.
+            ttl: An optional time-to-live duration for item.
+
+        Warning:
+            `factory` must not call back into this cache (deadlock risk) or block
+            for long. If `factory` raises, nothing is inserted and the exception
+            propagates.
         """
         ...
 

@@ -316,9 +316,13 @@ impl PyRRCache {
         }
     }
 
-    /// Inserts key with a value of default if key is not in the cache.
+    /// Get `key`s value, or atomatically insert `default` and return it.
     ///
-    /// Returns the value for key if key is in the cache, else default.
+    /// If `key` exists, its current value is returned and `default` is ignored.
+    /// Otherwise `default` is inserted for `key` and returned.
+    ///
+    /// Use `setdefault_with`, if computing the value is expensive or has side
+    /// effectes.
     #[pyo3(signature = (key, default=utils::OptionalArgument::Undefined))]
     fn setdefault(
         &self,
@@ -338,7 +342,6 @@ impl PyRRCache {
         if let Some(x) = policy.get(py, &key)? {
             return Ok(x.value().clone_ref(py));
         }
-        drop(policy);
 
         let default_object = match default {
             utils::OptionalArgument::Defined(x) => x,
@@ -354,8 +357,47 @@ impl PyRRCache {
             key,
             default_object.clone_ref(py),
         )?;
+        inner.insert_no_lock(&mut policy, py, handle)?;
+        Ok(default_object)
+    }
 
-        inner.insert(py, handle)?;
+    /// Get `key`s value, or atomatically create and insert one via `factory`.
+    ///
+    /// If `key` exists, its current value is returned and `factory` is not called.
+    /// Otherwise `factory` is called exactly once under an internal lock, its
+    /// result is inserted and returned.
+    ///
+    /// Warning: `factory` must not call back into this cache (deadlock risk) or block
+    /// for long. If `factory` raises, nothing is inserted and the exception
+    /// propagates.
+    fn setdefault_with(
+        &self,
+        py: pyo3::Python,
+        key: alias::PyObject,
+        factory: alias::PyObject,
+    ) -> pyo3::PyResult<alias::PyObject> {
+        // 1. Try to get value
+        // 2. If exists -> return it
+        // 3. Else -> call factory -> insert returned value -> return it
+        let key = utils::PrecomputedHashObject::new(py, key)?;
+
+        let inner = self.0.get();
+        let shared = inner.shared();
+        let mut policy = inner.policy();
+
+        if let Some(x) = policy.get(py, &key)? {
+            return Ok(x.value().clone_ref(py));
+        }
+
+        let default_object = factory.call0(py)?;
+
+        let handle = rrpolicy::Handle::with_precomputed_hash_key(
+            py,
+            shared.getsizeof(),
+            key,
+            default_object.clone_ref(py),
+        )?;
+        inner.insert_no_lock(&mut policy, py, handle)?;
         Ok(default_object)
     }
 

@@ -3,7 +3,7 @@ import typing
 from collections import namedtuple
 from contextlib import AbstractAsyncContextManager, AbstractContextManager
 
-from cachebox import BaseCacheImpl
+from cachebox._core import BaseCacheImpl, Cache
 
 _PostProcess: typing.TypeAlias = typing.Callable[[typing.Any], typing.Any]
 _Callback: typing.TypeAlias = typing.Callable[[int, typing.Any, typing.Any], typing.Any]
@@ -71,7 +71,9 @@ def _cached_wrapper_without_lock(
 
     # Per-instance caches receive `self` as args[0]; exclude it from the ke
     _make_key = (
-        (lambda a, k: key_maker(*a[1:], **k)) if cache_is_fn else (lambda a, k: key_maker(*a, **k))
+        (lambda a, k: key_maker(*a[1:], **k))
+        if cache_is_fn
+        else (lambda a, k: key_maker(*a, **k))
     )
 
     hits = 0
@@ -143,7 +145,9 @@ def _async_cached_wrapper_without_lock(
 
     # Per-instance caches receive `self` as args[0]; exclude it from the ke
     _make_key = (
-        (lambda a, k: key_maker(*a[1:], **k)) if cache_is_fn else (lambda a, k: key_maker(*a, **k))
+        (lambda a, k: key_maker(*a[1:], **k))
+        if cache_is_fn
+        else (lambda a, k: key_maker(*a, **k))
     )
 
     hits = 0
@@ -205,13 +209,15 @@ def _cached_wrapper(
 
     # Per-instance caches receive `self` as args[0]; exclude it from the key
     _make_key = (
-        (lambda a, k: key_maker(*a[1:], **k)) if cache_is_fn else (lambda a, k: key_maker(*a, **k))
+        (lambda a, k: key_maker(*a[1:], **k))
+        if cache_is_fn
+        else (lambda a, k: key_maker(*a, **k))
     )
 
     hits = 0
     misses = 0
 
-    locks: dict[typing.Hashable, _Lock] = {}
+    locks: Cache[typing.Hashable, _Lock] = Cache(0)
     pending_errors: dict[typing.Hashable, BaseException] = {}
 
     def _wrapped(*args, **kwds):
@@ -237,9 +243,7 @@ def _cached_wrapper(
         except KeyError:
             pass
 
-        lock = locks.get(key)
-        if lock is None:
-            locks[key] = lock = _Lock(lock_type())
+        lock = locks.setdefault_with(key, lambda: _Lock(lock_type()))
 
         # Acquire the per-key lock so that only one task computes the value
         # while the rest wait.
@@ -307,12 +311,37 @@ def _async_cached_wrapper(
 ):
     cache_is_fn = callable(cache)
     _make_key = (
-        (lambda a, k: key_maker(*a[1:], **k)) if cache_is_fn else (lambda a, k: key_maker(*a, **k))
+        (lambda a, k: key_maker(*a[1:], **k))
+        if cache_is_fn
+        else (lambda a, k: key_maker(*a, **k))
     )
 
     hits = 0
     misses = 0
-    locks: dict[typing.Hashable, _AsyncLock] = {}
+
+    # See _cached_wrapper
+    locks: Cache[typing.Hashable, _AsyncLock] = Cache(0)
+
+    # if lock_type is asyncio.Lock:
+
+    #     async def _get_lock(key: typing.Hashable):
+    #         return locks.setdefault(key, _AsyncLock(lock_type()))
+
+    # else:
+    #     _lock_creation_guard = asyncio.Lock()
+
+    #     async def _get_lock(key: typing.Hashable):
+    #         lock = locks.get(key)
+    #         if lock is not None:
+    #             return lock
+
+    #         async with _lock_creation_guard:
+    #             lock = locks.get(key)
+    #             if lock is None:
+    #                 locks[key] = lock = _AsyncLock(lock_type())
+
+    #         return lock
+
     pending_errors: dict[typing.Hashable, BaseException] = {}
 
     async def _wrapped(*args, **kwds):
@@ -335,9 +364,7 @@ def _async_cached_wrapper(
         except KeyError:
             pass
 
-        lock = locks.get(key)
-        if lock is None:
-            locks[key] = lock = _AsyncLock(lock_type())
+        lock = locks.setdefault_with(key, lambda: _AsyncLock(lock_type()))
 
         async with lock:
             err = pending_errors.get(key)

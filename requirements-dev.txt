@@ -2,5 +2,6 @@ maturin
 pytest
 hypothesis
 pytest-asyncio
+pytest-xdist
 mkdocs-material
 mkdocstrings[python]

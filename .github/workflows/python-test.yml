@@ -43,17 +43,18 @@ jobs:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
 
-      - run: pip install virtualenv pytest pytest-asyncio hypothesis maturin
+      - run: pip install virtualenv
+      - run: pip install -r requirements-dev.txt
       - run: virtualenv --no-vcs-ignore .venv
 
       - run: maturin develop --features use-small-offset
-      - run: pytest -v
+      - run: pytest -v -n auto
         env:
           HYPOTHESIS_PROFILE: slow
 
       # Test with nightly feature
       - run: maturin develop --features use-small-offset,nightly
-      - run: pytest -v
+      - run: pytest -v -n auto
         env:
           HYPOTHESIS_PROFILE: slow
 
@@ -74,11 +75,12 @@ jobs:
         with:
           python-version: "3.13"
 
-      - run: pip install virtualenv pytest pytest-asyncio hypothesis maturin
+      - run: pip install virtualenv
+      - run: pip install -r requirements-dev.txt
       - run: virtualenv --no-vcs-ignore .venv
 
       - run: maturin develop --features use-small-offset,nightly
-      - run: pytest -v
+      - run: pytest -v -n auto
         env:
           HYPOTHESIS_PROFILE: slow
 
@@ -99,10 +101,11 @@ jobs:
         with:
           python-version: "3.13"
 
-      - run: pip install virtualenv pytest pytest-asyncio hypothesis maturin
+      - run: pip install virtualenv
+      - run: pip install -r requirements-dev.txt
       - run: virtualenv --no-vcs-ignore .venv
 
       - run: maturin develop --features use-small-offset
-      - run: pytest -v
+      - run: pytest -v -n auto
         env:
           HYPOTHESIS_PROFILE: slow

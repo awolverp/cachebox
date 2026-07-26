@@ -1,0 +1,388 @@
+Process 26329: python3 -X faulthandler -m pytest -x -v
+Python v3.11.15 (/home/awolverp/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/bin/python3.11)
+
+Thread 26329 (idle): "MainThread"
+    syscall (libc.so.6)
+    _RNvMs_NtNtCsayAZwwYzP2J_16parking_lot_core13thread_parker3impNtB4_12ThreadParker10futex_waitCsdF0J7DUwwxK_11parking_lot (linux.rs:112)
+    _RNvMsh_NtNtCsikNi7e3FClU_8cachebox8internal6pickleINtB5_12TupleBuilderINtB5_11ListBuilderIBN_NtB5_13PickleBuilderEEE3newB9_ (pickle.rs:293)
+    test_fuzzy_pickle_loads_dumps (tests/mixins.py:1136)
+        Arguments:
+            self: <TestFIFOCache at 0x7f4c6dda4f50>
+            pairs: [(<decimal.Decimal at 0x7f4c6d6d5060>, None), (<decimal.Decimal at 0x7f4c6d6d66b0>, -51253818749), ("¡񻜃:", ""), ...]
+        Locals:
+            original: <cachebox._core.FIFOCache at 0x7f4c6d7dc670>
+    test (hypothesis/core.py:1025)
+        Locals:
+            args: (<TestFIFOCache at 0x7f4c6dda4f50>, [(<decimal.Decimal at 0x7f4c6d6d5060>, None), (...), ("¡񻜃:", ""), (...), ...])
+            kwargs: {}
+            arg_drawtime: 0.002717194999604544
+            arg_stateful: 0
+            arg_gctime: 0.9326066859748607
+            start: 4795.798407543
+    test_fuzzy_pickle_loads_dumps (tests/mixins.py:1133)
+        Arguments:
+            self: <TestFIFOCache at 0x7f4c6dda4f50>
+            pairs: [(<decimal.Decimal at 0x7f4c6d6d5060>, None), (<decimal.Decimal at 0x7f4c6d6d66b0>, -51253818749), ("¡񻜃:", ""), ...]
+    run (hypothesis/core.py:1118)
+        Arguments:
+            data: <ConjectureData at 0x7f4c6d34ec10>
+        Locals:
+            args: ()
+            kwargs: {"self": <TestFIFOCache at 0x7f4c6dda4f50>, ...}
+            kw: {...}
+            arglabels: {"pairs": 1}
+    default_executor (hypothesis/core.py:828)
+        Arguments:
+            data: <ConjectureData at 0x7f4c6d34ec10>
+            function: <function at 0x7f4c6d788cc0>
+    execute_once (hypothesis/core.py:1161)
+        Arguments:
+            self: <cell at 0x7f4c6d369f30>
+            data: <cell at 0x7f4c6d36a890>
+        Locals:
+            print_example: <cell at 0x7f4c6d368880>
+            is_final: <cell at 0x7f4c6d36b880>
+            expected_failure: <cell at 0x7f4c6d369d50>
+            example_kwargs: <cell at 0x7f4c6d368a60>
+            run: <function at 0x7f4c6d788cc0>
+            result: None
+    _execute_once_for_engine (hypothesis/core.py:1223)
+        Arguments:
+            self: <StateForActualGivenExecution at 0x7f4c6d929790>
+            data: <ConjectureData at 0x7f4c6d34ec10>
+        Locals:
+            trace: <frozenset at 0x7f4c6d7550e0>
+            backend_cannot_proceed: False
+            tracer: <Tracer at 0x7f4c6d86dc40>
+    __stoppable_test_function (hypothesis/internal/conjecture/engine.py:434)
+        Arguments:
+            self: <ConjectureRunner at 0x7f4c6d365510>
+            data: <ConjectureData at 0x7f4c6d34ec10>
+    test_function (hypothesis/internal/conjecture/engine.py:575)
+        Arguments:
+            self: <cell at 0x7f4c6d36a650>
+            data: <ConjectureData at 0x7f4c6d34ec10>
+        Locals:
+            interrupted: False
+            _backend_cannot_proceed: <function at 0x7f4c6d822840>
+            finally_early_return: False
+    cached_test_function (hypothesis/internal/conjecture/engine.py:528)
+        Arguments:
+            self: <ConjectureRunner at 0x7f4c6d365510>
+            choices: (True, 3, 0, +bigint, 7276731507628, 0, True, 3, 0, 3100, 33013, 2, -51253818749, True, 0, "¡񻜃:", 4, "", True, 3, ...)
+        Locals:
+            error_on_discard: True
+            extend: 0
+            key: (("bool", True), 3, 0, +bigint, 7276731507628, 0, ("bool", True), 3, 0, 3100, 33013, 2, -51253818749, ("bool", True), 0, ...)
+            max_length: 64
+            count: 64
+            trial_observer: <DiscardObserver at 0x7f4c6d86ef10>
+            trial_data: <ConjectureData at 0x7f4c6d86cb10>
+            data: <ConjectureData at 0x7f4c6d34ec10>
+    generate_mutations_from (hypothesis/internal/conjecture/engine.py:1477)
+        Arguments:
+            self: <ConjectureRunner at 0x7f4c6d365510>
+            data: <ConjectureData at 0x7f4c6d33d8d0>
+        Locals:
+            initial_calls: 107
+            failed_mutations: 0
+            groups: [<set at 0x7f4c6daf0120>, <set at 0x7f4c6daf33e0>, <set at 0x7f4c6daf2ce0>, <set at 0x7f4c6daf0900>, ...]
+            group: <set at 0x7f4c6daf0120>
+            start1: 6
+            end1: 13
+            start2: 28
+            end2: 30
+            attempt: (True, 3, 0, +bigint, 7276731507628, 0, True, 3, 0, 3100, 33013, 2, -51253818749, True, 0, "¡񻜃:", 4, "", True, 3, ...)
+            start: 6
+            end: 13
+            replacement: (True, 3, 0, 3100, 33013, 2, -51253818749)
+    generate_new_examples (hypothesis/internal/conjecture/engine.py:1332)
+        Arguments:
+            self: <ConjectureRunner at 0x7f4c6d365510>
+        Locals:
+            @py_assert1: None
+            @py_assert3: None
+            zero_data: <ConjectureResult at 0x7f4c6d78a700>
+            consecutive_zero_extend_is_invalid: 0
+            small_example_cap: 10
+            optimise_at: 50
+            ran_optimisations: True
+            data: <ConjectureData at 0x7f4c6d33d8d0>
+            prefix: (True, 3, 0, +bigint)
+            minimal_example: <ConjectureResult at 0x7f4c6d6fa980>
+            minimal_extension: 2
+            max_length: None
+            trial_data: <ConjectureData at 0x7f4c6d94afd0>
+            @py_assert2: None
+            @py_assert5: None
+    _run (hypothesis/internal/conjecture/engine.py:1563)
+        Arguments:
+            self: <ConjectureRunner at 0x7f4c6d365510>
+    run (hypothesis/internal/conjecture/engine.py:990)
+        Arguments:
+            self: <ConjectureRunner at 0x7f4c6d365510>
+    run_engine (hypothesis/core.py:1431)
+        Arguments:
+            self: <StateForActualGivenExecution at 0x7f4c6d929790>
+        Locals:
+            __tracebackhide__: True
+            database_key: <bytes at 0x7f4c6d9c4330>
+            runner: <ConjectureRunner at 0x7f4c6d365510>
+    wrapped_test (hypothesis/core.py:2245)
+        Locals:
+            arguments: ()
+            kwargs: {"self": <TestFIFOCache at 0x7f4c6dda4f50>}
+            __tracebackhide__: True
+            threadid: 139966270244672
+            has_existing_threads: False
+            test: <function at 0x7f4c6dd163e0>
+            settings: <settings at 0x7f4c6e53ac90>
+            random: <Random at 0x55ce62388520>
+            stuff: <Stuff at 0x7f4c6d43d540>
+            runner: <TestFIFOCache at 0x7f4c6dda4f50>
+            cur_self: <TestFIFOCache at 0x7f4c6dda4f50>
+            state: <StateForActualGivenExecution at 0x7f4c6d929790>
+            reproduce_failure: None
+            errors: []
+            ran_explicit_examples: ()
+            SKIP_BECAUSE_NO_EXAMPLES: <SkipTest at 0x7f4c6d9c6500>
+    test_fuzzy_pickle_loads_dumps (tests/mixins.py:1133)
+        Arguments:
+            self: <TestFIFOCache at 0x7f4c6dda4f50>
+    pytest_pyfunc_call (_pytest/python.py:167)
+        Arguments:
+            pyfuncitem: <Function at 0x7f4c6dd80d00>
+        Locals:
+            testfunction: <method at 0x7f4c6dda4ec0>
+            testargs: {}
+    _multicall (pluggy/_callers.py:121)
+        Arguments:
+            hook_name: "pytest_pyfunc_call"
+            hook_impls: [<HookImpl at 0x7f4c6ec73e40>, <HookImpl at 0x7f4c6e7f1d40>]
+            caller_kwargs: <cell at 0x7f4c6d636d10>
+            firstresult: True
+        Locals:
+            __tracebackhide__: True
+            results: []
+            exception: None
+            teardowns: [<generator at 0x7f4c6e21f9a0>]
+            hook_impl: <HookImpl at 0x7f4c6ec73e40>
+            args: [<Function at 0x7f4c6dd80d00>]
+            function_gen: <generator at 0x7f4c6e21f9a0>
+    _hookexec (pluggy/_manager.py:120)
+        Arguments:
+            self: <PytestPluginManager at 0x7f4c6f50d090>
+            hook_name: "pytest_pyfunc_call"
+            methods: [<HookImpl at 0x7f4c6ec73e40>, <HookImpl at 0x7f4c6e7f1d40>]
+            kwargs: {"pyfuncitem": <Function at 0x7f4c6dd80d00>}
+            firstresult: True
+    __call__ (pluggy/_hooks.py:512)
+        Arguments:
+            self: <HookCaller at 0x7f4c6ec4e5c0>
+        Locals:
+            kwargs: {"pyfuncitem": <Function at 0x7f4c6dd80d00>}
+            firstresult: True
+    runtest (_pytest/python.py:1707)
+        Arguments:
+            self: <Function at 0x7f4c6dd80d00>
+    pytest_runtest_call (_pytest/runner.py:184)
+        Arguments:
+            item: <Function at 0x7f4c6dd80d00>
+    _multicall (pluggy/_callers.py:121)
+        Arguments:
+            hook_name: "pytest_runtest_call"
+            hook_impls: [<HookImpl at 0x7f4c6eb60f40>, <HookImpl at 0x7f4c6eb607c0>, <HookImpl at 0x7f4c6ec71c40>, <HookImpl at 0x7f4c6eae2340>, ...]
+            caller_kwargs: <cell at 0x7f4c6dcf24a0>
+            firstresult: False
+        Locals:
+            __tracebackhide__: True
+            results: []
+            exception: None
+            teardowns: [<generator at 0x7f4c6e5e3e20>, <generator at 0x7f4c6e20ef20>, <generator at 0x7f4c6e21f880>, ...]
+            hook_impl: <HookImpl at 0x7f4c6ec71c40>
+            args: [<Function at 0x7f4c6dd80d00>]
+            function_gen: <generator at 0x7f4c6e20ea70>
+            res: <generator at 0x7f4c6e20ea70>
+    _hookexec (pluggy/_manager.py:120)
+        Arguments:
+            self: <PytestPluginManager at 0x7f4c6f50d090>
+            hook_name: "pytest_runtest_call"
+            methods: [<HookImpl at 0x7f4c6eb60f40>, <HookImpl at 0x7f4c6eb607c0>, <HookImpl at 0x7f4c6ec71c40>, <HookImpl at 0x7f4c6eae2340>, ...]
+            kwargs: {"item": <Function at 0x7f4c6dd80d00>}
+            firstresult: False
+    __call__ (pluggy/_hooks.py:512)
+        Arguments:
+            self: <HookCaller at 0x7f4c6ec4e7a0>
+        Locals:
+            kwargs: {"item": <Function at 0x7f4c6dd80d00>}
+            firstresult: False
+    <lambda> (_pytest/runner.py:250)
+    from_call (_pytest/runner.py:361)
+        Arguments:
+            cls: <type at 0x55ce61dfc470>
+            func: <function at 0x7f4c6e2a6700>
+            when: "call"
+            reraise: (<type at 0x55ce61d61af0>, <type at 0x55ce4c7091f8>)
+        Locals:
+            excinfo: None
+            instant: <Instant at 0x7f4c6d43ef90>
+    call_and_report (_pytest/runner.py:249)
+        Arguments:
+            item: <cell at 0x7f4c6d4e6ce0>
+            when: "call"
+            log: True
+        Locals:
+            kwds: <cell at 0x7f4c6dcf21a0>
+            ihook: <HookRelay at 0x7f4c6ec37470>
+    runtestprotocol (_pytest/runner.py:139)
+        Arguments:
+            item: <Function at 0x7f4c6dd80d00>
+            log: True
+            nextitem: <Function at 0x7f4c6dd80d70>
+        Locals:
+            hasrequest: True
+            rep: <TestReport at 0x7f4c6d366550>
+            reports: [<TestReport at 0x7f4c6d366550>]
+            setup_only: False
+    pytest_runtest_protocol (_pytest/runner.py:118)
+        Arguments:
+            item: <Function at 0x7f4c6dd80d00>
+            nextitem: <Function at 0x7f4c6dd80d70>
+        Locals:
+            ihook: <HookRelay at 0x7f4c6ec37470>
+    _multicall (pluggy/_callers.py:121)
+        Arguments:
+            hook_name: "pytest_runtest_protocol"
+            hook_impls: [<HookImpl at 0x7f4c6ec71e40>, <HookImpl at 0x7f4c6eb637c0>, <HookImpl at 0x7f4c6eae0e40>, <HookImpl at 0x7f4c6eae3940>, ...]
+            caller_kwargs: <cell at 0x7f4c6dd799c0>
+            firstresult: True
+        Locals:
+            __tracebackhide__: True
+            results: []
+            exception: None
+            teardowns: [<generator at 0x7f4c6d95c040>, <generator at 0x7f4c6e60bb40>, <generator at 0x7f4c6e60b440>, ...]
+            hook_impl: <HookImpl at 0x7f4c6ec71e40>
+            args: [<Function at 0x7f4c6dd80d00>, <Function at 0x7f4c6dd80d70>]
+            function_gen: <generator at 0x7f4c6e25c540>
+            res: <generator at 0x7f4c6e25c540>
+    _hookexec (pluggy/_manager.py:120)
+        Arguments:
+            self: <PytestPluginManager at 0x7f4c6f50d090>
+            hook_name: "pytest_runtest_protocol"
+            methods: [<HookImpl at 0x7f4c6ec71e40>, <HookImpl at 0x7f4c6eb637c0>, <HookImpl at 0x7f4c6eae0e40>, <HookImpl at 0x7f4c6eae3940>, ...]
+            kwargs: {"item": <Function at 0x7f4c6dd80d00>, "nextitem": <Function at 0x7f4c6dd80d70>}
+            firstresult: True
+    __call__ (pluggy/_hooks.py:512)
+        Arguments:
+            self: <HookCaller at 0x7f4c6ec4e930>
+        Locals:
+            kwargs: {"item": <Function at 0x7f4c6dd80d00>, "nextitem": <Function at 0x7f4c6dd80d70>}
+            firstresult: True
+    pytest_runtestloop (_pytest/main.py:408)
+        Arguments:
+            session: <Session at 0x7f4c6e9a3000>
+        Locals:
+            i: 122
+            item: <Function at 0x7f4c6dd80d00>
+            nextitem: <Function at 0x7f4c6dd80d70>
+    _multicall (pluggy/_callers.py:121)
+        Arguments:
+            hook_name: "pytest_runtestloop"
+            hook_impls: [<HookImpl at 0x7f4c6ec71540>, <HookImpl at 0x7f4c6e389a40>, <HookImpl at 0x7f4c6e38adc0>]
+            caller_kwargs: <cell at 0x7f4c6eb4d9f0>
+            firstresult: True
+        Locals:
+            __tracebackhide__: True
+            results: []
+            exception: None
+            teardowns: [<generator at 0x7f4c6e33a200>, <generator at 0x7f4c6e607850>]
+            hook_impl: <HookImpl at 0x7f4c6ec71540>
+            args: [<Session at 0x7f4c6e9a3000>]
+            function_gen: <generator at 0x7f4c6e607850>
+            res: <generator at 0x7f4c6e607850>
+    _hookexec (pluggy/_manager.py:120)
+        Arguments:
+            self: <PytestPluginManager at 0x7f4c6f50d090>
+            hook_name: "pytest_runtestloop"
+            methods: [<HookImpl at 0x7f4c6ec71540>, <HookImpl at 0x7f4c6e389a40>, <HookImpl at 0x7f4c6e38adc0>]
+            kwargs: {"session": <Session at 0x7f4c6e9a3000>}
+            firstresult: True
+    __call__ (pluggy/_hooks.py:512)
+        Arguments:
+            self: <HookCaller at 0x7f4c6ec4ea20>
+        Locals:
+            kwargs: {"session": <Session at 0x7f4c6e9a3000>}
+            firstresult: True
+    _main (_pytest/main.py:384)
+        Arguments:
+            config: <Config at 0x7f4c6ec62950>
+            session: <Session at 0x7f4c6e9a3000>
+    wrap_session (_pytest/main.py:330)
+        Arguments:
+            config: <Config at 0x7f4c6ec62950>
+            doit: <function at 0x7f4c6eca05e0>
+        Locals:
+            session: <Session at 0x7f4c6e9a3000>
+            initstate: 2
+    pytest_cmdline_main (_pytest/main.py:377)
+        Arguments:
+            config: <Config at 0x7f4c6ec62950>
+    _multicall (pluggy/_callers.py:121)
+        Arguments:
+            hook_name: "pytest_cmdline_main"
+            hook_impls: [<HookImpl at 0x7f4c6ec71040>, <HookImpl at 0x7f4c6ec72840>, <HookImpl at 0x7f4c6ec72bc0>, <HookImpl at 0x7f4c6eb16840>, ...]
+            caller_kwargs: <cell at 0x7f4c6ec36830>
+            firstresult: True
+        Locals:
+            __tracebackhide__: True
+            results: []
+            exception: None
+            teardowns: []
+            hook_impl: <HookImpl at 0x7f4c6ec71040>
+            args: [<Config at 0x7f4c6ec62950>]
+            res: None
+    _hookexec (pluggy/_manager.py:120)
+        Arguments:
+            self: <PytestPluginManager at 0x7f4c6f50d090>
+            hook_name: "pytest_cmdline_main"
+            methods: [<HookImpl at 0x7f4c6ec71040>, <HookImpl at 0x7f4c6ec72840>, <HookImpl at 0x7f4c6ec72bc0>, <HookImpl at 0x7f4c6eb16840>, ...]
+            kwargs: {"config": <Config at 0x7f4c6ec62950>}
+            firstresult: True
+    __call__ (pluggy/_hooks.py:512)
+        Arguments:
+            self: <HookCaller at 0x7f4c6ec4c3b0>
+        Locals:
+            kwargs: {"config": <Config at 0x7f4c6ec62950>}
+            firstresult: True
+    _main (_pytest/config/__init__.py:229)
+        Locals:
+            args: None
+            plugins: None
+            prog: "python -m pytest"
+            new_args: ["-x", "-v"]
+            old_pytest_version: None
+            config: <Config at 0x7f4c6ec62950>
+    _console_main (_pytest/config/__init__.py:253)
+    <module> (pytest/__main__.py:9)
+    _run_code (<frozen runpy>:88)
+        Arguments:
+            code: <code at 0x7f4c6ebd2ab0>
+            run_globals: {"__name__": "__main__", "__doc__": "The pytest entry point.", "__package__": "pytest", ...}
+            init_globals: None
+            mod_name: "__main__"
+            mod_spec: <ModuleSpec at 0x7f4c6ed64b50>
+            pkg_name: "pytest"
+            script_name: None
+        Locals:
+            loader: <SourceFileLoader at 0x7f4c6ec3fe90>
+            fname: "/home/awolverp/Projects/others/py-cachebox/.venv/lib/python3.11/site-packages/pytest/__main__.py"
+            cached: "/home/awolverp/Projects/others/py-cachebox/.venv/lib/python3.11/site-packages/pytest/__pycache__/__main__.cpython-311.pyc"
+    _run_module_as_main (<frozen runpy>:198)
+        Arguments:
+            mod_name: "pytest.__main__"
+            alter_argv: True
+        Locals:
+            mod_spec: <ModuleSpec at 0x7f4c6ed64b50>
+            code: <code at 0x7f4c6ebd2ab0>
+            main_globals: {"__name__": "__main__", "__doc__": "The pytest entry point.", "__package__": "pytest", ...}
+    0x7f4c6fa27741 (libc.so.6)

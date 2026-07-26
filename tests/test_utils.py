@@ -632,7 +632,7 @@ async def test_async_recursive_cached_issue_54(
 def test_recursive_cached(random_cache_impl: type[cachebox.BaseCacheImpl]):
     obj = random_cache_impl(10)
 
-    @cachebox.cached(obj)
+    @cachebox.cached(obj, lock=False)
     def factorial(n):
         if n < 0:
             raise ValueError
@@ -654,7 +654,7 @@ def test_recursive_threading_cached():
 
     obj = cachebox.LRUCache(10)
 
-    @cachebox.cached(obj)
+    @cachebox.cached(obj, lock=False)
     def factorial(n):
         if n < 0:
             raise ValueError
@@ -680,7 +680,7 @@ def test_recursive_threading_cached():
 async def test_recursive_asyncio_cached():
     obj = cachebox.LRUCache(10)
 
-    @cachebox.cached(obj)
+    @cachebox.cached(obj, lock=False)
     async def factorial(n) -> int:
         if n < 0:
             raise ValueError

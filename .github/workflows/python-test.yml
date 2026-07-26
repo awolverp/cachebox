@@ -16,7 +16,7 @@ env:
 
 jobs:
   test-python:
-    name: test ${{ matrix.python-version }}
+    name: ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     continue-on-error: ${{ endsWith(matrix.python-version, 't') }}
     strategy:
@@ -45,13 +45,20 @@ jobs:
 
       - run: pip install virtualenv pytest pytest-asyncio hypothesis maturin
       - run: virtualenv --no-vcs-ignore .venv
+
       - run: maturin develop --features use-small-offset
       - run: pytest -v
         env:
           HYPOTHESIS_PROFILE: slow
 
-  test-os:
-    name: test on ${{ matrix.os }}
+      # Test with nightly feature
+      - run: maturin develop --features use-small-offset,nightly
+      - run: pytest -v
+        env:
+          HYPOTHESIS_PROFILE: slow
+
+  test-os-nightly:
+    name: ${{ matrix.os }} (rust nightly)
     runs-on: ${{ matrix.os }}-latest
     strategy:
       fail-fast: false
@@ -66,10 +73,35 @@ jobs:
       - uses: actions/setup-python@v6.2.0
         with:
           python-version: "3.13"
-          allow-prereleases: true
 
       - run: pip install virtualenv pytest pytest-asyncio hypothesis maturin
       - run: virtualenv --no-vcs-ignore .venv
+
+      - run: maturin develop --features use-small-offset,nightly
+      - run: pytest -v
+        env:
+          HYPOTHESIS_PROFILE: slow
+
+  test-os-stable:
+    name: ${{ matrix.os }} (rust stable)
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu, macos, windows]
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-python@v6.2.0
+        with:
+          python-version: "3.13"
+
+      - run: pip install virtualenv pytest pytest-asyncio hypothesis maturin
+      - run: virtualenv --no-vcs-ignore .venv
+
       - run: maturin develop --features use-small-offset
       - run: pytest -v
         env:

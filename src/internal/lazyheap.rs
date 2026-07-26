@@ -242,7 +242,27 @@ impl<T> Default for LazyHeap<T> {
     }
 }
 
+#[cfg(feature = "nightly")]
 unsafe impl<#[may_dangle] T> Drop for LazyHeap<T> {
+    fn drop(&mut self) {
+        struct DropGuard<'a, T>(&'a mut LazyHeap<T>);
+
+        impl<'a, T> Drop for DropGuard<'a, T> {
+            fn drop(&mut self) {
+                // Continue the same loop we do below. This only runs when a destructor has
+                // panicked. If another one panics this will abort.
+                while self.0.unlink_back().is_some() {}
+            }
+        }
+
+        // Wrap self so that if a destructor panics, we can try to keep looping
+        let guard = DropGuard(self);
+        while guard.0.unlink_back().is_some() {}
+        std::mem::forget(guard);
+    }
+}
+#[cfg(not(feature = "nightly"))]
+impl<T> Drop for LazyHeap<T> {
     fn drop(&mut self) {
         struct DropGuard<'a, T>(&'a mut LazyHeap<T>);
 

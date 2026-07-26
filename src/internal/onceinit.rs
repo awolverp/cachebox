@@ -103,7 +103,7 @@ impl<T> OnceInit<T> {
     /// Panics if called before [`set`](Self::set) has completed.
     #[inline]
     pub fn get(&self) -> &T {
-        if std::hint::likely(self.0.state.load(atomic::Ordering::Acquire) == INIT) {
+        if crate::hashbrown::util::likely(self.0.state.load(atomic::Ordering::Acquire) == INIT) {
             // SAFETY: state == INIT guarantees `value` was fully written and is valid.
             unsafe { (*self.0.value.get()).assume_init_ref() }
         } else {

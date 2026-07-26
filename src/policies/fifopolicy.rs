@@ -299,7 +299,8 @@ impl PolicyExt for FIFOPolicy {
         let front = unsafe { front.unwrap_unchecked() };
 
         let eq = |index: &usize| Ok::<_, pyo3::PyErr>(*index - self.front_offset == 0);
-        if std::hint::unlikely(self.table.remove_entry(front.key().hash(), eq)?.is_none()) {
+        let removed_key_table = self.table.remove_entry(front.key().hash(), eq).unwrap();
+        if crate::hashbrown::util::unlikely(removed_key_table.is_none()) {
             unreachable!("popitem key not found in table");
         }
 

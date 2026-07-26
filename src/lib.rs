@@ -1,5 +1,4 @@
 #![cfg_attr(feature = "nightly", feature(allocator_api))]
-#![cfg_attr(feature = "nightly", feature(dropck_eyepatch))]
 #![cfg_attr(feature = "nightly", feature(likely_unlikely))]
 
 #[macro_use]

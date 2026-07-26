@@ -55,7 +55,7 @@ jobs:
         shell: bash
         run: |
           chmod +x ./ci_hang_debug.sh
-          TIMEOUT_SEC=${{ env.HANG_TIMEOUT_SEC }} ./ci_hang_debug.sh -v -n auto
+          TIMEOUT_SEC=${{ env.HANG_TIMEOUT_SEC }} ./ci_hang_debug.sh -v
         env:
           HYPOTHESIS_PROFILE: slow
       - name: Upload hang debug artifacts (default features)
@@ -73,7 +73,7 @@ jobs:
         shell: bash
         run: |
           chmod +x ./ci_hang_debug.sh
-          TIMEOUT_SEC=${{ env.HANG_TIMEOUT_SEC }} ./ci_hang_debug.sh -v -n auto
+          TIMEOUT_SEC=${{ env.HANG_TIMEOUT_SEC }} ./ci_hang_debug.sh -v
         env:
           HYPOTHESIS_PROFILE: slow
       - name: Upload hang debug artifacts (nightly feature)

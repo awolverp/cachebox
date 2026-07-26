@@ -13,7 +13,7 @@ concurrency:
 
 env:
   RUST_BACKTRACE: 1
-  HANG_TIMEOUT_SEC: 300
+  HANG_TIMEOUT_SEC: 200
 
 jobs:
   test-python:

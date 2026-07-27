@@ -1,6 +1,3 @@
-#![cfg_attr(feature = "nightly", feature(allocator_api))]
-#![cfg_attr(feature = "nightly", feature(likely_unlikely))]
-
 #[macro_use]
 mod macro_rules;
 mod hashbrown;

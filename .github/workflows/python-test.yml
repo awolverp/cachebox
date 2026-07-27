@@ -13,7 +13,6 @@ concurrency:
 
 env:
   RUST_BACKTRACE: 1
-  HANG_TIMEOUT_SEC: 200
 
 jobs:
   test-python:
@@ -37,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6.0.2
 
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@stable
 
       - uses: actions/setup-python@v6.2.0
         with:
@@ -47,72 +46,14 @@ jobs:
       - run: pip install virtualenv
       - run: pip install -r requirements-dev.txt
       - run: virtualenv --no-vcs-ignore .venv
-      - run: pip install py-spy
-        shell: bash
 
       - run: maturin develop --features use-small-offset
-      - name: pytest (default features)
-        shell: bash
-        run: |
-          chmod +x ./ci_hang_debug.sh
-          TIMEOUT_SEC=${{ env.HANG_TIMEOUT_SEC }} ./ci_hang_debug.sh -v -n auto
-        env:
-          HYPOTHESIS_PROFILE: slow
-      - name: Upload hang debug artifacts (default features)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: hang-debug-${{ matrix.python-version }}-default
-          path: hang_artifacts/
-          retention-days: 7
-          if-no-files-found: ignore
-
-      # Test with nightly feature
-      - run: maturin develop --features use-small-offset,nightly
-      - name: pytest (nightly feature)
-        shell: bash
-        run: |
-          chmod +x ./ci_hang_debug.sh
-          TIMEOUT_SEC=${{ env.HANG_TIMEOUT_SEC }} ./ci_hang_debug.sh -v -n auto
-        env:
-          HYPOTHESIS_PROFILE: slow
-      - name: Upload hang debug artifacts (nightly feature)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: hang-debug-${{ matrix.python-version }}-nightly
-          path: hang_artifacts/
-          retention-days: 7
-          if-no-files-found: ignore
-
-  test-os-nightly:
-    name: ${{ matrix.os }} (rust nightly)
-    runs-on: ${{ matrix.os }}-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu, macos, windows]
-
-    steps:
-      - uses: actions/checkout@v6.0.2
-
-      - uses: dtolnay/rust-toolchain@nightly
-
-      - uses: actions/setup-python@v6.2.0
-        with:
-          python-version: "3.13"
-
-      - run: pip install virtualenv
-      - run: pip install -r requirements-dev.txt
-      - run: virtualenv --no-vcs-ignore .venv
-
-      - run: maturin develop --features use-small-offset,nightly
       - run: pytest -v -n auto
         env:
           HYPOTHESIS_PROFILE: slow
 
-  test-os-stable:
-    name: ${{ matrix.os }} (rust stable)
+  test-os:
+    name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}-latest
     strategy:
       fail-fast: false

@@ -37,8 +37,6 @@ default = ["inline-more", "extension-module"]
 inline-more = []
 extension-module = ["pyo3/extension-module"]
 
-nightly = []
-
 # testing features
 use-small-offset = []
 

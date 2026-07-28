@@ -10,6 +10,7 @@
 
 [![License](https://img.shields.io/github/license/awolverp/cachebox.svg?style=flat-square)](https://github.com/awolverp/cachebox/blob/main/LICENSE)
 [![Downloads](https://img.shields.io/pypi/dm/cachebox?style=flat-square&color=%23314bb5)](https://pepy.tech/projects/cachebox)
+[![Donate](https://img.shields.io/badge/donate-PayRequest-blue)](https://payrequest.me/ali-pooralijan-awolverp)
 
 </div>
 

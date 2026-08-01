@@ -102,7 +102,7 @@ def _cached_wrapper_without_lock(
 
         result = func(*args, **kwds)
         _cache.insert(key, result)
-        hits += 1
+        misses += 1
         if callback is not None:
             callback(EVENT_MISS, key, result)
 

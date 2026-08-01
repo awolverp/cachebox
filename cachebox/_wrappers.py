@@ -275,8 +275,9 @@ def _cached_wrapper(
                     misses += 1
                     event = EVENT_MISS
 
-            if lock.waiters == 0:
-                locks.pop(key, None)
+            finally:
+                if lock.waiters == 0:
+                    locks.pop(key, None)
 
         if callback is not None:
             callback(event, key, result)
@@ -367,9 +368,9 @@ def _async_cached_wrapper(
                     _cache[key] = result
                     misses += 1
                     event = EVENT_MISS
-
-            if lock.waiters == 0:
-                locks.pop(key, None)
+            finally:
+                if lock.waiters == 0:
+                    locks.pop(key, None)
 
         await _call_async_callback(callback, event, key, result)
 

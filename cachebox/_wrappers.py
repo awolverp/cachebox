@@ -270,9 +270,10 @@ def _cached_wrapper(
             except KeyError:
                 try:
                     result = func(*args, **kwds)
-                except Exception as exc:
+                except BaseException as exc:
                     if lock.waiters > 0:
                         pending_errors[key] = exc
+
                     raise
                 else:
                     _cache[key] = result
@@ -364,7 +365,7 @@ def _async_cached_wrapper(
             except KeyError:
                 try:
                     result = await func(*args, **kwds)
-                except Exception as exc:
+                except BaseException as exc:
                     if lock.waiters > 0:
                         pending_errors[key] = exc
                     raise

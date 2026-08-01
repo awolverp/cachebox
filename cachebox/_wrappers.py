@@ -159,7 +159,7 @@ def _async_cached_wrapper_without_lock(
         # Passing `cachebox__ignore=True` bypasses the cache and
         # calls the function directly.
         if kwds.pop("cachebox__ignore", False):
-            return func(*args, **kwds)
+            return await func(*args, **kwds)
 
         _cache: BaseCacheImpl = cache(args[0]) if cache_is_fn else cache  # type: ignore[arg-type]
         key = _make_key(args, kwds)
@@ -319,29 +319,7 @@ def _async_cached_wrapper(
     hits = 0
     misses = 0
 
-    # See _cached_wrapper
     locks: Cache[typing.Hashable, _AsyncLock] = Cache(0)
-
-    # if lock_type is asyncio.Lock:
-
-    #     async def _get_lock(key: typing.Hashable):
-    #         return locks.setdefault(key, _AsyncLock(lock_type()))
-
-    # else:
-    #     _lock_creation_guard = asyncio.Lock()
-
-    #     async def _get_lock(key: typing.Hashable):
-    #         lock = locks.get(key)
-    #         if lock is not None:
-    #             return lock
-
-    #         async with _lock_creation_guard:
-    #             lock = locks.get(key)
-    #             if lock is None:
-    #                 locks[key] = lock = _AsyncLock(lock_type())
-
-    #         return lock
-
     pending_errors: dict[typing.Hashable, BaseException] = {}
 
     async def _wrapped(*args, **kwds):

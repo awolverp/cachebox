@@ -73,12 +73,14 @@ def make_key(*args, **kwds) -> typing.Hashable:
     if not kwds:
         if len(args) == 1 and type(args[0]) in _FAST_TYPES:
             return args[0]
+
         return args
 
     key = args + (_KWDS_MARK,)
     for item in kwds.items():
         key += item
-    return key[0] if len(key) == 1 and type(key[0]) in _FAST_TYPES else key
+
+    return key
 
 
 def make_hash_key(*args, **kwds) -> int:

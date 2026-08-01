@@ -18,8 +18,10 @@ class _Lock:
 
     def __enter__(self) -> None:
         self.waiters += 1
-        self._lock.__enter__()
-        self.waiters -= 1
+        try:
+            self._lock.__enter__()
+        finally:
+            self.waiters -= 1
 
     def __exit__(self, *_) -> None:
         self._lock.__exit__(*_)
@@ -34,8 +36,10 @@ class _AsyncLock:
 
     async def __aenter__(self) -> None:
         self.waiters += 1
-        await self._lock.__aenter__()
-        self.waiters -= 1
+        try:
+            await self._lock.__aenter__()
+        finally:
+            self.waiters -= 1
 
     async def __aexit__(self, *_) -> None:
         await self._lock.__aexit__(*_)
@@ -102,7 +106,7 @@ def _cached_wrapper_without_lock(
 
         result = func(*args, **kwds)
         _cache.insert(key, result)
-        hits += 1
+        misses += 1
         if callback is not None:
             callback(EVENT_MISS, key, result)
 
@@ -159,7 +163,7 @@ def _async_cached_wrapper_without_lock(
         # Passing `cachebox__ignore=True` bypasses the cache and
         # calls the function directly.
         if kwds.pop("cachebox__ignore", False):
-            return func(*args, **kwds)
+            return await func(*args, **kwds)
 
         _cache: BaseCacheImpl = cache(args[0]) if cache_is_fn else cache  # type: ignore[arg-type]
         key = _make_key(args, kwds)
@@ -266,17 +270,19 @@ def _cached_wrapper(
             except KeyError:
                 try:
                     result = func(*args, **kwds)
-                except Exception as exc:
+                except BaseException as exc:
                     if lock.waiters > 0:
                         pending_errors[key] = exc
+
                     raise
                 else:
                     _cache[key] = result
                     misses += 1
                     event = EVENT_MISS
 
-            if lock.waiters == 0:
-                locks.pop(key, None)
+            finally:
+                if lock.waiters == 0:
+                    locks.pop(key, None)
 
         if callback is not None:
             callback(event, key, result)
@@ -319,29 +325,7 @@ def _async_cached_wrapper(
     hits = 0
     misses = 0
 
-    # See _cached_wrapper
     locks: Cache[typing.Hashable, _AsyncLock] = Cache(0)
-
-    # if lock_type is asyncio.Lock:
-
-    #     async def _get_lock(key: typing.Hashable):
-    #         return locks.setdefault(key, _AsyncLock(lock_type()))
-
-    # else:
-    #     _lock_creation_guard = asyncio.Lock()
-
-    #     async def _get_lock(key: typing.Hashable):
-    #         lock = locks.get(key)
-    #         if lock is not None:
-    #             return lock
-
-    #         async with _lock_creation_guard:
-    #             lock = locks.get(key)
-    #             if lock is None:
-    #                 locks[key] = lock = _AsyncLock(lock_type())
-
-    #         return lock
-
     pending_errors: dict[typing.Hashable, BaseException] = {}
 
     async def _wrapped(*args, **kwds):
@@ -381,7 +365,7 @@ def _async_cached_wrapper(
             except KeyError:
                 try:
                     result = await func(*args, **kwds)
-                except Exception as exc:
+                except BaseException as exc:
                     if lock.waiters > 0:
                         pending_errors[key] = exc
                     raise
@@ -389,9 +373,9 @@ def _async_cached_wrapper(
                     _cache[key] = result
                     misses += 1
                     event = EVENT_MISS
-
-            if lock.waiters == 0:
-                locks.pop(key, None)
+            finally:
+                if lock.waiters == 0:
+                    locks.pop(key, None)
 
         await _call_async_callback(callback, event, key, result)
 

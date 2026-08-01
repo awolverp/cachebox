@@ -742,3 +742,124 @@ async def test_async_handling_pending_errors():
         await calc(1, 2, 3, exception=True)
 
     assert await calc(1, 2, 3, exception=False) == 6
+
+
+def test_misses_should_increment_without_lock():
+    calls = {"n": 0}
+
+    @cachebox.cached(cachebox.LRUCache(0), lock=False)
+    def f(x):
+        calls["n"] += 1
+        return x * 2
+
+    assert f(1) == 2  # miss
+    assert f(1) == 2  # hit
+    assert f(2) == 4  # miss
+
+    info = cachebox.get_cached_cache_info(f)
+    print(info)
+
+    assert info.misses == 2
+    assert info.hits == 1
+
+
+@pytest.mark.asyncio
+async def test_ignore_path_should_return_awaited_value():
+    @cachebox.cached(cachebox.LRUCache(0), lock=False)
+    async def f(x):
+        await asyncio.sleep(0)
+        return x * 2
+
+    result = await f(
+        5,
+        cachebox__ignore=True,  # type: ignore
+    )
+    assert not asyncio.iscoroutine(result)
+    assert result == 10
+
+
+def test_locks_should_not_leak_on_exception():
+    @cachebox.cached(cachebox.LRUCache(0))  # lock پیش‌فرض True است
+    def f(x):
+        raise ValueError("boom")
+
+    for i in range(50):
+        with pytest.raises(ValueError):
+            f(i)
+
+    locks_cache = None
+    for cell in f.__closure__:  # type: ignore
+        try:
+            val = cell.cell_contents
+        except ValueError:
+            continue
+
+        if isinstance(val, cachebox.Cache):
+            locks_cache = val
+            break
+
+    assert locks_cache is not None, "We couldn't find locks_cache"
+    print("locks length after 50 failing calls:", len(locks_cache))
+
+    assert len(locks_cache) == 0
+
+
+@pytest.mark.asyncio
+async def test_waiters_should_not_leak_on_cancel():
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    @cachebox.cached(cachebox.LRUCache(0))
+    async def f(x):
+        started.set()
+        await release.wait()
+        return x
+
+    first = asyncio.create_task(f(1))
+    await started.wait()
+
+    second = asyncio.create_task(f(1))
+    await asyncio.sleep(0.05)
+
+    second.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await second
+
+    release.set()
+    result = await first
+    assert result == 1
+
+    locks_cache = None
+    for cell in f.__closure__:  # type: ignore
+        try:
+            val = cell.cell_contents
+        except ValueError:
+            continue
+        if isinstance(val, cachebox.Cache):
+            locks_cache = val
+            break
+    assert locks_cache is not None
+
+    print("locks length after cancel scenario:", len(locks_cache))
+    assert len(locks_cache) == 0
+
+
+@pytest.mark.asyncio
+async def test_cancelled_error_should_propagate_to_waiters_too():
+    gate = asyncio.Event()
+
+    @cachebox.cached(cachebox.LRUCache(0))
+    async def f(x):
+        await gate.wait()
+        raise asyncio.CancelledError()
+
+    t1 = asyncio.create_task(f(1))
+    t2 = asyncio.create_task(f(1))
+    await asyncio.sleep(0.01)
+    gate.set()
+
+    with pytest.raises(asyncio.CancelledError):
+        await t1
+
+    with pytest.raises(asyncio.CancelledError):
+        await t2

@@ -73,12 +73,14 @@ def make_key(*args, **kwds) -> typing.Hashable:
     if not kwds:
         if len(args) == 1 and type(args[0]) in _FAST_TYPES:
             return args[0]
+
         return args
 
     key = args + (_KWDS_MARK,)
     for item in kwds.items():
         key += item
-    return key[0] if len(key) == 1 and type(key[0]) in _FAST_TYPES else key
+
+    return key
 
 
 def make_hash_key(*args, **kwds) -> int:
@@ -155,8 +157,13 @@ class Frozen(BaseCacheImpl[KT, VT]):  # pragma: no cover
             ignore: If ``True``, silently ignores modification attempts; if ``False``, raises
                 ``TypeError`` when modification is attempted. Default is ``False``.
         """
-        assert isinstance(cls, BaseCacheImpl)
-        assert type(cls) is not Frozen
+        if not isinstance(cls, BaseCacheImpl):
+            raise TypeError(
+                f"expected a BaseCacheImpl instance, got {type(cls).__name__!r}"
+            )
+
+        if type(cls) is Frozen:
+            raise TypeError("cannot wrap an already-frozen cache")
 
         self.__cache = cls
         self.ignore = ignore
@@ -366,9 +373,16 @@ class Frozen(BaseCacheImpl[KT, VT]):  # pragma: no cover
 def _cast_lock(
     iscoroutinefunction: bool,
     lock: (
-        typing.Type[AbstractContextManager] | typing.Type[AbstractAsyncContextManager] | bool | None
+        typing.Type[AbstractContextManager]
+        | typing.Type[AbstractAsyncContextManager]
+        | bool
+        | None
     ) = True,
-) -> typing.Type[AbstractContextManager] | typing.Type[AbstractAsyncContextManager] | None:
+) -> (
+    typing.Type[AbstractContextManager]
+    | typing.Type[AbstractAsyncContextManager]
+    | None
+):
     import _thread
     import asyncio
     import threading
@@ -381,12 +395,18 @@ def _cast_lock(
 
     if iscoroutinefunction:
         if not hasattr(lock, "__aenter__"):
-            raise TypeError("For async functions, you cannot use a regular synchronous lock.")
+            raise TypeError(
+                "For async functions, you cannot use a regular synchronous lock."
+            )
 
         return typing.cast(typing.Type[AbstractAsyncContextManager], lock)
 
     # threading.Lock, threading.RLock and _thread.allocate_lock are function
-    if lock is threading.Lock or lock is threading.RLock or lock is _thread.allocate_lock:
+    if (
+        lock is threading.Lock
+        or lock is threading.RLock
+        or lock is _thread.allocate_lock
+    ):
         return typing.cast(typing.Type[AbstractContextManager], lock)
 
     if not hasattr(lock, "__enter__"):
@@ -403,7 +423,10 @@ def cached(
     copy_level: int = 1,
     postprocess: _PostProcess | None = postprocess_copy_mutables,
     lock: (
-        typing.Type[AbstractContextManager] | typing.Type[AbstractAsyncContextManager] | bool | None
+        typing.Type[AbstractContextManager]
+        | typing.Type[AbstractAsyncContextManager]
+        | bool
+        | None
     ) = True,
 ) -> typing.Callable[[FT], FT]:
     """
@@ -480,7 +503,9 @@ def cached(
         lock_type = _cast_lock(iscoroutinefunction, lock)
 
         if not iscoroutinefunction and inspect.iscoroutinefunction(callback):
-            raise TypeError("For sync functions, you cannot use a asynchronous callback")
+            raise TypeError(
+                "For sync functions, you cannot use a asynchronous callback"
+            )
 
         if lock_type:
             builder = _async_cached_wrapper if iscoroutinefunction else _cached_wrapper

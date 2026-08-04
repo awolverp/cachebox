@@ -197,6 +197,31 @@ impl<T> LinkedList<T> {
         unsafe { self.take_element_and_recycle(node) }
     }
 
+    /// Drops every linked element and parks its node on the free list.
+    ///
+    /// Elements whose destructors panic are handled by the caller's
+    /// drop-guard strategy; nodes are recycled even on the panic path.
+    fn drop_nodes(&mut self) {
+        let s = self.sentinel.as_ptr();
+        while self.len != 0 {
+            unsafe {
+                // SAFETY: `self.len != 0`, so `(*s).next` points to a real node.
+                let node = (*s).next;
+                let second = (*node).next;
+                (*second).prev = s;
+                (*s).next = second;
+
+                let node_ptr = node as *mut Node<T>;
+                // SAFETY: `#[repr(C)]` puts `links` at offset 0, so `node` is a
+                // valid `Node<T>` whose `element` is still initialized.
+                ptr::drop_in_place(&mut (*node_ptr).element);
+                // SAFETY: the element was just dropped; the node is unlinked.
+                self.recycle_node(node);
+            }
+            self.len -= 1;
+        }
+    }
+
     /// Frees every entry on the internal free list.
     ///
     /// # Safety
@@ -217,6 +242,36 @@ impl<T> LinkedList<T> {
             node = next;
         }
         self.free_head = ptr::null_mut();
+    }
+
+    /// Returns a node holding `elt`: reuses a free-list node when one is
+    /// available, otherwise allocates a fresh one.
+    #[inline]
+    fn get_node(&mut self, elt: T) -> *mut Node<T> {
+        if !self.free_head.is_null() {
+            let links = self.free_head;
+            // SAFETY: `free_head` is non-null here and points to a recycled
+            // node threaded via `recycle_node`.
+            self.free_head = unsafe { (*links).next };
+            let node = links as *mut Node<T>;
+            // SAFETY: `#[repr(C)]` puts `links` at offset 0, and only the
+            // `element` slot of a recycled node is stale; `links` is
+            // rewritten by the push that follows.
+            unsafe { ptr::write(&mut (*node).element, elt) };
+            node
+        } else {
+            Self::alloc_node(elt)
+        }
+    }
+
+    /// Cold fallback of `get_node`: allocates a brand-new node.
+    #[inline(never)]
+    #[cold]
+    fn alloc_node(elt: T) -> *mut Node<T> {
+        Box::into_raw(Box::new(Node {
+            links: Links::empty(),
+            element: elt,
+        }))
     }
 }
 
@@ -387,19 +442,18 @@ impl<T> LinkedList<T> {
 // is freed unconditionally below regardless of panics).
 struct DropGuard<'a, T>(&'a mut LinkedList<T>);
 
+impl<'a, T> Drop for DropGuard<'a, T> {
+    fn drop(&mut self) {
+        self.0.drop_nodes();
+        // SAFETY: called only during unwind cleanup, after `drop_nodes`
+        // has already run (or partially run); the free list is not
+        // accessed again afterward.
+        unsafe { self.0.drop_freelist() };
+    }
+}
+
 impl<T> Drop for LinkedList<T> {
     fn drop(&mut self) {
-
-        impl<'a, T> Drop for DropGuard<'a, T> {
-            fn drop(&mut self) {
-                self.0.drop_nodes();
-                // SAFETY: called only during unwind cleanup, after `drop_nodes`
-                // has already run (or partially run); the free list is not
-                // accessed again afterward.
-                unsafe { self.0.drop_freelist() };
-            }
-        }
-
         let guard = DropGuard(self);
         guard.0.drop_nodes();
         // SAFETY: `drop_nodes` completed without panicking; the free list is

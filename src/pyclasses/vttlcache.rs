@@ -143,13 +143,13 @@ impl PyVTTLCache {
 
     #[inline]
     fn __sizeof__(&self) -> usize {
-        const FIXED_SIZE: usize = std::mem::size_of::<Wrapped<vttlpolicy::VTTLPolicy>>();
+        const FIXED_SIZE: usize = size_of::<Wrapped<vttlpolicy::VTTLPolicy>>();
 
         let inner = self.0.get();
         let policy = inner.policy();
 
         let table_cap = policy.table().capacity() * 8;
-        let list_cap = policy.heap().len() * std::mem::size_of::<vttlpolicy::ExpiringHandle>();
+        let list_cap = policy.heap().len() * size_of::<vttlpolicy::ExpiringHandle>();
 
         FIXED_SIZE + table_cap + list_cap
     }

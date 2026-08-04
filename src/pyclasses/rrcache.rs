@@ -160,12 +160,12 @@ impl PyRRCache {
 
     #[inline]
     fn __sizeof__(&self) -> usize {
-        const FIXED_SIZE: usize = std::mem::size_of::<Wrapped<rrpolicy::RRPolicy>>();
+        const FIXED_SIZE: usize = size_of::<Wrapped<rrpolicy::RRPolicy>>();
 
         let inner = self.0.get();
         let policy = inner.policy();
 
-        FIXED_SIZE + policy.table().capacity() * std::mem::size_of::<rrpolicy::Handle>()
+        FIXED_SIZE + policy.table().capacity() * size_of::<rrpolicy::Handle>()
     }
 
     #[inline]
@@ -316,7 +316,7 @@ impl PyRRCache {
         }
     }
 
-    /// Get `key`s value, or atomatically insert `default` and return it.
+    /// Get `key`s value, or automatically insert `default` and return it.
     ///
     /// If `key` exists, its current value is returned and `default` is ignored.
     /// Otherwise `default` is inserted for `key` and returned.
@@ -361,7 +361,7 @@ impl PyRRCache {
         Ok(default_object)
     }
 
-    /// Get `key`s value, or atomatically create and insert one via `factory`.
+    /// Get `key`s value, or automatically create and insert one via `factory`.
     ///
     /// If `key` exists, its current value is returned and `factory` is not called.
     /// Otherwise `factory` is called exactly once under an internal lock, its

@@ -1,18 +1,21 @@
 [build-system]
-requires = ["maturin>=1.8,<2.0"]
+requires = ["maturin == 1.14.1"]
 build-backend = "maturin"
+
+[tool.maturin]
+module-name = "cachebox._core"
 
 [project]
 name = "cachebox"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 keywords = ["caching", "cached", "cachebox", "cache", "in-memory-caching", "memoizing"]
 authors = [
-  {name = "awolverp", email = "awolverp@gmail.com"}
+    { name = "awolverp", email = "awolverp@gmail.com" }
 ]
 
 classifiers = [
-    "Programming Language :: Python :: Implementation :: CPython",
-    "Programming Language :: Python :: Implementation :: PyPy",
+    "Programming Language :: Rust",
+    "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.10",
@@ -20,31 +23,58 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
-    "Programming Language :: Python",
-    "Programming Language :: Rust",
+    "Programming Language :: Python :: 3.15",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Programming Language :: Python :: Implementation :: CPython",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: POSIX :: Linux",
     "Operating System :: Microsoft :: Windows",
     "Operating System :: MacOS",
     "Typing :: Typed",
+    "Topic :: Software Development :: Libraries",
+    "Development Status :: 5 - Production/Stable",
 ]
 
 dynamic = [
-    'description',
-    'license',
-    'readme',
-    'version'
+    "description",
+    "license",
+    "readme",
+    "version"
 ]
 
 [project.urls]
-Homepage = 'https://github.com/awolverp/cachebox'
-
-[project.optional-dependencies]
-
-[tool.maturin]
-features = ["pyo3/extension-module"]
-module-name = "cachebox._core"
+Homepage = "https://github.com/awolverp/cachebox"
+Repository = "https://github.com/awolverp/cachebox"
+Issues = "https://github.com/awolverp/cachebox/issues"
 
 [tool.mypy]
 disable_error_code = "attr-defined, type-arg, no-untyped-def, no-any-return"
+
+[dependency-groups]
+maturin = [
+    "maturin == 1.14.1 ; sys_platform != 'linux'",
+    "maturin[patchelf] == 1.14.1 ; sys_platform == 'linux'",
+]
+typos = ["typos == 1.48.0"]
+zizmor = ["zizmor == 1.29.0"]
+docs = [
+    "mkdocs-material == 9.7.7",
+    "mkdocstrings[python] == 1.0.6",
+]
+test = [
+    "pytest == 9.1.1",
+    "hypothesis == 6.165.0",
+    "pytest-asyncio == 1.4.0",
+    "pytest-xdist == 3.8.0",
+]
+ci = [
+    { include-group = "maturin" },
+    { include-group = "test" },
+]
+dev = [
+    { include-group = "ci" },
+    { include-group = "docs" },
+    { include-group = "zizmor" },
+    { include-group = "typos" },
+]

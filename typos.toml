@@ -1,0 +1,13 @@
+[default.extend-words]
+# error: `builded` should be `built`
+#    --> .\src\policies\ttlpolicy.rs:569:20
+#     |
+# 569 |         let list = builded.get_item(0)?.cast_into::<pyo3::types::PyList>()?;
+#     |                    ^^^^^^^
+builded = "builded"
+# error: `fo` should be `of`, `for`, `do`, `go`, `to`
+#    --> .\src\policies\fifopolicy.rs:212:66
+#     |
+# 212 |             //   - All others:               (vd_idx + fo)     - fo  =  vd_idx
+#     |                                                                  ^^
+fo = "fo"

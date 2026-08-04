@@ -43,5 +43,8 @@ cfg_if::cfg_if! {
         use generic as imp;
     }
 }
+pub(super) use self::imp::BitMaskWord;
 pub(crate) use self::imp::Group;
-pub(super) use self::imp::{BitMaskWord, NonZeroBitMaskWord, BITMASK_ITER_MASK, BITMASK_STRIDE};
+pub(super) use self::imp::NonZeroBitMaskWord;
+pub(super) use self::imp::BITMASK_ITER_MASK;
+pub(super) use self::imp::BITMASK_STRIDE;

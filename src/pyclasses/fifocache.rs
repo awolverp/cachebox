@@ -163,13 +163,13 @@ impl PyFIFOCache {
 
     #[inline]
     fn __sizeof__(&self) -> usize {
-        const FIXED_SIZE: usize = std::mem::size_of::<Wrapped<fifopolicy::FIFOPolicy>>();
+        const FIXED_SIZE: usize = size_of::<Wrapped<fifopolicy::FIFOPolicy>>();
 
         let inner = self.0.get();
         let policy = inner.policy();
 
-        let table_cap = policy.table().capacity() * std::mem::size_of::<usize>();
-        let vecdeque_cap = policy.entries().capacity() * std::mem::size_of::<fifopolicy::Handle>();
+        let table_cap = policy.table().capacity() * size_of::<usize>();
+        let vecdeque_cap = policy.entries().capacity() * size_of::<fifopolicy::Handle>();
         FIXED_SIZE + table_cap + vecdeque_cap
     }
 
@@ -318,7 +318,7 @@ impl PyFIFOCache {
         }
     }
 
-    /// Get `key`s value, or atomatically insert `default` and return it.
+    /// Get `key`s value, or automatically insert `default` and return it.
     ///
     /// If `key` exists, its current value is returned and `default` is ignored.
     /// Otherwise `default` is inserted for `key` and returned.
@@ -363,7 +363,7 @@ impl PyFIFOCache {
         Ok(default_object)
     }
 
-    /// Get `key`s value, or atomatically create and insert one via `factory`.
+    /// Get `key`s value, or automatically create and insert one via `factory`.
     ///
     /// If `key` exists, its current value is returned and `factory` is not called.
     /// Otherwise `factory` is called exactly once under an internal lock, its

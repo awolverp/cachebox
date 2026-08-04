@@ -13,6 +13,7 @@ concurrency:
 
 env:
   RUST_BACKTRACE: 1
+  UV_PYTHON_DOWNLOADS: 0
 
 jobs:
   test-python:
@@ -22,33 +23,53 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version:
-          - "3.10"
-          - "3.11"
-          - "3.12"
-          - "3.13"
-          - "3.14"
-          - "3.14t"
-          - "3.15"
-          - "3.15t"
-          - "pypy3.11"
+        python-version: [
+          "3.10",
+          "3.11",
+          "3.12",
+          "3.13",
+          "3.14", "3.14t",
+          "3.15", "3.15t",
+          "pypy3.11",
+        ]
 
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable # zizmor: ignore[unpinned-uses]
 
-      - uses: actions/setup-python@v6.2.0
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        if: github.event_name == 'pull_request' && github.run_attempt == 1
+        with:
+          lookup-only: false # zizmor: ignore[cache-poisoning]
+          shared-key: ${{ matrix.python-version }}
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
 
-      - run: pip install virtualenv
-      - run: pip install -r requirements-dev.txt
-      - run: virtualenv --no-vcs-ignore .venv
+      - name: "Install uv"
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: false
 
-      - run: maturin develop --features use-small-offset
-      - run: pytest -v -n auto
+      - name: "Create and activate .venv"
+        run: |
+          uv venv .venv --python ${{ matrix.python-version }}
+          echo ".venv/bin" >> "$GITHUB_PATH"
+          echo "PYO3_PYTHON=.venv/bin/python3" >> "$GITHUB_ENV"
+
+      - name: "Install dependencies"
+        run: uv pip install --group ci
+
+      - name: "Run maturin"
+        run: maturin develop --features use-small-offset
+
+      - name: "Run pytest"
+        run: pytest -v -n auto
         env:
           HYPOTHESIS_PROFILE: slow
 
@@ -61,19 +82,41 @@ jobs:
         os: [ubuntu, macos, windows]
 
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable # zizmor: ignore[unpinned-uses]
 
-      - uses: actions/setup-python@v6.2.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
 
-      - run: pip install virtualenv
-      - run: pip install -r requirements-dev.txt
-      - run: virtualenv --no-vcs-ignore .venv
+      - name: "Install uv"
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: false
 
-      - run: maturin develop --features use-small-offset
-      - run: pytest -v -n auto
+      - name: "Create and activate .venv"
+        shell: bash
+        run: |
+          uv venv .venv --python 3.13
+          if [[ "${{ matrix.os }}" == "windows" ]]; then
+            echo ".venv/Scripts" >> "$GITHUB_PATH"
+            echo "PYO3_PYTHON=.venv/Scripts/python" >> "$GITHUB_ENV"
+            echo "UV_LINK_MODE=copy" >> "$GITHUB_ENV"
+          else
+            echo ".venv/bin" >> "$GITHUB_PATH"
+            echo "PYO3_PYTHON=.venv/bin/python3" >> "$GITHUB_ENV"
+          fi
+
+      - name: "Install dependencies"
+        run: uv pip install --group ci
+
+      - name: "Run maturin"
+        run: maturin develop --features use-small-offset
+
+      - name: "Run pytest"
+        run: pytest -v -n auto
         env:
           HYPOTHESIS_PROFILE: slow

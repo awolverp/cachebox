@@ -570,7 +570,7 @@ def _run_recursive_cached_func_with_thread(cached_func, key):
     t.join(timeout=2.0)
 
     if t.is_alive():
-        pytest.fail("deadlock happend - thread hung waiting on its own lock")
+        pytest.fail("deadlock happen - thread hung waiting on its own lock")
 
     assert "err" in result
 
@@ -609,7 +609,7 @@ async def _run_recursive_cached_func_with_asyncio(cached_func, key):
     try:
         await asyncio.wait_for(t, timeout=2.0)
     except TimeoutError:
-        pytest.fail("deadlock happend - task hung waiting on its own lock")
+        pytest.fail("deadlock happen - task hung waiting on its own lock")
 
     assert "err" in result
 

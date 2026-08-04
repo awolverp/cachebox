@@ -536,7 +536,7 @@ impl PyCache {
         let inner = self.0.get();
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
-        
+
         let result = PyCacheItems {
             // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
             iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
@@ -551,7 +551,7 @@ impl PyCache {
         let inner = self.0.get();
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
-        
+
         let result = PyCacheValues {
             // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
             iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
@@ -565,7 +565,7 @@ impl PyCache {
         let inner = self.0.get();
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
-        
+
         let result = PyCacheKeys {
             // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
             iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),

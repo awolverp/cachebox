@@ -161,8 +161,7 @@ impl PyTTLCache {
         let policy = inner.policy();
 
         let table_cap = policy.table().capacity() * size_of::<usize>();
-        let vecdeque_cap =
-            policy.entries().capacity() * size_of::<ttlpolicy::ExpiringHandle>();
+        let vecdeque_cap = policy.entries().capacity() * size_of::<ttlpolicy::ExpiringHandle>();
 
         FIXED_SIZE + table_cap + vecdeque_cap
     }

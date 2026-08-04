@@ -90,11 +90,13 @@ mod _core {
     pub fn init(m: &pyo3::Bound<'_, pyo3::types::PyModule>) -> pyo3::PyResult<()> {
         typeref::initialize_typeref(m.py());
 
-        #[cfg(feature = "use-small-offset")]
-        m.add("_use_small_offset_feature", true)?;
-
-        #[cfg(not(feature = "use-small-offset"))]
-        m.add("_use_small_offset_feature", false)?;
+        m.add(
+            "_use_small_offset_feature",
+            cfg_select! {
+                feature = "use-small-offset" => true,
+                not(feature = "use-small-offset") => false,
+            },
+        )?;
 
         Ok(())
     }

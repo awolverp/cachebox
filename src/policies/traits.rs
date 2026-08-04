@@ -68,10 +68,10 @@ pub trait SharedExt: Send + Sync {
     /// Returns the generation version.
     fn generation_version(&self) -> &utils::GenerationVersion;
 
-    /// Returns a reference to configued getsizeof function.
+    /// Returns a reference to configured getsizeof function.
     fn getsizeof(&self) -> &utils::GetsizeofFunction;
 
-    /// Returns a reference to configued getsizeof function.
+    /// Returns a reference to configured getsizeof function.
     fn global_ttl(&self) -> Option<std::time::Duration>;
 
     /// Make a clone of `self`.
@@ -139,7 +139,7 @@ pub trait PolicyExt: Sized {
     /// Make a clone of `self`.
     fn clone_ref(&mut self, py: pyo3::Python) -> Self;
 
-    /// Buildes the pickle.
+    /// Builds the pickle.
     /// Should not add items to pickle more than the configured [`Self::PICKLE_SIZE`].
     fn build_pickle(
         &self,

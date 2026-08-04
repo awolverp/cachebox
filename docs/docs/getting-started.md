@@ -268,7 +268,7 @@ class OrderRepository(BaseRepository):
 In this example, each repository class maintains an independent cache while reusing
 the same cached method implementation.
 
-## Using a Cache Implemetations
+## Using a Cache Implementations
 You can use all cache implementations without `@cached` method.
 You only need to import the classes you want and can work with them like a regular dictionaries
 (except for [`VTTLCache`](api/impls.md#cachebox._cachebox.VTTLCache), this have some differences).

@@ -3,7 +3,7 @@
 //!
 //! All of classes must implement `__new__` and `__init__` methods.
 //! - In `__new__` methods, we should allocate memory for the type;
-//! - And in `__init__` methods, we should initialize and constrcut the type, according to parameters.
+//! - And in `__init__` methods, we should initialize and construct the type, according to parameters.
 //!
 //! There are types that help us to create these methods completely thread-safe.
 

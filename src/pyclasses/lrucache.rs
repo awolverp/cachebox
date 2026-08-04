@@ -345,7 +345,7 @@ impl PyLRUCache {
         }
     }
 
-    /// Get `key`s value, or atomatically insert `default` and return it.
+    /// Get `key`s value, or automatically insert `default` and return it.
     ///
     /// If `key` exists, its current value is returned and `default` is ignored.
     /// Otherwise `default` is inserted for `key` and returned.
@@ -390,7 +390,7 @@ impl PyLRUCache {
         Ok(default_object)
     }
 
-    /// Get `key`s value, or atomatically create and insert one via `factory`.
+    /// Get `key`s value, or automatically create and insert one via `factory`.
     ///
     /// If `key` exists, its current value is returned and `factory` is not called.
     /// Otherwise `factory` is called exactly once under an internal lock, its

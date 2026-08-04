@@ -1,5 +1,5 @@
 [build-system]
-requires = ["maturin>=1.14.1,<2.0"]
+requires = ["maturin == 1.14.1"]
 build-backend = "maturin"
 
 [tool.maturin]
@@ -7,7 +7,7 @@ module-name = "cachebox._core"
 
 [project]
 name = "cachebox"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 keywords = ["caching", "cached", "cachebox", "cache", "in-memory-caching", "memoizing"]
 authors = [
     { name = "awolverp", email = "awolverp@gmail.com" }
@@ -50,3 +50,31 @@ Issues = "https://github.com/awolverp/cachebox/issues"
 
 [tool.mypy]
 disable_error_code = "attr-defined, type-arg, no-untyped-def, no-any-return"
+
+[dependency-groups]
+maturin = [
+    "maturin == 1.14.1 ; sys_platform != 'linux'",
+    "maturin[patchelf] == 1.14.1 ; sys_platform == 'linux'",
+]
+typos = ["typos == 1.48.0"]
+zizmor = ["zizmor == 1.29.0"]
+docs = [
+    "mkdocs-material == 9.7.7",
+    "mkdocstrings[python] == 1.0.6",
+]
+test = [
+    "pytest == 9.1.1",
+    "hypothesis == 6.165.0",
+    "pytest-asyncio == 1.4.0",
+    "pytest-xdist == 3.8.0",
+]
+ci = [
+    { include-group = "maturin" },
+    { include-group = "test" },
+]
+dev = [
+    { include-group = "ci" },
+    { include-group = "docs" },
+    { include-group = "zizmor" },
+    { include-group = "typos" },
+]

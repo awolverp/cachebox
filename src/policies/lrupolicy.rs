@@ -168,7 +168,7 @@ impl PolicyExt for LRUPolicy {
     fn get(
         &mut self,
         py: pyo3::Python,
-        key: &<Self::Handle as super::traits::HandleExt>::Key,
+        key: &<Self::Handle as HandleExt>::Key,
     ) -> pyo3::PyResult<Option<&Self::Handle>> {
         unsafe {
             let bucket = self
@@ -338,7 +338,7 @@ impl PolicyExt for LRUPolicy {
 
     fn from_pickle(
         maxsize: usize,
-        getsizeof: Option<crate::internal::alias::PyObject>,
+        getsizeof: Option<alias::PyObject>,
         _global_ttl: Option<std::time::Duration>,
         builded: pyo3::Bound<'_, pyo3::types::PyTuple>,
     ) -> pyo3::PyResult<(Self::Shared, Self)> {

@@ -1,4 +1,5 @@
-use super::super::{BitMask, Tag};
+use super::super::BitMask;
+use super::super::Tag;
 use core::arch::aarch64 as neon;
 use core::mem;
 use core::num::NonZeroU64;

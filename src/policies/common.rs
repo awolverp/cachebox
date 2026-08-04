@@ -1,4 +1,4 @@
-//! Common implementations accross multiple policies
+//! Common implementations across multiple policies
 
 use crate::internal::alias;
 use crate::internal::utils;

@@ -1,4 +1,5 @@
-use super::super::{BitMask, Tag};
+use super::super::BitMask;
+use super::super::Tag;
 use core::mem;
 use core::num::NonZeroU16;
 

@@ -64,7 +64,7 @@ It uses Google's high-performance SwissTable hash map. Thanks to [hashbrown](htt
 It has very low memory usage.
 
 - **⭐ Zero Dependency** \
-As we said, `cachebox` is written in *Rust* so you don't have to install any other dependecies.
+As we said, `cachebox` is written in *Rust* so you don't have to install any other dependencies.
 
 - **🧶 Thread safe** \
 It's completely thread-safe and uses *Rust* mutex to prevent problems.
@@ -118,7 +118,7 @@ d2 = make_dict("cachebox", 10)
 assert d2 == {"name": "cachebox", "age": 10}
 ```
 
-You can use cache alghoritms without the `cached` decorator -- just import the cache alghoritm you want and use it like a dictionary.
+You can use cache algorithms without the `cached` decorator -- just import the cache algorithm you want and use it like a dictionary.
 ```python
 from cachebox import FIFOCache
 

@@ -1,9 +1,8 @@
 // Extracted from the scopeguard crate
-use core::{
-    mem::ManuallyDrop,
-    ops::{Deref, DerefMut},
-    ptr,
-};
+use core::mem::ManuallyDrop;
+use core::ops::Deref;
+use core::ops::DerefMut;
+use core::ptr;
 
 pub(crate) struct ScopeGuard<T, F>
 where

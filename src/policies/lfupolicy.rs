@@ -319,7 +319,7 @@ impl PolicyExt for LFUPolicy {
     fn get(
         &mut self,
         py: pyo3::Python,
-        key: &<Self::Handle as traits::HandleExt>::Key,
+        key: &<Self::Handle as HandleExt>::Key,
     ) -> pyo3::PyResult<Option<&Self::Handle>> {
         let cursor = self
             .table

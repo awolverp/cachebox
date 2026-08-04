@@ -179,13 +179,13 @@ impl PyLFUCache {
 
     #[inline]
     fn __sizeof__(&self) -> usize {
-        const FIXED_SIZE: usize = std::mem::size_of::<Wrapped<lfupolicy::LFUPolicy>>();
+        const FIXED_SIZE: usize = size_of::<Wrapped<lfupolicy::LFUPolicy>>();
 
         let inner = self.0.get();
         let policy = inner.policy();
 
         let table_cap = policy.table().capacity() * 8;
-        let list_cap = policy.heap().len() * std::mem::size_of::<lfupolicy::FrequencyHandle>();
+        let list_cap = policy.heap().len() * size_of::<lfupolicy::FrequencyHandle>();
 
         FIXED_SIZE + table_cap + list_cap
     }
@@ -336,7 +336,7 @@ impl PyLFUCache {
         }
     }
 
-    /// Get `key`s value, or atomatically insert `default` and return it.
+    /// Get `key`s value, or automatically insert `default` and return it.
     ///
     /// If `key` exists, its current value is returned and `default` is ignored.
     /// Otherwise `default` is inserted for `key` and returned.
@@ -382,10 +382,10 @@ impl PyLFUCache {
         Ok(default_object)
     }
 
-    /// Get `key`s value, or atomatically create and insert one via `factory`.
+    /// Get `key`s value, or automatically create and insert one via `factory`.
     ///
     /// If `key` exists, its current value is returned and `factory` is not called.
-    /// Otherwise `factory` is called exactly once under an internal lock, its
+    /// Otherwise, `factory` is called exactly once under an internal lock, its
     /// result is inserted and returned.
     ///
     /// Warning: `factory` must not call back into this cache (deadlock risk) or block

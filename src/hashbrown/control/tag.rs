@@ -1,4 +1,5 @@
-use core::{fmt, mem};
+use core::fmt;
+use core::mem;
 
 /// Single tag in a control group.
 #[derive(Copy, Clone, PartialEq, Eq)]

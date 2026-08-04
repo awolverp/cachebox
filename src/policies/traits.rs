@@ -41,7 +41,7 @@ pub trait VacantExt {
 
     /// Evicts one entry, freeing budget for a subsequent insert or replace.
     ///
-    /// This method is exists here because after calling [`PolicyExt::entry`], we can't use
+    /// This method is existing here because after calling [`PolicyExt::entry`], we can't use
     /// policy.
     ///
     /// # Errors
@@ -68,10 +68,10 @@ pub trait SharedExt: Send + Sync {
     /// Returns the generation version.
     fn generation_version(&self) -> &utils::GenerationVersion;
 
-    /// Returns a reference to configued getsizeof function.
+    /// Returns a reference to configured getsizeof function.
     fn getsizeof(&self) -> &utils::GetsizeofFunction;
 
-    /// Returns a reference to configued getsizeof function.
+    /// Returns a reference to configured getsizeof function.
     fn global_ttl(&self) -> Option<std::time::Duration>;
 
     /// Make a clone of `self`.
@@ -97,7 +97,7 @@ pub trait PolicyExt: Sized {
     /// Returns the current total cumulative size consumed by all stored entries.
     fn current_size(&self) -> usize;
 
-    /// Looks up a handle by `hash` and `eq`, applying policy side-effects on hit.
+    /// Looks up a handle by `hash` and `eq`, applying policy side effects on hit.
     ///
     /// # Errors
     /// Returns `Err` if `eq` raises a Python exception.
@@ -139,14 +139,14 @@ pub trait PolicyExt: Sized {
     /// Make a clone of `self`.
     fn clone_ref(&mut self, py: pyo3::Python) -> Self;
 
-    /// Buildes the pickle.
+    /// Builds the pickle.
     /// Should not add items to pickle more than the configured [`Self::PICKLE_SIZE`].
     fn build_pickle(
         &self,
         tuple: &mut pickle::TupleBuilder<'_, pickle::PickleBuilder>,
     ) -> pyo3::PyResult<()>;
 
-    /// Loads the builded pickle.
+    /// Loads the built pickle.
     fn from_pickle(
         maxsize: usize,
         getsizeof: Option<alias::PyObject>,

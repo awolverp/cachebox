@@ -1,11 +1,10 @@
 #[macro_use]
 mod macro_rules;
 mod hashbrown;
-mod typeref;
-
 pub mod internal;
 pub mod policies;
 pub mod pyclasses;
+mod typeref;
 
 #[pyo3::pymodule]
 mod _core {
@@ -83,12 +82,13 @@ mod _core {
     use crate::pyclasses::vttlcache::PyVTTLCacheKeys;
     #[pymodule_export]
     use crate::pyclasses::vttlcache::PyVTTLCacheValues;
+    #[pymodule_export]
+    #[allow(non_upper_case_globals)]
+    const __version__: &str = env!("CARGO_PKG_VERSION");
 
     #[pymodule_init]
     pub fn init(m: &pyo3::Bound<'_, pyo3::types::PyModule>) -> pyo3::PyResult<()> {
         typeref::initialize_typeref(m.py());
-
-        m.add("__version__", env!("CARGO_PKG_VERSION"))?;
 
         #[cfg(feature = "use-small-offset")]
         m.add("_use_small_offset_feature", true)?;

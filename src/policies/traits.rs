@@ -41,7 +41,7 @@ pub trait VacantExt {
 
     /// Evicts one entry, freeing budget for a subsequent insert or replace.
     ///
-    /// This method is exists here because after calling [`PolicyExt::entry`], we can't use
+    /// This method is existing here because after calling [`PolicyExt::entry`], we can't use
     /// policy.
     ///
     /// # Errors
@@ -97,7 +97,7 @@ pub trait PolicyExt: Sized {
     /// Returns the current total cumulative size consumed by all stored entries.
     fn current_size(&self) -> usize;
 
-    /// Looks up a handle by `hash` and `eq`, applying policy side-effects on hit.
+    /// Looks up a handle by `hash` and `eq`, applying policy side effects on hit.
     ///
     /// # Errors
     /// Returns `Err` if `eq` raises a Python exception.
@@ -146,7 +146,7 @@ pub trait PolicyExt: Sized {
         tuple: &mut pickle::TupleBuilder<'_, pickle::PickleBuilder>,
     ) -> pyo3::PyResult<()>;
 
-    /// Loads the builded pickle.
+    /// Loads the built pickle.
     fn from_pickle(
         maxsize: usize,
         getsizeof: Option<alias::PyObject>,

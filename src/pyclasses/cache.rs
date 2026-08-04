@@ -156,12 +156,12 @@ impl PyCache {
 
     #[inline]
     fn __sizeof__(&self) -> usize {
-        const FIXED_SIZE: usize = std::mem::size_of::<Wrapped<nopolicy::NoPolicy>>();
+        const FIXED_SIZE: usize = size_of::<Wrapped<nopolicy::NoPolicy>>();
 
         let inner = self.0.get();
         let policy = inner.policy();
 
-        FIXED_SIZE + (policy.table().capacity() * std::mem::size_of::<nopolicy::Handle>())
+        FIXED_SIZE + (policy.table().capacity() * size_of::<nopolicy::Handle>())
     }
 
     #[inline]
@@ -315,10 +315,10 @@ impl PyCache {
     /// Get `key`s value, or automatically insert `default` and return it.
     ///
     /// If `key` exists, its current value is returned and `default` is ignored.
-    /// Otherwise `default` is inserted for `key` and returned.
+    /// Otherwise, `default` is inserted for `key` and returned.
     ///
     /// Use `setdefault_with`, if computing the value is expensive or has side
-    /// effectes.
+    /// effects.
     #[pyo3(signature = (key, default=utils::OptionalArgument::Undefined))]
     fn setdefault(
         &self,
@@ -536,9 +536,9 @@ impl PyCache {
         let inner = self.0.get();
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
-
-        // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
+        
         let result = PyCacheItems {
+            // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
             iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
             gv,
             initial_gv,
@@ -551,9 +551,9 @@ impl PyCache {
         let inner = self.0.get();
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
-
-        // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
+        
         let result = PyCacheValues {
+            // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
             iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
             gv,
             initial_gv,
@@ -565,9 +565,9 @@ impl PyCache {
         let inner = self.0.get();
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
-
-        // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
+        
         let result = PyCacheKeys {
+            // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
             iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
             gv,
             initial_gv,

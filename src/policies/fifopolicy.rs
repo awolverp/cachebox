@@ -162,11 +162,10 @@ impl FIFOPolicy {
 
     #[inline]
     fn decrement_indexes(&mut self, start: usize, end: usize) {
-        #[cfg(not(feature = "use-small-offset"))]
-        const MAX_FRONT_OFFSET: usize = usize::MAX - isize::MAX as usize;
-
-        #[cfg(feature = "use-small-offset")]
-        const MAX_FRONT_OFFSET: usize = u8::MAX as usize;
+        const MAX_FRONT_OFFSET: usize = cfg_select! {
+            feature = "use-small-offset" => u8::MAX as usize,
+            not(feature = "use-small-offset") => usize::MAX - isize::MAX as usize,
+        };
 
         // Fast path: shifting the entire front is a single counter increment.
         // Guard against overflow; the full-normalization path below handles that case.
@@ -255,7 +254,7 @@ impl PolicyExt for FIFOPolicy {
     fn get(
         &mut self,
         py: pyo3::Python,
-        key: &<Self::Handle as traits::HandleExt>::Key,
+        key: &<Self::Handle as HandleExt>::Key,
     ) -> pyo3::PyResult<Option<&Self::Handle>> {
         let eq = |index: &usize| get_handle!(&self, *index).key().py_eq(py, key);
         match self.table.get(key.hash(), eq)? {
@@ -300,7 +299,7 @@ impl PolicyExt for FIFOPolicy {
 
         let eq = |index: &usize| Ok::<_, pyo3::PyErr>(*index - self.front_offset == 0);
         let removed_key_table = self.table.remove_entry(front.key().hash(), eq).unwrap();
-        if crate::hashbrown::util::unlikely(removed_key_table.is_none()) {
+        if hashbrown::util::unlikely(removed_key_table.is_none()) {
             unreachable!("popitem key not found in table");
         }
 
@@ -417,7 +416,7 @@ impl PolicyExt for FIFOPolicy {
 
     fn from_pickle(
         maxsize: usize,
-        getsizeof: Option<crate::internal::alias::PyObject>,
+        getsizeof: Option<alias::PyObject>,
         _global_ttl: Option<std::time::Duration>,
         builded: pyo3::Bound<'_, pyo3::types::PyTuple>,
     ) -> pyo3::PyResult<(Self::Shared, Self)> {

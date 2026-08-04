@@ -163,13 +163,13 @@ impl PyFIFOCache {
 
     #[inline]
     fn __sizeof__(&self) -> usize {
-        const FIXED_SIZE: usize = std::mem::size_of::<Wrapped<fifopolicy::FIFOPolicy>>();
+        const FIXED_SIZE: usize = size_of::<Wrapped<fifopolicy::FIFOPolicy>>();
 
         let inner = self.0.get();
         let policy = inner.policy();
 
-        let table_cap = policy.table().capacity() * std::mem::size_of::<usize>();
-        let vecdeque_cap = policy.entries().capacity() * std::mem::size_of::<fifopolicy::Handle>();
+        let table_cap = policy.table().capacity() * size_of::<usize>();
+        let vecdeque_cap = policy.entries().capacity() * size_of::<fifopolicy::Handle>();
         FIXED_SIZE + table_cap + vecdeque_cap
     }
 

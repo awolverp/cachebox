@@ -108,7 +108,7 @@ impl NoPolicy {
     }
 }
 
-impl traits::PolicyExt for NoPolicy {
+impl PolicyExt for NoPolicy {
     type Shared = Shared;
     type Handle = Handle;
 
@@ -133,7 +133,7 @@ impl traits::PolicyExt for NoPolicy {
     fn get(
         &mut self,
         py: pyo3::Python,
-        key: &<Self::Handle as traits::HandleExt>::Key,
+        key: &<Self::Handle as HandleExt>::Key,
     ) -> pyo3::PyResult<Option<&Self::Handle>> {
         let bucket = self.table.find(key.hash(), |x| key.py_eq(py, x.key()))?;
         Ok(bucket.map(|x| unsafe { x.as_ref() }))
@@ -142,7 +142,7 @@ impl traits::PolicyExt for NoPolicy {
     fn entry<'a>(
         &'a mut self,
         py: pyo3::Python,
-        key: &<Self::Handle as traits::HandleExt>::Key,
+        key: &<Self::Handle as HandleExt>::Key,
         shared: &'a Self::Shared,
     ) -> pyo3::PyResult<traits::PolicyEntry<Self::Occupied<'a>, Self::Vacant<'a>>> {
         match self.table.find(key.hash(), |x| key.py_eq(py, x.key()))? {

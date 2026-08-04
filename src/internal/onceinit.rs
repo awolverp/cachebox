@@ -1,7 +1,7 @@
 //! According to PyO3 updates, we can write `__init__` methods inside the Rust, which allows developers
 //! to use classes as subclass in Python.
 //!
-//! All of classes must implement `__new__` and `__init__` methods.
+//! All classes must implement `__new__` and `__init__` methods.
 //! - In `__new__` methods, we should allocate memory for the type;
 //! - And in `__init__` methods, we should initialize and construct the type, according to parameters.
 //!

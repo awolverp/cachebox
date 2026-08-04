@@ -138,7 +138,7 @@ pub struct Pickle(alias::PyObject);
 impl Pickle {
     /// Begin building a top-level pickle tuple with exactly `size` slots.
     #[inline]
-    pub fn builder<'py>(py: pyo3::Python<'py>, size: usize) -> pyo3::PyResult<PickleBuilder<'py>> {
+    pub fn builder(py: pyo3::Python, size: usize) -> pyo3::PyResult<PickleBuilder> {
         PickleBuilder::new(py, size)
     }
 
@@ -193,15 +193,15 @@ pub trait Builder: Sized + sealed::Receive {
         Ok(self)
     }
 
-    fn begin_tuple<'a>(&'a mut self, size: usize) -> pyo3::PyResult<TupleBuilder<'a, Self>> {
+    fn begin_tuple(&mut self, size: usize) -> pyo3::PyResult<TupleBuilder<Self>> {
         TupleBuilder::new(self, size)
     }
 
-    fn begin_list<'a>(&'a mut self) -> pyo3::PyResult<ListBuilder<'a, Self>> {
+    fn begin_list(&mut self) -> pyo3::PyResult<ListBuilder<Self>> {
         ListBuilder::new(self)
     }
 
-    fn begin_dict<'a>(&'a mut self) -> pyo3::PyResult<DictBuilder<'a, Self>> {
+    fn begin_dict(&mut self) -> pyo3::PyResult<DictBuilder<Self>> {
         DictBuilder::new(self)
     }
 }

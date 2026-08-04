@@ -185,7 +185,7 @@ where
 /// # Safety
 /// The pointer must be valid, non-null, live Python object.
 #[inline(never)]
-pub unsafe fn get_type_name<'a>(py: pyo3::Python<'a>, obj: *mut pyo3::ffi::PyObject) -> String {
+pub unsafe fn get_type_name(py: pyo3::Python, obj: *mut pyo3::ffi::PyObject) -> String {
     use pyo3::types::PyStringMethods;
     use pyo3::types::PyTypeMethods;
 

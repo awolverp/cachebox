@@ -10,7 +10,7 @@ use crate::policies::wrapped::Wrapped;
 implement_pyclass! {
     /// A Time-To-Live (TTL) cache eviction policy: each entry carries an expiration timestamp
     /// and is considered stale — and eligible for eviction - once that deadline has passed,
-    /// regardless of how recently or frequently it was accessed.
+    /// regardless of how recently, or frequently it was accessed.
     [subclass, extends=crate::pyclasses::base::PyBaseCacheImpl, generic, frozen]
     PyTTLCache as "TTLCache" (onceinit::OnceInit<Wrapped<ttlpolicy::TTLPolicy>>);
 }
@@ -155,14 +155,14 @@ impl PyTTLCache {
 
     #[inline]
     fn __sizeof__(&self) -> usize {
-        const FIXED_SIZE: usize = std::mem::size_of::<Wrapped<ttlpolicy::TTLPolicy>>();
+        const FIXED_SIZE: usize = size_of::<Wrapped<ttlpolicy::TTLPolicy>>();
 
         let inner = self.0.get();
         let policy = inner.policy();
 
-        let table_cap = policy.table().capacity() * std::mem::size_of::<usize>();
+        let table_cap = policy.table().capacity() * size_of::<usize>();
         let vecdeque_cap =
-            policy.entries().capacity() * std::mem::size_of::<ttlpolicy::ExpiringHandle>();
+            policy.entries().capacity() * size_of::<ttlpolicy::ExpiringHandle>();
 
         FIXED_SIZE + table_cap + vecdeque_cap
     }
@@ -325,10 +325,10 @@ impl PyTTLCache {
     /// Get `key`s value, or automatically insert `default` and return it.
     ///
     /// If `key` exists, its current value is returned and `default` is ignored.
-    /// Otherwise `default` is inserted for `key` and returned.
+    /// Otherwise, `default` is inserted for `key` and returned.
     ///
     /// Use `setdefault_with`, if computing the value is expensive or has side
-    /// effectes.
+    /// effects.
     #[pyo3(signature = (key, default=utils::OptionalArgument::Undefined))]
     fn setdefault(
         &self,
@@ -371,7 +371,7 @@ impl PyTTLCache {
     /// Get `key`s value, or automatically create and insert one via `factory`.
     ///
     /// If `key` exists, its current value is returned and `factory` is not called.
-    /// Otherwise `factory` is called exactly once under an internal lock, its
+    /// Otherwise, `factory` is called exactly once under an internal lock, its
     /// result is inserted and returned.
     ///
     /// Warning: `factory` must not call back into this cache (deadlock risk) or block

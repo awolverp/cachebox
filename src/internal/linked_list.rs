@@ -7,6 +7,9 @@ use std::mem;
 use std::ptr::NonNull;
 use std::ptr::{self};
 
+/// Maximum number of nodes parked on the free list
+const FREE_LIST_CAPACITY: usize = 256;
+
 /// Intrusive doubly-linked pointers shared by every node and the sentinel.
 pub struct Links {
     prev: *mut Links,
@@ -37,10 +40,11 @@ pub struct Node<T> {
     element: T,
 }
 
-/// A doubly-linked list with an internal free-list for node reuse.
+/// A doubly-linked list with an internal, bounded free-list for node reuse.
 pub struct LinkedList<T> {
     sentinel: NonNull<Links>,
     free_head: *mut Links,
+    free_len: usize,
     len: usize,
     _marker: PhantomData<Box<Node<T>>>,
 }
@@ -148,7 +152,8 @@ impl<T> LinkedList<T> {
         }
     }
 
-    /// Pushes `node` onto the internal free list for reuse.
+    /// Pushes `node` onto the internal free list for reuse, or deallocates
+    /// it when the free list is already at [`FREE_LIST_CAPACITY`] entries.
     ///
     /// # Safety
     ///
@@ -157,6 +162,14 @@ impl<T> LinkedList<T> {
     /// `Links`/allocation, not the `T` storage.
     #[inline]
     unsafe fn recycle_node(&mut self, node: *mut Links) {
+        if self.free_len >= FREE_LIST_CAPACITY {
+            // SAFETY: `node` is unlinked with its element moved out per the
+            // caller contract, and was allocated via the global allocator
+            // with exactly this layout (see `alloc_node`), the same layout
+            // `drop_freelist` uses for its deallocations.
+            unsafe { dealloc(node as *mut u8, Layout::new::<Node<T>>()) };
+            return;
+        }
         let free_head = self.free_head;
         unsafe {
             // SAFETY: `node` is valid per caller contract; writing `next` does
@@ -164,6 +177,7 @@ impl<T> LinkedList<T> {
             (*node).next = free_head;
         }
         self.free_head = node;
+        self.free_len += 1;
     }
 
     /// Reads the element out of `node` and recycles the node's storage.
@@ -242,6 +256,7 @@ impl<T> LinkedList<T> {
             node = next;
         }
         self.free_head = ptr::null_mut();
+        self.free_len = 0;
     }
 
     /// Returns a node holding `elt`: reuses a free-list node when one is
@@ -253,6 +268,7 @@ impl<T> LinkedList<T> {
             // SAFETY: `free_head` is non-null here and points to a recycled
             // node threaded via `recycle_node`.
             self.free_head = unsafe { (*links).next };
+            self.free_len -= 1;
             let node = links as *mut Node<T>;
             // SAFETY: `#[repr(C)]` puts `links` at offset 0, and only the
             // `element` slot of a recycled node is stale; `links` is
@@ -305,6 +321,7 @@ impl<T> LinkedList<T> {
         LinkedList {
             sentinel,
             free_head: ptr::null_mut(),
+            free_len: 0,
             len: 0,
             _marker: PhantomData,
         }

@@ -98,6 +98,7 @@ jobs:
           enable-cache: false
 
       - name: "Create and activate .venv"
+        shell: bash
         run: |
           uv venv .venv --python 3.13
           if [[ "${{ matrix.os }}" == "windows" ]]; then

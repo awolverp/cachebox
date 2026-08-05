@@ -14,9 +14,8 @@ concurrency:
   cancel-in-progress: ${{ github.ref_type != 'tag' }}
 
 env:
-  (^_^): &interpreters            "3.10 3.11 3.12 3.13 3.14 3.14t 3.15 3.15t pypy3.11"
+  (^_^): &interpreters "3.10 3.11 3.12 3.13 3.14 3.14t 3.15 3.15t pypy3.11"
   ○_○: &interpreters_without_pypy "3.10 3.11 3.12 3.13 3.14 3.14t 3.15 3.15t"
-
 
 jobs:
   tools:
@@ -58,30 +57,12 @@ jobs:
     strategy:
       matrix:
         platform:
-          - {
-              target: x86_64,
-              interpreter: *interpreters
-            }
-          - {
-              target: x86,
-              interpreter: *interpreters
-            }
-          - {
-              target: aarch64,
-              interpreter: *interpreters
-            }
-          - {
-              target: armv7,
-              interpreter: *interpreters
-            }
-          - {
-              target: s390x,
-              interpreter: *interpreters
-            }
-          - {
-              target: ppc64le,
-              interpreter: *interpreters
-            }
+          - { target: x86_64, interpreter: *interpreters }
+          - { target: x86, interpreter: *interpreters }
+          - { target: aarch64, interpreter: *interpreters }
+          - { target: armv7, interpreter: *interpreters }
+          - { target: s390x, interpreter: *interpreters }
+          - { target: ppc64le, interpreter: *interpreters }
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -99,8 +80,8 @@ jobs:
           sccache: ${{ github.ref_type != 'tag' }}
           manylinux: auto
           args: >-
-            --release 
-            --out dist 
+            --release
+            --out dist
             --interpreter ${{ matrix.platform.interpreter }}
             --compatibility pypi
 
@@ -114,22 +95,10 @@ jobs:
     strategy:
       matrix:
         platform:
-          - {
-              target: x86_64,
-              interpreter: *interpreters
-            }
-          - {
-              target: x86,
-              interpreter: *interpreters
-            }
-          - {
-              target: aarch64,
-              interpreter: *interpreters
-            }
-          - {
-              target: armv7,
-              interpreter: *interpreters
-            }
+          - { target: x86_64, interpreter: *interpreters }
+          - { target: x86, interpreter: *interpreters }
+          - { target: aarch64, interpreter: *interpreters }
+          - { target: armv7, interpreter: *interpreters }
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -147,8 +116,8 @@ jobs:
           sccache: ${{ github.ref_type != 'tag' }}
           manylinux: musllinux_1_2
           args: >-
-            --release 
-            --out dist 
+            --release
+            --out dist
             --interpreter ${{ matrix.platform.interpreter }}
             --compatibility pypi
 
@@ -162,14 +131,8 @@ jobs:
     strategy:
       matrix:
         platform:
-          - {
-              target: x64,
-              interpreter: *interpreters
-            }
-          - {
-              target: x86,
-              interpreter: *interpreters_without_pypy,
-            }
+          - { target: x64, interpreter: *interpreters }
+          - { target: x86, interpreter: *interpreters_without_pypy }
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -187,8 +150,8 @@ jobs:
           target: ${{ matrix.platform.target }}
           sccache: ${{ github.ref_type != 'tag' }}
           args: >-
-            --release 
-            --out dist 
+            --release
+            --out dist
             --interpreter ${{ matrix.platform.interpreter }}
             --compatibility pypi
 
@@ -202,14 +165,8 @@ jobs:
     strategy:
       matrix:
         platform:
-          - {
-              target: x86_64,
-              interpreter: *interpreters
-            }
-          - {
-              target: aarch64,
-              interpreter: *interpreters
-            }
+          - { target: x86_64, interpreter: *interpreters }
+          - { target: aarch64, interpreter: *interpreters }
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -226,8 +183,8 @@ jobs:
           target: ${{ matrix.platform.target }}
           sccache: ${{ github.ref_type != 'tag' }}
           args: >-
-            --release 
-            --out dist 
+            --release
+            --out dist
             --interpreter ${{ matrix.platform.interpreter }}
             --compatibility pypi
 
@@ -257,7 +214,7 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
-    if: github.ref_type != 'tag' || github.event_name == 'workflow_dispatch'
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
     needs:
       - build-linux
       - build-musllinux

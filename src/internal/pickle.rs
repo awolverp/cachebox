@@ -193,15 +193,15 @@ pub trait Builder: Sized + sealed::Receive {
         Ok(self)
     }
 
-    fn begin_tuple(&mut self, size: usize) -> pyo3::PyResult<TupleBuilder<Self>> {
+    fn begin_tuple<'a>(&'a mut self, size: usize) -> pyo3::PyResult<TupleBuilder<'a, Self>> {
         TupleBuilder::new(self, size)
     }
 
-    fn begin_list(&mut self) -> pyo3::PyResult<ListBuilder<Self>> {
+    fn begin_list<'a>(&'a mut self) -> pyo3::PyResult<ListBuilder<'a, Self>> {
         ListBuilder::new(self)
     }
 
-    fn begin_dict(&mut self) -> pyo3::PyResult<DictBuilder<Self>> {
+    fn begin_dict<'a>(&'a mut self) -> pyo3::PyResult<DictBuilder<'a, Self>> {
         DictBuilder::new(self)
     }
 }

@@ -303,7 +303,7 @@ impl<P: PolicyExt> Wrapped<P> {
         let (shared, inner) = P::from_pickle(
             maxsize,
             getsizeof,
-            global_ttl.map(|x| std::time::Duration::from_secs_f64(x)),
+            global_ttl.map(std::time::Duration::from_secs_f64),
             builded,
         )?;
 

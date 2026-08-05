@@ -73,13 +73,12 @@ impl PyVTTLCache {
 
                 let getsizeof = wrapped.shared().getsizeof().clone_ref(py);
 
-                let result = wrapped.extend(
+                wrapped.extend(
                     // iterable object
                     iterable,
                     // transform function
                     |key, value| vttlpolicy::ExpiringHandle::new(py, &getsizeof, ttl, key, value),
-                );
-                result
+                )
             } else {
                 Ok(())
             }

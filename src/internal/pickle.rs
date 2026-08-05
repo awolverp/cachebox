@@ -511,7 +511,10 @@ impl<'a, P: Builder> DictBuilder<'a, P> {
             // SAFETY: the GIL is held for the entire lifetime of this builder because
             // the root PickleBuilder<'py> (which does own the 'py borrow) is kept alive
             // as our `parent`.
-            unsafe { std::mem::transmute(self.parent.py()) },
+            #[allow(clippy::missing_transmute_annotations)]
+            unsafe {
+                std::mem::transmute(self.parent.py())
+            },
         );
 
         let vptr = {
@@ -545,7 +548,10 @@ impl<'a, P: Builder> DictBuilder<'a, P> {
             // SAFETY: the GIL is held for the entire lifetime of this builder because
             // the root PickleBuilder<'py> (which does own the 'py borrow) is kept alive
             // as our `parent`.
-            unsafe { std::mem::transmute(self.parent.py()) },
+            #[allow(clippy::missing_transmute_annotations)]
+            unsafe {
+                std::mem::transmute(self.parent.py())
+            },
         );
 
         let vptr = {
@@ -577,7 +583,10 @@ impl<'a, P: Builder> DictBuilder<'a, P> {
             // SAFETY: the GIL is held for the entire lifetime of this builder because
             // the root PickleBuilder<'py> (which does own the 'py borrow) is kept alive
             // as our `parent`.
-            unsafe { std::mem::transmute(self.parent.py()) },
+            #[allow(clippy::missing_transmute_annotations)]
+            unsafe {
+                std::mem::transmute(self.parent.py())
+            },
         );
 
         let vptr = {

@@ -278,8 +278,6 @@ impl VTTLPolicy {
                 })
                 .unwrap();
 
-            drop(cursor);
-
             gv.increment();
 
             let handle = self.heap.pop_front(compare_fn!()).unwrap();

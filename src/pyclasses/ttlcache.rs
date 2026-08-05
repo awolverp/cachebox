@@ -63,7 +63,7 @@ impl PyTTLCache {
 
         let wrapped = Wrapped::new(
             ttlpolicy::TTLPolicy::new(capacity),
-            ttlpolicy::Shared::with_ttl(maxsize, getsizeof, Some(global_ttl.into())),
+            ttlpolicy::Shared::with_ttl(maxsize, getsizeof, Some(global_ttl)),
         );
 
         // Populate cache if `iterable` passed
@@ -71,7 +71,7 @@ impl PyTTLCache {
             if let Some(iterable) = iterable {
                 let getsizeof = wrapped.shared().getsizeof().clone_ref(py);
 
-                let result = wrapped.extend(
+                wrapped.extend(
                     // iterable object
                     iterable,
                     // transform function
@@ -84,8 +84,7 @@ impl PyTTLCache {
                             value,
                         )
                     },
-                );
-                result
+                )
             } else {
                 Ok(())
             }

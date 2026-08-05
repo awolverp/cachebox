@@ -100,13 +100,12 @@ impl PyFIFOCache {
             if let Some(iterable) = iterable {
                 let getsizeof = wrapped.shared().getsizeof().clone_ref(py);
 
-                let result = wrapped.extend(
+                wrapped.extend(
                     // iterable object
                     iterable,
                     // transform function
                     |key, value| fifopolicy::Handle::new(py, &getsizeof, key, value),
-                );
-                result
+                )
             } else {
                 Ok(())
             }
@@ -275,7 +274,7 @@ impl PyFIFOCache {
     /// Returns:
     ///     The value associated with the key, or the default value if the key is not found.
     #[pyo3(signature = (key, default=utils::OptionalArgument::Undefined))]
-    fn get<'p>(
+    fn get(
         &self,
         py: pyo3::Python,
         key: alias::PyObject,

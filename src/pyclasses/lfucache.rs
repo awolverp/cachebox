@@ -116,13 +116,12 @@ impl PyLFUCache {
             if let Some(iterable) = iterable {
                 let getsizeof = wrapped.shared().getsizeof().clone_ref(py);
 
-                let result = wrapped.extend(
+                wrapped.extend(
                     // iterable object
                     iterable,
                     // transform function
                     |key, value| lfupolicy::FrequencyHandle::new(py, &getsizeof, key, value, 0),
-                );
-                result
+                )
             } else {
                 Ok(())
             }

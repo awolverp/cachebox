@@ -314,16 +314,20 @@ impl<T> LinkedList<T> {
 
     /// Returns `true` if the list contains no elements.
     #[inline]
-    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }
 
     /// Returns the number of elements in the list.
     #[inline]
-    #[must_use]
     pub fn len(&self) -> usize {
         self.len
+    }
+
+    /// Returns the number of elements in the list.
+    #[inline]
+    pub fn capacity(&self) -> usize {
+        self.len + self.free_len
     }
 
     /// Removes all elements, dropping each element's value.

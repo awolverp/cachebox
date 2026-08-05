@@ -173,7 +173,7 @@ impl PyLRUCache {
         let inner = self.0.get();
         let policy = inner.policy();
 
-        policy.table().capacity()
+        policy.table().capacity().max(policy.list().capacity())
     }
 
     /// Returns the number of entries currently in the cache.

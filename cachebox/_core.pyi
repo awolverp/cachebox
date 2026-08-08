@@ -384,7 +384,7 @@ class Cache(BaseCacheImpl[KT, VT]):
         """
         Get `key`s value, or automatically create and insert one via `factory`.
         If `key` exists, its current value is returned and `factory` is not called.
-        Otherwise `factory` is called exactly once under an internal lock, its
+        Otherwise `factory` is called with the internal lock released, its
         result is inserted and returned.
 
         Args:
@@ -392,8 +392,9 @@ class Cache(BaseCacheImpl[KT, VT]):
             factory: The factory to call and get default value from if ``key`` is not in the cache.
 
         Warning:
-            `factory` must not call back into this cache (deadlock risk) or block
-            for long. If `factory` raises, nothing is inserted and the exception
+            if two threads miss the same key at once, `factory` can run
+            more than once; the value inserted first wins and is returned to
+            both. If `factory` raises, nothing is inserted and the exception
             propagates.
         """
         ...
@@ -565,7 +566,7 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         """
         Get `key`s value, or automatically create and insert one via `factory`.
         If `key` exists, its current value is returned and `factory` is not called.
-        Otherwise `factory` is called exactly once under an internal lock, its
+        Otherwise `factory` is called with the internal lock released, its
         result is inserted and returned.
 
         Args:
@@ -573,8 +574,9 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
             factory: The factory to call and get default value from if ``key`` is not in the cache.
 
         Warning:
-            `factory` must not call back into this cache (deadlock risk) or block
-            for long. If `factory` raises, nothing is inserted and the exception
+            if two threads miss the same key at once, `factory` can run
+            more than once; the value inserted first wins and is returned to
+            both. If `factory` raises, nothing is inserted and the exception
             propagates.
         """
         ...
@@ -779,7 +781,7 @@ class RRCache(BaseCacheImpl[KT, VT]):
         """
         Get `key`s value, or automatically create and insert one via `factory`.
         If `key` exists, its current value is returned and `factory` is not called.
-        Otherwise `factory` is called exactly once under an internal lock, its
+        Otherwise `factory` is called with the internal lock released, its
         result is inserted and returned.
 
         Args:
@@ -787,8 +789,9 @@ class RRCache(BaseCacheImpl[KT, VT]):
             factory: The factory to call and get default value from if ``key`` is not in the cache.
 
         Warning:
-            `factory` must not call back into this cache (deadlock risk) or block
-            for long. If `factory` raises, nothing is inserted and the exception
+            if two threads miss the same key at once, `factory` can run
+            more than once; the value inserted first wins and is returned to
+            both. If `factory` raises, nothing is inserted and the exception
             propagates.
         """
         ...
@@ -986,7 +989,7 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         """
         Get `key`s value, or automatically create and insert one via `factory`.
         If `key` exists, its current value is returned and `factory` is not called.
-        Otherwise `factory` is called exactly once under an internal lock, its
+        Otherwise `factory` is called with the internal lock released, its
         result is inserted and returned.
 
         Args:
@@ -994,8 +997,9 @@ class LRUCache(BaseCacheImpl[KT, VT]):
             factory: The factory to call and get default value from if ``key`` is not in the cache.
 
         Warning:
-            `factory` must not call back into this cache (deadlock risk) or block
-            for long. If `factory` raises, nothing is inserted and the exception
+            if two threads miss the same key at once, `factory` can run
+            more than once; the value inserted first wins and is returned to
+            both. If `factory` raises, nothing is inserted and the exception
             propagates.
         """
         ...
@@ -1234,7 +1238,7 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         """
         Get `key`s value, or automatically create and insert one via `factory`.
         If `key` exists, its current value is returned and `factory` is not called.
-        Otherwise `factory` is called exactly once under an internal lock, its
+        Otherwise `factory` is called with the internal lock released, its
         result is inserted and returned.
 
         Args:
@@ -1242,8 +1246,9 @@ class LFUCache(BaseCacheImpl[KT, VT]):
             factory: The factory to call and get default value from if ``key`` is not in the cache.
 
         Warning:
-            `factory` must not call back into this cache (deadlock risk) or block
-            for long. If `factory` raises, nothing is inserted and the exception
+            if two threads miss the same key at once, `factory` can run
+            more than once; the value inserted first wins and is returned to
+            both. If `factory` raises, nothing is inserted and the exception
             propagates.
         """
         ...
@@ -1441,7 +1446,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         """
         Get `key`s value, or automatically create and insert one via `factory`.
         If `key` exists, its current value is returned and `factory` is not called.
-        Otherwise `factory` is called exactly once under an internal lock, its
+        Otherwise `factory` is called with the internal lock released, its
         result is inserted and returned.
 
         Args:
@@ -1449,8 +1454,9 @@ class TTLCache(BaseCacheImpl[KT, VT]):
             factory: The factory to call and get default value from if ``key`` is not in the cache.
 
         Warning:
-            `factory` must not call back into this cache (deadlock risk) or block
-            for long. If `factory` raises, nothing is inserted and the exception
+            if two threads miss the same key at once, `factory` can run
+            more than once; the value inserted first wins and is returned to
+            both. If `factory` raises, nothing is inserted and the exception
             propagates.
         """
         ...
@@ -1708,7 +1714,7 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         """
         Get `key`s value, or automatically create and insert one via `factory`.
         If `key` exists, its current value is returned and `factory` is not called.
-        Otherwise `factory` is called exactly once under an internal lock, its
+        Otherwise `factory` is called with the internal lock released, its
         result is inserted and returned.
 
         Args:
@@ -1717,8 +1723,9 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
             ttl: An optional time-to-live duration for item.
 
         Warning:
-            `factory` must not call back into this cache (deadlock risk) or block
-            for long. If `factory` raises, nothing is inserted and the exception
+            if two threads miss the same key at once, `factory` can run
+            more than once; the value inserted first wins and is returned to
+            both. If `factory` raises, nothing is inserted and the exception
             propagates.
         """
         ...

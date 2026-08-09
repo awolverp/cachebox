@@ -2,6 +2,7 @@ import copy as stdcopy
 import dataclasses
 import gc
 import pickle
+import platform
 import subprocess
 import sys
 import threading
@@ -464,6 +465,11 @@ class IterationMixin(BaseMixin):
 
         assert done.stdout.strip() == "ok", done.stderr or f"exit code {done.returncode}"
 
+    @pytest.mark.skipif(
+        platform.python_implementation() == "PyPy",
+        reason="PyPy's GC does not collect cycles through the cache objects: "
+        "a cache holding itself is not collected either",
+    )
     def test_cache_holding_its_own_iterator_is_collected(self):
         class Canary:
             pass

@@ -542,52 +542,55 @@ impl PyCache {
             .map(|x| !x)
     }
 
-    fn items(&self) -> pyo3::PyResult<pyo3::Py<PyCacheItems>> {
-        let inner = self.0.get();
+    fn items(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyCacheItems>> {
+        let inner = slf.get().0.get();
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
 
         let result = PyCacheItems {
+            cache: slf.as_any().clone().unbind(),
             // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
             iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
             gv,
             initial_gv,
         };
 
-        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
+        pyo3::Py::new(slf.py(), result)
     }
 
-    fn values(&self) -> pyo3::PyResult<pyo3::Py<PyCacheValues>> {
-        let inner = self.0.get();
+    fn values(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyCacheValues>> {
+        let inner = slf.get().0.get();
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
 
         let result = PyCacheValues {
+            cache: slf.as_any().clone().unbind(),
             // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
             iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
             gv,
             initial_gv,
         };
-        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
+        pyo3::Py::new(slf.py(), result)
     }
 
-    fn keys(&self) -> pyo3::PyResult<pyo3::Py<PyCacheKeys>> {
-        let inner = self.0.get();
+    fn keys(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyCacheKeys>> {
+        let inner = slf.get().0.get();
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
 
         let result = PyCacheKeys {
+            cache: slf.as_any().clone().unbind(),
             // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
             iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
             gv,
             initial_gv,
         };
-        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
+        pyo3::Py::new(slf.py(), result)
     }
 
     #[inline]
-    fn __iter__(&self) -> pyo3::PyResult<pyo3::Py<PyCacheKeys>> {
-        self.keys()
+    fn __iter__(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyCacheKeys>> {
+        Self::keys(slf)
     }
 
     fn copy(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<Self>> {
@@ -681,6 +684,7 @@ macro_rules! implement_iterator {
         $(
             implement_pyclass! {
                 [generic, frozen] $name as $pyname {
+                    cache: pyo3::Py<pyo3::PyAny>,
                     initial_gv: u32,
                     gv: utils::GenerationVersion,
                     iter: parking_lot::Mutex<crate::hashbrown::raw::RawIter<nopolicy::Handle>>,
@@ -692,6 +696,10 @@ macro_rules! implement_iterator {
                 #[inline]
                 fn __iter__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyRef<'_, Self> {
                     slf
+                }
+
+                fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
+                    visit.call(&self.cache)
                 }
 
                 fn __next__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyResult<$rt_type> {

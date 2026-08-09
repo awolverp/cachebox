@@ -25,6 +25,33 @@ macro_rules! implement_pyclass {
     };
 }
 
+/// Implements the generation-version guard shared by every cache view type.
+///
+/// # Example
+///
+/// ```ignore
+/// implement_view_guard!(PyCacheKeys);
+/// ```
+#[macro_export]
+macro_rules! implement_view_guard {
+    ($name:ident) => {
+        impl $name {
+            /// Fails if the cache changed after this view was created.
+            #[inline]
+            fn check_generation(&self) -> pyo3::PyResult<()> {
+                if self.initial_gv == self.gv.get() {
+                    return Ok(());
+                }
+
+                Err($crate::new_py_error!(
+                    PyRuntimeError,
+                    "cache size changed during iteration"
+                ))
+            }
+        }
+    };
+}
+
 /// Creates a new [`PyErr`] of the given exception type.
 #[macro_export]
 macro_rules! new_py_error {

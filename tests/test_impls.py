@@ -1021,6 +1021,21 @@ class TestTTLCachePolicy(mixins.SweepIntervalMixin):
         with pytest.raises(ValueError):
             c = self.create_cache(10, global_ttl=-1)
 
+    def test_iterator_len_skips_expired_item_behind_a_live_one(self):
+        cache = self.create_cache(global_ttl=1)
+
+        cache.insert("A", 1)
+        cache.insert("B", 2)
+        time.sleep(0.6)
+        cache.insert("A", 11)  # refreshed, but keeps its place in front of "B"
+        time.sleep(0.6)
+
+        # "B" is expired, but the sweep stops at the live "A" in front of it
+        assert len(cache) == 2
+
+        assert len(cache.keys()) == 1
+        assert list(cache.keys()) == ["A"]
+
     def test_global_ttl_with_iterable(self):
         c = self.create_cache(10, {"A": "B", "C": "D"}, global_ttl=1)
         assert c.global_ttl == 1
@@ -1507,6 +1522,20 @@ class TestVTTLCachePolicy(mixins.SweepIntervalMixin):
         c.insert("k", "v", ttl=0.1)
         time.sleep(0.15)
         assert "k" not in c
+
+    def test_iterator_len_skips_item_expired_after_creation(self):
+        c = self.create_cache()
+        c.insert("alive", 1, ttl=10)
+        c.insert("soon", 2, ttl=0.2)
+
+        it = c.keys()
+        assert len(it) == 2
+
+        time.sleep(0.25)
+        assert len(it) == 1
+
+        # asking for the length does not consume the iterator
+        assert list(it) == ["alive"]
 
     def test_expired_item_not_returned_by_get(self):
         c = self.create_cache()

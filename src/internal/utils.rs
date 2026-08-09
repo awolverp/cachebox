@@ -476,6 +476,26 @@ impl<T> Iterator for RawSliceIter<T> {
             Some(value)
         }
     }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let left = self.len - self.index;
+        (left, Some(left))
+    }
+}
+
+impl<T> ExactSizeIterator for RawSliceIter<T> {}
+
+// Cloning gives a second cursor over the same elements; it never touches them.
+impl<T> Clone for RawSliceIter<T> {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self {
+            pointer: self.pointer,
+            index: self.index,
+            len: self.len,
+        }
+    }
 }
 
 unsafe impl<T: Sync> Send for RawSliceIter<T> {}
@@ -512,6 +532,24 @@ impl<T> Iterator for RawVecDequeIter<T> {
                 std::mem::swap(&mut self.first, &mut self.second);
                 self.first.next()
             }
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let left = self.first.len() + self.second.len();
+        (left, Some(left))
+    }
+}
+
+impl<T> ExactSizeIterator for RawVecDequeIter<T> {}
+
+impl<T> Clone for RawVecDequeIter<T> {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self {
+            first: self.first.clone(),
+            second: self.second.clone(),
         }
     }
 }

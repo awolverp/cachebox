@@ -18,7 +18,7 @@ _IterableType: typing.TypeAlias = (
     | typing.Iterable[typing.Tuple[KT, VT]]
 )
 
-class CacheIterator(typing.Generic[T_co]):
+class CacheIterator(typing.Iterator[T_co]):
     """
     What ``keys()``, ``values()`` and ``items()`` return.
 

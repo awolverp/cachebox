@@ -2,10 +2,12 @@ import copy as stdcopy
 import dataclasses
 import gc
 import pickle
+import subprocess
 import sys
 import threading
 import time
 import typing
+import weakref
 from datetime import timedelta
 from unittest.mock import Mock, patch
 
@@ -401,6 +403,29 @@ class IntrospectionMixin(BaseMixin):
         assert c1 != c2
 
 
+WALKING_A_TEMPORARY_CACHE = """
+import sys
+
+import cachebox
+
+name = sys.argv[1]
+cls = getattr(cachebox, name)
+
+
+def make():
+    cache = cls(10, global_ttl=60) if name == "TTLCache" else cls(10)
+    cache.update({"a": 1, "b": 2})
+    return cache
+
+
+# nothing else holds the cache by the time the walk starts
+assert set(make().keys()) == {"a", "b"}
+assert set(make().items()) == {("a", 1), ("b", 2)}
+assert sorted(make().values()) == [1, 2]
+print("ok")
+"""
+
+
 class IterationMixin(BaseMixin):
     def test_keys_returns_all_keys(self):
         cache = self.create_cache()
@@ -425,6 +450,34 @@ class IterationMixin(BaseMixin):
 
         cache.update({"x": 10, "y": 20})
         assert set(iter(cache)) == {"x", "y"}
+
+    def test_walking_a_cache_nothing_else_holds(self):
+        # reading freed memory faults instead of failing, so it runs in a child process
+        name = type(self.create_cache()).__name__
+
+        done = subprocess.run(
+            [sys.executable, "-c", WALKING_A_TEMPORARY_CACHE, name],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+
+        assert done.stdout.strip() == "ok", done.stderr or f"exit code {done.returncode}"
+
+    def test_cache_holding_its_own_iterator_is_collected(self):
+        class Canary:
+            pass
+
+        canary = Canary()
+        ref = weakref.ref(canary)
+
+        cache = self.create_cache()
+        cache.insert("canary", canary)
+        cache.insert("self", cache.keys())  # the cycle: cache -> iterator -> cache
+        del cache, canary
+        gc.collect()
+
+        assert ref() is None
 
     def test_generation_version_on_remove(self):
         cache = self.create_cache(10, {i: i for i in range(10)})

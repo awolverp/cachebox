@@ -554,69 +554,75 @@ impl PyLFUCache {
             .map(|x| !x)
     }
 
-    fn items(&self) -> pyo3::PyResult<pyo3::Py<PyLFUCacheItems>> {
-        let inner = self.0.get();
+    fn items(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyLFUCacheItems>> {
+        let inner = slf.get().0.get();
         let mut policy = inner.policy();
 
         let gv = inner.shared().generation_version();
         let iter = policy.iter(gv);
 
         let result = PyLFUCacheItems {
+            cache: slf.as_any().clone().unbind(),
             iter: parking_lot::Mutex::new(iter),
             gv: gv.clone(),
             initial_gv: gv.get(),
         };
-        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
+        pyo3::Py::new(slf.py(), result)
     }
 
-    fn values(&self) -> pyo3::PyResult<pyo3::Py<PyLFUCacheValues>> {
-        let inner = self.0.get();
+    fn values(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyLFUCacheValues>> {
+        let inner = slf.get().0.get();
         let mut policy = inner.policy();
 
         let gv = inner.shared().generation_version();
         let iter = policy.iter(gv);
 
         let result = PyLFUCacheValues {
+            cache: slf.as_any().clone().unbind(),
             iter: parking_lot::Mutex::new(iter),
             gv: gv.clone(),
             initial_gv: gv.get(),
         };
-        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
+        pyo3::Py::new(slf.py(), result)
     }
 
-    fn keys(&self) -> pyo3::PyResult<pyo3::Py<PyLFUCacheKeys>> {
-        let inner = self.0.get();
+    fn keys(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyLFUCacheKeys>> {
+        let inner = slf.get().0.get();
         let mut policy = inner.policy();
 
         let gv = inner.shared().generation_version();
         let iter = policy.iter(gv);
 
         let result = PyLFUCacheKeys {
+            cache: slf.as_any().clone().unbind(),
             iter: parking_lot::Mutex::new(iter),
             gv: gv.clone(),
             initial_gv: gv.get(),
         };
-        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
+        pyo3::Py::new(slf.py(), result)
     }
 
     #[inline]
-    fn __iter__(&self) -> pyo3::PyResult<pyo3::Py<PyLFUCacheKeys>> {
-        self.keys()
+    fn __iter__(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyLFUCacheKeys>> {
+        Self::keys(slf)
     }
 
-    fn items_with_frequency(&self) -> pyo3::PyResult<pyo3::Py<PyLFUCacheItemsWithFrequency>> {
-        let inner = self.0.get();
+    fn items_with_frequency(
+        slf: pyo3::Bound<'_, Self>,
+    ) -> pyo3::PyResult<pyo3::Py<PyLFUCacheItemsWithFrequency>> {
+        let inner = slf.get().0.get();
         let mut policy = inner.policy();
 
         let gv = inner.shared().generation_version();
         let iter = policy.iter(gv);
 
         let result = PyLFUCacheItemsWithFrequency {
+            cache: slf.as_any().clone().unbind(),
             iter: parking_lot::Mutex::new(iter),
             gv: gv.clone(),
             initial_gv: gv.get(),
         };
-        pyo3::Python::attach(|py| pyo3::Py::new(py, result))
+        pyo3::Py::new(slf.py(), result)
     }
 
     fn copy(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<Self>> {
@@ -760,6 +766,7 @@ macro_rules! implement_iterator {
         $(
             implement_pyclass! {
                 [generic, frozen] $name as $pyname {
+                    cache: pyo3::Py<pyo3::PyAny>,
                     initial_gv: u32,
                     gv: utils::GenerationVersion,
                     iter: parking_lot::Mutex<lazyheap::RawIter<lfupolicy::FrequencyHandle>>,
@@ -771,6 +778,10 @@ macro_rules! implement_iterator {
                 #[inline]
                 fn __iter__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyRef<'_, Self> {
                     slf
+                }
+
+                fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
+                    visit.call(&self.cache)
                 }
 
                 fn __next__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyResult<$rt_type> {

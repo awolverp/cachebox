@@ -148,7 +148,9 @@ Read the documentation for full information and learn more: [**Documentation**](
 
 ## Contributors
 
-[![Contributors](https://contrib.rocks/image?repo=awolverp/cachebox)](https://github.com/awolverp/cachebox/graphs/contributors)
+<p align="center">
+  <a href="https://github.com/awolverp/cachebox/graphs/contributors"><img alt="contributors" src="https://shieldcn.dev/contributors/awolverp/cachebox.svg?title=false&amp;preset=transparent&amp;size=80&amp;titleAlign=center&amp;mode=dark&amp;font=geist-mono" /></a>
+</p>
 
 ## License
 

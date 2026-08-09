@@ -15,6 +15,8 @@ _The fastest caching Python library written in Rust_
 [![Last Commit](https://shieldcn.dev/github/last-commit/awolverp/cachebox.svg?variant=outline&font=geist-mono&size=xs)](https://github.com/awolverp/cachebox/commits/main)
 [![License](https://shieldcn.dev/github/awolverp/cachebox/license.svg?variant=outline&font=geist-mono&size=xs)](https://github.com/awolverp/cachebox/blob/main/LICENSE)
 
+</div>
+
 ---
 
 > [!WARNING]\

@@ -11,9 +11,9 @@ _The fastest caching Python library written in Rust_
 [![Monthly Downloads](https://shieldcn.dev/pypi/dm/cachebox.svg?variant=branded&font=geist-mono&size=xs)](https://pypi.org/project/cachebox)
 [![Python Version](https://shieldcn.dev/pypi/python/cachebox.svg?variant=branded&font=geist-mono&size=xs)](https://pypi.org/project/cachebox)
 
-[![CI](https://shieldcn.dev/github/ci/awolverp/cachebox.svg?variant=outline&font=geist-mono&size=xs&animate=pulse)](https://github.com/awolverp/cachebox/actions?query=branch%3Amain)
-[![Last Commit](https://shieldcn.dev/github/last-commit/awolverp/cachebox.svg?variant=outline&font=geist-mono&size=xs)](https://github.com/awolverp/cachebox/commits/main)
-[![License](https://shieldcn.dev/github/awolverp/cachebox/license.svg?variant=outline&font=geist-mono&size=xs)](https://github.com/awolverp/cachebox/blob/main/LICENSE)
+<a href="https://github.com/awolverp/cachebox/actions?query=branch%3Amain"><picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/github/ci/awolverp/cachebox.svg?variant=outline&font=geist-mono&size=xs&animate=pulse&mode=dark"><img alt="CI" src="https://shieldcn.dev/github/ci/awolverp/cachebox.svg?variant=outline&font=geist-mono&size=xs&animate=pulse&mode=light"></picture></a>
+<a href="https://github.com/awolverp/cachebox/commits/main"><picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/github/last-commit/awolverp/cachebox.svg?variant=outline&font=geist-mono&size=xs&mode=dark"><img alt="Last Commit" src="https://shieldcn.dev/github/last-commit/awolverp/cachebox.svg?variant=outline&font=geist-mono&size=xs&mode=light"></picture></a>
+<a href="https://github.com/awolverp/cachebox/blob/main/LICENSE"><picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/github/awolverp/cachebox/license.svg?variant=outline&font=geist-mono&size=xs&mode=dark"><img alt="License" src="https://shieldcn.dev/github/awolverp/cachebox/license.svg?variant=outline&font=geist-mono&size=xs&mode=light"></picture></a>
 
 </div>
 

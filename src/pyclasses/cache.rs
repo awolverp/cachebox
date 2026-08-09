@@ -359,11 +359,12 @@ impl PyCache {
     /// Get `key`s value, or automatically create and insert one via `factory`.
     ///
     /// If `key` exists, its current value is returned and `factory` is not called.
-    /// Otherwise `factory` is called exactly once under an internal lock, its
+    /// Otherwise `factory` is called with the internal lock released, its
     /// result is inserted and returned.
     ///
-    /// Warning: `factory` must not call back into this cache (deadlock risk) or block
-    /// for long. If `factory` raises, nothing is inserted and the exception
+    /// Warning: if two threads miss the same key at once, `factory` can run
+    /// more than once; the value inserted first wins and is returned to
+    /// both. If `factory` raises, nothing is inserted and the exception
     /// propagates.
     fn setdefault_with(
         &self,
@@ -378,13 +379,23 @@ impl PyCache {
 
         let inner = self.0.get();
         let shared = inner.shared();
+
+        {
+            let mut policy = inner.policy();
+
+            if let Some(x) = policy.get(py, &key)? {
+                return Ok(x.value().clone_ref(py));
+            }
+        }
+
+        // `factory` is Python code: a GC pass inside it would deadlock on `__traverse__`
+        let default_object = factory.call0(py)?;
+
         let mut policy = inner.policy();
 
         if let Some(x) = policy.get(py, &key)? {
             return Ok(x.value().clone_ref(py));
         }
-
-        let default_object = factory.call0(py)?;
 
         let handle = nopolicy::Handle::with_precomputed_hash_key(
             py,

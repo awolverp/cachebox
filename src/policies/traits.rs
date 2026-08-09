@@ -105,6 +105,7 @@ pub trait PolicyExt: Sized {
         &mut self,
         py: pyo3::Python,
         key: &<Self::Handle as HandleExt>::Key,
+        shared: &Self::Shared,
     ) -> pyo3::PyResult<Option<&Self::Handle>>;
 
     /// Returns a [`PolicyEntry`] for the slot at `hash` / `eq`.

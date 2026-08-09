@@ -311,6 +311,7 @@ impl PolicyExt for VTTLPolicy {
         &mut self,
         py: pyo3::Python,
         key: &<Self::Handle as HandleExt>::Key,
+        _shared: &Self::Shared,
     ) -> pyo3::PyResult<Option<&Self::Handle>> {
         let cursor = self
             .table

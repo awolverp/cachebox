@@ -255,6 +255,7 @@ impl PolicyExt for FIFOPolicy {
         &mut self,
         py: pyo3::Python,
         key: &<Self::Handle as HandleExt>::Key,
+        _shared: &Self::Shared,
     ) -> pyo3::PyResult<Option<&Self::Handle>> {
         let eq = |index: &usize| get_handle!(&self, *index).key().py_eq(py, key);
         match self.table.get(key.hash(), eq)? {

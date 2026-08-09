@@ -283,7 +283,7 @@ impl PyRRCache {
         let inner = self.0.get();
         let mut policy = inner.policy();
 
-        if let Some(x) = policy.get(py, &key)? {
+        if let Some(x) = policy.get(py, &key, inner.shared())? {
             return Ok(x.value().clone_ref(py));
         }
 
@@ -306,7 +306,7 @@ impl PyRRCache {
         let inner = self.0.get();
         let mut policy = inner.policy();
 
-        match policy.get(py, &key)? {
+        match policy.get(py, &key, inner.shared())? {
             Some(x) => Ok(x.value().clone_ref(py)),
             None => Err(new_py_error!(
                 PyKeyError,
@@ -338,7 +338,7 @@ impl PyRRCache {
         let shared = inner.shared();
         let mut policy = inner.policy();
 
-        if let Some(x) = policy.get(py, &key)? {
+        if let Some(x) = policy.get(py, &key, inner.shared())? {
             return Ok(x.value().clone_ref(py));
         }
 
@@ -387,7 +387,7 @@ impl PyRRCache {
         {
             let mut policy = inner.policy();
 
-            if let Some(x) = policy.get(py, &key)? {
+            if let Some(x) = policy.get(py, &key, inner.shared())? {
                 return Ok(x.value().clone_ref(py));
             }
         }
@@ -397,7 +397,7 @@ impl PyRRCache {
 
         let mut policy = inner.policy();
 
-        if let Some(x) = policy.get(py, &key)? {
+        if let Some(x) = policy.get(py, &key, inner.shared())? {
             return Ok(x.value().clone_ref(py));
         }
 

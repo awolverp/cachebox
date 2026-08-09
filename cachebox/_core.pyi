@@ -32,7 +32,6 @@ class CacheIterator(typing.Iterator[T_co]):
         raises ``RuntimeError`` if the cache changed.
     """
 
-    def __iter__(self) -> typing.Self: ...
     def __next__(self) -> T_co: ...
     def __len__(self) -> int:
         """

@@ -205,6 +205,28 @@ class SetDefaultMixin(BaseMixin):
         assert cache.get("k") == "existing"
 
 
+FACTORY_TOUCHING_CACHE = """
+import gc
+import sys
+
+import cachebox
+
+name = sys.argv[1]
+cls = getattr(cachebox, name)
+cache = cls(10, global_ttl=60) if name == "TTLCache" else cls(10)
+cache.insert("seen", "value")
+
+
+def factory():
+    gc.collect()
+    return cache["seen"]
+
+
+assert cache.setdefault_with("k", factory) == "value"
+print("ok")
+"""
+
+
 class SetDefaultWithMixin(BaseMixin):
     def test_setdefault_with_inserts_when_absent(self):
         cache = self.create_cache()
@@ -242,6 +264,22 @@ class SetDefaultWithMixin(BaseMixin):
 
         with pytest.raises(ValueError):
             cache.setdefault_with("k", factory)
+
+    def test_setdefault_with_factory_may_touch_the_cache_and_the_gc(self):
+        # a deadlock here would keep the GIL, so the call runs in a child process
+        name = type(self.create_cache()).__name__
+
+        try:
+            done = subprocess.run(
+                [sys.executable, "-c", FACTORY_TOUCHING_CACHE, name],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail(f"{name}.setdefault_with never returned")
+
+        assert done.stdout.strip() == "ok", done.stderr
 
 
 class PopAndDeleteMixin(BaseMixin):

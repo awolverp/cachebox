@@ -366,13 +366,23 @@ impl PyVTTLCache {
 
         let inner = self.0.get();
         let shared = inner.shared();
+
+        {
+            let mut policy = inner.policy();
+
+            if let Some(x) = policy.get(py, &key)? {
+                return Ok(x.value().clone_ref(py));
+            }
+        }
+
+        // `factory` is Python code: a GC pass inside it would deadlock on `__traverse__`
+        let default_object = factory.call0(py)?;
+
         let mut policy = inner.policy();
 
         if let Some(x) = policy.get(py, &key)? {
             return Ok(x.value().clone_ref(py));
         }
-
-        let default_object = factory.call0(py)?;
 
         let handle = vttlpolicy::ExpiringHandle::with_precomputed_hash_key(
             py,

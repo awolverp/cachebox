@@ -128,6 +128,19 @@ class TestFIFOCachePolicy(mixins.BaseMixin):
             getsizeof=getsizeof,
         )
 
+    def test_iterator_len_correct_across_ring_wrap(self):
+        """Evictions wrap the ring buffer; len() must stay correct after every next()."""
+        cache = self.create_cache(5)
+        for i in range(9):
+            cache.insert(f"k{i}", i)
+
+        it = cache.keys()
+        for left in range(len(cache), 0, -1):
+            assert len(it) == left
+            next(it)
+
+        assert len(it) == 0
+
     def test_oldest_item_evicted_on_overflow(self):
         """When capacity is exceeded, the first inserted key must be evicted."""
         cache = self.create_cache(3, [(1, "a"), (2, "b"), (3, "c")])
@@ -1007,6 +1020,19 @@ class TestTTLCachePolicy(mixins.SweepIntervalMixin):
             getsizeof=getsizeof,
             sweep_interval=sweep_interval,
         )
+
+    def test_iterator_len_correct_across_ring_wrap(self):
+        """Evictions wrap the ring buffer; len() must stay correct after every next()."""
+        cache = self.create_cache(5)
+        for i in range(9):
+            cache.insert(f"k{i}", i)
+
+        it = cache.keys()
+        for left in range(len(cache), 0, -1):
+            assert len(it) == left
+            next(it)
+
+        assert len(it) == 0
 
     def test_global_ttl_property(self):
         c = self.create_cache(10, global_ttl=5)

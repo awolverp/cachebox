@@ -149,7 +149,7 @@ Read the documentation for full information and learn more: [**Documentation**](
 ## Contributors
 
 <p align="center">
-  <a href="https://github.com/awolverp/cachebox/graphs/contributors"><picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/contributors/awolverp/cachebox.svg?title=false&amp;preset=transparent&amp;size=80&amp;titleAlign=center&amp;mode=dark&amp;font=geist-mono" /><img alt="contributors" src="https://shieldcn.dev/contributors/awolverp/cachebox.svg?title=false&amp;preset=transparent&amp;size=80&amp;titleAlign=center&amp;mode=light&amp;font=geist-mono" /></picture></a>
+  <a href="https://github.com/awolverp/cachebox/graphs/contributors"><picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/contributors/awolverp/cachebox.svg?title=false&amp;preset=transparent&amp;size=80&amp;names=true&amp;titleAlign=center&amp;mode=dark" /><img alt="contributors" src="https://shieldcn.dev/contributors/awolverp/cachebox.svg?title=false&amp;preset=transparent&amp;size=80&amp;names=true&amp;titleAlign=center&amp;mode=light" /></picture></a>
 </p>
 
 ## License

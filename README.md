@@ -2,30 +2,40 @@
 
 # Cachebox
 
-*The fastest caching Python library written in Rust*
+_The fastest caching Python library written in Rust_
 
-[**Documentation**](https://awolverp.github.io/cachebox) | [**Releases**](https://github.com/awolverp/cachebox/releases) | 
-[**Benchmarks**](https://github.com/awolverp/cachebox-benchmark) | 
+<a href="https://pypi.org/project/cachebox"><img alt="PyPI Version" src="https://shieldcn.dev/pypi/cachebox.svg?variant=branded&font=geist-mono&size=xs"/></a>
+<a href="https://pypi.org/project/cachebox"><img alt="Monthly Downloads" src="https://shieldcn.dev/pypi/dm/cachebox.svg?variant=branded&font=geist-mono&size=xs"/></a>
+<a href="https://pypi.org/project/cachebox"><img alt="Python Version" src="https://shieldcn.dev/pypi/python/cachebox.svg?variant=branded&font=geist-mono&size=xs"/></a>
+
+<a href="https://github.com/awolverp/cachebox/actions?query=branch%3Amain"><picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/github/ci/awolverp/cachebox.svg?variant=outline&font=geist-mono&size=xs&animate=pulse&mode=dark"><img alt="CI" src="https://shieldcn.dev/github/ci/awolverp/cachebox.svg?variant=outline&font=geist-mono&size=xs&animate=pulse&mode=light"></picture></a>
+<a href="https://github.com/awolverp/cachebox/commits/main"><picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/github/last-commit/awolverp/cachebox.svg?variant=outline&font=geist-mono&size=xs&mode=dark"><img alt="Last Commit" src="https://shieldcn.dev/github/last-commit/awolverp/cachebox.svg?variant=outline&font=geist-mono&size=xs&mode=light"></picture></a>
+<a href="https://github.com/awolverp/cachebox/blob/main/UNLICENSE"><picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/github/awolverp/cachebox/license.svg?variant=outline&font=geist-mono&size=xs&mode=dark"><img alt="License" src="https://shieldcn.dev/github/awolverp/cachebox/license.svg?variant=outline&font=geist-mono&size=xs&mode=light"></picture></a>
+</div>
+
+<!--
+[**Documentation**](https://awolverp.github.io/cachebox) | [**Releases**](https://github.com/awolverp/cachebox/releases) |
+[**Benchmarks**](https://github.com/awolverp/cachebox-benchmark) |
 [**Issues**](https://github.com/awolverp/cachebox/issues/new)
 
 [![License](https://img.shields.io/github/license/awolverp/cachebox.svg?style=flat-square)](https://github.com/awolverp/cachebox/blob/main/LICENSE)
 [![Downloads](https://img.shields.io/pypi/dm/cachebox?style=flat-square&color=%23314bb5)](https://pepy.tech/projects/cachebox)
-[![Donate](https://img.shields.io/badge/donate-PayRequest-blue)](https://payrequest.me/ali-pooralijan-awolverp)
+[![Donate](https://img.shields.io/badge/donate-PayRequest-blue)](https://payrequest.me/ali-pooralijan-awolverp)-->
 
-</div>
-
--------
+---
 
 > [!WARNING]\
 > The new version v6 has incompatibilities with v5. For more info see [Migration Guide](https://awolverp.github.io/cachebox/migration).
 
 ### What does it do?
+
 You can easily perform powerful caching operations in Python as fast as possible.
 This can make your application a lot faster and it can be a good choice in complex applications.
 **Ideal for optimizing large-scale applications** with efficient, low-overhead caching.
 
 **Key Features:**
-- 🚀 Extremely fast (10-50x faster than other caching libraries - [*benchmarks*](https://github.com/awolverp/cachebox-benchmark))
+
+- 🚀 Extremely fast (10-50x faster than other caching libraries - [_benchmarks_](https://github.com/awolverp/cachebox-benchmark))
 - 📊 Minimal memory footprint
 - 🔥 Full-featured and user-friendly
 - 🧶 Completely thread-safe
@@ -35,6 +45,7 @@ This can make your application a lot faster and it can be a good choice in compl
 - 📦 Supports 7 advanced caching algorithms
 
 ### When do I need caching?
+
 - 📈 **Frequent Data Access** \
   If you need to access the same data multiple times, caching can help reduce the number of database queries or API calls, improving performance.
 
@@ -54,36 +65,40 @@ This can make your application a lot faster and it can be a good choice in compl
   If your application frequently makes predictions using the same input data, caching the results can save computation time.
 
 ### Why `cachebox`?
+
 - **⚡ Rust** \
-It uses the *Rust* language for high-performance.
+  It uses the _Rust_ language for high-performance.
 
 - **🧮 SwissTable** \
-It uses Google's high-performance SwissTable hash map. Thanks to [hashbrown](https://github.com/rust-lang/hashbrown).
+  It uses Google's high-performance SwissTable hash map. Thanks to [hashbrown](https://github.com/rust-lang/hashbrown).
 
 - **✨ Low memory usage** \
-It has very low memory usage.
+  It has very low memory usage.
 
 - **⭐ Zero Dependency** \
-As we said, `cachebox` is written in *Rust* so you don't have to install any other dependencies.
+  As we said, `cachebox` is written in _Rust_ so you don't have to install any other dependencies.
 
 - **🧶 Thread safe** \
-It's completely thread-safe and uses *Rust* mutex to prevent problems.
+  It's completely thread-safe and uses _Rust_ mutex to prevent problems.
 
 - **👌 Easy To Use** \
-You only need to import it and choose a cache implementation to use.
+  You only need to import it and choose a cache implementation to use.
 
 - **🚫 Avoids Cache Stampede** \
-It avoids [cache stampede](https://en.wikipedia.org/wiki/Cache_stampede) by using a distributed lock system.
-
+  It avoids [cache stampede](https://en.wikipedia.org/wiki/Cache_stampede) by using a distributed lock system.
 
 ## Installation
+
 cachebox is installable via `pip`:
+
 ```bash
 pip3 install -U cachebox
 ```
 
 ## Examples
+
 The simplest example of **cachebox** could look like this:
+
 ```python
 import cachebox
 
@@ -104,6 +119,7 @@ async def make_request(method: str, url: str) -> dict:
 ```
 
 Unlike `functools.lru_cache` and other caching libraries, cachebox can copy `dict`, `list`, and `set` objects.
+
 ```python
 @cachebox.cached(cachebox.LRUCache(maxsize=128))
 def make_dict(name: str, age: int) -> dict:
@@ -119,6 +135,7 @@ assert d2 == {"name": "cachebox", "age": 10}
 ```
 
 You can use cache algorithms without the `cached` decorator -- just import the cache algorithm you want and use it like a dictionary.
+
 ```python
 from cachebox import FIFOCache
 
@@ -131,7 +148,11 @@ assert cache.get("key") == "value"
 ```
 
 ## Learn more
+
 Read the documentation for full information and learn more: [**Documentation**](https://awolverp.github.io/cachebox/)
 
+## Contributors
+
 ## License
+
 This repository is licensed under the [MIT License](LICENSE)

@@ -4,23 +4,16 @@
 
 _The fastest caching Python library written in Rust_
 
-<a href="https://pypi.org/project/cachebox"><img alt="PyPI Version" src="https://shieldcn.dev/pypi/cachebox.svg?variant=branded&font=geist-mono&size=xs"/></a>
-<a href="https://pypi.org/project/cachebox"><img alt="Monthly Downloads" src="https://shieldcn.dev/pypi/dm/cachebox.svg?variant=branded&font=geist-mono&size=xs"/></a>
-<a href="https://pypi.org/project/cachebox"><img alt="Python Version" src="https://shieldcn.dev/pypi/python/cachebox.svg?variant=branded&font=geist-mono&size=xs"/></a>
+[![badge](https://shieldcn.dev/badge/Documentation-ff6e42.svg?logo=ri%3AMdWeb)](https://awolverp.github.io/cachebox/) [![badge](https://shieldcn.dev/badge/Benchmarks-ff6e42.svg?logo=ri%3ATbBrandSpeedtest)](https://github.com/awolverp/cachebox-benchmark)
+[![Buy Me A Coffee](https://shieldcn.dev/badge/Buy%20Me%20A%20Coffee-ff6e42.svg?logo=lu%3ACoffee)](https://payrequest.me/ali-pooralijan-awolverp)
 
-<a href="https://github.com/awolverp/cachebox/actions?query=branch%3Amain"><picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/github/ci/awolverp/cachebox.svg?variant=outline&font=geist-mono&size=xs&animate=pulse&mode=dark"><img alt="CI" src="https://shieldcn.dev/github/ci/awolverp/cachebox.svg?variant=outline&font=geist-mono&size=xs&animate=pulse&mode=light"></picture></a>
-<a href="https://github.com/awolverp/cachebox/commits/main"><picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/github/last-commit/awolverp/cachebox.svg?variant=outline&font=geist-mono&size=xs&mode=dark"><img alt="Last Commit" src="https://shieldcn.dev/github/last-commit/awolverp/cachebox.svg?variant=outline&font=geist-mono&size=xs&mode=light"></picture></a>
-<a href="https://github.com/awolverp/cachebox/blob/main/UNLICENSE"><picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/github/awolverp/cachebox/license.svg?variant=outline&font=geist-mono&size=xs&mode=dark"><img alt="License" src="https://shieldcn.dev/github/awolverp/cachebox/license.svg?variant=outline&font=geist-mono&size=xs&mode=light"></picture></a>
-</div>
+[![PyPi](https://shieldcn.dev/pypi/cachebox.svg?variant=branded&font=geist-mono&size=xs)](https://pypi.org/project/cachebox)
+[![Monthly Downloads](https://shieldcn.dev/pypi/dm/cachebox.svg?variant=branded&font=geist-mono&size=xs)](https://pypi.org/project/cachebox)
+[![Python Version](https://shieldcn.dev/pypi/python/cachebox.svg?variant=branded&font=geist-mono&size=xs)](https://pypi.org/project/cachebox)
 
-<!--
-[**Documentation**](https://awolverp.github.io/cachebox) | [**Releases**](https://github.com/awolverp/cachebox/releases) |
-[**Benchmarks**](https://github.com/awolverp/cachebox-benchmark) |
-[**Issues**](https://github.com/awolverp/cachebox/issues/new)
-
-[![License](https://img.shields.io/github/license/awolverp/cachebox.svg?style=flat-square)](https://github.com/awolverp/cachebox/blob/main/LICENSE)
-[![Downloads](https://img.shields.io/pypi/dm/cachebox?style=flat-square&color=%23314bb5)](https://pepy.tech/projects/cachebox)
-[![Donate](https://img.shields.io/badge/donate-PayRequest-blue)](https://payrequest.me/ali-pooralijan-awolverp)-->
+[![CI](https://shieldcn.dev/github/ci/awolverp/cachebox.svg?variant=outline&font=geist-mono&size=xs&animate=pulse)](https://github.com/awolverp/cachebox/actions?query=branch%3Amain)
+[![Last Commit](https://shieldcn.dev/github/last-commit/awolverp/cachebox.svg?variant=outline&font=geist-mono&size=xs)](https://github.com/awolverp/cachebox/commits/main)
+[![License](https://shieldcn.dev/github/awolverp/cachebox/license.svg?variant=outline&font=geist-mono&size=xs)](https://github.com/awolverp/cachebox/blob/main/LICENSE)
 
 ---
 
@@ -152,6 +145,8 @@ assert cache.get("key") == "value"
 Read the documentation for full information and learn more: [**Documentation**](https://awolverp.github.io/cachebox/)
 
 ## Contributors
+
+[![Contributers](https://contrib.rocks/image?repo=awolverp/cachebox)](https://github.com/awolverp/cachebox/graphs/contributors)
 
 ## License
 

@@ -148,7 +148,7 @@ Read the documentation for full information and learn more: [**Documentation**](
 
 ## Contributors
 
-[![Contributers](https://contrib.rocks/image?repo=awolverp/cachebox)](https://github.com/awolverp/cachebox/graphs/contributors)
+[![Contributors](https://contrib.rocks/image?repo=awolverp/cachebox)](https://github.com/awolverp/cachebox/graphs/contributors)
 
 ## License
 

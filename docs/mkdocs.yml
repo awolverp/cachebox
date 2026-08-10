@@ -3,7 +3,7 @@ site_description: The fastest caching Python library written in Rust
 site_url: https://awolverp.github.io/cachebox
 repo_url: https://github.com/awolverp/cachebox
 repo_name: awolverp/cachebox
-edit_uri: edit/main/docs/
+edit_uri: edit/main/docs/docs/
 
 theme:
   name: material
@@ -87,9 +87,11 @@ nav:
   - Home: index.md
   - Installation: installation.md
   - Getting Started: getting-started.md
+  - Choosing a Cache: algorithms.md
   - Tips & Notes: tips.md
+  - FAQ: faq.md
   - Migration Guide: migration.md
   - API Reference:
-      - API Reference: api/index.md
+      - Overview: api/index.md
       - Classes: api/impls.md
       - Utilities: api/utils.md

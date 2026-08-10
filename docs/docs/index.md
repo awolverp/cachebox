@@ -10,9 +10,9 @@ description: The fastest caching Python library written in Rust
 
 ---
 
-Cachebox lets you perform powerful caching operations in Python as fast as possible.
-It can make your application significantly faster and is an excellent choice for complex,
-high-scale applications.
+Cachebox is a high-performance, in-memory caching library for Python. It is written in Rust,
+has zero Python dependencies, and exposes a familiar dict-like API so you can drop it into
+existing code with minimal friction.
 
 ## Key Features
 
@@ -20,43 +20,38 @@ high-scale applications.
 
 - :rocket: **Extremely Fast**
 
-    10–50x faster than other caching libraries - [see benchmarks](https://github.com/awolverp/cachebox-benchmark).
+    10–50× faster than other caching libraries — [see benchmarks](https://github.com/awolverp/cachebox-benchmark).
 
 - :bar_chart: **Low Memory Usage**
 
-    Only ~50% of the memory consumed by a standard Python dictionary.
+    Roughly half the memory of a standard Python dictionary for equivalent contents.
 
 - :thread: **Thread-Safe**
 
-    All cache operations are fully thread-safe via internal locking.
+    All cache operations are protected by internal Rust mutexes.
 
 - :package: **Zero Dependencies**
 
-    Written entirely in Rust - no Python dependencies to install.
+    Distributed as pre-built wheels — no Rust toolchain required at install time.
 
 - :fire: **Full-Featured**
 
-    7 caching algorithms, TTL support, decorators, callbacks, and more.
+    Seven eviction policies, TTL support, `@cached` decorator, callbacks, and more.
 
 - :handshake: **Compatible**
 
-    Works with Python 3.10+ on both CPython and PyPy.
+    Python 3.10+ on CPython and PyPy.
 
 </div>
 
 ## When Should I Use Caching?
-- **Frequent Data Access**:  If you need to access the same data multiple times, caching can help reduce the number of database queries or API calls, improving performance.
 
-- **Expensive Operations**:  If you have operations that are computationally expensive, caching can help reduce the number of times these operations need to be performed.
-
-- **High Traffic Scenarios**:  If your application handles high traffic, caching can help reduce the load on your server by reducing the number of requests that need to be processed.
-
-- **Web Page Rendering**:  If you are rendering web pages, caching can help reduce the time it takes to generate the page by caching the results of expensive rendering operations. Caching HTML pages can speed up the delivery of static content.
-
-- **Rate Limiting**:  If you have a rate limiting system in place, caching can help reduce the number of requests that need to be processed by the rate limiter. Also, caching can help you to manage rate limits imposed by third-party APIs by reducing the number of requests sent.
-
-- **Machine Learning Models**:  If your application frequently makes predictions using the same input data, caching the results can save computation time.
-
+- **Frequent data access** — avoid repeated database queries or API calls for the same keys.
+- **Expensive operations** — memoize pure, costly computations so they run only once per input.
+- **High traffic** — absorb load spikes by serving hot data from memory.
+- **Web page rendering** — cache fragments or full pages that are expensive to generate.
+- **Rate limiting** — track counters and windows, or reduce calls to third-party APIs.
+- **Machine learning** — cache predictions for repeated inputs to save inference time.
 
 ## Quick Example
 
@@ -65,12 +60,35 @@ import cachebox
 
 @cachebox.cached(cachebox.LRUCache(maxsize=128))
 def get_user(user_id: int) -> dict:
-    # Expensive DB call - cached after first call
+    # Expensive DB call — cached after the first call
     return db.query("SELECT * FROM users WHERE id = ?", user_id)
 
 # First call hits the database
 user = get_user(42)
 
-# Subsequent calls are served from cache instantly
+# Subsequent calls with the same arguments are served from cache
 user = get_user(42)
 ```
+
+Use a cache class directly when you need full control over keys and lifetime:
+
+```python
+from cachebox import FIFOCache
+
+cache = FIFOCache(maxsize=128)
+cache["key"] = "value"
+assert cache["key"] == "value"
+assert cache.get("missing", "default") == "default"
+```
+
+## What's Next?
+
+| Page | Description |
+|------|-------------|
+| [Installation](installation.md) | Install from PyPI with pip or uv |
+| [Getting Started](getting-started.md) | Decorators, key makers, methods, and common patterns |
+| [Choosing a Cache](algorithms.md) | Which algorithm to pick for your workload |
+| [Tips & Notes](tips.md) | Pickling, copying, TTL sweepers, stampede prevention |
+| [FAQ](faq.md) | Common questions and edge cases |
+| [API Reference](api/index.md) | Full class and function documentation |
+| [Migration Guide](migration.md) | Breaking changes between major versions |

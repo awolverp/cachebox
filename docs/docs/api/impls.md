@@ -1,3 +1,12 @@
+# Classes
+
+Auto-generated reference for cache implementations. For guidance on which class to use, see
+[Choosing a Cache](../algorithms.md).
+
+Inherited members from `BaseCacheImpl` are included on each class where relevant. Prefer
+`insert` over `__setitem__` when you need the previous value or consistent cross-policy code.
+
+---
 
 ::: cachebox._core.BaseCacheImpl
     options:
@@ -78,6 +87,7 @@
         - items
         - values
         - keys
+        - random_key
 
 ::: cachebox._core.LRUCache
     options:
@@ -152,8 +162,6 @@
         - items
         - values
         - keys
-        - first
-        - last
         - expire
         - get_with_expire
         - pop_with_expire

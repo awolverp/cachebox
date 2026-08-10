@@ -169,6 +169,7 @@ impl PolicyExt for LRUPolicy {
         &mut self,
         py: pyo3::Python,
         key: &<Self::Handle as HandleExt>::Key,
+        shared: &Self::Shared,
     ) -> pyo3::PyResult<Option<&Self::Handle>> {
         unsafe {
             let bucket = self
@@ -177,7 +178,13 @@ impl PolicyExt for LRUPolicy {
 
             match bucket {
                 Some(cursor) => {
-                    cursor.move_to_back(&mut self.list);
+                    // moving the entry is a mutation, so it bumps the generation like
+                    // any other; a hit on the most recent entry moves nothing
+                    if !cursor.is_back(&self.list) {
+                        shared.generation_version().increment();
+                        cursor.move_to_back(&mut self.list);
+                    }
+
                     Ok(Some(cursor.element()))
                 }
                 None => Ok(None),

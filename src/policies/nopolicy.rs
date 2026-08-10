@@ -134,6 +134,7 @@ impl PolicyExt for NoPolicy {
         &mut self,
         py: pyo3::Python,
         key: &<Self::Handle as HandleExt>::Key,
+        _shared: &Self::Shared,
     ) -> pyo3::PyResult<Option<&Self::Handle>> {
         let bucket = self.table.find(key.hash(), |x| key.py_eq(py, x.key()))?;
         Ok(bucket.map(|x| unsafe { x.as_ref() }))

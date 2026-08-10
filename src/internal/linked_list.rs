@@ -571,6 +571,17 @@ impl<T> Cursor<T> {
         unsafe { list.push_front_node(links) };
     }
 
+    /// Returns `true` if the node this cursor points to is the last node of `list`.
+    ///
+    /// # Safety
+    ///
+    /// Same contract as [`move_to_front`](Self::move_to_front).
+    #[inline]
+    pub unsafe fn is_back(&self, list: &LinkedList<T>) -> bool {
+        // SAFETY: the sentinel is always valid; caller guarantees the node is linked.
+        unsafe { (*list.sentinel.as_ptr()).prev == self.links().as_ptr() }
+    }
+
     /// Moves the node this cursor points to the back of `list`.
     ///
     /// # Safety

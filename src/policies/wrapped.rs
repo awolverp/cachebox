@@ -112,7 +112,7 @@ impl<P: PolicyExt> Wrapped<P> {
     ) -> pyo3::PyResult<bool> {
         let mut lock = self.inner.lock();
 
-        let handle = lock.get(py, key)?;
+        let handle = lock.get(py, key, &self.shared)?;
         Ok(handle.is_some())
     }
 

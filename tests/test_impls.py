@@ -1,3 +1,5 @@
+import subprocess
+import sys
 import time
 import typing
 from datetime import datetime, timedelta
@@ -517,6 +519,23 @@ class TestLRUCache(
         )
 
 
+READ_UNDER_LIVE_ITERATOR = """
+import cachebox
+
+cache = cachebox.LRUCache(10)
+for key in ("a", "b", "c"):
+    cache[key] = 1
+
+it = cache.keys()
+assert "a" in cache
+
+try:
+    list(it)
+except RuntimeError:
+    print("ok")
+"""
+
+
 class TestLRUCachePolicy(mixins.BaseMixin):
     def create_cache(
         self,
@@ -545,6 +564,19 @@ class TestLRUCachePolicy(mixins.BaseMixin):
         c.insert("d", 4)
         assert "a" not in c
         assert "d" in c
+
+    def test_read_under_live_iterator_invalidates_it(self):
+        # a read promotes the key and relinks the list; without the generation
+        # bump the iterator walks rewired memory and the process dies, so the
+        # check runs in a child process
+        done = subprocess.run(
+            [sys.executable, "-c", READ_UNDER_LIVE_ITERATOR],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+
+        assert done.stdout.strip() == "ok", done.stderr or f"exit code {done.returncode}"
 
     def test_does_not_evict_recently_read_key(self):
         c = self.create_cache(3)

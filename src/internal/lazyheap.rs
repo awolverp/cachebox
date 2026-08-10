@@ -340,6 +340,24 @@ impl<T> Iterator for RawIter<T> {
             }
         }
     }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let left = self.first.len() + self.second.len();
+        (left, Some(left))
+    }
+}
+
+impl<T> ExactSizeIterator for RawIter<T> {}
+
+impl<T> Clone for RawIter<T> {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self {
+            first: self.first.clone(),
+            second: self.second.clone(),
+        }
+    }
 }
 
 unsafe impl<T: Send + Send> Send for LazyHeap<T> {}

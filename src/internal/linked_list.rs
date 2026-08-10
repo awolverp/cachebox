@@ -640,6 +640,8 @@ impl<T> Iterator for RawIter<T> {
     }
 }
 
+impl<T> ExactSizeIterator for RawIter<T> {}
+
 unsafe impl<T: Send + Send> Send for LinkedList<T> {}
 unsafe impl<T: Sync + Sync> Sync for LinkedList<T> {}
 unsafe impl<T: Send + Send> Send for RawIter<T> {}

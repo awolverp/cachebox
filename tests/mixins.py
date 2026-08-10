@@ -523,6 +523,46 @@ class IterationMixin(BaseMixin):
 
         assert ref() is None
 
+    def test_iterators_report_len(self):
+        cache = self.create_cache()
+
+        cache.update({"a": 1, "b": 2, "c": 3})
+        assert len(cache.keys()) == 3
+        assert len(cache.values()) == 3
+        assert len(cache.items()) == 3
+
+    def test_iterator_len_counts_what_is_left(self):
+        cache = self.create_cache()
+
+        cache.update({"a": 1, "b": 2, "c": 3})
+        it = cache.keys()
+
+        next(it)
+        assert len(it) == 2
+
+        list(it)
+        assert len(it) == 0
+
+    def test_empty_iterator_is_falsy(self):
+        cache = self.create_cache()
+
+        assert not cache.keys()
+        assert not cache.values()
+        assert not cache.items()
+
+        cache.insert("a", 1)
+        assert cache.keys()
+
+    def test_iterator_len_after_cache_changed(self):
+        cache = self.create_cache()
+
+        cache.insert("a", 1)
+        it = cache.keys()
+        cache.insert("b", 2)
+
+        with pytest.raises(RuntimeError):
+            len(it)
+
     def test_generation_version_on_remove(self):
         cache = self.create_cache(10, {i: i for i in range(10)})
 

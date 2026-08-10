@@ -9,6 +9,7 @@ __version__: typing.Final[str]
 KT = typing.TypeVar("KT", bound=typing.Hashable)
 VT = typing.TypeVar("VT")
 DT = typing.TypeVar("DT")
+T_co = typing.TypeVar("T_co", covariant=True)
 
 _IterableType: typing.TypeAlias = (
     typing.Dict[KT, VT]
@@ -16,6 +17,42 @@ _IterableType: typing.TypeAlias = (
     | BaseCacheImpl[KT, VT]
     | typing.Iterable[typing.Tuple[KT, VT]]
 )
+
+class CacheIterator(typing.Iterator[T_co]):
+    """
+    What ``keys()``, ``values()`` and ``items()`` return.
+
+    This is a one-shot iterator, not a ``dict`` view: it walks the cache once
+    and is empty after that. It knows how many items it still has to yield, so
+    ``len()`` and ``bool()`` work on it, but it does not support ``in`` or set
+    operations the way ``dict.keys()`` does.
+
+    Warning:
+        Do not modify the cache while one of these is alive. Every method
+        raises ``RuntimeError`` if the cache changed.
+    """
+
+    def __next__(self) -> T_co: ...
+    def __len__(self) -> int:
+        """
+        Returns how many items are left to yield.
+
+        For ``TTLCache`` and ``VTTLCache`` this skips expired entries, which
+        takes O(n).
+
+        Returns:
+            The number of items left.
+        """
+        ...
+
+    def __bool__(self) -> bool:
+        """
+        Returns whether any item is left to yield.
+
+        Returns:
+            ``True`` if at least one item is left.
+        """
+        ...
 
 class BaseCacheImpl(typing.Generic[KT, VT]):
     """
@@ -221,10 +258,10 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
 
     def __eq__(self, other: typing.Any) -> bool: ...
     def __ne__(self, other: typing.Any) -> bool: ...
-    def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]: ...
-    def values(self) -> typing.Iterable[VT]: ...
-    def keys(self) -> typing.Iterable[KT]: ...
-    def __iter__(self) -> typing.Iterator[KT]: ...
+    def items(self) -> CacheIterator[typing.Tuple[KT, VT]]: ...
+    def values(self) -> CacheIterator[VT]: ...
+    def keys(self) -> CacheIterator[KT]: ...
+    def __iter__(self) -> CacheIterator[KT]: ...
     def copy(self) -> typing.Self: ...
     def __copy__(self) -> typing.Self: ...
     def __getstate__(self) -> object: ...
@@ -410,7 +447,7 @@ class Cache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
+    def items(self) -> CacheIterator[typing.Tuple[KT, VT]]:
         """
         Returns an iterable of the cache's ``(key, value)`` pairs.
 
@@ -422,7 +459,7 @@ class Cache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def keys(self) -> typing.Iterable[KT]:
+    def keys(self) -> CacheIterator[KT]:
         """
         Returns an iterable of the cache's keys.
 
@@ -434,7 +471,7 @@ class Cache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def values(self) -> typing.Iterable[VT]:
+    def values(self) -> CacheIterator[VT]:
         """
         Returns an iterable of the cache's values.
 
@@ -593,7 +630,7 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
+    def items(self) -> CacheIterator[typing.Tuple[KT, VT]]:
         """
         Returns an ordered iterable of the cache's ``(key, value)`` pairs.
 
@@ -605,7 +642,7 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def keys(self) -> typing.Iterable[KT]:
+    def keys(self) -> CacheIterator[KT]:
         """
         Returns an ordered iterable of the cache's keys.
 
@@ -617,7 +654,7 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def values(self) -> typing.Iterable[VT]:
+    def values(self) -> CacheIterator[VT]:
         """
         Returns an ordered iterable of the cache's values.
 
@@ -808,7 +845,7 @@ class RRCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
+    def items(self) -> CacheIterator[typing.Tuple[KT, VT]]:
         """
         Returns an iterable of the cache's ``(key, value)`` pairs.
 
@@ -820,7 +857,7 @@ class RRCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def keys(self) -> typing.Iterable[KT]:
+    def keys(self) -> CacheIterator[KT]:
         """
         Returns an iterable of the cache's keys.
 
@@ -832,7 +869,7 @@ class RRCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def values(self) -> typing.Iterable[VT]:
+    def values(self) -> CacheIterator[VT]:
         """
         Returns an iterable of the cache's values.
 
@@ -1016,7 +1053,7 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
+    def items(self) -> CacheIterator[typing.Tuple[KT, VT]]:
         """
         Returns an ordered iterable of the cache's ``(key, value)`` pairs.
 
@@ -1028,7 +1065,7 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def keys(self) -> typing.Iterable[KT]:
+    def keys(self) -> CacheIterator[KT]:
         """
         Returns an ordered iterable of the cache's keys.
 
@@ -1040,7 +1077,7 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def values(self) -> typing.Iterable[VT]:
+    def values(self) -> CacheIterator[VT]:
         """
         Returns an ordered iterable of the cache's values.
 
@@ -1265,7 +1302,7 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
+    def items(self) -> CacheIterator[typing.Tuple[KT, VT]]:
         """
         Returns an ordered iterable of the cache's ``(key, value)`` pairs.
 
@@ -1277,7 +1314,7 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def keys(self) -> typing.Iterable[KT]:
+    def keys(self) -> CacheIterator[KT]:
         """
         Returns an ordered iterable of the cache's keys.
 
@@ -1289,7 +1326,7 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def values(self) -> typing.Iterable[VT]:
+    def values(self) -> CacheIterator[VT]:
         """
         Returns an ordered iterable of the cache's values.
 
@@ -1301,7 +1338,7 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def items_with_frequency(self) -> typing.Iterable[typing.Tuple[KT, VT, int]]:
+    def items_with_frequency(self) -> CacheIterator[typing.Tuple[KT, VT, int]]:
         """
         Returns an ordered iterable of the cache's ``(key, value)`` pairs with their
         frequency counter.
@@ -1473,7 +1510,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
+    def items(self) -> CacheIterator[typing.Tuple[KT, VT]]:
         """
         Returns an ordered iterable of the cache's ``(key, value)`` pairs.
 
@@ -1485,7 +1522,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def keys(self) -> typing.Iterable[KT]:
+    def keys(self) -> CacheIterator[KT]:
         """
         Returns an ordered iterable of the cache's keys.
 
@@ -1497,7 +1534,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def values(self) -> typing.Iterable[VT]:
+    def values(self) -> CacheIterator[VT]:
         """
         Returns an ordered iterable of the cache's values.
 
@@ -1599,7 +1636,7 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def items_with_expire(self) -> typing.Iterable[typing.Tuple[KT, VT, float]]:
+    def items_with_expire(self) -> CacheIterator[typing.Tuple[KT, VT, float]]:
         """
         Returns an ordered iterable of items with their remaining TTL.
 
@@ -1741,7 +1778,7 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
             KeyError: If the cache is empty.
         """
 
-    def items(self) -> typing.Iterable[typing.Tuple[KT, VT]]:
+    def items(self) -> CacheIterator[typing.Tuple[KT, VT]]:
         """
         Returns an ordered iterable of the cache's ``(key, value)`` pairs.
 
@@ -1753,7 +1790,7 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def keys(self) -> typing.Iterable[KT]:
+    def keys(self) -> CacheIterator[KT]:
         """
         Returns an ordered iterable of the cache's keys.
 
@@ -1765,7 +1802,7 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def values(self) -> typing.Iterable[VT]:
+    def values(self) -> CacheIterator[VT]:
         """
         Returns an ordered iterable of the cache's values.
 
@@ -1838,7 +1875,7 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         """
         ...
 
-    def items_with_expire(self) -> typing.Iterable[typing.Tuple[KT, VT, float | None]]:
+    def items_with_expire(self) -> CacheIterator[typing.Tuple[KT, VT, float | None]]:
         """
         Returns an ordered iterable of items with their remaining TTL.
 

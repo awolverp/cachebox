@@ -1,0 +1,1317 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="The fastest caching Python library written in Rust">
+      
+      
+      
+        <link rel="canonical" href="https://awolverp.github.io/cachebox/faq/">
+      
+      
+        <link rel="prev" href="../tips/">
+      
+      
+        <link rel="next" href="../migration/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>FAQ - Cachebox</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-orange" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#faq" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Cachebox" class="md-header__button md-logo" aria-label="Cachebox" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Cachebox
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              FAQ
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-orange" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-orange" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/awolverp/cachebox" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    awolverp/cachebox
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../installation/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Installation
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../algorithms/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Choosing a Cache
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../tips/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Tips & Notes
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FAQ
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../migration/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Migration Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../api/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Cachebox" class="md-nav__button md-logo" aria-label="Cachebox" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Cachebox
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/awolverp/cachebox" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    awolverp/cachebox
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../algorithms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a Cache
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tips/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tips & Notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#general" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        General
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="General">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-is-cachebox-different-from-functoolslru_cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How is cachebox different from functools.lru_cache?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#does-cachebox-work-with-pypy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Does cachebox work with PyPy?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#is-the-cache-process-wide-or-per-process" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Is the cache process-wide or per-process?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#are-keys-required-to-be-hashable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Are keys required to be hashable?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#capacity-and-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Capacity and size
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Capacity and size">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-does-maxsize0-mean" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What does maxsize=0 mean?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-is-the-difference-between-lencache-current_size-and-capacity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is the difference between len(cache), current_size(), and capacity()?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-did-cache-raise-overflowerror" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why did Cache raise OverflowError?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decorator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decorator
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Decorator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-doesnt-my-method-have-cache-cache_info" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why doesn't my method have .cache / .cache_info()?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-do-f1-and-f10-share-a-cache-entry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why do f(1) and f(1.0) share a cache entry?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#my-recursive-function-deadlocks-what-now" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        My recursive function deadlocks. What now?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#can-i-use-a-different-cache-per-request-tenant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Can I use a different cache per request / tenant?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#does-cachebox__ignoretrue-still-update-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Does cachebox__ignore=True still update statistics?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ttl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TTL
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="TTL">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-are-expired-items-actually-removed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When are expired items actually removed?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#can-some-vttlcache-items-never-expire" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Can some VTTLCache items never expire?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#does-freezing-a-ttl-cache-pause-the-clock" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Does freezing a TTL cache pause the clock?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#are-clock-adjustments-a-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Are clock adjustments a problem?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#concurrency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concurrency
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Concurrency">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#is-every-operation-thread-safe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Is every operation thread-safe?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#does-stampede-prevention-work-across-processes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Does stampede prevention work across processes?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#can-setdefault_withs-factory-run-twice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Can setdefault_with's factory run twice?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#persistence-and-copying" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Persistence and copying
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Persistence and copying">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#can-i-share-a-cache-across-machines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Can I share a cache across machines?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-did-pickling-fail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why did pickling fail?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#are-keys-items-like-dict-views" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Are keys() / items() like dict views?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#choosing-an-algorithm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing an algorithm
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../api/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="faq">FAQ<a class="headerlink" href="#faq" title="Permanent link">&para;</a></h1>
+<h2 id="general">General<a class="headerlink" href="#general" title="Permanent link">&para;</a></h2>
+<h3 id="how-is-cachebox-different-from-functoolslru_cache">How is cachebox different from <code>functools.lru_cache</code>?<a class="headerlink" href="#how-is-cachebox-different-from-functoolslru_cache" title="Permanent link">&para;</a></h3>
+<p><code>functools.lru_cache</code> is excellent for simple memoization, but cachebox adds:</p>
+<ul>
+<li>Multiple eviction policies (FIFO, RR, LRU, LFU, TTL, VTTL)</li>
+<li>Explicit cache objects you can share, inspect, pickle, or freeze</li>
+<li>Thread-safe storage implemented in Rust</li>
+<li>Configurable key makers and postprocessors (including default protection against mutating
+  cached <code>dict</code>/<code>list</code>/<code>set</code> results)</li>
+<li>Per-key stampede prevention for concurrent misses</li>
+<li>Weighted capacity via <code>getsizeof</code></li>
+<li>Hit/miss statistics via <code>cache_info()</code></li>
+</ul>
+<h3 id="does-cachebox-work-with-pypy">Does cachebox work with PyPy?<a class="headerlink" href="#does-cachebox-work-with-pypy" title="Permanent link">&para;</a></h3>
+<p>Yes. Pre-built wheels target both CPython and PyPy for supported Python versions.</p>
+<h3 id="is-the-cache-process-wide-or-per-process">Is the cache process-wide or per-process?<a class="headerlink" href="#is-the-cache-process-wide-or-per-process" title="Permanent link">&para;</a></h3>
+<p>In-memory only, per process. There is no shared multi-process or multi-machine backend.
+Use pickle (or your own serialization) if you need to move a snapshot to another process.</p>
+<h3 id="are-keys-required-to-be-hashable">Are keys required to be hashable?<a class="headerlink" href="#are-keys-required-to-be-hashable" title="Permanent link">&para;</a></h3>
+<p>Yes. Keys must be hashable, same as <code>dict</code>. Values may be any Python object.</p>
+<hr />
+<h2 id="capacity-and-size">Capacity and size<a class="headerlink" href="#capacity-and-size" title="Permanent link">&para;</a></h2>
+<h3 id="what-does-maxsize0-mean">What does <code>maxsize=0</code> mean?<a class="headerlink" href="#what-does-maxsize0-mean" title="Permanent link">&para;</a></h3>
+<p>Unbounded. Internally the limit is set to <code>sys.maxsize</code>. Items are still subject to the eviction
+policy only when you use a finite <code>maxsize</code> (or TTL for time-based classes).</p>
+<h3 id="what-is-the-difference-between-lencache-current_size-and-capacity">What is the difference between <code>len(cache)</code>, <code>current_size()</code>, and <code>capacity()</code>?<a class="headerlink" href="#what-is-the-difference-between-lencache-current_size-and-capacity" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Call</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>len(cache)</code></td>
+<td>Number of key-value entries</td>
+</tr>
+<tr>
+<td><code>current_size()</code></td>
+<td>Sum of entry weights (<code>getsizeof</code>, or 1 per entry by default)</td>
+</tr>
+<tr>
+<td><code>capacity()</code></td>
+<td>Hash-table slots allocated (reallocation threshold), not <code>maxsize</code></td>
+</tr>
+<tr>
+<td><code>remaining_size()</code></td>
+<td><code>maxsize - current_size()</code></td>
+</tr>
+<tr>
+<td><code>is_full()</code></td>
+<td>Whether cumulative weight has reached <code>maxsize</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="why-did-cache-raise-overflowerror">Why did <code>Cache</code> raise <code>OverflowError</code>?<a class="headerlink" href="#why-did-cache-raise-overflowerror" title="Permanent link">&para;</a></h3>
+<p><code>Cache</code> never evicts. Once <code>current_size</code> reaches <code>maxsize</code>, new keys are rejected. Replace an
+existing key, raise <code>maxsize</code>, free space with <code>pop</code>/<code>clear</code>, or switch to a policy-based class.</p>
+<hr />
+<h2 id="decorator">Decorator<a class="headerlink" href="#decorator" title="Permanent link">&para;</a></h2>
+<h3 id="why-doesnt-my-method-have-cache-cache_info">Why doesn't my method have <code>.cache</code> / <code>.cache_info()</code>?<a class="headerlink" href="#why-doesnt-my-method-have-cache-cache_info" title="Permanent link">&para;</a></h3>
+<p>Those attributes are only attached when <code>cache</code> is a <strong>concrete instance</strong>. If you pass
+<code>lambda self: self._cache</code>, manage the cache via the instance attribute yourself.</p>
+<h3 id="why-do-f1-and-f10-share-a-cache-entry">Why do <code>f(1)</code> and <code>f(1.0)</code> share a cache entry?<a class="headerlink" href="#why-do-f1-and-f10-share-a-cache-entry" title="Permanent link">&para;</a></h3>
+<p>The default <code>make_key</code> does not include types, and <code>1 == 1.0</code>. Use
+<a href="../api/utils/#cachebox.utils.make_typed_key"><code>make_typed_key</code></a>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">128</span><span class="p">),</span> <span class="n">key_maker</span><span class="o">=</span><span class="n">cachebox</span><span class="o">.</span><span class="n">make_typed_key</span><span class="p">)</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">def</span><span class="w"> </span><span class="nf">f</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="k">return</span> <span class="n">x</span>
+</span></code></pre></div>
+<h3 id="my-recursive-function-deadlocks-what-now">My recursive function deadlocks. What now?<a class="headerlink" href="#my-recursive-function-deadlocks-what-now" title="Permanent link">&para;</a></h3>
+<p>Default stampede locks are non-reentrant. Use <code>lock=False</code> or <code>lock=threading.RLock</code>
+(sync only). See <a href="../tips/#cache-stampede-prevention">Cache stampede prevention</a>.</p>
+<h3 id="can-i-use-a-different-cache-per-request-tenant">Can I use a different cache per request / tenant?<a class="headerlink" href="#can-i-use-a-different-cache-per-request-tenant" title="Permanent link">&para;</a></h3>
+<p>Yes — use a callable cache that returns the right instance, or build keys that embed the tenant
+id in a shared cache:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">10_000</span><span class="p">),</span> <span class="n">key_maker</span><span class="o">=</span><span class="k">lambda</span> <span class="n">tenant</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="p">(</span><span class="n">tenant</span><span class="p">,</span> <span class="n">user_id</span><span class="p">))</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">tenant</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="o">...</span>
+</span></code></pre></div>
+<h3 id="does-cachebox__ignoretrue-still-update-statistics">Does <code>cachebox__ignore=True</code> still update statistics?<a class="headerlink" href="#does-cachebox__ignoretrue-still-update-statistics" title="Permanent link">&para;</a></h3>
+<p>No. The function runs directly; the cache is neither read nor written, and hit/miss counters
+are unchanged for that call.</p>
+<hr />
+<h2 id="ttl">TTL<a class="headerlink" href="#ttl" title="Permanent link">&para;</a></h2>
+<h3 id="when-are-expired-items-actually-removed">When are expired items actually removed?<a class="headerlink" href="#when-are-expired-items-actually-removed" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Lazy (default):</strong> on subsequent operations that touch the cache.</li>
+<li><strong>Sweeper:</strong> when <code>sweep_interval</code> is set, a daemon thread calls <code>expire()</code> periodically.</li>
+<li><strong>Manual:</strong> call <code>expire()</code> yourself.</li>
+</ul>
+<p>Lookups never return expired values; they behave as misses.</p>
+<h3 id="can-some-vttlcache-items-never-expire">Can some <code>VTTLCache</code> items never expire?<a class="headerlink" href="#can-some-vttlcache-items-never-expire" title="Permanent link">&para;</a></h3>
+<p>Yes. Omit <code>ttl</code> (or pass <code>None</code>) on insert. Those items are only removed under capacity pressure
+after expiring items have been reclaimed.</p>
+<h3 id="does-freezing-a-ttl-cache-pause-the-clock">Does freezing a TTL cache pause the clock?<a class="headerlink" href="#does-freezing-a-ttl-cache-pause-the-clock" title="Permanent link">&para;</a></h3>
+<p>No. Expiration is based on wall-clock time on the underlying cache. Frozen only blocks write APIs.</p>
+<h3 id="are-clock-adjustments-a-problem">Are clock adjustments a problem?<a class="headerlink" href="#are-clock-adjustments-a-problem" title="Permanent link">&para;</a></h3>
+<p>TTL correctness depends on a monotonically advancing system clock. Large NTP steps or
+suspend/resume can expire entries earlier or later than intended.</p>
+<hr />
+<h2 id="concurrency">Concurrency<a class="headerlink" href="#concurrency" title="Permanent link">&para;</a></h2>
+<h3 id="is-every-operation-thread-safe">Is every operation thread-safe?<a class="headerlink" href="#is-every-operation-thread-safe" title="Permanent link">&para;</a></h3>
+<p>Individual cache method calls are thread-safe. Check-then-act sequences are not. Prefer
+<code>setdefault</code> / <code>setdefault_with</code> / <code>@cached</code> for insert-if-missing patterns.</p>
+<h3 id="does-stampede-prevention-work-across-processes">Does stampede prevention work across processes?<a class="headerlink" href="#does-stampede-prevention-work-across-processes" title="Permanent link">&para;</a></h3>
+<p>No. Locks are in-process only (threading / asyncio).</p>
+<h3 id="can-setdefault_withs-factory-run-twice">Can <code>setdefault_with</code>'s factory run twice?<a class="headerlink" href="#can-setdefault_withs-factory-run-twice" title="Permanent link">&para;</a></h3>
+<p>Yes, under concurrent misses. The first successful insert wins; extra factory results are discarded
+(and the winning value is returned). For single-flight guarantees use <code>@cached</code> with locking enabled.</p>
+<hr />
+<h2 id="persistence-and-copying">Persistence and copying<a class="headerlink" href="#persistence-and-copying" title="Permanent link">&para;</a></h2>
+<h3 id="can-i-share-a-cache-across-machines">Can I share a cache across machines?<a class="headerlink" href="#can-i-share-a-cache-across-machines" title="Permanent link">&para;</a></h3>
+<p>Not built-in. Serialize with pickle (or extract items yourself) and load elsewhere.</p>
+<h3 id="why-did-pickling-fail">Why did pickling fail?<a class="headerlink" href="#why-did-pickling-fail" title="Permanent link">&para;</a></h3>
+<p>Common causes: non-picklable values, or a <code>lambda</code>/<code>local</code> function used as <code>getsizeof</code>.</p>
+<h3 id="are-keys-items-like-dict-views">Are <code>keys()</code> / <code>items()</code> like <code>dict</code> views?<a class="headerlink" href="#are-keys-items-like-dict-views" title="Permanent link">&para;</a></h3>
+<p>No. They are one-shot iterators with <code>len()</code> / <code>bool()</code>, not live views. See
+<a href="../tips/#iteration-safety">Iteration safety</a>.</p>
+<hr />
+<h2 id="choosing-an-algorithm">Choosing an algorithm<a class="headerlink" href="#choosing-an-algorithm" title="Permanent link">&para;</a></h2>
+<p>See the full guide: <a href="../algorithms/">Choosing a Cache</a>.</p>
+<p><strong>Short version:</strong> start with <code>LRUCache</code> for general memoization, <code>TTLCache</code> when everything
+shares one lifetime, <code>VTTLCache</code> for per-key TTLs, and <code>Cache</code> only for fixed non-stale sets.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../tips/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Tips &amp; Notes">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Tips & Notes
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../migration/" class="md-footer__link md-footer__link--next" aria-label="Next: Migration Guide">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Migration Guide
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+      <div class="md-progress" data-md-component="progress" role="progressbar"></div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["table", "navigation.instant", "navigation.instant.progress", "navigation.tabs", "navigation.prune", "toc.integrate", "search", "search.suggest", "search.share", "projects", "optimize", "content.code.copy", "content.code.select", "content.code.annotate", "navigation.footer"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

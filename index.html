@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -29,7 +29,7 @@
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
@@ -289,6 +289,25 @@
   
   
     <li class="md-tabs__item">
+      <a href="algorithms/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Choosing a Cache
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
       <a href="tips/" class="md-tabs__link">
         
   
@@ -296,6 +315,25 @@
     
   
   Tips & Notes
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="faq/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FAQ
 
       </a>
     </li>
@@ -483,6 +521,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#whats-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What's Next?
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -552,6 +601,33 @@
   
   
     <li class="md-nav__item">
+      <a href="algorithms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a Cache
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="tips/" class="md-nav__link">
         
   
@@ -560,6 +636,33 @@
     
   
     Tips & Notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
   
 
     
@@ -676,73 +779,108 @@
 </div>
 
 <hr />
-<p>Cachebox lets you perform powerful caching operations in Python as fast as possible.
-It can make your application significantly faster and is an excellent choice for complex,
-high-scale applications.</p>
+<p>Cachebox is a high-performance, in-memory caching library for Python. It is written in Rust,
+has zero Python dependencies, and exposes a familiar dict-like API so you can drop it into
+existing code with minimal friction.</p>
 <h2 id="key-features">Key Features<a class="headerlink" href="#key-features" title="Permanent link">&para;</a></h2>
 <div class="grid cards">
 <ul>
 <li>
 <p><img alt="🚀" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f680.svg" title=":rocket:" /> <strong>Extremely Fast</strong></p>
-<p>10–50x faster than other caching libraries - <a href="https://github.com/awolverp/cachebox-benchmark">see benchmarks</a>.</p>
+<p>10–50× faster than other caching libraries — <a href="https://github.com/awolverp/cachebox-benchmark">see benchmarks</a>.</p>
 </li>
 <li>
 <p><img alt="📊" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f4ca.svg" title=":bar_chart:" /> <strong>Low Memory Usage</strong></p>
-<p>Only ~50% of the memory consumed by a standard Python dictionary.</p>
+<p>Roughly half the memory of a standard Python dictionary for equivalent contents.</p>
 </li>
 <li>
 <p><img alt="🧵" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f9f5.svg" title=":thread:" /> <strong>Thread-Safe</strong></p>
-<p>All cache operations are fully thread-safe via internal locking.</p>
+<p>All cache operations are protected by internal Rust mutexes.</p>
 </li>
 <li>
 <p><img alt="📦" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f4e6.svg" title=":package:" /> <strong>Zero Dependencies</strong></p>
-<p>Written entirely in Rust - no Python dependencies to install.</p>
+<p>Distributed as pre-built wheels — no Rust toolchain required at install time.</p>
 </li>
 <li>
 <p><img alt="🔥" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f525.svg" title=":fire:" /> <strong>Full-Featured</strong></p>
-<p>7 caching algorithms, TTL support, decorators, callbacks, and more.</p>
+<p>Seven eviction policies, TTL support, <code>@cached</code> decorator, callbacks, and more.</p>
 </li>
 <li>
 <p><img alt="🤝" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f91d.svg" title=":handshake:" /> <strong>Compatible</strong></p>
-<p>Works with Python 3.10+ on both CPython and PyPy.</p>
+<p>Python 3.10+ on CPython and PyPy.</p>
 </li>
 </ul>
 </div>
 <h2 id="when-should-i-use-caching">When Should I Use Caching?<a class="headerlink" href="#when-should-i-use-caching" title="Permanent link">&para;</a></h2>
 <ul>
-<li>
-<p><strong>Frequent Data Access</strong>:  If you need to access the same data multiple times, caching can help reduce the number of database queries or API calls, improving performance.</p>
-</li>
-<li>
-<p><strong>Expensive Operations</strong>:  If you have operations that are computationally expensive, caching can help reduce the number of times these operations need to be performed.</p>
-</li>
-<li>
-<p><strong>High Traffic Scenarios</strong>:  If your application handles high traffic, caching can help reduce the load on your server by reducing the number of requests that need to be processed.</p>
-</li>
-<li>
-<p><strong>Web Page Rendering</strong>:  If you are rendering web pages, caching can help reduce the time it takes to generate the page by caching the results of expensive rendering operations. Caching HTML pages can speed up the delivery of static content.</p>
-</li>
-<li>
-<p><strong>Rate Limiting</strong>:  If you have a rate limiting system in place, caching can help reduce the number of requests that need to be processed by the rate limiter. Also, caching can help you to manage rate limits imposed by third-party APIs by reducing the number of requests sent.</p>
-</li>
-<li>
-<p><strong>Machine Learning Models</strong>:  If your application frequently makes predictions using the same input data, caching the results can save computation time.</p>
-</li>
+<li><strong>Frequent data access</strong> — avoid repeated database queries or API calls for the same keys.</li>
+<li><strong>Expensive operations</strong> — memoize pure, costly computations so they run only once per input.</li>
+<li><strong>High traffic</strong> — absorb load spikes by serving hot data from memory.</li>
+<li><strong>Web page rendering</strong> — cache fragments or full pages that are expensive to generate.</li>
+<li><strong>Rate limiting</strong> — track counters and windows, or reduce calls to third-party APIs.</li>
+<li><strong>Machine learning</strong> — cache predictions for repeated inputs to save inference time.</li>
 </ul>
 <h2 id="quick-example">Quick Example<a class="headerlink" href="#quick-example" title="Permanent link">&para;</a></h2>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">128</span><span class="p">))</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="c1"># Expensive DB call - cached after first call</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="c1"># Expensive DB call — cached after the first call</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="k">return</span> <span class="n">db</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM users WHERE id = ?&quot;</span><span class="p">,</span> <span class="n">user_id</span><span class="p">)</span>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="c1"># First call hits the database</span>
 </span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="n">user</span> <span class="o">=</span> <span class="n">get_user</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
 </span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="c1"># Subsequent calls are served from cache instantly</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="c1"># Subsequent calls with the same arguments are served from cache</span>
 </span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="n">user</span> <span class="o">=</span> <span class="n">get_user</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
 </span></code></pre></div>
+<p>Use a cache class directly when you need full control over keys and lifetime:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">cachebox</span><span class="w"> </span><span class="kn">import</span> <span class="n">FIFOCache</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">FIFOCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">128</span><span class="p">)</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">cache</span><span class="p">[</span><span class="s2">&quot;key&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;value&quot;</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="k">assert</span> <span class="n">cache</span><span class="p">[</span><span class="s2">&quot;key&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;value&quot;</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="k">assert</span> <span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;missing&quot;</span><span class="p">,</span> <span class="s2">&quot;default&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;default&quot;</span>
+</span></code></pre></div>
+<h2 id="whats-next">What's Next?<a class="headerlink" href="#whats-next" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Page</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="installation/">Installation</a></td>
+<td>Install from PyPI with pip or uv</td>
+</tr>
+<tr>
+<td><a href="getting-started/">Getting Started</a></td>
+<td>Decorators, key makers, methods, and common patterns</td>
+</tr>
+<tr>
+<td><a href="algorithms/">Choosing a Cache</a></td>
+<td>Which algorithm to pick for your workload</td>
+</tr>
+<tr>
+<td><a href="tips/">Tips &amp; Notes</a></td>
+<td>Pickling, copying, TTL sweepers, stampede prevention</td>
+</tr>
+<tr>
+<td><a href="faq/">FAQ</a></td>
+<td>Common questions and edge cases</td>
+</tr>
+<tr>
+<td><a href="api/">API Reference</a></td>
+<td>Full class and function documentation</td>
+</tr>
+<tr>
+<td><a href="migration/">Migration Guide</a></td>
+<td>Breaking changes between major versions</td>
+</tr>
+</tbody>
+</table>
 
 
 
@@ -824,7 +962,7 @@ high-scale applications.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["table", "navigation.instant", "navigation.instant.progress", "navigation.tabs", "navigation.prune", "toc.integrate", "search", "search.suggest", "search.share", "projects", "optimize", "content.code.copy", "content.code.select", "content.code.annotate", "navigation.footer"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

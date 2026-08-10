@@ -16,14 +16,14 @@
         <link rel="prev" href="../installation/">
       
       
-        <link rel="next" href="../tips/">
+        <link rel="next" href="../algorithms/">
       
       
         
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -291,6 +291,25 @@
   
   
     <li class="md-tabs__item">
+      <a href="../algorithms/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Choosing a Cache
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
       <a href="../tips/" class="md-tabs__link">
         
   
@@ -298,6 +317,25 @@
     
   
   Tips & Notes
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../faq/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FAQ
 
       </a>
     </li>
@@ -534,10 +572,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#using-a-custom-key-maker" class="md-nav__link">
+  <a href="#custom-key-makers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using a Custom Key Maker
+        Custom Key Makers
       
     </span>
   </a>
@@ -556,10 +594,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#setting-a-postprocessor" class="md-nav__link">
+  <a href="#postprocessors" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Setting a Postprocessor
+        Postprocessors
       
     </span>
   </a>
@@ -578,10 +616,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#caching-methods" class="md-nav__link">
+  <a href="#caching-instance-methods" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Caching Methods
+        Caching Instance Methods
       
     </span>
   </a>
@@ -616,21 +654,82 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#using-a-cache-implemetations" class="md-nav__link">
+  <a href="#using-cache-classes-directly" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using a Cache Implemetations
+        Using Cache Classes Directly
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Using Cache Classes Directly">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-constructor-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Constructor Parameters
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#immutable-frozen-cache" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#capacity-size-and-weighted-entries" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Immutable (Frozen) Cache
+        Capacity, Size, and Weighted Entries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#setdefault-and-setdefault_with" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        setdefault and setdefault_with
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#drain-clear-and-shrink" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Drain, Clear, and Shrink
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inspecting-capacity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspecting Capacity
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#immutable-frozen-caches" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Immutable (Frozen) Caches
       
     </span>
   </a>
@@ -674,6 +773,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../algorithms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a Cache
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../tips/" class="md-nav__link">
         
   
@@ -682,6 +808,33 @@
     
   
     Tips & Notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
   
 
     
@@ -793,37 +946,32 @@
 
 
 <h1 id="getting-started">Getting Started<a class="headerlink" href="#getting-started" title="Permanent link">&para;</a></h1>
-<p>This guide walks you through the most common cachebox patterns.
-All cache classes behave like Python dictionaries unless noted otherwise.</p>
+<p>This guide covers the most common cachebox patterns. All cache classes behave like Python
+dictionaries unless noted otherwise.</p>
 <h2 id="using-the-cached-decorator">Using the <code>@cached</code> Decorator<a class="headerlink" href="#using-the-cached-decorator" title="Permanent link">&para;</a></h2>
-<p>The simplest way to cache a function's return value:</p>
+<p>The simplest way to memoize a function's return value:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="hll"><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">FIFOCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">128</span><span class="p">))</span>
-</span></span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">factorial</span><span class="p">(</span><span class="n">number</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">FIFOCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">128</span><span class="p">))</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">factorial</span><span class="p">(</span><span class="n">number</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">fact</span> <span class="o">=</span> <span class="mi">1</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="k">for</span> <span class="n">num</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">number</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>        <span class="n">fact</span> <span class="o">*=</span> <span class="n">num</span>
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="k">return</span> <span class="n">fact</span>
 </span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
 </span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="k">assert</span> <span class="n">factorial</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span> <span class="o">==</span> <span class="mi">120</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="k">assert</span> <span class="n">factorial</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span> <span class="o">==</span> <span class="mi">120</span>  <span class="c1"># served from cache</span>
 </span></code></pre></div>
-<p>The first parameter <code>cache</code>, you can specify the cache instance it should use for caching.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="hll">    <span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">128</span><span class="p">),</span>
-</span></span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="p">)</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">factorial</span><span class="p">(</span><span class="n">number</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">fact</span> <span class="o">=</span> <span class="mi">1</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="k">for</span> <span class="n">num</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">number</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>        <span class="n">fact</span> <span class="o">*=</span> <span class="n">num</span>
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="k">return</span> <span class="n">fact</span>
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
-</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="k">assert</span> <span class="n">factorial</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span> <span class="o">==</span> <span class="mi">120</span>
+<p>The first argument is the cache instance used for storage. Pass <code>None</code> (or omit it) to get an
+unbounded <code>LRUCache</code>. A plain <code>dict</code> is also accepted and converted to an unbounded <code>LRUCache</code>.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">()</span>                       <span class="c1"># unbounded LRUCache</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">def</span><span class="w"> </span><span class="nf">f</span><span class="p">(</span><span class="n">x</span><span class="p">):</span> <span class="o">...</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">128</span><span class="p">))</span> <span class="c1"># bounded LRUCache</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="k">def</span><span class="w"> </span><span class="nf">g</span><span class="p">(</span><span class="n">x</span><span class="p">):</span> <span class="o">...</span>
 </span></code></pre></div>
 <h3 id="async-functions">Async Functions<a class="headerlink" href="#async-functions" title="Permanent link">&para;</a></h3>
-<p>Coroutines are supported out of the box:</p>
+<p>Coroutines are supported out of the box. Stampede prevention uses <code>asyncio.Lock</code> automatically:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">128</span><span class="p">))</span>
@@ -831,21 +979,21 @@ All cache classes behave like Python dictionaries unless noted otherwise.</p>
 </span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span>
 </span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 </span></code></pre></div>
-<h3 id="using-a-custom-key-maker">Using a Custom Key Maker<a class="headerlink" href="#using-a-custom-key-maker" title="Permanent link">&para;</a></h3>
-<p>There are 3 ready-to-use key maker functions, and by default the <code>@cached</code> decorator uses the simplest one of them.</p>
-<p>You can use ready-to-use functions, or create a custom one.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Standard way</label><label for="__tabbed_1_2">Using <code>lambda</code></label></div>
+<h3 id="custom-key-makers">Custom Key Makers<a class="headerlink" href="#custom-key-makers" title="Permanent link">&para;</a></h3>
+<p>By default <code>@cached</code> uses <a href="../api/utils/#cachebox.utils.make_key"><code>make_key</code></a>, which builds a
+hashable key from positional and keyword arguments. You can supply your own:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Named function</label><label for="__tabbed_1_2">Lambda</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="hll"><span class="k">def</span><span class="w"> </span><span class="nf">path_key</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
-</span></span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="hll">    <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">path</span>
-</span></span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">path_key</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">path</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
 </span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">128</span><span class="p">),</span> 
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="hll">    <span class="n">key_maker</span><span class="o">=</span><span class="n">path_key</span><span class="p">,</span>
-</span></span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="p">)</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">128</span><span class="p">),</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    <span class="n">key_maker</span><span class="o">=</span><span class="n">path_key</span><span class="p">,</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="p">)</span>
 </span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">request_handler</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
 </span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="s2">&quot;hello&quot;</span><span class="p">)</span>
 </span></code></pre></div>
@@ -854,117 +1002,162 @@ All cache classes behave like Python dictionaries unless noted otherwise.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">128</span><span class="p">),</span> 
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="hll">    <span class="n">key_maker</span><span class="o">=</span><span class="k">lambda</span> <span class="n">request</span><span class="p">:</span> <span class="n">request</span><span class="o">.</span><span class="n">path</span><span class="p">,</span>
-</span></span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="p">)</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">128</span><span class="p">),</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="n">key_maker</span><span class="o">=</span><span class="k">lambda</span> <span class="n">request</span><span class="p">:</span> <span class="n">request</span><span class="o">.</span><span class="n">path</span><span class="p">,</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="p">)</span>
 </span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">request_handler</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
 </span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="s2">&quot;hello&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 </div>
 </div>
 </div>
-<p>Ready to use key makers are:</p>
-<ul>
-<li><a href="../api/utils/#cachebox.utils.make_key">make_key function</a></li>
-<li><a href="../api/utils/#cachebox.utils.make_typed_key">make_typed_key function</a></li>
-<li><a href="../api/utils/#cachebox.utils.make_hash_key">make_hash_key function</a></li>
-</ul>
+<p>Built-in key makers:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../api/utils/#cachebox.utils.make_key"><code>make_key</code></a></td>
+<td>Default. Fast path for a single <code>int</code>/<code>str</code>; otherwise a tuple of args (+ kwargs).</td>
+</tr>
+<tr>
+<td><a href="../api/utils/#cachebox.utils.make_typed_key"><code>make_typed_key</code></a></td>
+<td>Like <code>make_key</code>, but includes runtime types so <code>f(1)</code> and <code>f(1.0)</code> are distinct.</td>
+</tr>
+<tr>
+<td><a href="../api/utils/#cachebox.utils.make_hash_key"><code>make_hash_key</code></a></td>
+<td>Stores <code>hash(args…)</code> only — smaller keys, risk of rare collisions.</td>
+</tr>
+</tbody>
+</table>
 <h3 id="callbacks-on-cache-events">Callbacks on Cache Events<a class="headerlink" href="#callbacks-on-cache-events" title="Permanent link">&para;</a></h3>
-<p>The <code>@cached</code> decorator supports callback on every hit/miss, using <code>callback</code> parameter.</p>
+<p>Pass a <code>callback</code> to observe every hit and miss:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="hll"><span class="k">def</span><span class="w"> </span><span class="nf">on_cache_event</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
-</span></span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="hll">    <span class="k">if</span> <span class="n">event</span> <span class="o">==</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">EVENT_MISS</span><span class="p">:</span>
-</span></span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="hll">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;MISS  key=</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</span></span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="hll">    <span class="k">elif</span> <span class="n">event</span> <span class="o">==</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">EVENT_HIT</span><span class="p">:</span>
-</span></span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="hll">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;HIT   key=</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</span></span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">on_cache_event</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="k">if</span> <span class="n">event</span> <span class="o">==</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">EVENT_MISS</span><span class="p">:</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;MISS  key=</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="k">elif</span> <span class="n">event</span> <span class="o">==</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">EVENT_HIT</span><span class="p">:</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;HIT   key=</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>
 </span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span>
 </span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    <span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
-</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="hll">    <span class="n">callback</span><span class="o">=</span><span class="n">on_cache_event</span><span class="p">,</span>
-</span></span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="p">)</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    <span class="n">callback</span><span class="o">=</span><span class="n">on_cache_event</span><span class="p">,</span>
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="p">)</span>
 </span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
 </span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
 </span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>
 </span><span id="__span-5-16"><a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>   <span class="c1"># MISS  key=(1, 2)</span>
 </span><span id="__span-5-17"><a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>   <span class="c1"># HIT   key=(1, 2)</span>
 </span></code></pre></div>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p><code>callback</code>s can be a coroutine in async contexts.</p>
-</div>
-<h3 id="setting-a-postprocessor">Setting a Postprocessor<a class="headerlink" href="#setting-a-postprocessor" title="Permanent link">&para;</a></h3>
-<p>The <code>@cached</code> decorator also supports postprocessors, using <code>postprocess</code> parameter.
-It can be used as a transformer which applied before returning a result to the caller.</p>
-<p>There are 3 ready-to-use key maker functions, and by default the <code>@cached</code> decorator uses
-<a href="../api/utils/#cachebox.utils.postprocess_copy_mutables"><code>postprocess_copy_mutables</code> function</a>.</p>
+<p><code>EVENT_MISS</code> is <code>1</code> and <code>EVENT_HIT</code> is <code>2</code>. In async contexts the callback may be a coroutine;
+it is awaited automatically.</p>
+<h3 id="postprocessors">Postprocessors<a class="headerlink" href="#postprocessors" title="Permanent link">&para;</a></h3>
+<p>A postprocessor transforms the cached value <strong>before</strong> it is returned to the caller. This is
+how cachebox protects against accidental mutation of cached <code>dict</code>/<code>list</code>/<code>set</code> objects.</p>
+<p>The default is <a href="../api/utils/#cachebox.utils.postprocess_copy_mutables"><code>postprocess_copy_mutables</code></a>:
+<code>dict</code>, <code>list</code>, and <code>set</code> results are shallow-copied on every return; other types are returned as-is.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="hll"><span class="k">def</span><span class="w"> </span><span class="nf">postprocess</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
-</span></span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="hll">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;RESULT: </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</span></span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="hll">    <span class="k">return</span> <span class="n">result</span>
-</span></span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
-</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span>
-</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    <span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
-</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="hll">    <span class="n">postprocess</span><span class="o">=</span><span class="n">postprocess</span><span class="p">,</span>
-</span></span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="p">)</span>
-</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
-</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
-</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>
-</span><span id="__span-6-14"><a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>   <span class="c1"># RESULT: 3</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">128</span><span class="p">))</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">make_dict</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">age</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="n">age</span><span class="p">}</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="n">d</span> <span class="o">=</span> <span class="n">make_dict</span><span class="p">(</span><span class="s2">&quot;cachebox&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="n">d</span><span class="p">[</span><span class="s2">&quot;new-key&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;new-value&quot;</span>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="n">d2</span> <span class="o">=</span> <span class="n">make_dict</span><span class="p">(</span><span class="s2">&quot;cachebox&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="c1"># Without copying, d2 would also contain &quot;new-key&quot;</span>
+</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="k">assert</span> <span class="n">d2</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;cachebox&quot;</span><span class="p">,</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">}</span>
 </span></code></pre></div>
-<p>Ready to use postprocessors:</p>
-<ul>
-<li><a href="../api/utils/#cachebox.utils.postprocess_copy">postprocess_copy function</a></li>
-<li><a href="../api/utils/#cachebox.utils.postprocess_copy_mutables">postprocess_copy_mutables function</a></li>
-<li><a href="../api/utils/#cachebox.utils.postprocess_deepcopy">postprocess_deepcopy function</a></li>
-<li><a href="../api/utils/#cachebox.utils.postprocess_deepcopy_mutables">postprocess_deepcopy_mutables function</a></li>
-</ul>
+<p>Ready-to-use postprocessors:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>None</code></td>
+<td>Return the cached object as-is (no copy).</td>
+</tr>
+<tr>
+<td><a href="../api/utils/#cachebox.utils.postprocess_copy_mutables"><code>postprocess_copy_mutables</code></a></td>
+<td>Shallow-copy <code>dict</code>/<code>list</code>/<code>set</code> only (<strong>default</strong>).</td>
+</tr>
+<tr>
+<td><a href="../api/utils/#cachebox.utils.postprocess_copy"><code>postprocess_copy</code></a></td>
+<td>Shallow-copy every value.</td>
+</tr>
+<tr>
+<td><a href="../api/utils/#cachebox.utils.postprocess_deepcopy_mutables"><code>postprocess_deepcopy_mutables</code></a></td>
+<td>Deep-copy <code>dict</code>/<code>list</code>/<code>set</code> only.</td>
+</tr>
+<tr>
+<td><a href="../api/utils/#cachebox.utils.postprocess_deepcopy"><code>postprocess_deepcopy</code></a></td>
+<td>Deep-copy every value.</td>
+</tr>
+</tbody>
+</table>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    <span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="n">postprocess</span><span class="o">=</span><span class="n">cachebox</span><span class="o">.</span><span class="n">postprocess_deepcopy</span><span class="p">,</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="p">)</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="k">def</span><span class="w"> </span><span class="nf">build_tree</span><span class="p">():</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;children&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}]}</span>
+</span></code></pre></div>
 <h3 id="bypass-the-cache-for-a-call">Bypass the Cache for a Call<a class="headerlink" href="#bypass-the-cache-for-a-call" title="Permanent link">&para;</a></h3>
-<p>Sometimes you need to execute the wrapped function without reading from or writing to the cache.
-Pass <code>cachebox__ignore=True</code> when calling the function:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">128</span><span class="p">))</span>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;computing...&quot;</span><span class="p">)</span>
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
-</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>
-</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>  <span class="c1"># computing...</span>
-</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>  <span class="c1"># returned from cache</span>
-</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>
-</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">cachebox__ignore</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="c1"># computing...</span>
-</span></code></pre></div>
-<p>This affects only the current call. Future calls continue to use the cache normally.</p>
-<h3 id="caching-methods">Caching Methods<a class="headerlink" href="#caching-methods" title="Permanent link">&para;</a></h3>
-<p>For instance methods, each object often needs its own cache. The cache can be stored on the instance and provided dynamically using a callable.</p>
+<p>Pass <code>cachebox__ignore=True</code> to execute the function without reading or writing the cache:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyService</span><span class="p">:</span>
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">multiplier</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">multiplier</span> <span class="o">=</span> <span class="n">multiplier</span>
-</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="hll">        <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">TTLCache</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
-</span></span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>
-</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="hll">    <span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="k">lambda</span> <span class="bp">self</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">)</span>
-</span></span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">char</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
-</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>        <span class="k">return</span> <span class="n">char</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">multiplier</span>
-</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>
-</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="n">svc</span> <span class="o">=</span> <span class="n">MyService</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
-</span><span id="__span-8-13"><a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>
-</span><span id="__span-8-14"><a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="k">assert</span> <span class="n">svc</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;aaaaa&quot;</span>
-</span><span id="__span-8-15"><a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="k">assert</span> <span class="n">svc</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;aaaaa&quot;</span>  <span class="c1"># cached</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">128</span><span class="p">))</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;computing...&quot;</span><span class="p">)</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>  <span class="c1"># computing...</span>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>  <span class="c1"># from cache</span>
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
+</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">cachebox__ignore</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># computing...</span>
+</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="c1"># Only this call is uncached; future calls still use the cache</span>
 </span></code></pre></div>
-<p>Using a cache stored on the instance ensures that each object maintains its own cached values:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">svc1</span> <span class="o">=</span> <span class="n">MyService</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">svc2</span> <span class="o">=</span> <span class="n">MyService</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
-</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="k">assert</span> <span class="n">svc1</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;xx&quot;</span>
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="k">assert</span> <span class="n">svc2</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;xxxxx&quot;</span>
+<h3 id="caching-instance-methods">Caching Instance Methods<a class="headerlink" href="#caching-instance-methods" title="Permanent link">&para;</a></h3>
+<p>For instance methods, each object usually needs its own cache. Pass a callable that receives
+<code>self</code> and returns the cache:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyService</span><span class="p">:</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">multiplier</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">multiplier</span> <span class="o">=</span> <span class="n">multiplier</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">TTLCache</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="n">global_ttl</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>
+</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    <span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="k">lambda</span> <span class="bp">self</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">)</span>
+</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">char</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>        <span class="k">return</span> <span class="n">char</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">multiplier</span>
+</span><span id="__span-9-11"><a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>
+</span><span id="__span-9-12"><a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="n">svc1</span> <span class="o">=</span> <span class="n">MyService</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+</span><span id="__span-9-13"><a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="n">svc2</span> <span class="o">=</span> <span class="n">MyService</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+</span><span id="__span-9-14"><a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>
+</span><span id="__span-9-15"><a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="k">assert</span> <span class="n">svc1</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;xx&quot;</span>
+</span><span id="__span-9-16"><a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a><span class="k">assert</span> <span class="n">svc2</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;xxxxx&quot;</span>
+</span><span id="__span-9-17"><a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a><span class="c1"># Entries created by svc1 are not visible to svc2</span>
 </span></code></pre></div>
-<p>Because each instance has a separate cache, entries created by <code>svc1</code> are not visible to <code>svc2</code>.</p>
+<p>When the cache is a callable, <code>self</code>/<code>cls</code> is <strong>excluded</strong> from the cache key automatically.</p>
+<div class="admonition note">
+<p class="admonition-title">No helper attributes on methods</p>
+<p>When you pass a lambda/callable as <code>cache</code>, the wrapper does <strong>not</strong> attach <code>.cache</code>,
+<code>.cache_info()</code>, or <code>.cache_clear()</code>. Manage the cache object yourself (for example via
+<code>self._cache</code>).</p>
+</div>
 <h3 id="caching-staticmethods">Caching <code>@staticmethod</code>s<a class="headerlink" href="#caching-staticmethods" title="Permanent link">&para;</a></h3>
-<p><code>@staticmethod</code>s behave like normal functions attached to a class. Since they do not receive <code>self</code> or <code>cls</code>, you can provide a cache instance directly.</p>
+<p>Static methods do not receive <code>self</code> or <code>cls</code>. Provide a cache instance directly; it is shared
+by all callers:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
 </span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
 </span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="k">class</span><span class="w"> </span><span class="nc">TextUtils</span><span class="p">:</span>
@@ -977,10 +1170,8 @@ Pass <code>cachebox__ignore=True</code> when calling the function:</p>
 </span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="n">TextUtils</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="s2">&quot; Hello &quot;</span><span class="p">)</span>
 </span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="n">TextUtils</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="s2">&quot; Hello &quot;</span><span class="p">)</span>  <span class="c1"># cached</span>
 </span></code></pre></div>
-<p>The cache is shared by all callers because the method does not belong to a specific instance.</p>
 <h3 id="caching-classmethods">Caching <code>@classmethod</code>s<a class="headerlink" href="#caching-classmethods" title="Permanent link">&para;</a></h3>
-<p><code>@classmethod</code>s receive the class (<code>cls</code>) as their first argument.
-The cache can be shared across the class or selected dynamically based on the class.</p>
+<p>Class methods receive <code>cls</code>. The cache can live on the class and be selected dynamically:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
 </span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
 </span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="k">class</span><span class="w"> </span><span class="nc">UserRepository</span><span class="p">:</span>
@@ -995,9 +1186,7 @@ The cache can be shared across the class or selected dynamically based on the cl
 </span><span id="__span-11-12"><a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a><span class="n">UserRepository</span><span class="o">.</span><span class="n">get_user</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 </span><span id="__span-11-13"><a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a><span class="n">UserRepository</span><span class="o">.</span><span class="n">get_user</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># cached</span>
 </span></code></pre></div>
-<p>This pattern is useful when the cache should be associated with the class itself rather than with
-individual instances.
-Class methods can also be used with inheritance. Each subclass may provide its own cache:</p>
+<p>With inheritance, each subclass can own its cache while sharing the method:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
 </span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
 </span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="k">class</span><span class="w"> </span><span class="nc">BaseRepository</span><span class="p">:</span>
@@ -1014,12 +1203,9 @@ Class methods can also be used with inheritance. Each subclass may provide its o
 </span><span id="__span-12-14"><a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a><span class="k">class</span><span class="w"> </span><span class="nc">OrderRepository</span><span class="p">(</span><span class="n">BaseRepository</span><span class="p">):</span>
 </span><span id="__span-12-15"><a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>    <span class="n">_cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">128</span><span class="p">)</span>
 </span></code></pre></div>
-<p>In this example, each repository class maintains an independent cache while reusing
-the same cached method implementation.</p>
-<h2 id="using-a-cache-implemetations">Using a Cache Implemetations<a class="headerlink" href="#using-a-cache-implemetations" title="Permanent link">&para;</a></h2>
-<p>You can use all cache implementations without <code>@cached</code> method.
-You only need to import the classes you want and can work with them like a regular dictionaries
-(except for <a href="../api/impls/#cachebox._cachebox.VTTLCache"><code>VTTLCache</code></a>, this have some differences).</p>
+<h2 id="using-cache-classes-directly">Using Cache Classes Directly<a class="headerlink" href="#using-cache-classes-directly" title="Permanent link">&para;</a></h2>
+<p>You can use every cache implementation without <code>@cached</code>. They support the usual dict operations
+(<code>[]</code>, <code>get</code>, <code>in</code>, <code>len</code>, <code>keys</code>/<code>values</code>/<code>items</code>, …) plus cache-specific methods.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">cachebox</span><span class="w"> </span><span class="kn">import</span> <span class="n">FIFOCache</span>
 </span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
 </span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">FIFOCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">128</span><span class="p">)</span>
@@ -1027,35 +1213,134 @@ You only need to import the classes you want and can work with them like a regul
 </span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="k">assert</span> <span class="n">cache</span><span class="p">[</span><span class="s2">&quot;key&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;value&quot;</span>
 </span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="k">assert</span> <span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;missing&quot;</span><span class="p">,</span> <span class="s2">&quot;default&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;default&quot;</span>
 </span></code></pre></div>
-<p>You can see examples of each cache implementation in <a href="../api/impls/">API Reference</a>. Also these examples are exist in their docstrings.</p>
-<h2 id="immutable-frozen-cache">Immutable (Frozen) Cache<a class="headerlink" href="#immutable-frozen-cache" title="Permanent link">&para;</a></h2>
-<p>Wrap any cache with <code>Frozen</code> to prevent further writes:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">cachebox</span><span class="w"> </span><span class="kn">import</span> <span class="n">Frozen</span><span class="p">,</span> <span class="n">LRUCache</span>
-</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
-</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">LRUCache</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="p">{</span><span class="mi">1</span><span class="p">:</span> <span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="s2">&quot;b&quot;</span><span class="p">})</span>
-</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="n">frozen</span> <span class="o">=</span> <span class="n">Frozen</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>
-</span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="n">frozen</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;c&quot;</span>  <span class="c1"># TypeError: This cache is frozen.</span>
+<p>Prefer <a href="../api/impls/#cachebox._core.Cache.insert"><code>.insert(key, value)</code></a> over <code>__setitem__</code> when
+you need the previous value or want code that stays consistent across policies.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="n">old</span> <span class="o">=</span> <span class="n">cache</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="s2">&quot;key&quot;</span><span class="p">,</span> <span class="s2">&quot;new-value&quot;</span><span class="p">)</span>  <span class="c1"># returns previous value or None</span>
 </span></code></pre></div>
+<h3 id="common-constructor-parameters">Common Constructor Parameters<a class="headerlink" href="#common-constructor-parameters" title="Permanent link">&para;</a></h3>
+<p>All cache classes accept:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>maxsize</code></td>
+<td>Capacity limit. <code>0</code> means unbounded (<code>sys.maxsize</code> internally).</td>
+</tr>
+<tr>
+<td><code>iterable</code></td>
+<td>Optional initial data (<code>dict</code>, another cache, or <code>(key, value)</code> pairs).</td>
+</tr>
+<tr>
+<td><code>capacity</code></td>
+<td>Pre-allocate the hash table to reduce reallocations.</td>
+</tr>
+<tr>
+<td><code>getsizeof</code></td>
+<td>Callable <code>(key, value) -&gt; int</code> for weighted sizing. Default: every entry has size <code>1</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><code>TTLCache</code> and <code>VTTLCache</code> add TTL-related parameters — see <a href="../algorithms/">Choosing a Cache</a>
+and the <a href="../api/impls/">API reference</a>.</p>
+<h3 id="capacity-size-and-weighted-entries">Capacity, Size, and Weighted Entries<a class="headerlink" href="#capacity-size-and-weighted-entries" title="Permanent link">&para;</a></h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="c1"># maxsize counts entries (each entry size = 1 by default)</span>
+</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="n">cache</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</span><span id="__span-15-7"><a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="k">assert</span> <span class="n">cache</span><span class="o">.</span><span class="n">current_size</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span>
+</span><span id="__span-15-8"><a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="k">assert</span> <span class="n">cache</span><span class="o">.</span><span class="n">remaining_size</span><span class="p">()</span> <span class="o">==</span> <span class="mi">99</span>
+</span><span id="__span-15-9"><a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a><span class="k">assert</span> <span class="ow">not</span> <span class="n">cache</span><span class="o">.</span><span class="n">is_full</span><span class="p">()</span>
+</span><span id="__span-15-10"><a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a><span class="k">assert</span> <span class="ow">not</span> <span class="n">cache</span><span class="o">.</span><span class="n">is_empty</span><span class="p">()</span>
+</span><span id="__span-15-11"><a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>
+</span><span id="__span-15-12"><a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a><span class="c1"># Weighted: size is computed by getsizeof</span>
+</span><span id="__span-15-13"><a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a><span class="k">def</span><span class="w"> </span><span class="nf">entry_size</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+</span><span id="__span-15-14"><a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>    <span class="k">return</span> <span class="n">sys</span><span class="o">.</span><span class="n">getsizeof</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="o">+</span> <span class="n">sys</span><span class="o">.</span><span class="n">getsizeof</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+</span><span id="__span-15-15"><a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>
+</span><span id="__span-15-16"><a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a><span class="n">weighted</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">10_000</span><span class="p">,</span> <span class="n">getsizeof</span><span class="o">=</span><span class="n">entry_size</span><span class="p">)</span>
+</span><span id="__span-15-17"><a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a><span class="n">weighted</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="s2">&quot;user:1&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Ada&quot;</span><span class="p">})</span>
+</span><span id="__span-15-18"><a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a><span class="nb">print</span><span class="p">(</span><span class="n">weighted</span><span class="o">.</span><span class="n">current_size</span><span class="p">())</span>   <span class="c1"># sum of entry sizes</span>
+</span><span id="__span-15-19"><a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a><span class="nb">print</span><span class="p">(</span><span class="n">weighted</span><span class="o">.</span><span class="n">remaining_size</span><span class="p">())</span> <span class="c1"># maxsize - current_size</span>
+</span></code></pre></div>
+<p>When the cache is full, policy-based classes evict items; plain <code>Cache</code> raises <code>OverflowError</code>.</p>
+<h3 id="setdefault-and-setdefault_with"><code>setdefault</code> and <code>setdefault_with</code><a class="headerlink" href="#setdefault-and-setdefault_with" title="Permanent link">&para;</a></h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">Cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="c1"># Insert only if missing</span>
+</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="n">value</span> <span class="o">=</span> <span class="n">cache</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;key&quot;</span><span class="p">,</span> <span class="s2">&quot;default&quot;</span><span class="p">)</span>
+</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>
+</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="c1"># Lazy factory — called only on miss (lock is released while it runs)</span>
+</span><span id="__span-16-7"><a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="n">value</span> <span class="o">=</span> <span class="n">cache</span><span class="o">.</span><span class="n">setdefault_with</span><span class="p">(</span><span class="s2">&quot;key&quot;</span><span class="p">,</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">expensive_compute</span><span class="p">())</span>
+</span></code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Concurrent misses</p>
+<p>If two threads miss the same key, <code>factory</code> may run more than once. The first successful
+insert wins. For single-flight computation, prefer <code>@cached</code> with stampede prevention enabled.</p>
+</div>
+<h3 id="drain-clear-and-shrink">Drain, Clear, and Shrink<a class="headerlink" href="#drain-clear-and-shrink" title="Permanent link">&para;</a></h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">FIFOCache</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">)})</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="c1"># Evict n items according to the policy (FIFO here: oldest first)</span>
+</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="n">removed</span> <span class="o">=</span> <span class="n">cache</span><span class="o">.</span><span class="n">drain</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="k">assert</span> <span class="n">removed</span> <span class="o">==</span> <span class="mi">3</span>
+</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>
+</span><span id="__span-17-7"><a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>              <span class="c1"># free memory</span>
+</span><span id="__span-17-8"><a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">(</span><span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>    <span class="c1"># keep allocation for reuse</span>
+</span><span id="__span-17-9"><a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a><span class="n">cache</span><span class="o">.</span><span class="n">shrink_to_fit</span><span class="p">()</span>      <span class="c1"># shrink allocation close to current length</span>
+</span></code></pre></div>
+<h3 id="inspecting-capacity">Inspecting Capacity<a class="headerlink" href="#inspecting-capacity" title="Permanent link">&para;</a></h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">capacity</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">cache</span><span class="o">.</span><span class="n">capacity</span><span class="p">())</span>  <span class="c1"># slots without reallocation</span>
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="nb">print</span><span class="p">(</span><span class="n">cache</span><span class="o">.</span><span class="n">maxsize</span><span class="p">)</span>     <span class="c1"># configured maxsize</span>
+</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">cache</span><span class="p">))</span>        <span class="c1"># number of entries</span>
+</span></code></pre></div>
+<h2 id="immutable-frozen-caches">Immutable (Frozen) Caches<a class="headerlink" href="#immutable-frozen-caches" title="Permanent link">&para;</a></h2>
+<p>Wrap any cache with <code>Frozen</code> to block further writes:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">cachebox</span><span class="w"> </span><span class="kn">import</span> <span class="n">Frozen</span><span class="p">,</span> <span class="n">LRUCache</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">LRUCache</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="p">{</span><span class="mi">1</span><span class="p">:</span> <span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="s2">&quot;b&quot;</span><span class="p">})</span>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="n">frozen</span> <span class="o">=</span> <span class="n">Frozen</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>
+</span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="n">frozen</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;c&quot;</span>  <span class="c1"># TypeError: This cache is frozen.</span>
+</span><span id="__span-19-7"><a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>
+</span><span id="__span-19-8"><a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a><span class="c1"># With ignore=True, mutations are silently ignored</span>
+</span><span id="__span-19-9"><a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a><span class="n">frozen</span> <span class="o">=</span> <span class="n">Frozen</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-19-10"><a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a><span class="n">frozen</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;c&quot;</span>  <span class="c1"># no-op</span>
+</span><span id="__span-19-11"><a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a><span class="k">assert</span> <span class="mi">3</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">frozen</span>
+</span><span id="__span-19-12"><a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a>
+</span><span id="__span-19-13"><a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a><span class="c1"># The underlying cache remains mutable</span>
+</span><span id="__span-19-14"><a id="__codelineno-19-14" name="__codelineno-19-14" href="#__codelineno-19-14"></a><span class="n">cache</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;c&quot;</span>
+</span><span id="__span-19-15"><a id="__codelineno-19-15" name="__codelineno-19-15" href="#__codelineno-19-15"></a><span class="k">assert</span> <span class="n">frozen</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;c&quot;</span>
+</span></code></pre></div>
+<p>TTL expiry still runs on the underlying <code>TTLCache</code> / <code>VTTLCache</code> even when frozen.</p>
 <h2 id="saving-a-cache-to-disk">Saving a Cache to Disk<a class="headerlink" href="#saving-a-cache-to-disk" title="Permanent link">&para;</a></h2>
-<p>Use Python's <code>pickle</code> module:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span><span class="o">,</span><span class="w"> </span><span class="nn">pickle</span>
-</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>
-</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">50</span><span class="p">)})</span>
-</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>
-</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;cache.pkl&quot;</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>    <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
-</span><span id="__span-15-7"><a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>
-</span><span id="__span-15-8"><a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;cache.pkl&quot;</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-</span><span id="__span-15-9"><a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>    <span class="n">loaded</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-</span><span id="__span-15-10"><a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>
-</span><span id="__span-15-11"><a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a><span class="k">assert</span> <span class="n">cache</span> <span class="o">==</span> <span class="n">loaded</span>
+<p>All cache classes support <code>pickle</code>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pickle</span>
+</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>
+</span><span id="__span-20-4"><a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">50</span><span class="p">)})</span>
+</span><span id="__span-20-5"><a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>
+</span><span id="__span-20-6"><a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;cache.pkl&quot;</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span id="__span-20-7"><a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>    <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+</span><span id="__span-20-8"><a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a>
+</span><span id="__span-20-9"><a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;cache.pkl&quot;</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span id="__span-20-10"><a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a>    <span class="n">loaded</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span id="__span-20-11"><a id="__codelineno-20-11" name="__codelineno-20-11" href="#__codelineno-20-11"></a>
+</span><span id="__span-20-12"><a id="__codelineno-20-12" name="__codelineno-20-12" href="#__codelineno-20-12"></a><span class="k">assert</span> <span class="n">cache</span> <span class="o">==</span> <span class="n">loaded</span>
 </span></code></pre></div>
+<p>Do not use a <code>lambda</code> as <code>getsizeof</code> if you need to pickle the cache — picklable callables only.</p>
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Browse the full <a href="../api/">API Reference</a> for every class and method.</li>
-<li>Check <a href="../tips/">Tips &amp; Notes</a> for copying caches and advanced patterns.</li>
-<li>Read the <a href="../migration/">Migration Guide</a> if upgrading from v5.</li>
+<li><a href="../algorithms/">Choosing a Cache</a> — pick the right eviction policy</li>
+<li><a href="../tips/">Tips &amp; Notes</a> — stampede prevention, sweepers, attached attributes</li>
+<li><a href="../faq/">FAQ</a> — common questions</li>
+<li><a href="../api/">API Reference</a> — full method documentation</li>
 </ul>
 
 
@@ -1103,13 +1388,13 @@ You only need to import the classes you want and can work with them like a regul
         
         
           
-          <a href="../tips/" class="md-footer__link md-footer__link--next" aria-label="Next: Tips &amp; Notes">
+          <a href="../algorithms/" class="md-footer__link md-footer__link--next" aria-label="Next: Choosing a Cache">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Tips & Notes
+                Choosing a Cache
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -1151,7 +1436,7 @@ You only need to import the classes you want and can work with them like a regul
       <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["table", "navigation.instant", "navigation.instant.progress", "navigation.tabs", "navigation.prune", "toc.integrate", "search", "search.suggest", "search.share", "projects", "optimize", "content.code.copy", "content.code.select", "content.code.annotate", "navigation.footer"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

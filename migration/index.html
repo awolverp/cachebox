@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://awolverp.github.io/cachebox/migration/">
       
       
-        <link rel="prev" href="../tips/">
+        <link rel="prev" href="../faq/">
       
       
         <link rel="next" href="../api/">
@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -289,6 +289,25 @@
   
   
     <li class="md-tabs__item">
+      <a href="../algorithms/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Choosing a Cache
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
       <a href="../tips/" class="md-tabs__link">
         
   
@@ -296,6 +315,25 @@
     
   
   Tips & Notes
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../faq/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FAQ
 
       </a>
     </li>
@@ -478,6 +516,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../algorithms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a Cache
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../tips/" class="md-nav__link">
         
   
@@ -486,6 +551,33 @@
     
   
     Tips & Notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
   
 
     
@@ -577,10 +669,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#copy_level-parameter-has-been-deprecated-in-cached" class="md-nav__link">
+  <a href="#copy_level-on-cached-is-deprecated" class="md-nav__link">
     <span class="md-ellipsis">
       
-        copy_level parameter has been deprecated in @cached
+        copy_level on @cached is deprecated
       
     </span>
   </a>
@@ -588,10 +680,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#ttlcachettl-has-been-renamed-to-ttlcacheglobal_ttl" class="md-nav__link">
+  <a href="#ttlcachettl-renamed-to-ttlcacheglobal_ttl" class="md-nav__link">
     <span class="md-ellipsis">
       
-        TTLCache.ttl has been renamed to TTLCache.global_ttl
+        TTLCache.ttl renamed to TTLCache.global_ttl
       
     </span>
   </a>
@@ -599,10 +691,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#maxmemory-limit-has-been-removed" class="md-nav__link">
+  <a href="#maxmemory-removed-use-getsizeof" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Maxmemory limit has been removed
+        maxmemory removed; use getsizeof
       
     </span>
   </a>
@@ -610,10 +702,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#cachedmethod-has-been-removed" class="md-nav__link">
+  <a href="#cachedmethod-removed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        cachedmethod has been removed
+        cachedmethod removed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cacheinfo-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CacheInfo fields
       
     </span>
   </a>
@@ -638,10 +741,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#cacheinfocachememory-has-been-renamed-to-cacheinfomemory" class="md-nav__link">
+  <a href="#cacheinfocachememory-renamed-to-cacheinfomemory" class="md-nav__link">
     <span class="md-ellipsis">
       
-        CacheInfo.cachememory has been renamed to CacheInfo.memory
+        CacheInfo.cachememory renamed to CacheInfo.memory
       
     </span>
   </a>
@@ -649,10 +752,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#__eq__-errors-are-no-longer-silently-swallowed" class="md-nav__link">
+  <a href="#__eq__-errors-are-no-longer-swallowed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        __eq__ errors are no longer silently swallowed
+        __eq__ errors are no longer swallowed
       
     </span>
   </a>
@@ -660,10 +763,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#cache-comparisons-are-no-longer-order-dependent" class="md-nav__link">
+  <a href="#cache-equality-is-no-longer-order-dependent" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Cache comparisons are no longer order-dependent
+        Cache equality is no longer order-dependent
       
     </span>
   </a>
@@ -768,10 +871,8 @@
 <h1 id="migration-guide">Migration Guide<a class="headerlink" href="#migration-guide" title="Permanent link">&para;</a></h1>
 <p>This page documents breaking changes between major versions.</p>
 <h2 id="v5-v6">v5 → v6<a class="headerlink" href="#v5-v6" title="Permanent link">&para;</a></h2>
-<p>These are changes that are not compatible with the previous version:</p>
-<h3 id="copy_level-parameter-has-been-deprecated-in-cached"><code>copy_level</code> parameter has been deprecated in <code>@cached</code><a class="headerlink" href="#copy_level-parameter-has-been-deprecated-in-cached" title="Permanent link">&para;</a></h3>
-<p>The <code>copy_level</code> parameter has been marked as deprecated and no longer has any effect.
-The new <code>postprocess</code> feature gives you more control over results.</p>
+<h3 id="copy_level-on-cached-is-deprecated"><code>copy_level</code> on <code>@cached</code> is deprecated<a class="headerlink" href="#copy_level-on-cached-is-deprecated" title="Permanent link">&para;</a></h3>
+<p><code>copy_level</code> no longer has any effect. Use <code>postprocess</code> instead for full control over returned values.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># v5</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">RRCache</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span> <span class="n">copy_level</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
@@ -782,9 +883,11 @@ The new <code>postprocess</code> feature gives you more control over results.</p
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
 </span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="k">return</span> <span class="p">{</span><span class="n">a</span><span class="p">:</span> <span class="n">b</span><span class="p">}</span>
 </span></code></pre></div>
-<h3 id="ttlcachettl-has-been-renamed-to-ttlcacheglobal_ttl"><code>TTLCache.ttl</code> has been renamed to <code>TTLCache.global_ttl</code><a class="headerlink" href="#ttlcachettl-has-been-renamed-to-ttlcacheglobal_ttl" title="Permanent link">&para;</a></h3>
-<p><code>TTLCache.ttl</code> has been renamed to <code>TTLCache.global_ttl</code> because it was causing developers to confuse the usage of
-<code>TTLCache.ttl</code> with <code>VTTLCache</code>'s <code>ttl</code> parameter.</p>
+<p>The default postprocessor is <code>postprocess_copy_mutables</code> (shallow-copy <code>dict</code>/<code>list</code>/<code>set</code> only).
+Pass <code>postprocess=None</code> to return cached objects as-is.</p>
+<h3 id="ttlcachettl-renamed-to-ttlcacheglobal_ttl"><code>TTLCache.ttl</code> renamed to <code>TTLCache.global_ttl</code><a class="headerlink" href="#ttlcachettl-renamed-to-ttlcacheglobal_ttl" title="Permanent link">&para;</a></h3>
+<p>The property and constructor parameter were renamed to avoid confusion with <code>VTTLCache</code>'s
+per-item <code>ttl</code> argument.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># v5</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">TTLCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">125</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nb">print</span><span class="p">(</span><span class="n">cache</span><span class="o">.</span><span class="n">ttl</span><span class="p">)</span>
@@ -793,12 +896,9 @@ The new <code>postprocess</code> feature gives you more control over results.</p
 </span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">TTLCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">125</span><span class="p">,</span> <span class="n">global_ttl</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
 </span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="nb">print</span><span class="p">(</span><span class="n">cache</span><span class="o">.</span><span class="n">global_ttl</span><span class="p">)</span>
 </span></code></pre></div>
-<h3 id="maxmemory-limit-has-been-removed">Maxmemory limit has been removed<a class="headerlink" href="#maxmemory-limit-has-been-removed" title="Permanent link">&para;</a></h3>
-<p>In version 5, we could limit the cache classes by memory using the <code>maxmemory</code> parameter.
-But it caused a -75% performance regression, and that was not the library's target. Our focus is on performance &amp; speed.
-So we removed it, but added a new parameter: <code>getsizeof</code>. A callable that computes the size of a key-value pair.
-Now you can use this to implement weighted caching - for example, sizing entries by memory footprint or byte length.
-This could cover <code>maxmemory</code>, while keeping performance on top.</p>
+<h3 id="maxmemory-removed-use-getsizeof"><code>maxmemory</code> removed; use <code>getsizeof</code><a class="headerlink" href="#maxmemory-removed-use-getsizeof" title="Permanent link">&para;</a></h3>
+<p>v5 offered a <code>maxmemory</code> limit. It caused large performance regressions and was removed.
+Use <code>getsizeof</code> for weighted capacity instead:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># v5</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">125</span><span class="p">,</span> <span class="n">maxmemory</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
@@ -810,8 +910,7 @@ This could cover <code>maxmemory</code>, while keeping performance on top.</p>
 </span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>
 </span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">getsizeof</span><span class="o">=</span><span class="n">getsizeof</span><span class="p">)</span>
 </span></code></pre></div>
-<p>Due to this breaking change, we also removed the <code>memory</code> property from cache classes, and
-added new methods: <code>current_size</code> and <code>remaining_size</code>.</p>
+<p>Related renames:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># v5</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">cache</span><span class="o">.</span><span class="n">memory</span><span class="p">)</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
@@ -819,63 +918,70 @@ added new methods: <code>current_size</code> and <code>remaining_size</code>.</p
 </span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">cache</span><span class="o">.</span><span class="n">current_size</span><span class="p">())</span>
 </span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="nb">print</span><span class="p">(</span><span class="n">cache</span><span class="o">.</span><span class="n">remaining_size</span><span class="p">())</span>
 </span></code></pre></div>
-<h3 id="cachedmethod-has-been-removed"><code>cachedmethod</code> has been removed<a class="headerlink" href="#cachedmethod-has-been-removed" title="Permanent link">&para;</a></h3>
-<p><code>cachedmethod</code> was deprecated in v5.1.0 and has been fully removed in v6. Use <code>cached</code> with a <code>lambda self:</code> cache accessor instead:</p>
+<h3 id="cachedmethod-removed"><code>cachedmethod</code> removed<a class="headerlink" href="#cachedmethod-removed" title="Permanent link">&para;</a></h3>
+<p>Deprecated in v5.1.0 and removed in v6. Use <code>cached</code> with a per-instance cache accessor:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># v5</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cachedmethod</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">TTLCache</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">10</span><span class="p">))</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">my_method</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span> <span class="o">...</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="c1"># v6</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="k">lambda</span> <span class="bp">self</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">)</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="k">def</span><span class="w"> </span><span class="nf">my_method</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span> <span class="o">...</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">class</span><span class="w"> </span><span class="nc">Service</span><span class="p">:</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="nd">@cachebox</span><span class="o">.</span><span class="n">cachedmethod</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">TTLCache</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">10</span><span class="p">))</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">my_method</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span> <span class="o">...</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="c1"># v6</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="k">class</span><span class="w"> </span><span class="nc">Service</span><span class="p">:</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">TTLCache</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">global_ttl</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    <span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="k">lambda</span> <span class="bp">self</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">)</span>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">my_method</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span> <span class="o">...</span>
 </span></code></pre></div>
+<h3 id="cacheinfo-fields"><code>CacheInfo</code> fields<a class="headerlink" href="#cacheinfo-fields" title="Permanent link">&para;</a></h3>
+<p><code>cache_info()</code> now reports more detail:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a># approximate v5 shape (hits, misses, maxsize, …)
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a># v6
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>CacheInfo(hits, misses, maxsize, current_size, length, memory)
+</span></code></pre></div>
+<p>Update any code that unpacked or indexed the tuple by position.</p>
+<hr />
 <h2 id="v4-v5">v4 → v5<a class="headerlink" href="#v4-v5" title="Permanent link">&para;</a></h2>
-<p>These are changes that are not compatible with the previous version:</p>
-<h3 id="cacheinfocachememory-has-been-renamed-to-cacheinfomemory"><code>CacheInfo.cachememory</code> has been renamed to <code>CacheInfo.memory</code><a class="headerlink" href="#cacheinfocachememory-has-been-renamed-to-cacheinfomemory" title="Permanent link">&para;</a></h3>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">info</span> <span class="o">=</span> <span class="n">func</span><span class="o">.</span><span class="n">cache_info</span><span class="p">()</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="c1"># v4</span>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="nb">print</span><span class="p">(</span><span class="n">info</span><span class="o">.</span><span class="n">cachememory</span><span class="p">)</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1"># v5</span>
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="nb">print</span><span class="p">(</span><span class="n">info</span><span class="o">.</span><span class="n">memory</span><span class="p">)</span>
+<h3 id="cacheinfocachememory-renamed-to-cacheinfomemory"><code>CacheInfo.cachememory</code> renamed to <code>CacheInfo.memory</code><a class="headerlink" href="#cacheinfocachememory-renamed-to-cacheinfomemory" title="Permanent link">&para;</a></h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">info</span> <span class="o">=</span> <span class="n">func</span><span class="o">.</span><span class="n">cache_info</span><span class="p">()</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="c1"># v4</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="nb">print</span><span class="p">(</span><span class="n">info</span><span class="o">.</span><span class="n">cachememory</span><span class="p">)</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="c1"># v5</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="nb">print</span><span class="p">(</span><span class="n">info</span><span class="o">.</span><span class="n">memory</span><span class="p">)</span>
 </span></code></pre></div>
-<h3 id="__eq__-errors-are-no-longer-silently-swallowed"><code>__eq__</code> errors are no longer silently swallowed<a class="headerlink" href="#__eq__-errors-are-no-longer-silently-swallowed" title="Permanent link">&para;</a></h3>
-<p>In v4, errors raised inside a custom <code>__eq__</code> method were caught and converted to a <code>KeyError</code>.
-In v5, they propagate normally.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">A</span><span class="p">:</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">return</span> <span class="mi">1</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span> <span class="k">raise</span> <span class="ne">NotImplementedError</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">FIFOCache</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">{</span><span class="n">A</span><span class="p">():</span> <span class="mi">10</span><span class="p">})</span>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
-</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="c1"># v4: raises KeyError</span>
-</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="c1"># v5: raises NotImplementedError</span>
-</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="n">cache</span><span class="p">[</span><span class="n">A</span><span class="p">()]</span>
+<h3 id="__eq__-errors-are-no-longer-swallowed"><code>__eq__</code> errors are no longer swallowed<a class="headerlink" href="#__eq__-errors-are-no-longer-swallowed" title="Permanent link">&para;</a></h3>
+<p>In v4, errors from a custom <code>__eq__</code> were converted to <code>KeyError</code>. In v5+ they propagate:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">A</span><span class="p">:</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>        <span class="k">return</span> <span class="mi">1</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">FIFOCache</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">{</span><span class="n">A</span><span class="p">():</span> <span class="mi">10</span><span class="p">})</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="c1"># v4: KeyError</span>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="c1"># v5+: NotImplementedError</span>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="n">cache</span><span class="p">[</span><span class="n">A</span><span class="p">()]</span>
 </span></code></pre></div>
-<h3 id="cache-comparisons-are-no-longer-order-dependent">Cache comparisons are no longer order-dependent<a class="headerlink" href="#cache-comparisons-are-no-longer-order-dependent" title="Permanent link">&para;</a></h3>
-<p>In v4, two caches with the same keys/values in a different insertion order were considered unequal.
-In v5, cache equality follows standard dictionary semantics.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">c1</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">FIFOCache</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">c2</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">FIFOCache</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">c1</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;a&#39;</span><span class="p">);</span> <span class="n">c1</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">)</span>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="n">c2</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">);</span> <span class="n">c2</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;a&#39;</span><span class="p">)</span>
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
-</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="c1"># v4: False  (order-dependent)</span>
-</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="c1"># v5: True   (dict-like)</span>
-</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="nb">print</span><span class="p">(</span><span class="n">c1</span> <span class="o">==</span> <span class="n">c2</span><span class="p">)</span>
+<h3 id="cache-equality-is-no-longer-order-dependent">Cache equality is no longer order-dependent<a class="headerlink" href="#cache-equality-is-no-longer-order-dependent" title="Permanent link">&para;</a></h3>
+<p>Equality follows dictionary semantics (same keys and values), not insertion order:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">c1</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">FIFOCache</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">c2</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">FIFOCache</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="n">c1</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">)</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="n">c1</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">)</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="n">c2</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">)</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="n">c2</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">)</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="c1"># v4: False</span>
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="c1"># v5+: True</span>
+</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="nb">print</span><span class="p">(</span><span class="n">c1</span> <span class="o">==</span> <span class="n">c2</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="cachedmethod-deprecated"><code>cachedmethod</code> deprecated<a class="headerlink" href="#cachedmethod-deprecated" title="Permanent link">&para;</a></h3>
-<p><code>cachedmethod</code> is deprecated since v5.1.0. Use <code>cached</code> with a <code>lambda self:</code> cache accessor:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># Before (v4)</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cachedmethod</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">TTLCache</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">10</span><span class="p">))</span>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">my_method</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span> <span class="o">...</span>
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="c1"># After (v5.1.0+)</span>
-</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="k">lambda</span> <span class="bp">self</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">)</span>
-</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="k">def</span><span class="w"> </span><span class="nf">my_method</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span> <span class="o">...</span>
-</span></code></pre></div>
+<p>Deprecated since v5.1.0 (removed in v6). Prefer <code>cached</code> with <code>lambda self: self._cache</code>.</p>
 
 
 
@@ -905,7 +1011,7 @@ In v5, cache equality follows standard dictionary semantics.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../tips/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Tips &amp; Notes">
+          <a href="../faq/" class="md-footer__link md-footer__link--prev" aria-label="Previous: FAQ">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -915,20 +1021,20 @@ In v5, cache equality follows standard dictionary semantics.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Tips & Notes
+                FAQ
               </div>
             </div>
           </a>
         
         
           
-          <a href="../api/" class="md-footer__link md-footer__link--next" aria-label="Next: API Reference">
+          <a href="../api/" class="md-footer__link md-footer__link--next" aria-label="Next: Overview">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                API Reference
+                Overview
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -970,7 +1076,7 @@ In v5, cache equality follows standard dictionary semantics.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["table", "navigation.instant", "navigation.instant.progress", "navigation.tabs", "navigation.prune", "toc.integrate", "search", "search.suggest", "search.share", "projects", "optimize", "content.code.copy", "content.code.select", "content.code.annotate", "navigation.footer"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

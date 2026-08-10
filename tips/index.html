@@ -13,17 +13,17 @@
         <link rel="canonical" href="https://awolverp.github.io/cachebox/tips/">
       
       
-        <link rel="prev" href="../getting-started/">
+        <link rel="prev" href="../algorithms/">
       
       
-        <link rel="next" href="../migration/">
+        <link rel="next" href="../faq/">
       
       
         
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -287,6 +287,25 @@
   
   
   
+  
+    <li class="md-tabs__item">
+      <a href="../algorithms/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Choosing a Cache
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
     
   
   
@@ -298,6 +317,25 @@
     
   
   Tips & Notes
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../faq/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FAQ
 
       </a>
     </li>
@@ -475,6 +513,33 @@
       
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../algorithms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a Cache
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
     
   
   
@@ -571,6 +636,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#weighted-caching-with-getsizeof" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Weighted Caching with getsizeof
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#ttl-and-frozen-caches" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -582,10 +658,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#attached-attributes-to-cached-functions" class="md-nav__link">
+  <a href="#attributes-attached-to-cached-functions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Attached attributes to cached functions
+        Attributes Attached to Cached Functions
       
     </span>
   </a>
@@ -593,10 +669,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ttlcachevttlcache-background-thread" class="md-nav__link">
+  <a href="#ttlcache-vttlcache-background-thread" class="md-nav__link">
     <span class="md-ellipsis">
       
-        TTLCache/VTTLCache background thread
+        TTLCache / VTTLCache Background Thread
       
     </span>
   </a>
@@ -614,10 +690,70 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#mutable-return-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mutable Return Values
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#thread-safety-of-cache-objects" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Thread Safety of Cache Objects
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#iteration-safety" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Iteration Safety
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
       
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -724,265 +860,307 @@
 <h2 id="saving-a-cache-to-a-file">Saving a Cache to a File<a class="headerlink" href="#saving-a-cache-to-a-file" title="Permanent link">&para;</a></h2>
 <p>Cachebox does not include built-in persistence, but all cache classes support Python's
 <code>pickle</code> module:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span><span class="o">,</span><span class="w"> </span><span class="nn">pickle</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">78</span><span class="p">)})</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="c1"># Save</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pickle</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">78</span><span class="p">)})</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;cache.pkl&quot;</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="c1"># Load</span>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;cache.pkl&quot;</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="n">loaded</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
-</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="k">assert</span> <span class="n">cache</span> <span class="o">==</span> <span class="n">loaded</span>
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="k">assert</span> <span class="n">cache</span><span class="o">.</span><span class="n">capacity</span><span class="p">()</span> <span class="o">==</span> <span class="n">loaded</span><span class="o">.</span><span class="n">capacity</span><span class="p">()</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;cache.pkl&quot;</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="n">loaded</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="k">assert</span> <span class="n">cache</span> <span class="o">==</span> <span class="n">loaded</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="k">assert</span> <span class="n">cache</span><span class="o">.</span><span class="n">capacity</span><span class="p">()</span> <span class="o">==</span> <span class="n">loaded</span><span class="o">.</span><span class="n">capacity</span><span class="p">()</span>
 </span></code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Don't set <code>lambda</code> as <code>getsizeof</code> for caches when you want to pickle them.</p>
+<p>Do not set a <code>lambda</code> as <code>getsizeof</code> if you intend to pickle the cache. Use a module-level
+or otherwise picklable function instead.</p>
 </div>
 <h2 id="copying-a-cache">Copying a Cache<a class="headerlink" href="#copying-a-cache" title="Permanent link">&para;</a></h2>
-<p>All cache classes support Python's <code>copy</code> module, both shallow-copy and deep-copy:</p>
+<p>All cache classes support <code>copy.copy</code> and <code>copy.deepcopy</code>, and expose <code>.copy()</code> for a shallow copy:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">)})</span>
 </span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="n">shallow</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">cache</span><span class="p">)</span>       <span class="c1"># shallow copy</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">deep</span>    <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">cache</span><span class="p">)</span>   <span class="c1"># deep copy</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="n">shallow</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">cache</span><span class="p">)</span>       <span class="c1"># or cache.copy()</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">deep</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">cache</span><span class="p">)</span>
 </span></code></pre></div>
 <h2 id="pre-allocating-capacity">Pre-allocating Capacity<a class="headerlink" href="#pre-allocating-capacity" title="Permanent link">&para;</a></h2>
-<p>If you know roughly how many items a cache will hold, set <code>capacity</code> to avoid
-hash table rehashing during initial population:</p>
+<p>If you know roughly how many items a cache will hold, set <code>capacity</code> to avoid hash-table
+rehashing during the initial fill:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">10_000</span><span class="p">,</span> <span class="n">capacity</span><span class="o">=</span><span class="mi">10_000</span><span class="p">)</span>
 </span></code></pre></div>
-<h2 id="ttl-and-frozen-caches">TTL and Frozen Caches<a class="headerlink" href="#ttl-and-frozen-caches" title="Permanent link">&para;</a></h2>
-<p><code>Frozen</code> cannot prevent TTL expiration in <code>TTLCache</code> or <code>VTTLCache</code>.
-Items will still expire naturally even when the cache is frozen.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">cachebox</span><span class="w"> </span><span class="kn">import</span> <span class="n">Frozen</span><span class="p">,</span> <span class="n">TTLCache</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<p>This only reserves table slots; it does not change <code>maxsize</code> or eviction behavior.</p>
+<h2 id="weighted-caching-with-getsizeof">Weighted Caching with <code>getsizeof</code><a class="headerlink" href="#weighted-caching-with-getsizeof" title="Permanent link">&para;</a></h2>
+<p>By default each entry contributes size <code>1</code> toward <code>maxsize</code>. Pass <code>getsizeof(key, value) -&gt; int</code>
+to size entries by memory, payload length, or any other weight:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">cache</span>  <span class="o">=</span> <span class="n">TTLCache</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">iterable</span><span class="o">=</span><span class="p">{</span><span class="mi">1</span><span class="p">:</span> <span class="s2">&quot;a&quot;</span><span class="p">})</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">frozen</span> <span class="o">=</span> <span class="n">Frozen</span><span class="p">(</span><span class="n">cache</span><span class="p">)</span>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">frozen</span><span class="p">))</span>  <span class="c1"># 0 — expired despite being frozen</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">memsize</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="k">return</span> <span class="n">sys</span><span class="o">.</span><span class="n">getsizeof</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="o">+</span> <span class="n">sys</span><span class="o">.</span><span class="n">getsizeof</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1_000_000</span><span class="p">,</span> <span class="n">getsizeof</span><span class="o">=</span><span class="n">memsize</span><span class="p">)</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="n">cache</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="s2">&quot;blob&quot;</span><span class="p">,</span> <span class="sa">b</span><span class="s2">&quot;x&quot;</span> <span class="o">*</span> <span class="mi">10_000</span><span class="p">)</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="nb">print</span><span class="p">(</span><span class="n">cache</span><span class="o">.</span><span class="n">current_size</span><span class="p">())</span>    <span class="c1"># weight of stored entries</span>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="nb">print</span><span class="p">(</span><span class="n">cache</span><span class="o">.</span><span class="n">remaining_size</span><span class="p">())</span>  <span class="c1"># maxsize - current_size</span>
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">cache</span><span class="p">))</span>              <span class="c1"># number of keys (not weight)</span>
 </span></code></pre></div>
-<h2 id="attached-attributes-to-cached-functions">Attached attributes to cached functions<a class="headerlink" href="#attached-attributes-to-cached-functions" title="Permanent link">&para;</a></h2>
-<p>When you use the <code>@cached</code> decorator, If <em>cache</em> isn't a lambda/function, these attributes will be attached to
-your function:</p>
+<p>Eviction runs when inserting an entry would exceed <code>maxsize</code> (policy classes) or raises
+<code>OverflowError</code> (<code>Cache</code>).</p>
+<h2 id="ttl-and-frozen-caches">TTL and Frozen Caches<a class="headerlink" href="#ttl-and-frozen-caches" title="Permanent link">&para;</a></h2>
+<p><code>Frozen</code> blocks write APIs but <strong>cannot</strong> stop TTL expiration. Items still expire on the
+underlying <code>TTLCache</code> / <code>VTTLCache</code>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">cachebox</span><span class="w"> </span><span class="kn">import</span> <span class="n">Frozen</span><span class="p">,</span> <span class="n">TTLCache</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">TTLCache</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">global_ttl</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">iterable</span><span class="o">=</span><span class="p">{</span><span class="mi">1</span><span class="p">:</span> <span class="s2">&quot;a&quot;</span><span class="p">})</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">frozen</span> <span class="o">=</span> <span class="n">Frozen</span><span class="p">(</span><span class="n">cache</span><span class="p">)</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">frozen</span><span class="p">))</span>  <span class="c1"># 0 — expired despite being frozen</span>
+</span></code></pre></div>
+<h2 id="attributes-attached-to-cached-functions">Attributes Attached to Cached Functions<a class="headerlink" href="#attributes-attached-to-cached-functions" title="Permanent link">&para;</a></h2>
+<p>When you use <code>@cached</code> with a <strong>cache instance</strong> (not a lambda/callable), these attributes are
+attached to the wrapper:</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:4"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><input id="__tabbed_1_4" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1"><code>cache</code> (property)</label><label for="__tabbed_1_2"><code>cache_info</code> (callable)</label><label for="__tabbed_1_3"><code>cache_clear</code> (callable)</label><label for="__tabbed_1_4"><code>callback</code> (property)</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<p>The cache class we're using for caching results.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="n">cachebox</span><span class="o">.</span><span class="n">LFUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">20</span><span class="p">),</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="p">)</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="hll"><span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">add</span><span class="o">.</span><span class="n">cache</span><span class="p">)</span> <span class="ow">is</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">LFUCache</span>
-</span></span></code></pre></div>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p>You can use <a href="../api/utils/#cachebox.utils.get_cached_cache">get_cached_cache function</a> to prevent lint
-&amp; IDE warnings.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">get_cached_cache</span><span class="p">(</span><span class="n">add</span><span class="p">))</span> <span class="ow">is</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">LFUCache</span>
+<p>The cache object used for storage.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LFUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">20</span><span class="p">))</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">add</span><span class="o">.</span><span class="n">cache</span><span class="p">)</span> <span class="ow">is</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">LFUCache</span>
+</span></code></pre></div>
+<p>Prefer the typed helper to silence IDE warnings:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">get_cached_cache</span><span class="p">(</span><span class="n">add</span><span class="p">))</span> <span class="ow">is</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">LFUCache</span>
 </span></code></pre></div>
 </div>
-</div>
 <div class="tabbed-block">
-<p>By calling it, you will get a basic statistics.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">cachebox</span><span class="o">.</span><span class="n">LFUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">20</span><span class="p">),</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="p">)</span>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
-</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>
-</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="hll"><span class="n">cache_info</span> <span class="o">=</span> <span class="n">add</span><span class="o">.</span><span class="n">cache_info</span><span class="p">()</span> <span class="c1"># CacheInfo(hits=0, misses=0, maxsize=20, size=0)</span>
-</span></span></code></pre></div>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p>You can use <a href="../api/utils/#cachebox.utils.get_cached_cache_info">get_cached_cache_info function</a> to prevent lint
-&amp; IDE warnings.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">cache_info</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">get_cached_cache_info</span><span class="p">(</span><span class="n">add</span><span class="p">)</span> <span class="c1"># CacheInfo(hits=0, misses=0, maxsize=20, size=0)</span>
+<p>Returns a <code>CacheInfo</code> namedtuple:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>CacheInfo(hits, misses, maxsize, current_size, length, memory)
 </span></code></pre></div>
-</div>
-</div>
-<div class="tabbed-block">
-<p>Call it if you want to clear cache and reset statistics.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hits</code></td>
+<td>Number of cache hits since last clear</td>
+</tr>
+<tr>
+<td><code>misses</code></td>
+<td>Number of cache misses since last clear</td>
+</tr>
+<tr>
+<td><code>maxsize</code></td>
+<td>Cache <code>maxsize</code></td>
+</tr>
+<tr>
+<td><code>current_size</code></td>
+<td>Sum of entry weights (<code>current_size()</code>)</td>
+</tr>
+<tr>
+<td><code>length</code></td>
+<td>Number of keys (<code>len(cache)</code>)</td>
+</tr>
+<tr>
+<td><code>memory</code></td>
+<td>Approximate allocation size (<code>__sizeof__()</code>)</td>
+</tr>
+</tbody>
+</table>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span>
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">cachebox</span><span class="o">.</span><span class="n">LFUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">20</span><span class="p">),</span>
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="p">)</span>
-</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
-</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
-</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="hll"><span class="n">add</span><span class="o">.</span><span class="n">cache_clear</span><span class="p">()</span>
-</span></span></code></pre></div>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p>You can use <a href="../api/utils/#cachebox.utils.clear_cached_cache">clear_cached_cache function</a> to prevent lint
-&amp; IDE warnings.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">cachebox</span><span class="o">.</span><span class="n">clear_cached_cache</span><span class="p">(</span><span class="n">add</span><span class="p">)</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LFUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">20</span><span class="p">))</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="n">info</span> <span class="o">=</span> <span class="n">add</span><span class="o">.</span><span class="n">cache_info</span><span class="p">()</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="c1"># CacheInfo(hits=0, misses=0, maxsize=20, current_size=0, length=0, memory=...)</span>
 </span></code></pre></div>
-</div>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">info</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">get_cached_cache_info</span><span class="p">(</span><span class="n">add</span><span class="p">)</span>
+</span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<p>The configured <code>callback</code>.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">callback</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span> <span class="o">...</span>
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>
-</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span>
-</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    <span class="n">cachebox</span><span class="o">.</span><span class="n">LFUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">20</span><span class="p">),</span>
-</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">,</span>
-</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="p">)</span>
-</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
-</span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>
-</span><span id="__span-10-12"><a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="hll"><span class="k">assert</span> <span class="n">add</span><span class="o">.</span><span class="n">callback</span> <span class="ow">is</span> <span class="n">callback</span>
-</span></span></code></pre></div>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p>You can use <a href="../api/utils/#cachebox.utils.get_cached_callback">get_cached_callback function</a> to prevent lint
-&amp; IDE warnings.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">assert</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">get_cached_callback</span><span class="p">(</span><span class="n">add</span><span class="p">)</span> <span class="ow">is</span> <span class="n">callback</span>
+<p>Clears the cache and resets hit/miss counters. Respects <code>clear_reuse</code> from the decorator
+(<code>reuse=True</code> keeps the hash-table allocation).</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">add</span><span class="o">.</span><span class="n">cache_clear</span><span class="p">()</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="c1"># or</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">cachebox</span><span class="o">.</span><span class="n">clear_cached_cache</span><span class="p">(</span><span class="n">add</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>The configured callback (or <code>None</code>).</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">callback</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span> <span class="o">...</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LFUCache</span><span class="p">(</span><span class="mi">20</span><span class="p">),</span> <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">)</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>
+</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="k">assert</span> <span class="n">add</span><span class="o">.</span><span class="n">callback</span> <span class="ow">is</span> <span class="n">callback</span>
+</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="k">assert</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">get_cached_callback</span><span class="p">(</span><span class="n">add</span><span class="p">)</span> <span class="ow">is</span> <span class="n">callback</span>
 </span></code></pre></div>
 </div>
 </div>
 </div>
-</div>
-<h2 id="ttlcachevttlcache-background-thread">TTLCache/VTTLCache background thread<a class="headerlink" href="#ttlcachevttlcache-background-thread" title="Permanent link">&para;</a></h2>
-<p>By default, both <code>TTLCache</code> and <code>VTTLCache</code> use <strong>lazy expiry</strong>: stale entries are
-only cleaned up when the cache is interacted with (e.g. on insert, lookup, or
-iteration). A completely idle cache will hold expired entries in memory until
-the next interaction.</p>
-<p>To reclaim expired entries proactively — independent of any method calls — pass a
-<code>sweep_interval</code> to start a background sweeper thread:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">timedelta</span>
-</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
-</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="c1"># Sweep every 30 seconds</span>
-</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="n">ttl_cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">TTLCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">global_ttl</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">sweep_interval</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
-</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>
-</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="c1"># timedelta is also accepted</span>
-</span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="n">vttl_cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">VTTLCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">sweep_interval</span><span class="o">=</span><span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="mi">30</span><span class="p">))</span>
+<p>Detect wrappers with <a href="../api/utils/#cachebox.utils.is_cached"><code>is_cached</code></a>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="k">assert</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">is_cached</span><span class="p">(</span><span class="n">add</span><span class="p">)</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="k">assert</span> <span class="ow">not</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">is_cached</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">)</span>
 </span></code></pre></div>
-<p>The thread is a <strong>daemon thread</strong>, meaning it will not prevent the Python process
-from exiting when the main thread finishes.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p><code>sweep_interval</code> must be <strong>≥ 1 second</strong>. Smaller values raise a <code>ValueError</code>:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="n">cachebox</span><span class="o">.</span><span class="n">TTLCache</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">global_ttl</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">sweep_interval</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
-</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="c1"># ValueError: sweep_interval must be more than 1 seconds.</span>
+<h2 id="ttlcache-vttlcache-background-thread">TTLCache / VTTLCache Background Thread<a class="headerlink" href="#ttlcache-vttlcache-background-thread" title="Permanent link">&para;</a></h2>
+<p>By default both classes use <strong>lazy expiry</strong>: stale entries are cleaned when the cache is
+touched (<code>insert</code>, lookup, iteration, <code>current_size</code>, …). An idle cache keeps expired entries
+in memory until then.</p>
+<p>Pass <code>sweep_interval</code> (≥ 1 second) to start a <strong>daemon</strong> background thread that calls
+<code>expire()</code> on a fixed schedule:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">timedelta</span>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="n">ttl_cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">TTLCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">global_ttl</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">sweep_interval</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="n">vttl_cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">VTTLCache</span><span class="p">(</span>
+</span><span id="__span-13-7"><a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    <span class="n">maxsize</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+</span><span id="__span-13-8"><a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    <span class="n">sweep_interval</span><span class="o">=</span><span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="mi">30</span><span class="p">),</span>
+</span><span id="__span-13-9"><a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="p">)</span>
 </span></code></pre></div>
-</div>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">TTLCache</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">global_ttl</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">sweep_interval</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
 </span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">cache</span><span class="o">.</span><span class="n">sweep_interval</span><span class="p">)</span>  <span class="c1"># 30.0</span>
 </span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>
-</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="c1"># Without a sweeper, sweep_interval is None</span>
-</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="n">cache2</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">TTLCache</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">global_ttl</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
-</span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="nb">print</span><span class="p">(</span><span class="n">cache2</span><span class="o">.</span><span class="n">sweep_interval</span><span class="p">)</span>  <span class="c1"># None</span>
+</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="n">cache2</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">TTLCache</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">global_ttl</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
+</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">cache2</span><span class="o">.</span><span class="n">sweep_interval</span><span class="p">)</span>  <span class="c1"># None</span>
 </span></code></pre></div>
-<p>Call <code>stop_sweeper()</code> when you want to halt background sweeping without
-destroying the cache itself. This is useful when you need to pause periodic
-eviction or cleanly shut down the thread before the cache goes out of scope:</p>
+<p>Stop the thread explicitly when you need a clean shutdown:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">TTLCache</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">global_ttl</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">sweep_interval</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
-</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>
-</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="c1"># ... later, during shutdown ...</span>
-</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="n">cache</span><span class="o">.</span><span class="n">stop_sweeper</span><span class="p">()</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="c1"># ... later ...</span>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="n">cache</span><span class="o">.</span><span class="n">stop_sweeper</span><span class="p">()</span>
 </span></code></pre></div>
+<p>The sweeper also stops when the cache is garbage-collected (<code>__del__</code>).</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>The sweeper thread is also stopped automatically when the cache is garbage
-collected (via <code>__del__</code>), so manual cleanup is only necessary when explicit
-lifecycle control is required.</p>
+<p>Values below 1 second raise <code>ValueError</code>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="n">cachebox</span><span class="o">.</span><span class="n">TTLCache</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">global_ttl</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">sweep_interval</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="c1"># ValueError: sweep_interval must be more than 1 seconds.</span>
+</span></code></pre></div>
 </div>
-<p>Use a <strong>sweeper</strong> when:
-- The cache may be idle for long periods but memory should still be reclaimed.
-- You need to bound the window in which stale data could be observed (e.g. via <code>items()</code> or <code>__iter__</code>).
-- You are using <code>VTTLCache</code> with short, heterogeneous TTLs and want predictable cleanup.</p>
-<p>Stick with <strong>lazy expiry</strong> when:
-- The cache sees regular traffic and on-access cleanup is sufficient.
-- You want to avoid any background thread overhead.
-- Memory pressure from temporarily lingering stale entries is acceptable.</p>
+<p><strong>Prefer a sweeper when:</strong></p>
+<ul>
+<li>The cache may sit idle for long periods but memory should still be reclaimed.</li>
+<li>You need a tighter bound on how long stale data can appear in <code>items()</code> / <code>__iter__</code>.</li>
+<li><code>VTTLCache</code> holds short, mixed TTLs and you want predictable cleanup.</li>
+</ul>
+<p><strong>Prefer lazy expiry when:</strong></p>
+<ul>
+<li>Traffic is regular and on-access cleanup is enough.</li>
+<li>You want zero background threads.</li>
+<li>Temporary retention of expired entries is acceptable.</li>
+</ul>
+<p>You can also call <code>expire()</code> yourself at any time:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="n">cache</span><span class="o">.</span><span class="n">expire</span><span class="p">()</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="n">cache</span><span class="o">.</span><span class="n">expire</span><span class="p">(</span><span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># keep table allocation</span>
+</span></code></pre></div>
 <h2 id="cache-stampede-prevention">Cache Stampede Prevention<a class="headerlink" href="#cache-stampede-prevention" title="Permanent link">&para;</a></h2>
-<p>A cache stampede occurs when many concurrent requests find the same key missing from the cache
-and all proceed to recompute the value simultaneously that causing redundant work, resource spikes,
-or even cascading failures under heavy load. The <code>@cached</code> decorator prevents this by default
-using a per-key lock: once one caller begins computing a missing value, all other callers for the
-same key wait for it to finish and then reuse the result.</p>
-<p>Lock-based stampede prevention is enabled by default (<code>lock=True</code>). For sync
-functions this uses <code>threading.Lock</code>; for async functions it uses <code>asyncio.Lock</code>:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Sync</label><label for="__tabbed_2_2">Async</label></div>
+<p>A <strong>cache stampede</strong> happens when many concurrent callers miss the same key and all recompute
+the value. <code>@cached</code> prevents this by default with a <strong>per-key lock</strong>: one caller computes while
+others wait and then reuse the result.</p>
+<p>Default locks: <code>threading.Lock</code> (sync) or <code>asyncio.Lock</code> (async). Override with any type that
+implements <code>AbstractContextManager</code> / <code>AbstractAsyncContextManager</code>:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:3"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><input id="__tabbed_2_3" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Sync (default)</label><label for="__tabbed_2_2">Async (default)</label><label for="__tabbed_2_3">Custom lock type</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="language-python highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
-</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
-</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">256</span><span class="p">))</span>
-</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">fetch_user</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>    <span class="c1"># Only called once per user_id, even under concurrent load</span>
-</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>    <span class="k">return</span> <span class="n">expensive_db_query</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">256</span><span class="p">))</span>
+</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">fetch_user</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>    <span class="k">return</span> <span class="n">expensive_db_query</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-python highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
-</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>
-</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">256</span><span class="p">))</span>
-</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">fetch_user</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>    <span class="c1"># Uses asyncio.Lock automatically for async functions</span>
-</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>    <span class="k">return</span> <span class="k">await</span> <span class="n">expensive_db_query</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">256</span><span class="p">))</span>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">fetch_user</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>    <span class="k">return</span> <span class="k">await</span> <span class="n">expensive_db_query</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-python highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
+</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>
+</span><span id="__span-20-4"><a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">256</span><span class="p">),</span> <span class="n">lock</span><span class="o">=</span><span class="n">threading</span><span class="o">.</span><span class="n">RLock</span><span class="p">)</span>
+</span><span id="__span-20-5"><a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="k">def</span><span class="w"> </span><span class="nf">fetch_user</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="__span-20-6"><a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>    <span class="k">return</span> <span class="n">expensive_db_query</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
 </span></code></pre></div>
 </div>
 </div>
 </div>
-<p>You can use your own lock type. anything that implements <code>contextlib.AbstractContextManager</code> for sync functions, or
-<code>contextlib.AbstractAsyncContextManager</code> for async functions:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
-</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cachebox</span>
-</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>
-</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="c1"># Use an RLock (re-entrant lock) instead of the default Lock</span>
-</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">256</span><span class="p">),</span> <span class="n">lock</span><span class="o">=</span><span class="n">threading</span><span class="o">.</span><span class="n">RLock</span><span class="p">)</span>
-</span><span id="__span-18-6"><a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">fetch_user</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-</span><span id="__span-18-7"><a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>    <span class="k">return</span> <span class="n">expensive_db_query</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
-</span></code></pre></div>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>Passing a synchronous lock to an async function (or vice versa) raises
-a TypeError at decoration time.</p>
+<p>Passing a sync lock to an async function (or vice versa) raises <code>TypeError</code> at decoration time.
+An async callback on a sync function is also rejected.</p>
 </div>
-<p>If your workload doesn't require it you can disable the lock entirely with <code>lock=False</code> or <code>lock=None</code>.
-While the default lock is safe for most use cases, there are situations where keeping it enabled causes
-problems or is simply unnecessary. <em>Recursive functions</em> are the most common case. Because <code>threading.Lock</code> is
-non-reentrant, a cached recursive function will deadlock the moment it calls itself.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="c1"># ❌ Deadlocks on any recursive call</span>
-</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">256</span><span class="p">))</span>
-</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">factorial</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>    <span class="k">return</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;=</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">n</span> <span class="o">*</span> <span class="n">factorial</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+<p>Disable locking with <code>lock=False</code> or <code>lock=None</code> when stampedes are impossible or cheap to tolerate:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="c1"># Recursive functions deadlock under a non-reentrant Lock — disable or use RLock</span>
+</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">256</span><span class="p">),</span> <span class="n">lock</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span><span id="__span-21-3"><a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">factorial</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="__span-21-4"><a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>    <span class="k">return</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;=</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">n</span> <span class="o">*</span> <span class="n">factorial</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
 </span></code></pre></div>
 <p>Other cases where disabling the lock is reasonable:</p>
 <ul>
-<li><em>Cheap computations</em>: if recomputing a value is nearly free, the overhead of
-lock contention outweighs the benefit of preventing duplicate work.</li>
-<li><em>Single-threaded environments</em>: no concurrency means no stampedes; the lock
-is pure overhead.</li>
-<li><em>Already-serialised callers</em>: if your architecture guarantees that only one
-caller can request a given key at a time (e.g. a task queue), the lock adds
-nothing.</li>
+<li><strong>Cheap computations</strong> — lock contention costs more than duplicate work.</li>
+<li><strong>Single-threaded</strong> environments — no concurrency, pure overhead.</li>
+<li><strong>Already serialised callers</strong> — e.g. a single-worker queue.</li>
 </ul>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Disabling the lock does not make cache operations unsafe. all reads and
-writes are still protected by internal Rust mutexes. It only means that
-multiple threads may compute the same missing value simultaneously.</p>
+<p>Disabling the lock does <strong>not</strong> make cache storage unsafe. Reads and writes remain protected
+by internal Rust mutexes. It only allows concurrent recomputation of the same missing key.</p>
 </div>
+<p>Errors raised while computing under a lock are propagated to waiters for the same key so they
+fail consistently instead of each retrying independently.</p>
+<h2 id="mutable-return-values">Mutable Return Values<a class="headerlink" href="#mutable-return-values" title="Permanent link">&para;</a></h2>
+<p>The default postprocessor shallow-copies <code>dict</code>, <code>list</code>, and <code>set</code> on return so callers cannot
+corrupt the cache by mutating the result. If you return other mutable containers (custom objects,
+<code>bytearray</code>, nested structures you will mutate in place), set an explicit postprocessor:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">128</span><span class="p">),</span> <span class="n">postprocess</span><span class="o">=</span><span class="n">cachebox</span><span class="o">.</span><span class="n">postprocess_deepcopy</span><span class="p">)</span>
+</span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="k">def</span><span class="w"> </span><span class="nf">load_config</span><span class="p">():</span>
+</span><span id="__span-22-3"><a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;nested&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;flag&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}}</span>
+</span></code></pre></div>
+<p>Or disable copying for maximum speed when values are immutable:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="nd">@cachebox</span><span class="o">.</span><span class="n">cached</span><span class="p">(</span><span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">128</span><span class="p">),</span> <span class="n">postprocess</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="k">def</span><span class="w"> </span><span class="nf">fib</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="__span-23-3"><a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>    <span class="o">...</span>
+</span></code></pre></div>
+<h2 id="thread-safety-of-cache-objects">Thread Safety of Cache Objects<a class="headerlink" href="#thread-safety-of-cache-objects" title="Permanent link">&para;</a></h2>
+<p>All cache classes are safe for concurrent reads and writes from multiple threads. Individual
+method calls are atomic with respect to the internal map. Compound sequences
+(<code>if key not in cache: cache[key] = ...</code>) are <strong>not</strong> atomic — use <code>setdefault</code> /
+<code>setdefault_with</code> or <code>@cached</code> for single-flight insertion patterns.</p>
+<h2 id="iteration-safety">Iteration Safety<a class="headerlink" href="#iteration-safety" title="Permanent link">&para;</a></h2>
+<p><code>keys()</code>, <code>values()</code>, <code>items()</code>, and policy-specific iterators (<code>items_with_frequency</code>,
+<code>items_with_expire</code>, …) return <strong>one-shot</strong> iterators, not live dict views:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">cachebox</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">)})</span>
+</span><span id="__span-24-2"><a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="n">it</span> <span class="o">=</span> <span class="n">cache</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+</span><span id="__span-24-3"><a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a><span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">it</span><span class="p">))</span>   <span class="c1"># items left to yield</span>
+</span><span id="__span-24-4"><a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a><span class="nb">print</span><span class="p">(</span><span class="nb">bool</span><span class="p">(</span><span class="n">it</span><span class="p">))</span>  <span class="c1"># True if anything left</span>
+</span><span id="__span-24-5"><a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>
+</span><span id="__span-24-6"><a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a><span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">it</span><span class="p">:</span>
+</span><span id="__span-24-7"><a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a>    <span class="k">pass</span>
+</span><span id="__span-24-8"><a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a><span class="c1"># second pass is empty</span>
+</span></code></pre></div>
+<p>Do not modify the cache while an iterator is alive — every method on that iterator raises
+<code>RuntimeError</code> if the cache changed.</p>
 
 
 
@@ -1012,7 +1190,7 @@ multiple threads may compute the same missing value simultaneously.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../getting-started/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Getting Started">
+          <a href="../algorithms/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Choosing a Cache">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1022,20 +1200,20 @@ multiple threads may compute the same missing value simultaneously.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Getting Started
+                Choosing a Cache
               </div>
             </div>
           </a>
         
         
           
-          <a href="../migration/" class="md-footer__link md-footer__link--next" aria-label="Next: Migration Guide">
+          <a href="../faq/" class="md-footer__link md-footer__link--next" aria-label="Next: FAQ">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Migration Guide
+                FAQ
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -1077,7 +1255,7 @@ multiple threads may compute the same missing value simultaneously.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["table", "navigation.instant", "navigation.instant.progress", "navigation.tabs", "navigation.prune", "toc.integrate", "search", "search.suggest", "search.share", "projects", "optimize", "content.code.copy", "content.code.select", "content.code.annotate", "navigation.footer"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

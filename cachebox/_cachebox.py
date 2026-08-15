@@ -161,16 +161,15 @@ class TTLCache(_CoreTTLCache[KT, VT]):
         )
 
         self._thread: threading.Thread | None = None
-        self._thread_is_running: bool = False
+        self._stop_event = threading.Event()
 
         if sweep_interval is not None:
             if isinstance(sweep_interval, timedelta):
                 sweep_interval = sweep_interval.total_seconds()
 
             if sweep_interval < 1:
-                raise ValueError("sweep_interval must be more than 1 seconds.")
+                raise ValueError("sweep_interval must be at least 1 second.")
 
-            self._thread_is_running = True
             self._thread = threading.Thread(
                 target=self._sweeper_thread,
                 args=(sweep_interval,),
@@ -185,14 +184,13 @@ class TTLCache(_CoreTTLCache[KT, VT]):
         """The configured ``sweep_interval`` in seconds."""
         return self._sweep_interval
 
-    def _sweeper_thread(self, interval: float):
-        while self._thread_is_running:
-            time.sleep(interval)
+    def _sweeper_thread(self, interval: float) -> None:
+        while not self._stop_event.wait(interval):
             self.expire()
 
     def stop_sweeper(self) -> None:
         """Signals the background sweeper thread to stop, if one is active."""
-        self._thread_is_running = False
+        self._stop_event.set()
 
     def __del__(self) -> None:
         self.stop_sweeper()
@@ -333,16 +331,15 @@ class VTTLCache(_CoreVTTLCache[KT, VT]):
         )
 
         self._thread: threading.Thread | None = None
-        self._thread_is_running: bool = False
+        self._stop_event = threading.Event()
 
         if sweep_interval is not None:
             if isinstance(sweep_interval, timedelta):
                 sweep_interval = sweep_interval.total_seconds()
 
             if sweep_interval < 1:
-                raise ValueError("sweep_interval must be more than 1 seconds.")
+                raise ValueError("sweep_interval must be at least 1 second.")
 
-            self._thread_is_running = True
             self._thread = threading.Thread(
                 target=self._sweeper_thread,
                 args=(sweep_interval,),
@@ -357,14 +354,13 @@ class VTTLCache(_CoreVTTLCache[KT, VT]):
         """The configured ``sweep_interval`` in seconds."""
         return self._sweep_interval
 
-    def _sweeper_thread(self, interval: float):
-        while self._thread_is_running:
-            time.sleep(interval)
+    def _sweeper_thread(self, interval: float) -> None:
+        while not self._stop_event.wait(interval):
             self.expire()
 
     def stop_sweeper(self) -> None:
         """Signals the background sweeper thread to stop, if one is active."""
-        self._thread_is_running = False
+        self._stop_event.set()
 
     def __del__(self) -> None:
         self.stop_sweeper()

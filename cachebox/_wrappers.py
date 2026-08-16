@@ -2,12 +2,14 @@ import inspect
 import typing
 from collections import namedtuple
 from contextlib import AbstractAsyncContextManager, AbstractContextManager
+from collections.abc import Callable, Hashable
 
 from cachebox._core import BaseCacheImpl, Cache
 
-_PostProcess: typing.TypeAlias = typing.Callable[[typing.Any], typing.Any]
-_Callback: typing.TypeAlias = typing.Callable[[int, typing.Any, typing.Any], typing.Any]
-
+_PostProcess: typing.TypeAlias = Callable[[typing.Any], typing.Any]
+_Callback: typing.TypeAlias = Callable[
+    [int, typing.Any, typing.Any], typing.Any
+]
 
 class _Lock:
     __slots__ = ("_lock", "waiters")
@@ -65,10 +67,10 @@ def _create_cache_info(cache, hits, misses) -> CacheInfo:
 
 def _cached_wrapper_without_lock(
     func,
-    cache: BaseCacheImpl | typing.Callable,
-    key_maker: typing.Callable[[tuple, dict], typing.Hashable],
+    cache: BaseCacheImpl | Callable,
+    key_maker: Callable[[tuple, dict], Hashable],
     clear_reuse: bool,
-    callback: typing.Callable[[int, typing.Any, typing.Any], None] | None,
+    callback: Callable[[int, typing.Any, typing.Any], None] | None,
     postprocess: _PostProcess | None,
 ):
     cache_is_fn = callable(cache)
@@ -139,10 +141,10 @@ async def _call_async_callback(callback, event, key, result):
 
 def _async_cached_wrapper_without_lock(
     func,
-    cache: BaseCacheImpl | typing.Callable,
-    key_maker: typing.Callable[[tuple, dict], typing.Hashable],
+    cache: BaseCacheImpl | Callable,
+    key_maker: Callable[[tuple, dict], Hashable],
     clear_reuse: bool,
-    callback: typing.Callable[[int, typing.Any, typing.Any], None] | None,
+    callback: Callable[[int, typing.Any, typing.Any], None] | None,
     postprocess: _PostProcess | None,
 ):
     cache_is_fn = callable(cache)
@@ -179,7 +181,7 @@ def _async_cached_wrapper_without_lock(
 
         result = await func(*args, **kwds)
         _cache.insert(key, result)
-        hits += 1
+        misses += 1
         await _call_async_callback(callback, EVENT_MISS, key, result)
 
         return postprocess(result) if postprocess is not None else result
@@ -202,12 +204,12 @@ def _async_cached_wrapper_without_lock(
 
 def _cached_wrapper(
     func,
-    cache: BaseCacheImpl | typing.Callable,
-    key_maker: typing.Callable[[tuple, dict], typing.Hashable],
+    cache: BaseCacheImpl | Callable,
+    key_maker: Callable[[tuple, dict], Hashable],
     clear_reuse: bool,
-    callback: typing.Callable[[int, typing.Any, typing.Any], None] | None,
+    callback: Callable[[int, typing.Any, typing.Any], None] | None,
     postprocess: _PostProcess | None,
-    lock_type: typing.Type[AbstractContextManager],
+    lock_type: type[AbstractContextManager],
 ):
     cache_is_fn = callable(cache)
 
@@ -221,8 +223,8 @@ def _cached_wrapper(
     hits = 0
     misses = 0
 
-    locks: Cache[typing.Hashable, _Lock] = Cache(0)
-    pending_errors: dict[typing.Hashable, BaseException] = {}
+    locks: Cache[Hashable, _Lock] = Cache(0)
+    pending_errors: dict[Hashable, BaseException] = {}
 
     def _wrapped(*args, **kwds):
         nonlocal hits, misses
@@ -308,12 +310,12 @@ def _cached_wrapper(
 
 def _async_cached_wrapper(
     func,
-    cache: BaseCacheImpl | typing.Callable,
+    cache: BaseCacheImpl | Callable,
     key_maker: typing.Callable[..., typing.Hashable],
     clear_reuse: bool,
     callback: _Callback | None,
     postprocess: _PostProcess | None,
-    lock_type: typing.Type[AbstractAsyncContextManager],
+    lock_type: type[AbstractAsyncContextManager],
 ):
     cache_is_fn = callable(cache)
     _make_key = (

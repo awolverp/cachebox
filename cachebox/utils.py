@@ -64,32 +64,21 @@ def postprocess_deepcopy(value: VT) -> VT:
 
 
 _KWDS_MARK = object()
+_FAST_TYPES = frozenset((int, str))
 
 
 def make_key(*args, **kwds) -> typing.Hashable:
-    """
-    Default cache key.
+    """ Default cache key.
 
-    Fast-path: a single exact ``int`` or ``str`` argument is returned
-    directly. Otherwise a tuple containing positional and keyword
-    arguments is returned.
+    Fast-path: a single `int or str argument is returned as-is.
+    Otherwise a plain tuple (plus a kwargs sentinel when needed) is returned.
     """
+
     if not kwds:
-        if len(args) == 1:
-            arg = args[0]
-            arg_type = type(arg)
-
-            if arg_type is int or arg_type is str:
-                return arg
+        if len(args) == 1 and type(args[0]) in _FAST_TYPES:
+            return args[0]
 
         return args
-
-    key = [*args, _KWDS_MARK]
-
-    for item in kwds.items():
-        key.extend(item)
-
-    return tuple(key)
 
 
 def make_hash_key(*args, **kwds) -> int:

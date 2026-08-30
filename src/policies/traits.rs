@@ -97,6 +97,9 @@ pub trait PolicyExt: Sized {
     /// Returns the current total cumulative size consumed by all stored entries.
     fn current_size(&self) -> usize;
 
+    /// Returns the number of stored entries.
+    fn len(&self) -> usize;
+
     /// Looks up a handle by `hash` and `eq`, applying policy side effects on hit.
     ///
     /// # Errors
@@ -121,6 +124,16 @@ pub trait PolicyExt: Sized {
 
     /// Evicts a handle according to the policy algorithm, returning it.
     fn evict(&mut self, shared: &Self::Shared) -> pyo3::PyResult<Self::Handle>;
+
+    /// Returns the buffer of handles whose destruction is deferred until the
+    /// policy's lock is released.
+    ///
+    /// Dropping a handle can run Python code (the value's ``__del__``), and
+    /// running Python while the lock is held deadlocks if that code touches
+    /// the same cache. Internal operations that remove handles park them here
+    /// instead of dropping them; [`super::wrapped::PolicyGuard`] empties the
+    /// buffer right after it releases the lock.
+    fn pending_drops(&mut self) -> &mut Vec<Self::Handle>;
 
     /// Removes all handles without shrinking the allocation.
     fn clear(&mut self, shared: &Self::Shared);

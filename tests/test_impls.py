@@ -11,6 +11,30 @@ import cachebox
 from . import mixins
 
 
+FAILED_REPLACEMENT_DROPPING_VALUE = """
+import cachebox
+
+cache = cachebox.Cache(
+    10, getsizeof=lambda key, value: value if isinstance(value, int) else 1
+)
+
+
+class Touchy:
+    def __del__(self):
+        cache.get("probe")
+
+
+cache.insert("ballast", 5)
+cache.insert("k", Touchy())
+try:
+    cache.insert("k", 9)  # the replacement overflows and the eviction fails
+except OverflowError:
+    print("ok")
+else:
+    print("the replacement did not overflow")
+"""
+
+
 class TestCache(
     mixins.InitializeMixin,
     mixins.InsertAndGetMixin,
@@ -42,6 +66,20 @@ class TestCache(
         # cachebox.Cache does not have any algorithm to use
         with pytest.raises(OverflowError):
             cache.popitem()
+
+    def test_failed_replacement_still_drops_the_old_value_safely(self):
+        # a deadlock here would keep the GIL, so the call runs in a child process
+        try:
+            done = subprocess.run(
+                [sys.executable, "-c", FAILED_REPLACEMENT_DROPPING_VALUE],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail("the failing replacement never returned")
+
+        assert done.stdout.strip() == "ok", done.stderr
 
     def test_insert_overflow_error(self):
         cache = self.create_cache(5)

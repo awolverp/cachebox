@@ -228,6 +228,18 @@ impl<T> LazyHeap<T> {
         self.is_sorted = true;
     }
 
+    /// Moves every element out into `out`, without sorting.
+    ///
+    /// The heap is empty and considered sorted after this call.
+    #[inline]
+    pub fn drain_into(&mut self, out: &mut Vec<T>) {
+        out.reserve(self.data.len());
+        while let Some(element) = self.unlink_back() {
+            out.push(element);
+        }
+        self.is_sorted = true;
+    }
+
     /// Shrinks the backing buffer's capacity as close to its current length
     /// as possible.
     #[inline]

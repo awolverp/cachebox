@@ -410,6 +410,10 @@ class Cache(BaseCacheImpl[KT, VT]):
         Note:
             Use `setdefault_with`, if computing the value is expensive or has side
             effectes.
+
+            `getsizeof` runs with the internal lock released; if another thread
+            inserts the key meanwhile, that value wins, and if the losing
+            `getsizeof` raises, its exception still propagates to this caller.
         """
         ...
 
@@ -429,10 +433,11 @@ class Cache(BaseCacheImpl[KT, VT]):
             factory: The factory to call and get default value from if ``key`` is not in the cache.
 
         Warning:
-            if two threads miss the same key at once, `factory` can run
-            more than once; the value inserted first wins and is returned to
-            both. If `factory` raises, nothing is inserted and the exception
-            propagates.
+            if two threads miss the same key at once, `factory` (and
+            `getsizeof`) can run more than once; the value inserted first wins
+            and is returned to both callers that succeed. If the losing call's
+            `factory` or `getsizeof` raises, nothing more is inserted and the
+            exception still propagates to that caller.
         """
         ...
 
@@ -592,6 +597,10 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         Note:
             Use `setdefault_with`, if computing the value is expensive or has side
             effectes.
+
+            `getsizeof` runs with the internal lock released; if another thread
+            inserts the key meanwhile, that value wins, and if the losing
+            `getsizeof` raises, its exception still propagates to this caller.
         """
         ...
 
@@ -611,10 +620,11 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
             factory: The factory to call and get default value from if ``key`` is not in the cache.
 
         Warning:
-            if two threads miss the same key at once, `factory` can run
-            more than once; the value inserted first wins and is returned to
-            both. If `factory` raises, nothing is inserted and the exception
-            propagates.
+            if two threads miss the same key at once, `factory` (and
+            `getsizeof`) can run more than once; the value inserted first wins
+            and is returned to both callers that succeed. If the losing call's
+            `factory` or `getsizeof` raises, nothing more is inserted and the
+            exception still propagates to that caller.
         """
         ...
 
@@ -807,6 +817,10 @@ class RRCache(BaseCacheImpl[KT, VT]):
         Note:
             Use `setdefault_with`, if computing the value is expensive or has side
             effectes.
+
+            `getsizeof` runs with the internal lock released; if another thread
+            inserts the key meanwhile, that value wins, and if the losing
+            `getsizeof` raises, its exception still propagates to this caller.
         """
         ...
 
@@ -826,10 +840,11 @@ class RRCache(BaseCacheImpl[KT, VT]):
             factory: The factory to call and get default value from if ``key`` is not in the cache.
 
         Warning:
-            if two threads miss the same key at once, `factory` can run
-            more than once; the value inserted first wins and is returned to
-            both. If `factory` raises, nothing is inserted and the exception
-            propagates.
+            if two threads miss the same key at once, `factory` (and
+            `getsizeof`) can run more than once; the value inserted first wins
+            and is returned to both callers that succeed. If the losing call's
+            `factory` or `getsizeof` raises, nothing more is inserted and the
+            exception still propagates to that caller.
         """
         ...
 
@@ -1015,6 +1030,10 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         Note:
             Use `setdefault_with`, if computing the value is expensive or has side
             effectes.
+
+            `getsizeof` runs with the internal lock released; if another thread
+            inserts the key meanwhile, that value wins, and if the losing
+            `getsizeof` raises, its exception still propagates to this caller.
         """
         ...
 
@@ -1034,10 +1053,11 @@ class LRUCache(BaseCacheImpl[KT, VT]):
             factory: The factory to call and get default value from if ``key`` is not in the cache.
 
         Warning:
-            if two threads miss the same key at once, `factory` can run
-            more than once; the value inserted first wins and is returned to
-            both. If `factory` raises, nothing is inserted and the exception
-            propagates.
+            if two threads miss the same key at once, `factory` (and
+            `getsizeof`) can run more than once; the value inserted first wins
+            and is returned to both callers that succeed. If the losing call's
+            `factory` or `getsizeof` raises, nothing more is inserted and the
+            exception still propagates to that caller.
         """
         ...
 
@@ -1264,6 +1284,10 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         Note:
             Use `setdefault_with`, if computing the value is expensive or has side
             effectes.
+
+            `getsizeof` runs with the internal lock released; if another thread
+            inserts the key meanwhile, that value wins, and if the losing
+            `getsizeof` raises, its exception still propagates to this caller.
         """
         ...
 
@@ -1283,10 +1307,11 @@ class LFUCache(BaseCacheImpl[KT, VT]):
             factory: The factory to call and get default value from if ``key`` is not in the cache.
 
         Warning:
-            if two threads miss the same key at once, `factory` can run
-            more than once; the value inserted first wins and is returned to
-            both. If `factory` raises, nothing is inserted and the exception
-            propagates.
+            if two threads miss the same key at once, `factory` (and
+            `getsizeof`) can run more than once; the value inserted first wins
+            and is returned to both callers that succeed. If the losing call's
+            `factory` or `getsizeof` raises, nothing more is inserted and the
+            exception still propagates to that caller.
         """
         ...
 
@@ -1472,6 +1497,10 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         Note:
             Use `setdefault_with`, if computing the value is expensive or has side
             effectes.
+
+            `getsizeof` runs with the internal lock released; if another thread
+            inserts the key meanwhile, that value wins, and if the losing
+            `getsizeof` raises, its exception still propagates to this caller.
         """
         ...
 
@@ -1491,10 +1520,11 @@ class TTLCache(BaseCacheImpl[KT, VT]):
             factory: The factory to call and get default value from if ``key`` is not in the cache.
 
         Warning:
-            if two threads miss the same key at once, `factory` can run
-            more than once; the value inserted first wins and is returned to
-            both. If `factory` raises, nothing is inserted and the exception
-            propagates.
+            if two threads miss the same key at once, `factory` (and
+            `getsizeof`) can run more than once; the value inserted first wins
+            and is returned to both callers that succeed. If the losing call's
+            `factory` or `getsizeof` raises, nothing more is inserted and the
+            exception still propagates to that caller.
         """
         ...
 
@@ -1734,6 +1764,10 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
             Use `setdefault_with`, if computing the value is expensive or has side
             effectes.
 
+            `getsizeof` runs with the internal lock released; if another thread
+            inserts the key meanwhile, that value wins, and if the losing
+            `getsizeof` raises, its exception still propagates to this caller.
+
         Args:
             key: The key to look up or insert.
             default: The value to insert if ``key`` is not in the cache.
@@ -1760,10 +1794,11 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
             ttl: An optional time-to-live duration for item.
 
         Warning:
-            if two threads miss the same key at once, `factory` can run
-            more than once; the value inserted first wins and is returned to
-            both. If `factory` raises, nothing is inserted and the exception
-            propagates.
+            if two threads miss the same key at once, `factory` (and
+            `getsizeof`) can run more than once; the value inserted first wins
+            and is returned to both callers that succeed. If the losing call's
+            `factory` or `getsizeof` raises, nothing more is inserted and the
+            exception still propagates to that caller.
         """
         ...
 

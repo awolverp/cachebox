@@ -101,6 +101,23 @@ class InitializeMixin(BaseMixin):
 
 
 class InsertAndGetMixin(BaseMixin):
+    def test_key_eq_may_trigger_the_gc(self):
+        # __eq__ runs in the middle of a probe, with the lock held; a deadlock
+        # here would keep the GIL, so the call runs in a child process
+        name = type(self.create_cache()).__name__
+
+        try:
+            done = subprocess.run(
+                [sys.executable, "-c", EQ_TRIGGERING_GC, name],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail(f"{name}.get() with a colliding key never returned")
+
+        assert done.stdout.strip() == "ok", done.stderr
+
     def test_insert_returns_none_on_new_key(self):
         cache = self.create_cache()
 
@@ -189,6 +206,22 @@ class PopitemMixin(BaseMixin):
 
 
 class SetDefaultMixin(BaseMixin):
+    def test_setdefault_getsizeof_may_touch_the_cache(self):
+        # a deadlock here would keep the GIL, so the call runs in a child process
+        name = type(self.create_cache()).__name__
+
+        try:
+            done = subprocess.run(
+                [sys.executable, "-c", GETSIZEOF_TOUCHING_CACHE, name, "setdefault"],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail(f"{name}.setdefault never returned")
+
+        assert done.stdout.strip() == "ok", done.stderr
+
     def test_setdefault_inserts_when_absent(self):
         cache = self.create_cache()
 
@@ -204,6 +237,262 @@ class SetDefaultMixin(BaseMixin):
         assert result == "existing"
         assert cache.get("k") == "existing"
 
+
+EQ_TRIGGERING_GC = """
+import gc
+import sys
+
+import cachebox
+
+name = sys.argv[1]
+cls = getattr(cachebox, name)
+cache = cls(10, global_ttl=60) if name == "TTLCache" else cls(10)
+
+
+class Key:
+    def __init__(self, name):
+        self.name = name
+
+    def __hash__(self):
+        return 42  # same hash for every key, so lookups have to call __eq__
+
+    def __eq__(self, other):
+        gc.collect()
+        return self.name == other.name
+
+
+cache.insert(Key("a"), 1)
+assert cache.get(Key("b")) is None
+print("ok")
+"""
+
+DROPPED_VALUE_TOUCHING_CACHE = """
+import sys
+
+import cachebox
+
+name = sys.argv[1]
+cls = getattr(cachebox, name)
+cache = cls(2, global_ttl=60) if name == "TTLCache" else cls(2)
+
+
+class Touchy:
+    def __del__(self):
+        cache.get("probe")
+
+
+cache.update({"k": Touchy()})
+cache.update({"k": Touchy()})  # the replacement drops the old value
+
+try:
+    for i in range(4):
+        cache.insert(i, Touchy())  # evictions drop values
+except OverflowError:
+    pass  # Cache has no eviction algorithm
+
+try:
+    cache.drain(1)
+except OverflowError:
+    pass  # Cache has no eviction algorithm
+
+cache.clear()
+print("ok")
+"""
+
+BATCHED_UPDATE_KEEPS_FINISHED_BATCHES = """
+import sys
+
+import cachebox
+
+name = sys.argv[1]
+cls = getattr(cachebox, name)
+cache = cls(2000, global_ttl=60) if name == "TTLCache" else cls(2000)
+
+
+class Touchy:
+    def __del__(self):
+        cache.get("probe")
+
+
+def pairs():
+    for i in range(1500):
+        yield (i, i)
+    yield (Touchy(),)  # malformed, held only by this tuple
+
+
+try:
+    cache.update(pairs())
+except ValueError:
+    inserted = len(cache)
+    if 0 < inserted < 1500:
+        print("ok")
+    else:
+        print(f"unexpected count {inserted}")
+else:
+    print("the malformed item was accepted")
+"""
+
+GETSIZEOF_FAILING_IN_UPDATE = """
+import operator
+import sys
+
+import cachebox
+
+name = sys.argv[1]
+cls = getattr(cachebox, name)
+if name == "TTLCache":
+    cache = cls(5, global_ttl=60, getsizeof=operator.index)
+else:
+    cache = cls(5, getsizeof=operator.index)
+
+
+class Touchy:
+    def __del__(self):
+        cache.get("probe")
+
+
+def pairs():
+    # operator.index rejects two arguments with a C-level TypeError
+    yield ("k", Touchy())
+
+
+try:
+    cache.update(pairs())
+except TypeError:
+    print("ok")
+else:
+    print("getsizeof did not fail")
+"""
+
+MALFORMED_UPDATE_ITEM = """
+import sys
+
+import cachebox
+
+name = sys.argv[1]
+cls = getattr(cachebox, name)
+cache = cls(5, global_ttl=60) if name == "TTLCache" else cls(5)
+
+
+class Touchy:
+    def __del__(self):
+        cache.get("probe")
+
+
+def pairs():
+    yield ("valid", "value")
+    # not a key/value pair; the tuple holds the only reference to the value
+    yield (Touchy(),)
+
+
+try:
+    cache.update(pairs())
+except ValueError:
+    # the error came before any insert, so the valid pair is not in either
+    print("ok" if len(cache) == 0 else "the valid item leaked in")
+else:
+    print("the malformed item was accepted")
+"""
+
+REJECTED_UPDATE_DROPPING_VALUE = """
+import gc
+import sys
+
+import cachebox
+
+
+def sizeof(key, value):
+    return 9 if getattr(value, "tag", None) == "rejected" else 1
+
+
+name = sys.argv[1]
+cls = getattr(cachebox, name)
+if name == "TTLCache":
+    cache = cls(5, global_ttl=60, getsizeof=sizeof)
+else:
+    cache = cls(5, getsizeof=sizeof)
+
+finalized = []
+
+
+class Touchy:
+    def __init__(self, tag):
+        self.tag = tag
+
+    def __del__(self):
+        cache.get("probe")
+        finalized.append(self.tag)
+
+
+def pairs():
+    # each yielded tuple holds the only reference to its value
+    yield ("a", Touchy("inserted"))
+    yield ("b", Touchy("rejected"))  # fails the size pre-check
+    yield ("c", Touchy("tail"))  # never reaches its insert
+
+
+try:
+    cache.update(pairs())
+except OverflowError:
+    # PyPy runs finalizers on a later collection, in no promised order
+    for _ in range(4):
+        gc.collect()
+    if {"rejected", "tail"} <= set(finalized):
+        print("ok")
+    else:
+        print("missing finalizers:", sorted(finalized))
+else:
+    print("the update was not rejected")
+"""
+
+DROPPED_VALUE_TRIGGERING_GC = """
+import gc
+import sys
+
+import cachebox
+
+name = sys.argv[1]
+cls = getattr(cachebox, name)
+cache = cls(10, global_ttl=60) if name == "TTLCache" else cls(10)
+
+
+class Boom:
+    def __del__(self):
+        gc.collect()
+
+
+cache.insert("k", Boom())
+cache.clear()
+print("ok")
+"""
+
+GETSIZEOF_TOUCHING_CACHE = """
+import sys
+
+import cachebox
+
+
+def sizeof(key, value):
+    cache.get("probe")
+    return 1
+
+
+name = sys.argv[1]
+variant = sys.argv[2]
+cls = getattr(cachebox, name)
+if name == "TTLCache":
+    cache = cls(10, global_ttl=60, getsizeof=sizeof)
+else:
+    cache = cls(10, getsizeof=sizeof)
+
+if variant == "setdefault":
+    assert cache.setdefault("k", "v") == "v"
+    assert cache.setdefault("k", "other") == "v"
+else:
+    assert cache.setdefault_with("k", lambda: "v") == "v"
+    assert cache.setdefault_with("k", lambda: "other") == "v"
+print("ok")
+"""
 
 FACTORY_TOUCHING_CACHE = """
 import gc
@@ -228,6 +517,22 @@ print("ok")
 
 
 class SetDefaultWithMixin(BaseMixin):
+    def test_setdefault_with_getsizeof_may_touch_the_cache(self):
+        # a deadlock here would keep the GIL, so the call runs in a child process
+        name = type(self.create_cache()).__name__
+
+        try:
+            done = subprocess.run(
+                [sys.executable, "-c", GETSIZEOF_TOUCHING_CACHE, name, "setdefault_with"],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail(f"{name}.setdefault_with never returned")
+
+        assert done.stdout.strip() == "ok", done.stderr
+
     def test_setdefault_with_inserts_when_absent(self):
         cache = self.create_cache()
 
@@ -317,6 +622,71 @@ class PopAndDeleteMixin(BaseMixin):
 
 
 class UpdateMixin(BaseMixin):
+    def test_update_failing_mid_batch_keeps_the_finished_batches(self):
+        # a deadlock here would keep the GIL, so the call runs in a child process
+        name = type(self.create_cache()).__name__
+
+        try:
+            done = subprocess.run(
+                [sys.executable, "-c", BATCHED_UPDATE_KEEPS_FINISHED_BATCHES, name],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail(f"the failing update of {name} never returned")
+
+        assert done.stdout.strip() == "ok", done.stderr
+
+    def test_failing_getsizeof_in_update_may_touch_the_cache(self):
+        # a deadlock here would keep the GIL, so the call runs in a child process
+        name = type(self.create_cache()).__name__
+
+        try:
+            done = subprocess.run(
+                [sys.executable, "-c", GETSIZEOF_FAILING_IN_UPDATE, name],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail(f"the update of {name} with a failing getsizeof never returned")
+
+        assert done.stdout.strip() == "ok", done.stderr
+
+    def test_malformed_update_item_may_touch_the_cache(self):
+        # a deadlock here would keep the GIL, so the call runs in a child process
+        name = type(self.create_cache()).__name__
+
+        try:
+            done = subprocess.run(
+                [sys.executable, "-c", MALFORMED_UPDATE_ITEM, name],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail(f"the malformed update of {name} never returned")
+
+        assert done.stdout.strip() == "ok", done.stderr
+
+    def test_rejected_update_item_may_touch_the_cache(self):
+        # a deadlock here would keep the GIL, so the call runs in a child process
+        name = type(self.create_cache()).__name__
+
+        try:
+            done = subprocess.run(
+                [sys.executable, "-c", REJECTED_UPDATE_DROPPING_VALUE, name],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail(f"the rejected update of {name} never returned")
+
+        # both parked values are finalized once the lock is gone, tail included
+        assert done.stdout.strip() == "ok", done.stdout + done.stderr
+
     def test_update_from_dict(self):
         cache = self.create_cache()
 
@@ -635,6 +1005,38 @@ class IterationMixin(BaseMixin):
 
 
 class DrainClearShrinkMixin(BaseMixin):
+    def test_dropped_value_may_touch_the_cache(self):
+        # a deadlock here would keep the GIL, so the call runs in a child process
+        name = type(self.create_cache()).__name__
+
+        try:
+            done = subprocess.run(
+                [sys.executable, "-c", DROPPED_VALUE_TOUCHING_CACHE, name],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail(f"dropping a {name} value never returned")
+
+        assert done.stdout.strip() == "ok", done.stderr
+
+    def test_dropping_a_value_may_trigger_the_gc(self):
+        # a deadlock here would keep the GIL, so the call runs in a child process
+        name = type(self.create_cache()).__name__
+
+        try:
+            done = subprocess.run(
+                [sys.executable, "-c", DROPPED_VALUE_TRIGGERING_GC, name],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail(f"{name}.clear() never returned")
+
+        assert done.stdout.strip() == "ok", done.stderr
+
     def test_clear_removes_all_items(self):
         cache = self.create_cache()
 

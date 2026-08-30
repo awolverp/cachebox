@@ -65,7 +65,8 @@ impl traits::VacantExt for Vacant<'_> {
 
     #[inline(always)]
     fn evict(&mut self) -> pyo3::PyResult<()> {
-        self.policy.evict(self.shared)?;
+        let handle = self.policy.evict(self.shared)?;
+        self.policy.pending_drops.push(handle);
         Ok(())
     }
 
@@ -89,6 +90,10 @@ pub struct RRPolicy {
     table: hashbrown::raw::RawTable<Handle>,
     /// Running total of all stored handles' sizes, maintained incrementally.
     currsize: usize,
+
+    /// Handles parked for destruction after the lock is released;
+    /// see [`super::traits::PolicyExt::pending_drops`].
+    pending_drops: Vec<Handle>,
 }
 
 impl RRPolicy {
@@ -100,6 +105,7 @@ impl RRPolicy {
         Self {
             table: hashbrown::raw::RawTable::with_capacity(capacity),
             currsize: 0,
+            pending_drops: Vec::new(),
         }
     }
 
@@ -185,6 +191,16 @@ impl PolicyExt for RRPolicy {
         }
     }
 
+    #[inline(always)]
+    fn pending_drops(&mut self) -> &mut Vec<Handle> {
+        &mut self.pending_drops
+    }
+
+    #[inline(always)]
+    fn len(&self) -> usize {
+        self.table.len()
+    }
+
     #[inline]
     fn shrink_to_fit(&mut self, shared: &Self::Shared) {
         shared.generation_version().increment();
@@ -196,8 +212,11 @@ impl PolicyExt for RRPolicy {
         if self.table.is_empty() {
             return;
         }
-        self.table.clear();
         shared.generation_version().increment();
+        self.pending_drops.reserve(self.table.len());
+        for handle in self.table.drain() {
+            self.pending_drops.push(handle);
+        }
         self.currsize = 0;
     }
 
@@ -252,6 +271,7 @@ impl PolicyExt for RRPolicy {
         Self {
             table,
             currsize: self.currsize,
+            pending_drops: Vec::new(),
         }
     }
 

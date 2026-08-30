@@ -351,6 +351,10 @@ impl PyLRUCache {
     ///
     /// Use `setdefault_with`, if computing the value is expensive or has side
     /// effectes.
+    ///
+    /// `getsizeof` runs with the internal lock released; if another thread
+    /// inserts the key meanwhile, that value wins, and if the losing
+    /// `getsizeof` raises, its exception still propagates to this caller.
     #[pyo3(signature = (key, default=utils::OptionalArgument::Undefined))]
     fn setdefault(
         &self,
@@ -365,10 +369,12 @@ impl PyLRUCache {
 
         let inner = self.0.get();
         let shared = inner.shared();
-        let mut policy = inner.policy();
+        {
+            let mut policy = inner.policy();
 
-        if let Some(x) = policy.get(py, &key, inner.shared())? {
-            return Ok(x.value().clone_ref(py));
+            if let Some(x) = policy.get(py, &key, inner.shared())? {
+                return Ok(x.value().clone_ref(py));
+            }
         }
 
         let default_object = match default {
@@ -385,7 +391,22 @@ impl PyLRUCache {
             key,
             default_object.clone_ref(py),
         )?;
-        inner.insert_no_lock(&mut policy, py, handle)?;
+
+        let mut policy = inner.policy();
+
+        let existing = policy
+            .get(py, handle.key(), inner.shared())?
+            .map(|x| x.value().clone_ref(py));
+        if let Some(existing) = existing {
+            // Lost the race: the winner's value is returned, ours is parked.
+            policy.pending_drops().push(handle);
+            return Ok(existing);
+        }
+
+        if let Some(old) = inner.insert_no_lock(&mut policy, py, handle)? {
+            // Only reachable when the key's __eq__ is inconsistent.
+            policy.pending_drops().push(old);
+        }
         Ok(default_object)
     }
 
@@ -395,10 +416,11 @@ impl PyLRUCache {
     /// Otherwise `factory` is called with the internal lock released, its
     /// result is inserted and returned.
     ///
-    /// Warning: if two threads miss the same key at once, `factory` can run
-    /// more than once; the value inserted first wins and is returned to
-    /// both. If `factory` raises, nothing is inserted and the exception
-    /// propagates.
+    /// Warning: if two threads miss the same key at once, `factory` (and
+    /// `getsizeof`) can run more than once; the value inserted first wins and
+    /// is returned to both callers that succeed. If the losing call's
+    /// `factory` or `getsizeof` raises, nothing more is inserted and the
+    /// exception still propagates to that caller.
     fn setdefault_with(
         &self,
         py: pyo3::Python,
@@ -424,19 +446,28 @@ impl PyLRUCache {
         // `factory` is Python code: a GC pass inside it would deadlock on `__traverse__`
         let default_object = factory.call0(py)?;
 
-        let mut policy = inner.policy();
-
-        if let Some(x) = policy.get(py, &key, inner.shared())? {
-            return Ok(x.value().clone_ref(py));
-        }
-
         let handle = lrupolicy::Handle::with_precomputed_hash_key(
             py,
             shared.getsizeof(),
             key,
             default_object.clone_ref(py),
         )?;
-        inner.insert_no_lock(&mut policy, py, handle)?;
+
+        let mut policy = inner.policy();
+
+        let existing = policy
+            .get(py, handle.key(), inner.shared())?
+            .map(|x| x.value().clone_ref(py));
+        if let Some(existing) = existing {
+            // Lost the race: the winner's value is returned, ours is parked.
+            policy.pending_drops().push(handle);
+            return Ok(existing);
+        }
+
+        if let Some(old) = inner.insert_no_lock(&mut policy, py, handle)? {
+            // Only reachable when the key's __eq__ is inconsistent.
+            policy.pending_drops().push(old);
+        }
         Ok(default_object)
     }
 
@@ -725,7 +756,12 @@ impl PyLRUCache {
         }
 
         let inner = self.0.get();
-        let policy = inner.policy();
+        // Never wait here: the lock holder may be running Python code, and a
+        // collection landing there would deadlock. Skipping a pass only keeps
+        // the contents alive until the next one.
+        let Some(policy) = inner.try_policy() else {
+            return Ok(());
+        };
 
         for cursor in unsafe { policy.list().iter() } {
             let handle = unsafe { cursor.element() };

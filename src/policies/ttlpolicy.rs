@@ -200,7 +200,8 @@ impl traits::VacantExt for Vacant<'_> {
 
     #[inline]
     fn evict(&mut self) -> pyo3::PyResult<()> {
-        self.policy.evict(self.shared)?;
+        let handle = self.policy.evict(self.shared)?;
+        self.policy.pending_drops.push(handle);
         Ok(())
     }
 
@@ -223,6 +224,10 @@ pub struct TTLPolicy {
     table: hashbrown::raw::RawTable<usize>,
     entries: VecDeque<ExpiringHandle>,
     currsize: usize,
+
+    /// Handles parked for destruction after the lock is released;
+    /// see [`super::traits::PolicyExt::pending_drops`].
+    pending_drops: Vec<ExpiringHandle>,
     front_offset: usize,
 }
 
@@ -236,6 +241,7 @@ impl TTLPolicy {
             table: hashbrown::raw::RawTable::with_capacity(capacity),
             entries: VecDeque::with_capacity(capacity),
             currsize: 0,
+            pending_drops: Vec::new(),
             front_offset: 0,
         }
     }
@@ -315,6 +321,18 @@ impl TTLPolicy {
     pub fn expire(&mut self, gv: &utils::GenerationVersion) {
         let now = std::time::SystemTime::now();
 
+        // The queue is ordered by expiry: once the front has expired, the
+        // expired prefix is countable up front.
+        match self.entries.front() {
+            Some(front) if front.is_expired(now) => {
+                let expired = self
+                    .entries
+                    .partition_point(|handle| handle.is_expired(now));
+                self.pending_drops.reserve(expired);
+            }
+            _ => return,
+        }
+
         while let Some(handle) = self.entries.front() {
             if !handle.is_expired(now) {
                 break;
@@ -332,6 +350,7 @@ impl TTLPolicy {
 
             self.currsize = self.currsize.saturating_sub(front.size());
             self.decrement_indexes(1, self.entries.len());
+            self.pending_drops.push(front);
         }
     }
 
@@ -441,6 +460,16 @@ impl PolicyExt for TTLPolicy {
         Ok(front)
     }
 
+    #[inline(always)]
+    fn pending_drops(&mut self) -> &mut Vec<ExpiringHandle> {
+        &mut self.pending_drops
+    }
+
+    #[inline(always)]
+    fn len(&self) -> usize {
+        self.entries.len()
+    }
+
     #[inline]
     fn shrink_to_fit(&mut self, shared: &Self::Shared) {
         shared.generation_version().increment();
@@ -458,7 +487,7 @@ impl PolicyExt for TTLPolicy {
 
         shared.generation_version().increment();
         self.table.clear();
-        self.entries.clear();
+        self.pending_drops.extend(self.entries.drain(..));
         self.currsize = 0;
         self.front_offset = 0;
     }
@@ -523,6 +552,7 @@ impl PolicyExt for TTLPolicy {
             table: self.table.clone(),
             entries,
             currsize: self.currsize,
+            pending_drops: Vec::new(),
             front_offset: self.front_offset,
         }
     }

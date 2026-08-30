@@ -199,7 +199,8 @@ impl traits::VacantExt for Vacant<'_> {
 
     #[inline]
     fn evict(&mut self) -> pyo3::PyResult<()> {
-        self.policy.evict(self.shared)?;
+        let handle = self.policy.evict(self.shared)?;
+        self.policy.pending_drops.push(handle);
         Ok(())
     }
 
@@ -226,6 +227,10 @@ pub struct LFUPolicy {
 
     /// Running total of all stored handles' sizes, maintained incrementally.
     currsize: usize,
+
+    /// Handles parked for destruction after the lock is released;
+    /// see [`super::traits::PolicyExt::pending_drops`].
+    pending_drops: Vec<FrequencyHandle>,
 }
 
 impl LFUPolicy {
@@ -238,6 +243,7 @@ impl LFUPolicy {
             table: hashbrown::raw::RawTable::with_capacity(capacity),
             heap: lazyheap::LazyHeap::new(),
             currsize: 0,
+            pending_drops: Vec::new(),
         }
     }
 
@@ -388,6 +394,16 @@ impl PolicyExt for LFUPolicy {
         Ok(handle)
     }
 
+    #[inline(always)]
+    fn pending_drops(&mut self) -> &mut Vec<FrequencyHandle> {
+        &mut self.pending_drops
+    }
+
+    #[inline(always)]
+    fn len(&self) -> usize {
+        self.heap.len()
+    }
+
     fn clear(&mut self, shared: &Self::Shared) {
         if self.heap.is_empty() {
             return;
@@ -395,7 +411,7 @@ impl PolicyExt for LFUPolicy {
 
         shared.generation_version().increment();
         self.table.clear_no_drop();
-        self.heap.clear();
+        self.heap.drain_into(&mut self.pending_drops);
         self.currsize = 0;
     }
 
@@ -472,6 +488,7 @@ impl PolicyExt for LFUPolicy {
             table,
             heap,
             currsize: self.currsize,
+            pending_drops: Vec::new(),
         }
     }
 

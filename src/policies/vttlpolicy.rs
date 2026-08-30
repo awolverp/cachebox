@@ -201,7 +201,8 @@ impl traits::VacantExt for Vacant<'_> {
 
     #[inline]
     fn evict(&mut self) -> pyo3::PyResult<()> {
-        self.policy.evict(self.shared)?;
+        let handle = self.policy.evict(self.shared)?;
+        self.policy.pending_drops.push(handle);
         Ok(())
     }
 
@@ -224,6 +225,10 @@ pub struct VTTLPolicy {
     table: hashbrown::raw::RawTable<lazyheap::Cursor<ExpiringHandle>>,
     heap: lazyheap::LazyHeap<ExpiringHandle>,
     currsize: usize,
+
+    /// Handles parked for destruction after the lock is released;
+    /// see [`super::traits::PolicyExt::pending_drops`].
+    pending_drops: Vec<ExpiringHandle>,
 }
 
 impl VTTLPolicy {
@@ -236,6 +241,7 @@ impl VTTLPolicy {
             table: hashbrown::raw::RawTable::with_capacity(capacity),
             heap: lazyheap::LazyHeap::new(),
             currsize: 0,
+            pending_drops: Vec::new(),
         }
     }
 
@@ -282,6 +288,7 @@ impl VTTLPolicy {
 
             let handle = self.heap.pop_front(compare_fn!()).unwrap();
             self.currsize = self.currsize.saturating_sub(handle.size);
+            self.pending_drops.push(handle);
         }
     }
 }
@@ -384,6 +391,16 @@ impl PolicyExt for VTTLPolicy {
         Ok(handle)
     }
 
+    #[inline(always)]
+    fn pending_drops(&mut self) -> &mut Vec<ExpiringHandle> {
+        &mut self.pending_drops
+    }
+
+    #[inline(always)]
+    fn len(&self) -> usize {
+        self.heap.len()
+    }
+
     fn clear(&mut self, shared: &Self::Shared) {
         if self.heap.is_empty() {
             return;
@@ -391,7 +408,7 @@ impl PolicyExt for VTTLPolicy {
 
         shared.generation_version().increment();
         self.table.clear_no_drop();
-        self.heap.clear();
+        self.heap.drain_into(&mut self.pending_drops);
         self.currsize = 0;
     }
 
@@ -473,6 +490,7 @@ impl PolicyExt for VTTLPolicy {
             table,
             heap,
             currsize: self.currsize,
+            pending_drops: Vec::new(),
         }
     }
     fn build_pickle(

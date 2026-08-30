@@ -87,7 +87,8 @@ impl traits::VacantExt for Vacant<'_> {
 
     #[inline]
     fn evict(&mut self) -> pyo3::PyResult<()> {
-        self.policy.evict(self.shared)?;
+        let handle = self.policy.evict(self.shared)?;
+        self.policy.pending_drops.push(handle);
         Ok(())
     }
 
@@ -120,6 +121,10 @@ pub struct FIFOPolicy {
     /// Running total of all stored handles' sizes, maintained incrementally.
     currsize: usize,
 
+    /// Handles parked for destruction after the lock is released;
+    /// see [`super::traits::PolicyExt::pending_drops`].
+    pending_drops: Vec<Handle>,
+
     /// Number of handles ever popped from the front of [`FIFOPolicy::entries`].
     ///
     /// Because [`VecDeque`] indices shift on front-removal, naively keeping
@@ -146,6 +151,7 @@ impl FIFOPolicy {
             table: hashbrown::raw::RawTable::with_capacity(capacity),
             entries: VecDeque::with_capacity(capacity),
             currsize: 0,
+            pending_drops: Vec::new(),
             front_offset: 0,
         }
     }
@@ -314,6 +320,16 @@ impl PolicyExt for FIFOPolicy {
         Ok(front)
     }
 
+    #[inline(always)]
+    fn pending_drops(&mut self) -> &mut Vec<Handle> {
+        &mut self.pending_drops
+    }
+
+    #[inline(always)]
+    fn len(&self) -> usize {
+        self.entries.len()
+    }
+
     #[inline]
     fn shrink_to_fit(&mut self, shared: &Self::Shared) {
         shared.generation_version().increment();
@@ -332,7 +348,7 @@ impl PolicyExt for FIFOPolicy {
 
         shared.generation_version().increment();
         self.table.clear();
-        self.entries.clear();
+        self.pending_drops.extend(self.entries.drain(..));
         self.currsize = 0;
         self.front_offset = 0;
     }
@@ -392,6 +408,7 @@ impl PolicyExt for FIFOPolicy {
             table: self.table.clone(),
             entries,
             currsize: self.currsize,
+            pending_drops: Vec::new(),
             front_offset: self.front_offset,
         }
     }

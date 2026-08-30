@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use pyo3::types::PyAnyMethods;
 use pyo3::types::PyTupleMethods;
 
@@ -30,6 +32,70 @@ pub struct Wrapped<P: PolicyExt> {
     inner: parking_lot::Mutex<P>,
 }
 
+/// A lock guard that defers the destruction of removed values.
+///
+/// Handles removed by internal operations are parked in the policy's
+/// [`PolicyExt::pending_drops`] buffer. When this guard goes out of scope it
+/// first releases the mutex and only then drops those handles, so Python code
+/// running in a value's ``__del__`` never executes while the lock is held.
+pub struct PolicyGuard<'a, P: PolicyExt> {
+    guard: std::mem::ManuallyDrop<parking_lot::MutexGuard<'a, P>>,
+}
+
+impl<'a, P: PolicyExt> PolicyGuard<'a, P> {
+    #[inline(always)]
+    fn new(guard: parking_lot::MutexGuard<'a, P>) -> Self {
+        Self {
+            guard: std::mem::ManuallyDrop::new(guard),
+        }
+    }
+}
+
+impl<'a, P: PolicyExt> std::ops::Deref for PolicyGuard<'a, P> {
+    type Target = P;
+
+    #[inline(always)]
+    fn deref(&self) -> &P {
+        &self.guard
+    }
+}
+
+impl<'a, P: PolicyExt> std::ops::DerefMut for PolicyGuard<'a, P> {
+    #[inline(always)]
+    fn deref_mut(&mut self) -> &mut P {
+        &mut self.guard
+    }
+}
+
+impl<'a, P: PolicyExt> Drop for PolicyGuard<'a, P> {
+    #[inline]
+    fn drop(&mut self) {
+        let buffer = self.guard.pending_drops();
+
+        if buffer.is_empty() {
+            // SAFETY: the guard is dropped exactly once per branch.
+            unsafe { std::mem::ManuallyDrop::drop(&mut self.guard) };
+            return;
+        }
+
+        if buffer.len() == 1 {
+            // `pop` keeps the buffer's allocation for the next eviction.
+            let handle = buffer.pop();
+            // SAFETY: the guard is dropped exactly once per branch.
+            unsafe { std::mem::ManuallyDrop::drop(&mut self.guard) };
+            // The lock is released: the destructor may run Python code.
+            drop(handle);
+            return;
+        }
+
+        let pending = std::mem::take(buffer);
+        // SAFETY: the guard is dropped exactly once per branch.
+        unsafe { std::mem::ManuallyDrop::drop(&mut self.guard) };
+        // The lock is released: the destructors may run Python code.
+        drop(pending);
+    }
+}
+
 impl<P: PolicyExt> Wrapped<P> {
     /// Wraps an existing policy alongside its shared (lock-free) data.
     pub fn new(policy: P, shared: P::Shared) -> Self {
@@ -50,33 +116,74 @@ impl<P: PolicyExt> Wrapped<P> {
     /// # Panics
     /// Panics if the mutex is poisoned.
     #[inline(always)]
-    pub fn policy(&self) -> parking_lot::MutexGuard<'_, P> {
-        self.inner.lock()
+    pub fn policy(&self) -> PolicyGuard<'_, P> {
+        PolicyGuard::new(self.inner.lock())
+    }
+
+    /// Acquires the mutex only if it is free, returning `None` otherwise.
+    ///
+    /// For callers that must never wait for the lock, such as `__traverse__`:
+    /// the thread holding the lock may be running Python code, and a garbage
+    /// collection pass landing there would deadlock the whole process.
+    #[inline(always)]
+    pub fn try_policy(&self) -> Option<PolicyGuard<'_, P>> {
+        self.inner.try_lock().map(PolicyGuard::new)
     }
 }
 
 #[inline(always)]
 fn insert_inner<P: PolicyExt>(
-    lock: &mut parking_lot::MutexGuard<'_, P>,
+    lock: &mut PolicyGuard<'_, P>,
     shared: &P::Shared,
     py: pyo3::Python<'_>,
     handle: P::Handle,
 ) -> pyo3::PyResult<Option<P::Handle>> {
+    match insert_attempt(lock, shared, py, handle) {
+        Ok(result) => Ok(result),
+        Err((err, rejected)) => {
+            if let Some(handle) = rejected {
+                lock.pending_drops().push(handle);
+            }
+            Err(err)
+        }
+    }
+}
+
+/// The locked part of [`insert_inner`]. On failure the handle that did not
+/// make it into the cache is handed back, so the caller can park it.
+#[inline(always)]
+fn insert_attempt<P: PolicyExt>(
+    lock: &mut PolicyGuard<'_, P>,
+    shared: &P::Shared,
+    py: pyo3::Python<'_>,
+    handle: P::Handle,
+) -> Result<Option<P::Handle>, (pyo3::PyErr, Option<P::Handle>)> {
     let handle_size = handle.size();
 
     if handle_size > shared.maxsize() {
-        return Err(new_py_error!(
+        let err = new_py_error!(
             PyOverflowError,
             "handle size is more than the configured maximum size"
-        ));
+        );
+        return Err((err, Some(handle)));
     }
 
-    let result = match lock.entry(py, handle.key(), shared)? {
-        PolicyEntry::Occupied(occupied) => Some(occupied.replace(handle)),
-        PolicyEntry::Vacant(mut vacant) => {
+    let mut result = match lock.entry(py, handle.key(), shared) {
+        Err(err) => return Err((err, Some(handle))),
+        Ok(PolicyEntry::Occupied(occupied)) => Some(occupied.replace(handle)),
+        Ok(PolicyEntry::Vacant(mut vacant)) => {
             // Evict if need
+            let mut eviction_failed = None;
             while vacant.would_exceed(handle_size) {
-                vacant.evict()?;
+                if let Err(err) = vacant.evict() {
+                    eviction_failed = Some(err);
+                    break;
+                }
+            }
+
+            if let Some(err) = eviction_failed {
+                drop(vacant);
+                return Err((err, Some(handle)));
             }
 
             vacant.insert(handle);
@@ -87,7 +194,10 @@ fn insert_inner<P: PolicyExt>(
     if result.is_some() {
         // For the `PolicyEntry::Occupied` case, evict after replacement
         while lock.current_size() > shared.maxsize() {
-            lock.evict(shared)?;
+            match lock.evict(shared) {
+                Ok(evicted) => lock.pending_drops().push(evicted),
+                Err(err) => return Err((err, result.take())),
+            }
         }
     }
 
@@ -99,7 +209,7 @@ impl<P: PolicyExt> Wrapped<P> {
     /// Returns the remaining size. Equals to `maxsize - current_size`.
     #[inline]
     pub fn remaining_size(&self) -> usize {
-        let policy = self.inner.lock();
+        let policy = self.policy();
         self.shared.maxsize().saturating_sub(policy.current_size())
     }
 
@@ -110,7 +220,7 @@ impl<P: PolicyExt> Wrapped<P> {
         py: pyo3::Python<'_>,
         key: &<P::Handle as HandleExt>::Key,
     ) -> pyo3::PyResult<bool> {
-        let mut lock = self.inner.lock();
+        let mut lock = self.policy();
 
         let handle = lock.get(py, key, &self.shared)?;
         Ok(handle.is_some())
@@ -124,7 +234,7 @@ impl<P: PolicyExt> Wrapped<P> {
     #[inline]
     pub fn insert_no_lock(
         &self,
-        policy: &mut parking_lot::MutexGuard<'_, P>,
+        policy: &mut PolicyGuard<'_, P>,
         py: pyo3::Python<'_>,
         handle: P::Handle,
     ) -> pyo3::PyResult<Option<P::Handle>> {
@@ -138,7 +248,7 @@ impl<P: PolicyExt> Wrapped<P> {
         py: pyo3::Python<'_>,
         handle: P::Handle,
     ) -> pyo3::PyResult<Option<P::Handle>> {
-        let mut lock = self.inner.lock();
+        let mut lock = self.policy();
         self.insert_no_lock(&mut lock, py, handle)
     }
 
@@ -150,7 +260,7 @@ impl<P: PolicyExt> Wrapped<P> {
         py: pyo3::Python<'_>,
         key: &<P::Handle as HandleExt>::Key,
     ) -> pyo3::PyResult<Option<P::Handle>> {
-        let mut lock = self.inner.lock();
+        let mut lock = self.policy();
 
         let entry = lock.entry(py, key, &self.shared)?;
         match entry {
@@ -184,7 +294,16 @@ impl<P: PolicyExt> Wrapped<P> {
         use pyo3::types::PyAnyMethods;
         use pyo3::types::PyDictMethods;
 
-        let mut lock = self.inner.lock();
+        /// How many items are transformed before the lock is taken once for
+        /// all of them. This bounds the transient memory of an update, and
+        /// an unbounded iterable stays streaming.
+        const BATCH_SIZE: usize = 1024;
+
+        let py = iterable.py();
+
+        // The iterable, the extraction and `transform` (with `getsizeof`
+        // inside) are Python; they run before the lock is taken.
+        let mut batch: VecDeque<P::Handle> = VecDeque::new();
 
         // Using [pyo3::ffi::PyObject_TypeCheck] and [Bound::cast_unchecked] is so faster than [Bound::cast]
         let is_dictionary = unsafe {
@@ -193,36 +312,87 @@ impl<P: PolicyExt> Wrapped<P> {
         if is_dictionary {
             let dict = unsafe { iterable.cast_unchecked::<pyo3::types::PyDict>() };
 
+            batch.reserve(BATCH_SIZE.min(dict.len()));
             for pair in dict.items() {
                 let (key, value) = unsafe {
                     pair.extract::<(alias::PyObject, alias::PyObject)>()
                         .unwrap_unchecked()
                 };
 
-                insert_inner(&mut lock, &self.shared, pair.py(), transform(key, value)?)?;
+                batch.push_back(transform(key, value)?);
+                if batch.len() == BATCH_SIZE {
+                    self.insert_batch(py, &mut batch)?;
+                }
             }
+        } else {
+            // By this we will support everything has `.items()` attribute,
+            // including our cache classes
+            let items_iterable = {
+                if let Some(items_attribute) = iterable.getattr_opt(c"items")? {
+                    items_attribute.call0()?
+                } else {
+                    iterable
+                }
+            };
 
+            let hint = unsafe { pyo3::ffi::PyObject_LengthHint(items_iterable.as_ptr(), 0) };
+            if hint < 0 {
+                return Err(pyo3::PyErr::fetch(py));
+            }
+            batch.reserve(BATCH_SIZE.min(hint as usize));
+
+            for pair in items_iterable.try_iter()? {
+                let pair = pair?;
+                let (key, value) = pair.extract::<(alias::PyObject, alias::PyObject)>()?;
+
+                batch.push_back(transform(key, value)?);
+                if batch.len() == BATCH_SIZE {
+                    self.insert_batch(py, &mut batch)?;
+                }
+            }
+        }
+
+        self.insert_batch(py, &mut batch)
+    }
+
+    /// Takes the lock once and inserts every buffered handle. Replaced
+    /// handles reuse the space opened at the front of the batch; on an error,
+    /// its unprocessed tail stays there too. The buffer is cleared only after
+    /// the lock guard is gone, so none of them is destroyed under the lock.
+    fn insert_batch(
+        &self,
+        py: pyo3::Python<'_>,
+        batch: &mut VecDeque<P::Handle>,
+    ) -> pyo3::PyResult<()> {
+        if batch.is_empty() {
             return Ok(());
         }
 
-        // By this we will support everything has `.items()` attribute,
-        // including our cache classes
-        let items_iterable = {
-            if let Some(items_attribute) = iterable.getattr_opt(c"items")? {
-                items_attribute.call0()?
-            } else {
-                iterable
+        let count = batch.len();
+        let result = {
+            let mut lock = self.policy();
+            let mut result = Ok(());
+
+            for _ in 0..count {
+                let handle = batch.pop_front().unwrap();
+
+                match insert_inner(&mut lock, &self.shared, py, handle) {
+                    // Reuse the batch allocation as the deferred-drop buffer.
+                    Ok(Some(old)) => batch.push_back(old),
+                    Ok(None) => {}
+                    Err(err) => {
+                        result = Err(err);
+                        break;
+                    }
+                }
             }
+
+            result
         };
 
-        for pair in items_iterable.try_iter()? {
-            let pair = pair?;
-            let (key, value) = pair.extract::<(alias::PyObject, alias::PyObject)>()?;
-
-            insert_inner(&mut lock, &self.shared, pair.py(), transform(key, value)?)?;
-        }
-
-        Ok(())
+        // The lock is gone: clearing may run Python finalizers.
+        batch.clear();
+        result
     }
 
     /// Calls the `evict()` `n` times and returns count of removed items.
@@ -236,12 +406,15 @@ impl<P: PolicyExt> Wrapped<P> {
             return Ok(0);
         }
 
-        let mut lock = self.inner.lock();
+        let mut lock = self.policy();
+
+        let expected = (n as usize).min(lock.len());
+        lock.pending_drops().reserve(expected);
 
         let mut count: pyo3::ffi::Py_ssize_t = 0;
         while count < n {
             match lock.evict(&self.shared) {
-                Ok(_) => {}
+                Ok(evicted) => lock.pending_drops().push(evicted),
                 Err(err) => {
                     if !err.is_instance_of::<pyo3::exceptions::PyKeyError>(py) {
                         return Err(err);
@@ -260,7 +433,7 @@ impl<P: PolicyExt> Wrapped<P> {
     #[inline]
     pub fn clone_ref(&self, py: pyo3::Python) -> Self {
         let shared = self.shared.clone_ref(py);
-        let policy = self.inner.lock().clone_ref(py);
+        let policy = self.policy().clone_ref(py);
 
         Self {
             shared,
@@ -279,7 +452,7 @@ impl<P: PolicyExt> Wrapped<P> {
             .push(self.shared.global_ttl())?;
 
         let mut tuple = builder.begin_tuple(P::PICKLE_SIZE)?;
-        self.inner.lock().build_pickle(&mut tuple)?;
+        self.policy().build_pickle(&mut tuple)?;
         tuple.end()?;
 
         Ok(builder.finish())

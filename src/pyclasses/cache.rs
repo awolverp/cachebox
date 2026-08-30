@@ -651,7 +651,9 @@ impl PyCache {
         }
 
         let inner = self.0.get();
-        let policy = inner.policy();
+        let Some(policy) = inner.try_policy() else {
+            return Ok(());
+        };
 
         for handle_ref in unsafe { policy.table().iter() } {
             let handle = unsafe { handle_ref.as_ref() };

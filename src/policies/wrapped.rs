@@ -53,6 +53,16 @@ impl<P: PolicyExt> Wrapped<P> {
     pub fn policy(&self) -> parking_lot::MutexGuard<'_, P> {
         self.inner.lock()
     }
+
+    /// Acquires the mutex only if it is free, returning `None` otherwise.
+    ///
+    /// For callers that must never wait for the lock, such as `__traverse__`:
+    /// the thread holding the lock may be running Python code, and a garbage
+    /// collection pass landing there would deadlock the whole process.
+    #[inline(always)]
+    pub fn try_policy(&self) -> Option<parking_lot::MutexGuard<'_, P>> {
+        self.inner.try_lock()
+    }
 }
 
 #[inline(always)]

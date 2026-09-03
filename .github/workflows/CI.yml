@@ -64,6 +64,7 @@ jobs:
           - { target: armv7-unknown-linux-gnueabihf, arch: armv7, interpreter: *interpreters }
           - { target: s390x-unknown-linux-gnu, arch: s390x, interpreter: *interpreters }
           - { target: powerpc64le-unknown-linux-gnu, arch: ppc64le, interpreter: *interpreters }
+          - { target: riscv64gc-unknown-linux-gnu, arch: riscv64, interpreter: *interpreters }
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -101,6 +102,7 @@ jobs:
           - { target: i686-unknown-linux-musl, arch: x86, interpreter: *interpreters }
           - { target: aarch64-unknown-linux-musl, arch: aarch64, interpreter: *interpreters }
           - { target: armv7-unknown-linux-musleabihf, arch: armv7, interpreter: *interpreters }
+          - { target: riscv64gc-unknown-linux-musl, arch: riscv64, interpreter: *interpreters }
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

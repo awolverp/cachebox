@@ -101,6 +101,23 @@ class InitializeMixin(BaseMixin):
 
 
 class InsertAndGetMixin(BaseMixin):
+    def test_key_eq_may_trigger_the_gc(self):
+        # __eq__ runs in the middle of a probe, with the lock held; a deadlock
+        # here would keep the GIL, so the call runs in a child process
+        name = type(self.create_cache()).__name__
+
+        try:
+            done = subprocess.run(
+                [sys.executable, "-c", EQ_TRIGGERING_GC, name],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail(f"{name}.get() with a colliding key never returned")
+
+        assert done.stdout.strip() == "ok", done.stderr
+
     def test_insert_returns_none_on_new_key(self):
         cache = self.create_cache()
 
@@ -204,6 +221,55 @@ class SetDefaultMixin(BaseMixin):
         assert result == "existing"
         assert cache.get("k") == "existing"
 
+
+DROPPED_VALUE_TRIGGERING_GC = """
+import gc
+import sys
+
+import cachebox
+
+name = sys.argv[1]
+cls = getattr(cachebox, name)
+cache = cls(10, global_ttl=60) if name == "TTLCache" else cls(10)
+
+
+class Boom:
+    def __del__(self):
+        gc.collect()
+
+
+cache.insert("k", Boom())
+cache.clear()
+print("ok")
+"""
+
+EQ_TRIGGERING_GC = """
+import gc
+import sys
+
+import cachebox
+
+name = sys.argv[1]
+cls = getattr(cachebox, name)
+cache = cls(10, global_ttl=60) if name == "TTLCache" else cls(10)
+
+
+class Key:
+    def __init__(self, name):
+        self.name = name
+
+    def __hash__(self):
+        return 42  # same hash for every key, so lookups have to call __eq__
+
+    def __eq__(self, other):
+        gc.collect()
+        return self.name == other.name
+
+
+cache.insert(Key("a"), 1)
+assert cache.get(Key("b")) is None
+print("ok")
+"""
 
 FACTORY_TOUCHING_CACHE = """
 import gc
@@ -635,6 +701,22 @@ class IterationMixin(BaseMixin):
 
 
 class DrainClearShrinkMixin(BaseMixin):
+    def test_dropping_a_value_may_trigger_the_gc(self):
+        # a deadlock here would keep the GIL, so the call runs in a child process
+        name = type(self.create_cache()).__name__
+
+        try:
+            done = subprocess.run(
+                [sys.executable, "-c", DROPPED_VALUE_TRIGGERING_GC, name],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail(f"{name}.clear() never returned")
+
+        assert done.stdout.strip() == "ok", done.stderr
+
     def test_clear_removes_all_items(self):
         cache = self.create_cache()
 

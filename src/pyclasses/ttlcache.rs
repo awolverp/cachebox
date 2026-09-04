@@ -816,7 +816,9 @@ impl PyTTLCache {
         }
 
         let inner = self.0.get();
-        let policy = inner.policy();
+        let Some(policy) = inner.try_policy() else {
+            return Ok(());
+        };
 
         for handle in policy.entries().iter() {
             visit.call(handle.key().as_ref())?;

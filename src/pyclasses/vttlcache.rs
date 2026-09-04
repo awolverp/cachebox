@@ -776,7 +776,9 @@ impl PyVTTLCache {
         }
 
         let inner = self.0.get();
-        let policy = inner.policy();
+        let Some(policy) = inner.try_policy() else {
+            return Ok(());
+        };
 
         for cursor in unsafe { policy.table().iter() } {
             let handle = unsafe { cursor.as_ref().element() };

@@ -277,12 +277,12 @@ impl PolicyExt for RRPolicy {
         maxsize: usize,
         getsizeof: Option<alias::PyObject>,
         _global_ttl: Option<std::time::Duration>,
-        builded: pyo3::Bound<'_, pyo3::types::PyTuple>,
+        built: pyo3::Bound<'_, pyo3::types::PyTuple>,
     ) -> pyo3::PyResult<(Self::Shared, Self)> {
         use pyo3::types::PyDictMethods;
         use pyo3::types::PyTupleMethods;
 
-        let dict = builded.get_item(0)?.cast_into::<pyo3::types::PyDict>()?;
+        let dict = built.get_item(0)?.cast_into::<pyo3::types::PyDict>()?;
         let dict_length = dict.len();
 
         if dict_length > maxsize {

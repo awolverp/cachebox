@@ -419,13 +419,13 @@ impl PolicyExt for FIFOPolicy {
         maxsize: usize,
         getsizeof: Option<alias::PyObject>,
         _global_ttl: Option<std::time::Duration>,
-        builded: pyo3::Bound<'_, pyo3::types::PyTuple>,
+        built: pyo3::Bound<'_, pyo3::types::PyTuple>,
     ) -> pyo3::PyResult<(Self::Shared, Self)> {
         use pyo3::types::PyAnyMethods;
         use pyo3::types::PyListMethods;
         use pyo3::types::PyTupleMethods;
 
-        let list = builded.get_item(0)?.cast_into::<pyo3::types::PyList>()?;
+        let list = built.get_item(0)?.cast_into::<pyo3::types::PyList>()?;
         let list_length = list.len();
 
         if list_length > maxsize {

@@ -556,7 +556,7 @@ impl PolicyExt for TTLPolicy {
         maxsize: usize,
         getsizeof: Option<alias::PyObject>,
         global_ttl: Option<std::time::Duration>,
-        builded: pyo3::Bound<'_, pyo3::types::PyTuple>,
+        built: pyo3::Bound<'_, pyo3::types::PyTuple>,
     ) -> pyo3::PyResult<(Self::Shared, Self)> {
         use pyo3::types::PyAnyMethods;
         use pyo3::types::PyListMethods;
@@ -566,7 +566,7 @@ impl PolicyExt for TTLPolicy {
             return Err(new_py_error!(PyValueError, "global_ttl is zero"));
         }
 
-        let list = builded.get_item(0)?.cast_into::<pyo3::types::PyList>()?;
+        let list = built.get_item(0)?.cast_into::<pyo3::types::PyList>()?;
         let list_length = list.len();
 
         if list_length > maxsize {

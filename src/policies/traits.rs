@@ -152,6 +152,6 @@ pub trait PolicyExt: Sized {
         maxsize: usize,
         getsizeof: Option<alias::PyObject>,
         global_ttl: Option<std::time::Duration>,
-        builded: pyo3::Bound<'_, pyo3::types::PyTuple>,
+        built: pyo3::Bound<'_, pyo3::types::PyTuple>,
     ) -> pyo3::PyResult<(Self::Shared, Self)>;
 }

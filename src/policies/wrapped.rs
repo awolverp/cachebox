@@ -308,13 +308,13 @@ impl<P: PolicyExt> Wrapped<P> {
             return Err(new_py_error!(PyValueError, "global_ttl is negative"));
         }
 
-        let builded = tuple.get_item(3)?.cast_into::<pyo3::types::PyTuple>()?;
+        let built = tuple.get_item(3)?.cast_into::<pyo3::types::PyTuple>()?;
 
         let (shared, inner) = P::from_pickle(
             maxsize,
             getsizeof,
             global_ttl.map(std::time::Duration::from_secs_f64),
-            builded,
+            built,
         )?;
 
         Ok(Self {

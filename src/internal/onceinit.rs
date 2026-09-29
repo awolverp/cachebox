@@ -9,8 +9,8 @@
 
 use std::cell;
 use std::mem;
-use std::sync::atomic;
 use std::sync::Arc;
+use std::sync::atomic;
 
 const UNINIT: u8 = 0;
 const RUNNING: u8 = 1;
@@ -73,11 +73,11 @@ impl<T> OnceInit<T> {
     /// Intended to be called from the PyO3 `__init__` handler once the Python-side
     /// arguments have been validated and the Rust value can be constructed.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if `set` has already been called on this instance.
+    /// Returns an error if `set` has already been called on this instance.
     #[inline]
-    pub fn set(&self, val: T) {
+    pub fn set(&self, val: T) -> pyo3::PyResult<()> {
         if self
             .0
             .state
@@ -89,25 +89,26 @@ impl<T> OnceInit<T> {
             )
             .is_err()
         {
-            already_init_panic();
+            return Err(already_init_exception());
         }
         // SAFETY: we own the RUNNING token — no other thread can write value.
         unsafe { (*self.0.value.get()).write(val) };
         self.0.state.store(INIT, atomic::Ordering::Release);
+        Ok(())
     }
 
     /// Returns an immutable reference to initialized value.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if called before [`set`](Self::set) has completed.
+    /// Returns an error if called before [`set`](Self::set) has completed.
     #[inline]
-    pub fn get(&self) -> &T {
+    pub fn get(&self) -> pyo3::PyResult<&T> {
         if crate::hashbrown::util::likely(self.0.state.load(atomic::Ordering::Acquire) == INIT) {
             // SAFETY: state == INIT guarantees `value` was fully written and is valid.
-            unsafe { (*self.0.value.get()).assume_init_ref() }
+            Ok(unsafe { (*self.0.value.get()).assume_init_ref() })
         } else {
-            not_init_panic()
+            Err(not_init_exception())
         }
     }
 }
@@ -145,14 +146,17 @@ impl<T> Drop for OnceInit<T> {
 /// rarely-executed stub and does not bloat the hot path of [`lock`](OnceInit::lock).
 #[cold]
 #[inline(never)]
-fn not_init_panic() -> ! {
-    panic!("Object not initialized (__init__ not called)")
+fn not_init_exception() -> pyo3::PyErr {
+    new_py_error!(
+        PyRuntimeError,
+        "Object not initialized (__init__ not called)"
+    )
 }
 
 /// Marked `#[cold]` and `#[inline(never)]` so it is compiled as a separate,
 /// rarely-executed stub and does not bloat the hot path of [`set`](OnceInit::set).
 #[cold]
 #[inline(never)]
-fn already_init_panic() -> ! {
-    panic!("Object already initialized")
+fn already_init_exception() -> pyo3::PyErr {
+    new_py_error!(PyRuntimeError, "Object already initialized")
 }

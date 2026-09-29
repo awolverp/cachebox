@@ -1,15 +1,14 @@
 import inspect
 import typing
 from collections import namedtuple
-from contextlib import AbstractAsyncContextManager, AbstractContextManager
 from collections.abc import Callable, Hashable
+from contextlib import AbstractAsyncContextManager, AbstractContextManager
 
 from cachebox._core import BaseCacheImpl, Cache
 
 _PostProcess: typing.TypeAlias = Callable[[typing.Any], typing.Any]
-_Callback: typing.TypeAlias = Callable[
-    [int, typing.Any, typing.Any], typing.Any
-]
+_Callback: typing.TypeAlias = Callable[[int, typing.Any, typing.Any], typing.Any]
+
 
 class _Lock:
     __slots__ = ("_lock", "waiters")

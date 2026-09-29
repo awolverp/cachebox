@@ -86,7 +86,7 @@ class InitializeMixin(BaseMixin):
         assert c.capacity() >= 10
 
     def test_getsizeof_stored(self):
-        sizer = lambda k, v: len(v)  # noqa: E731
+        sizer = lambda k, v: len(v)
 
         c = self.create_cache(maxsize=100, getsizeof=sizer)
         assert c.getsizeof is sizer
@@ -567,7 +567,9 @@ class IterationMixin(BaseMixin):
             timeout=60,
         )
 
-        assert done.stdout.strip() == "ok", done.stderr or f"exit code {done.returncode}"
+        assert done.stdout.strip() == "ok", (
+            done.stderr or f"exit code {done.returncode}"
+        )
 
     @pytest.mark.skipif(
         platform.python_implementation() == "PyPy",

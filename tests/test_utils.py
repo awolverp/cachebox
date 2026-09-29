@@ -2,7 +2,6 @@ import asyncio
 import platform
 import threading
 import time
-import typing
 
 import pytest
 
@@ -22,7 +21,7 @@ import cachebox
     ],
 )
 def random_cache_impl(request):
-    typ: typing.Type[cachebox.BaseCacheImpl] = request.param
+    typ: type[cachebox.BaseCacheImpl] = request.param
 
     def inner(maxsize, iterable=None):
         if typ is cachebox.TTLCache:
@@ -154,7 +153,7 @@ class TestCachedCache:
             for num in range(2, n + 1):
                 fact *= num
 
-            time.sleep(0.1)
+            await asyncio.sleep(0.1)
             return fact
 
         perf_1 = time.perf_counter()
@@ -239,7 +238,7 @@ class TestCachedKeyMaker:
 
 class TestCachedCallback:
     def test_sync(self, random_cache_impl: type[cachebox.BaseCacheImpl]):
-        called = list()
+        called = []
 
         @cachebox.cached(
             random_cache_impl(3),
@@ -269,7 +268,7 @@ class TestCachedCallback:
 
     @pytest.mark.asyncio
     async def test_async(self, random_cache_impl: type[cachebox.BaseCacheImpl]):
-        called = list()
+        called = []
 
         async def callback(event, key, value):
             called.append((event, key, value))
@@ -663,15 +662,13 @@ def test_recursive_threading_cached():
         else:
             return n * factorial(n - 1)
 
-    threads = list(
-        map(
-            lambda x: x.start() or x,
-            (
-                threading.Thread(target=factorial, args=(10,), name=str(i))
-                for i in range(10)
-            ),
+    threads = [
+        (x.start() or x)
+        for x in (
+            threading.Thread(target=factorial, args=(10,), name=str(i))
+            for i in range(10)
         )
-    )
+    ]
     for t in threads:
         t.join(timeout=60)
 

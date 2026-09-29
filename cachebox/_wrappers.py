@@ -1,15 +1,14 @@
 import inspect
 import typing
 from collections import namedtuple
-from contextlib import AbstractAsyncContextManager, AbstractContextManager
 from collections.abc import Callable, Hashable
+from contextlib import AbstractAsyncContextManager, AbstractContextManager
 
 from cachebox._core import BaseCacheImpl, Cache
 
 _PostProcess: typing.TypeAlias = Callable[[typing.Any], typing.Any]
-_Callback: typing.TypeAlias = Callable[
-    [int, typing.Any, typing.Any], typing.Any
-]
+_Callback: typing.TypeAlias = Callable[[int, typing.Any, typing.Any], typing.Any]
+
 
 class _Lock:
     __slots__ = ("_lock", "waiters")
@@ -93,7 +92,7 @@ def _cached_wrapper_without_lock(
         if kwds.pop("cachebox__ignore", False):
             return func(*args, **kwds)
 
-        _cache: BaseCacheImpl = cache(args[0]) if cache_is_fn else cache  # type: ignore[arg-type]
+        _cache: BaseCacheImpl = cache(args[0]) if cache_is_fn else cache  # type: ignore[arg-type,annotation-unchecked]
         key = _make_key(args, kwds)
 
         try:
@@ -167,7 +166,7 @@ def _async_cached_wrapper_without_lock(
         if kwds.pop("cachebox__ignore", False):
             return await func(*args, **kwds)
 
-        _cache: BaseCacheImpl = cache(args[0]) if cache_is_fn else cache  # type: ignore[arg-type]
+        _cache: BaseCacheImpl = cache(args[0]) if cache_is_fn else cache  # type: ignore[arg-type,annotation-unchecked]
         key = _make_key(args, kwds)
 
         try:
@@ -234,7 +233,7 @@ def _cached_wrapper(
         if kwds.pop("cachebox__ignore", False):
             return func(*args, **kwds)
 
-        _cache: BaseCacheImpl = cache(args[0]) if cache_is_fn else cache  # type: ignore[arg-type]
+        _cache: BaseCacheImpl = cache(args[0]) if cache_is_fn else cache  # type: ignore[arg-type,annotation-unchecked]
         key = _make_key(args, kwds)
 
         # Most calls are expected to hit the cache; avoid acquiring a lock.
@@ -338,7 +337,7 @@ def _async_cached_wrapper(
         if kwds.pop("cachebox__ignore", False):
             return await func(*args, **kwds)
 
-        _cache: BaseCacheImpl = cache(args[0]) if cache_is_fn else cache  # type: ignore[arg-type]
+        _cache: BaseCacheImpl = cache(args[0]) if cache_is_fn else cache  # type: ignore[arg-type,annotation-unchecked]
         key = _make_key(args, kwds)
 
         try:

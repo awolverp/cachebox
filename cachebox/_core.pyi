@@ -12,10 +12,10 @@ DT = typing.TypeVar("DT")
 T_co = typing.TypeVar("T_co", covariant=True)
 
 _IterableType: typing.TypeAlias = (
-    typing.Dict[KT, VT]
+    dict[KT, VT]
     | SupportsItems[KT, VT]
     | BaseCacheImpl[KT, VT]
-    | typing.Iterable[typing.Tuple[KT, VT]]
+    | typing.Iterable[tuple[KT, VT]]
 )
 
 class CacheIterator(typing.Iterator[T_co]):
@@ -43,7 +43,6 @@ class CacheIterator(typing.Iterator[T_co]):
         Returns:
             The number of items left.
         """
-        ...
 
     def __bool__(self) -> bool:
         """
@@ -52,7 +51,6 @@ class CacheIterator(typing.Iterator[T_co]):
         Returns:
             ``True`` if at least one item is left.
         """
-        ...
 
 class BaseCacheImpl(typing.Generic[KT, VT]):
     """
@@ -70,7 +68,6 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
             Using the returned instance before calling ``__init__`` is unsafe
             and causes panic errors.
         """
-        ...
 
     def __init__(
         self,
@@ -100,17 +97,14 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
             reallocations when the number of expected entries is known
             ahead of time.
         """
-        ...
 
     @property
     def maxsize(self) -> int:
         """The configured ``maxsize``."""
-        ...
 
     @property
     def getsizeof(self) -> typing.Callable[[KT, VT], int] | None:
         """The configured ``getsizeof`` function."""
-        ...
 
     def current_size(self) -> int:
         """
@@ -119,7 +113,6 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
         Returns:
             The sum of sizes of all entries currently in the cache.
         """
-        ...
 
     def remaining_size(self) -> int:
         """
@@ -128,7 +121,6 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
         Returns:
             The result of ``maxsize - current_size``.
         """
-        ...
 
     def capacity(self) -> int:
         """
@@ -137,7 +129,6 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
         Returns:
             The current allocated capacity.
         """
-        ...
 
     def __len__(self) -> int:
         """
@@ -146,7 +137,6 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
         Returns:
             The number of entries in the cache.
         """
-        ...
 
     def __sizeof__(self) -> int: ...
     def __bool__(self) -> bool: ...
@@ -164,7 +154,6 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
         Returns:
             ``True`` if the key exists in the cache, ``False`` otherwise.
         """
-        ...
 
     def is_empty(self) -> bool:
         """
@@ -173,7 +162,6 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
         Returns:
             ``True`` if the cache contains no entries.
         """
-        ...
 
     def is_full(self) -> bool:
         """
@@ -182,11 +170,10 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
         Returns:
             ``True`` if the cache is at capacity.
         """
-        ...
 
     def insert(
         self, key: KT, value: VT, *args: typing.Any, **kwargs: typing.Any
-    ) -> typing.Optional[VT]: ...
+    ) -> VT | None: ...
     def __setitem__(self, key: KT, value: VT) -> None: ...
     def update(
         self,
@@ -195,16 +182,16 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
         **kwargs: typing.Any,
     ) -> None: ...
     def get(
-        self, key: KT, default: typing.Optional[DT] = None
-    ) -> typing.Union[VT, DT]: ...
+        self, key: KT, default: DT | None = None
+    ) -> VT | DT: ...
     def __getitem__(self, key: KT) -> VT: ...
     def setdefault(
         self,
         key: KT,
-        default: typing.Optional[DT] = None,
+        default: DT | None = None,
         *args: typing.Any,
         **kwargs: typing.Any,
-    ) -> typing.Optional[VT | DT]: ...
+    ) -> VT | DT | None: ...
     def setdefault_with(
         self,
         key: KT,
@@ -212,7 +199,7 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
         *args: typing.Any,
         **kwargs: typing.Any,
     ) -> VT | DT: ...
-    def pop(self, key: KT, default: DT = ...) -> typing.Union[VT, DT]:
+    def pop(self, key: KT, default: DT = ...) -> VT | DT:
         """
         Removes the specified key and returns the corresponding value.
 
@@ -226,10 +213,9 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
         Raises:
             KeyError: If the key is not found and no ``default`` is provided.
         """
-        ...
 
     def __delitem__(self, key: KT) -> None: ...
-    def popitem(self) -> typing.Tuple[KT, VT]: ...
+    def popitem(self) -> tuple[KT, VT]: ...
     def drain(self, n: int) -> int:
         """
         Calls ``popitem()`` ``n`` times and returns the count of removed items.
@@ -240,11 +226,9 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
         Returns:
             The number of items successfully removed.
         """
-        ...
 
     def shrink_to_fit(self) -> None:
         """Shrinks the internal allocation as close to the current length as possible."""
-        ...
 
     def clear(self, *, reuse: bool = False) -> None:
         """
@@ -254,11 +238,10 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
             reuse: If ``True``, retains the allocated memory for future reuse
                 rather than freeing it. Defaults to ``False``.
         """
-        ...
 
-    def __eq__(self, other: typing.Any) -> bool: ...
-    def __ne__(self, other: typing.Any) -> bool: ...
-    def items(self) -> CacheIterator[typing.Tuple[KT, VT]]: ...
+    def __eq__(self, other: object) -> bool: ...
+    def __ne__(self, other: object) -> bool: ...
+    def items(self) -> CacheIterator[tuple[KT, VT]]: ...
     def values(self) -> CacheIterator[VT]: ...
     def keys(self) -> CacheIterator[KT]: ...
     def __iter__(self) -> CacheIterator[KT]: ...
@@ -266,7 +249,6 @@ class BaseCacheImpl(typing.Generic[KT, VT]):
     def __copy__(self) -> typing.Self: ...
     def __getstate__(self) -> object: ...
     def __setstate__(self, state: object) -> None: ...
-    def __repr__(self) -> str: ...
 
 class Cache(BaseCacheImpl[KT, VT]):
     """
@@ -343,7 +325,7 @@ class Cache(BaseCacheImpl[KT, VT]):
     # | \`TTLCache\` | O(1)~ | O(1)~ | O(min(i, n-i)) | O(n) |
     # | \`VTTLCache\` | O(1)~ | O(1)~ | O(min(i, n-i)) | O(1)~ |
 
-    def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
+    def insert(self, key: KT, value: VT) -> VT | None:
         """
         Inserts a key-value pair and returns the previous value if present.
 
@@ -363,7 +345,6 @@ class Cache(BaseCacheImpl[KT, VT]):
             OverflowError: If the cache has reached its ``maxsize`` limit,
                 since this class has no eviction algorithm.
         """
-        ...
 
     def update(self, iterable: _IterableType[KT, VT]) -> None:
         """
@@ -373,13 +354,12 @@ class Cache(BaseCacheImpl[KT, VT]):
             iterable: A dictionary, object supporting ``items()``, another
                 cache instance, or an iterable of ``(key, value)`` tuples.
         """
-        ...
 
     def get(
         self,
         key: KT,
-        default: typing.Optional[DT] = ...,
-    ) -> typing.Union[VT, DT]:
+        default: DT | None = ...,
+    ) -> VT | DT:
         """
         Retrieves the value for a given key from the cache.
 
@@ -390,13 +370,12 @@ class Cache(BaseCacheImpl[KT, VT]):
         Returns:
             The value associated with ``key``, or ``default`` if not found.
         """
-        ...
 
     def setdefault(
         self,
         key: KT,
-        default: typing.Optional[DT] = None,
-    ) -> typing.Optional[VT | DT]:
+        default: DT | None = None,
+    ) -> VT | DT | None:
         """
         Get `key`s value, or automatically insert `default` and return it.
         If `key` exists, its current value is returned and `default` is ignored.
@@ -411,7 +390,6 @@ class Cache(BaseCacheImpl[KT, VT]):
             Use `setdefault_with`, if computing the value is expensive or has side
             effectes.
         """
-        ...
 
     def setdefault_with(
         self,
@@ -434,9 +412,8 @@ class Cache(BaseCacheImpl[KT, VT]):
             both. If `factory` raises, nothing is inserted and the exception
             propagates.
         """
-        ...
 
-    def popitem(self) -> typing.Tuple[KT, VT]:
+    def popitem(self) -> tuple[KT, VT]:
         """
         Always raises ``OverflowError``.
 
@@ -445,9 +422,8 @@ class Cache(BaseCacheImpl[KT, VT]):
         Raises:
             OverflowError: Always, because ``Cache`` has no eviction policy.
         """
-        ...
 
-    def items(self) -> CacheIterator[typing.Tuple[KT, VT]]:
+    def items(self) -> CacheIterator[tuple[KT, VT]]:
         """
         Returns an iterable of the cache's ``(key, value)`` pairs.
 
@@ -457,7 +433,6 @@ class Cache(BaseCacheImpl[KT, VT]):
         Returns:
             An iterable of ``(key, value)`` tuples.
         """
-        ...
 
     def keys(self) -> CacheIterator[KT]:
         """
@@ -469,7 +444,6 @@ class Cache(BaseCacheImpl[KT, VT]):
         Returns:
             An iterable of keys.
         """
-        ...
 
     def values(self) -> CacheIterator[VT]:
         """
@@ -481,7 +455,6 @@ class Cache(BaseCacheImpl[KT, VT]):
         Returns:
             An iterable of values.
         """
-        ...
 
 class FIFOCache(BaseCacheImpl[KT, VT]):
     """
@@ -546,7 +519,7 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
     ```
     """
 
-    def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
+    def insert(self, key: KT, value: VT) -> VT | None:
         """
         Inserts a key-value pair and returns the previous value if present.
 
@@ -562,7 +535,6 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
             ``None`` if the key was not previously present; the old value if
             the key already existed (the key itself is not updated).
         """
-        ...
 
     def update(self, iterable: _IterableType[KT, VT]) -> None:
         """
@@ -572,13 +544,12 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
             iterable: A dictionary, object supporting ``items()``, another
                 cache instance, or an iterable of ``(key, value)`` tuples.
         """
-        ...
 
     def setdefault(
         self,
         key: KT,
-        default: typing.Optional[DT] = None,
-    ) -> typing.Optional[VT | DT]:
+        default: DT | None = None,
+    ) -> VT | DT | None:
         """
         Get `key`s value, or automatically insert `default` and return it.
         If `key` exists, its current value is returned and `default` is ignored.
@@ -593,7 +564,6 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
             Use `setdefault_with`, if computing the value is expensive or has side
             effectes.
         """
-        ...
 
     def setdefault_with(
         self,
@@ -616,9 +586,8 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
             both. If `factory` raises, nothing is inserted and the exception
             propagates.
         """
-        ...
 
-    def popitem(self) -> typing.Tuple[KT, VT]:
+    def popitem(self) -> tuple[KT, VT]:
         """
         Removes and returns the oldest item in the cache.
 
@@ -628,9 +597,8 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         Raises:
             KeyError: If the cache is empty.
         """
-        ...
 
-    def items(self) -> CacheIterator[typing.Tuple[KT, VT]]:
+    def items(self) -> CacheIterator[tuple[KT, VT]]:
         """
         Returns an ordered iterable of the cache's ``(key, value)`` pairs.
 
@@ -640,7 +608,6 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         Returns:
             An iterable of ``(key, value)`` tuples in insertion order.
         """
-        ...
 
     def keys(self) -> CacheIterator[KT]:
         """
@@ -652,7 +619,6 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         Returns:
             An iterable of keys in insertion order.
         """
-        ...
 
     def values(self) -> CacheIterator[VT]:
         """
@@ -664,9 +630,8 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         Returns:
             An iterable of values in insertion order.
         """
-        ...
 
-    def first(self, n: int = 0) -> typing.Optional[KT]:
+    def first(self, n: int = 0) -> KT | None:
         """
         Returns the key at position ``n`` in insertion order.
 
@@ -681,9 +646,8 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         Raises:
             IndexError: If the cache is empty or ``n`` is out of range.
         """
-        ...
 
-    def last(self) -> typing.Optional[KT]:
+    def last(self) -> KT | None:
         """
         Returns the most recently inserted key. Equivalent to ``self.first(-1)``.
 
@@ -693,7 +657,6 @@ class FIFOCache(BaseCacheImpl[KT, VT]):
         Raises:
             IndexError: If the cache is empty.
         """
-        ...
 
 class RRCache(BaseCacheImpl[KT, VT]):
     """A thread-safe, memory-efficient cache with a Random Replacement eviction policy.
@@ -744,7 +707,7 @@ class RRCache(BaseCacheImpl[KT, VT]):
     ```
     """
 
-    def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
+    def insert(self, key: KT, value: VT) -> VT | None:
         """
         Inserts a key-value pair and returns the previous value if present.
 
@@ -760,7 +723,6 @@ class RRCache(BaseCacheImpl[KT, VT]):
             ``None`` if the key was not previously present; the old value if
             the key already existed (the key itself is not updated).
         """
-        ...
 
     def update(self, iterable: _IterableType[KT, VT]) -> None:
         """
@@ -770,13 +732,12 @@ class RRCache(BaseCacheImpl[KT, VT]):
             iterable: A dictionary, object supporting ``items()``, another
                 cache instance, or an iterable of ``(key, value)`` tuples.
         """
-        ...
 
     def get(
         self,
         key: KT,
-        default: typing.Optional[DT] = ...,
-    ) -> typing.Union[VT, DT]:
+        default: DT | None = ...,
+    ) -> VT | DT:
         """
         Retrieves the value for a given key from the cache.
 
@@ -787,13 +748,12 @@ class RRCache(BaseCacheImpl[KT, VT]):
         Returns:
             The value associated with ``key``, or ``default`` if not found.
         """
-        ...
 
     def setdefault(
         self,
         key: KT,
-        default: typing.Optional[DT] = None,
-    ) -> typing.Optional[VT | DT]:
+        default: DT | None = None,
+    ) -> VT | DT | None:
         """
         Get `key`s value, or automatically insert `default` and return it.
         If `key` exists, its current value is returned and `default` is ignored.
@@ -808,7 +768,6 @@ class RRCache(BaseCacheImpl[KT, VT]):
             Use `setdefault_with`, if computing the value is expensive or has side
             effectes.
         """
-        ...
 
     def setdefault_with(
         self,
@@ -831,9 +790,8 @@ class RRCache(BaseCacheImpl[KT, VT]):
             both. If `factory` raises, nothing is inserted and the exception
             propagates.
         """
-        ...
 
-    def popitem(self) -> typing.Tuple[KT, VT]:
+    def popitem(self) -> tuple[KT, VT]:
         """
         Randomly selects, removes, and returns a ``(key, value)`` pair.
 
@@ -843,9 +801,8 @@ class RRCache(BaseCacheImpl[KT, VT]):
         Raises:
             KeyError: If the cache is empty.
         """
-        ...
 
-    def items(self) -> CacheIterator[typing.Tuple[KT, VT]]:
+    def items(self) -> CacheIterator[tuple[KT, VT]]:
         """
         Returns an iterable of the cache's ``(key, value)`` pairs.
 
@@ -855,7 +812,6 @@ class RRCache(BaseCacheImpl[KT, VT]):
         Returns:
             An iterable of ``(key, value)`` tuples.
         """
-        ...
 
     def keys(self) -> CacheIterator[KT]:
         """
@@ -867,7 +823,6 @@ class RRCache(BaseCacheImpl[KT, VT]):
         Returns:
             An iterable of keys.
         """
-        ...
 
     def values(self) -> CacheIterator[VT]:
         """
@@ -879,7 +834,6 @@ class RRCache(BaseCacheImpl[KT, VT]):
         Returns:
             An iterable of values.
         """
-        ...
 
     def random_key(self) -> KT:
         """
@@ -891,7 +845,6 @@ class RRCache(BaseCacheImpl[KT, VT]):
         Raises:
             KeyError: If the cache is empty.
         """
-        ...
 
 class LRUCache(BaseCacheImpl[KT, VT]):
     """
@@ -952,7 +905,7 @@ class LRUCache(BaseCacheImpl[KT, VT]):
     ```
     """
 
-    def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
+    def insert(self, key: KT, value: VT) -> VT | None:
         """
         Inserts a key-value pair and returns the previous value if present.
 
@@ -968,7 +921,6 @@ class LRUCache(BaseCacheImpl[KT, VT]):
             ``None`` if the key was not previously present; the old value if
             the key already existed (the key itself is not updated).
         """
-        ...
 
     def update(self, iterable: _IterableType[KT, VT]) -> None:
         """
@@ -978,13 +930,12 @@ class LRUCache(BaseCacheImpl[KT, VT]):
             iterable: A dictionary, object supporting ``items()``, another
                 cache instance, or an iterable of ``(key, value)`` tuples.
         """
-        ...
 
     def get(
         self,
         key: KT,
-        default: typing.Optional[DT] = ...,
-    ) -> typing.Union[VT, DT]:
+        default: DT | None = ...,
+    ) -> VT | DT:
         """
         Retrieves the value for a given key from the cache.
 
@@ -995,13 +946,12 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         Returns:
             The value associated with ``key``, or ``default`` if not found.
         """
-        ...
 
     def setdefault(
         self,
         key: KT,
-        default: typing.Optional[DT] = None,
-    ) -> typing.Optional[VT | DT]:
+        default: DT | None = None,
+    ) -> VT | DT | None:
         """
         Get `key`s value, or automatically insert `default` and return it.
         If `key` exists, its current value is returned and `default` is ignored.
@@ -1016,7 +966,6 @@ class LRUCache(BaseCacheImpl[KT, VT]):
             Use `setdefault_with`, if computing the value is expensive or has side
             effectes.
         """
-        ...
 
     def setdefault_with(
         self,
@@ -1039,9 +988,8 @@ class LRUCache(BaseCacheImpl[KT, VT]):
             both. If `factory` raises, nothing is inserted and the exception
             propagates.
         """
-        ...
 
-    def popitem(self) -> typing.Tuple[KT, VT]:
+    def popitem(self) -> tuple[KT, VT]:
         """
         Removes and returns the least recently used item.
 
@@ -1051,9 +999,8 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         Raises:
             KeyError: If the cache is empty.
         """
-        ...
 
-    def items(self) -> CacheIterator[typing.Tuple[KT, VT]]:
+    def items(self) -> CacheIterator[tuple[KT, VT]]:
         """
         Returns an ordered iterable of the cache's ``(key, value)`` pairs.
 
@@ -1063,7 +1010,6 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         Returns:
             An iterable of ``(key, value)`` tuples in access order.
         """
-        ...
 
     def keys(self) -> CacheIterator[KT]:
         """
@@ -1075,7 +1021,6 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         Returns:
             An iterable of keys in access order.
         """
-        ...
 
     def values(self) -> CacheIterator[VT]:
         """
@@ -1087,13 +1032,12 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         Returns:
             An iterable of values in access order.
         """
-        ...
 
     def peek(
         self,
         key: KT,
-        default: typing.Optional[DT] = ...,
-    ) -> typing.Union[VT, DT]:
+        default: DT | None = ...,
+    ) -> VT | DT:
         """
         Retrieves the value for a key without updating its recency.
 
@@ -1104,9 +1048,8 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         Returns:
             The value associated with ``key``, or ``default`` if not found.
         """
-        ...
 
-    def least_recently_used(self) -> typing.Optional[KT]:
+    def least_recently_used(self) -> KT | None:
         """
         Returns the key that has not been accessed for the longest time.
 
@@ -1116,9 +1059,8 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         Raises:
             KeyError: If the cache is empty.
         """
-        ...
 
-    def most_recently_used(self) -> typing.Optional[KT]:
+    def most_recently_used(self) -> KT | None:
         """
         Returns the key that was accessed most recently.
 
@@ -1128,7 +1070,6 @@ class LRUCache(BaseCacheImpl[KT, VT]):
         Raises:
             KeyError: If the cache is empty.
         """
-        ...
 
 class LFUCache(BaseCacheImpl[KT, VT]):
     """
@@ -1201,7 +1142,7 @@ class LFUCache(BaseCacheImpl[KT, VT]):
     ```
     """
 
-    def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
+    def insert(self, key: KT, value: VT) -> VT | None:
         """
         Inserts a key-value pair and returns the previous value if present.
 
@@ -1217,7 +1158,6 @@ class LFUCache(BaseCacheImpl[KT, VT]):
             ``None`` if the key was not previously present; the old value if
             the key already existed (the key itself is not updated).
         """
-        ...
 
     def update(self, iterable: _IterableType[KT, VT]) -> None:
         """
@@ -1227,13 +1167,12 @@ class LFUCache(BaseCacheImpl[KT, VT]):
             iterable: A dictionary, object supporting ``items()``, another
                 cache instance, or an iterable of ``(key, value)`` tuples.
         """
-        ...
 
     def get(
         self,
         key: KT,
-        default: typing.Optional[DT] = ...,
-    ) -> typing.Union[VT, DT]:
+        default: DT | None = ...,
+    ) -> VT | DT:
         """
         Retrieves the value for a given key from the cache.
 
@@ -1244,13 +1183,12 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         Returns:
             The value associated with ``key``, or ``default`` if not found.
         """
-        ...
 
     def setdefault(
         self,
         key: KT,
-        default: typing.Optional[DT] = None,
-    ) -> typing.Optional[VT | DT]:
+        default: DT | None = None,
+    ) -> VT | DT | None:
         """
         Get `key`s value, or automatically insert `default` and return it.
         If `key` exists, its current value is returned and `default` is ignored.
@@ -1265,7 +1203,6 @@ class LFUCache(BaseCacheImpl[KT, VT]):
             Use `setdefault_with`, if computing the value is expensive or has side
             effectes.
         """
-        ...
 
     def setdefault_with(
         self,
@@ -1288,9 +1225,8 @@ class LFUCache(BaseCacheImpl[KT, VT]):
             both. If `factory` raises, nothing is inserted and the exception
             propagates.
         """
-        ...
 
-    def popitem(self) -> typing.Tuple[KT, VT]:
+    def popitem(self) -> tuple[KT, VT]:
         """
         Removes and returns the least frequently used item.
 
@@ -1300,9 +1236,8 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         Raises:
             KeyError: If the cache is empty.
         """
-        ...
 
-    def items(self) -> CacheIterator[typing.Tuple[KT, VT]]:
+    def items(self) -> CacheIterator[tuple[KT, VT]]:
         """
         Returns an ordered iterable of the cache's ``(key, value)`` pairs.
 
@@ -1312,7 +1247,6 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         Returns:
             An iterable of ``(key, value)`` tuples in frequency order.
         """
-        ...
 
     def keys(self) -> CacheIterator[KT]:
         """
@@ -1324,7 +1258,6 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         Returns:
             An iterable of keys in frequency order.
         """
-        ...
 
     def values(self) -> CacheIterator[VT]:
         """
@@ -1336,9 +1269,8 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         Returns:
             An iterable of values in frequency order.
         """
-        ...
 
-    def items_with_frequency(self) -> CacheIterator[typing.Tuple[KT, VT, int]]:
+    def items_with_frequency(self) -> CacheIterator[tuple[KT, VT, int]]:
         """
         Returns an ordered iterable of the cache's ``(key, value)`` pairs with their
         frequency counter.
@@ -1349,13 +1281,12 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         Returns:
             An iterable of ``(key, value)`` tuples in frequency order.
         """
-        ...
 
     def peek(
         self,
         key: KT,
-        default: typing.Optional[DT] = ...,
-    ) -> typing.Union[VT, DT]:
+        default: DT | None = ...,
+    ) -> VT | DT:
         """
         Retrieves the value for a key without incrementing its frequency counter.
 
@@ -1366,7 +1297,6 @@ class LFUCache(BaseCacheImpl[KT, VT]):
         Returns:
             The value associated with ``key``, or ``default`` if not found.
         """
-        ...
 
     def least_frequently_used(self, n: int = 0) -> KT:
         """
@@ -1386,7 +1316,6 @@ class LFUCache(BaseCacheImpl[KT, VT]):
             This method may re-sort the cache. Do not call it while iterating
             over the cache.
         """
-        ...
 
 class TTLCache(BaseCacheImpl[KT, VT]):
     """
@@ -1419,14 +1348,12 @@ class TTLCache(BaseCacheImpl[KT, VT]):
             getsizeof: A callable that computes the size of a key-value pair.
                 When ``None``, each entry is assumed to have a size of 1.
         """
-        ...
 
     @property
     def global_ttl(self) -> float:
         """The configured ``global_ttl`` in seconds."""
-        ...
 
-    def insert(self, key: KT, value: VT) -> typing.Optional[VT]:
+    def insert(self, key: KT, value: VT) -> VT | None:
         """
         Inserts a key-value pair and returns the previous value if present.
 
@@ -1442,7 +1369,6 @@ class TTLCache(BaseCacheImpl[KT, VT]):
             ``None`` if the key was not previously present; the old value if
             the key already existed (the key itself is not updated).
         """
-        ...
 
     def update(self, iterable: _IterableType[KT, VT]) -> None:
         """
@@ -1452,13 +1378,12 @@ class TTLCache(BaseCacheImpl[KT, VT]):
             iterable: A dictionary, object supporting ``items()``, another
                 cache instance, or an iterable of ``(key, value)`` tuples.
         """
-        ...
 
     def setdefault(
         self,
         key: KT,
-        default: typing.Optional[DT] = None,
-    ) -> typing.Optional[VT | DT]:
+        default: DT | None = None,
+    ) -> VT | DT | None:
         """
         Get `key`s value, or automatically insert `default` and return it.
         If `key` exists, its current value is returned and `default` is ignored.
@@ -1473,7 +1398,6 @@ class TTLCache(BaseCacheImpl[KT, VT]):
             Use `setdefault_with`, if computing the value is expensive or has side
             effectes.
         """
-        ...
 
     def setdefault_with(
         self,
@@ -1496,9 +1420,8 @@ class TTLCache(BaseCacheImpl[KT, VT]):
             both. If `factory` raises, nothing is inserted and the exception
             propagates.
         """
-        ...
 
-    def popitem(self) -> typing.Tuple[KT, VT]:
+    def popitem(self) -> tuple[KT, VT]:
         """
         Removes and returns the item that has been in the cache the longest.
 
@@ -1508,9 +1431,8 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         Raises:
             KeyError: If the cache is empty.
         """
-        ...
 
-    def items(self) -> CacheIterator[typing.Tuple[KT, VT]]:
+    def items(self) -> CacheIterator[tuple[KT, VT]]:
         """
         Returns an ordered iterable of the cache's ``(key, value)`` pairs.
 
@@ -1520,7 +1442,6 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         Returns:
             An iterable of ``(key, value)`` tuples in insertion order.
         """
-        ...
 
     def keys(self) -> CacheIterator[KT]:
         """
@@ -1532,7 +1453,6 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         Returns:
             An iterable of keys in insertion order.
         """
-        ...
 
     def values(self) -> CacheIterator[VT]:
         """
@@ -1544,9 +1464,8 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         Returns:
             An iterable of values in insertion order.
         """
-        ...
 
-    def first(self, n: int = 0) -> typing.Optional[KT]:
+    def first(self, n: int = 0) -> KT | None:
         """
         Returns the key at position ``n`` in insertion order.
 
@@ -1561,9 +1480,8 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         Raises:
             IndexError: If the cache is empty or ``n`` is out of range.
         """
-        ...
 
-    def last(self) -> typing.Optional[KT]:
+    def last(self) -> KT | None:
         """
         Returns the most recently inserted key. Equivalent to ``self.first(-1)``.
 
@@ -1573,7 +1491,6 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         Raises:
             IndexError: If the cache is empty.
         """
-        ...
 
     def expire(self, *, reuse: bool = False) -> None:
         """
@@ -1583,13 +1500,12 @@ class TTLCache(BaseCacheImpl[KT, VT]):
             reuse: If ``True``, retains the allocated memory for future reuse
                 rather than freeing it. Defaults to ``False``.
         """
-        ...
 
     def get_with_expire(
         self,
         key: KT,
-        default: typing.Optional[DT] = None,
-    ) -> typing.Tuple[typing.Union[VT, DT], float]:
+        default: DT | None = None,
+    ) -> tuple[VT | DT, float]:
         """
         Retrieves a value along with its remaining TTL.
 
@@ -1602,13 +1518,12 @@ class TTLCache(BaseCacheImpl[KT, VT]):
             the expiration duration in seconds, or ``0.0`` if the key was not
             found.
         """
-        ...
 
     def pop_with_expire(
         self,
         key: KT,
-        default: typing.Optional[DT] = None,
-    ) -> typing.Tuple[typing.Union[VT, DT], float]:
+        default: DT | None = None,
+    ) -> tuple[VT | DT, float]:
         """
         Removes a key and returns its value along with its remaining TTL.
 
@@ -1621,9 +1536,8 @@ class TTLCache(BaseCacheImpl[KT, VT]):
             the expiration duration in seconds, or ``0.0`` if the key was not
             found.
         """
-        ...
 
-    def popitem_with_expire(self) -> typing.Tuple[VT, DT, float]:
+    def popitem_with_expire(self) -> tuple[VT, DT, float]:
         """
         Removes and returns the oldest item along with its remaining TTL.
 
@@ -1634,9 +1548,8 @@ class TTLCache(BaseCacheImpl[KT, VT]):
         Raises:
             KeyError: If the cache is empty.
         """
-        ...
 
-    def items_with_expire(self) -> CacheIterator[typing.Tuple[KT, VT, float]]:
+    def items_with_expire(self) -> CacheIterator[tuple[KT, VT, float]]:
         """
         Returns an ordered iterable of items with their remaining TTL.
 
@@ -1647,7 +1560,6 @@ class TTLCache(BaseCacheImpl[KT, VT]):
             An iterable of ``(key, value, remaining_ttl)`` tuples in insertion
             order, where ``remaining_ttl`` is in seconds.
         """
-        ...
 
 class VTTLCache(BaseCacheImpl[KT, VT]):
     """
@@ -1681,14 +1593,13 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
             getsizeof: A callable that computes the size of a key-value pair.
                 When ``None``, each entry is assumed to have a size of 1.
         """
-        ...
 
     def insert(
         self,
         key: KT,
         value: VT,
         ttl: float | timedelta | datetime | None = None,
-    ) -> typing.Optional[VT]:
+    ) -> VT | None:
         """
         Insert a key-value pair into the cache with an optional time-to-live (TTL).
         Returns the previous value associated with the key, if it existed.
@@ -1702,7 +1613,6 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
             ``None`` if the key was not previously present; the old value if
             the key already existed (the key itself is not updated).
         """
-        ...
 
     def update(
         self,
@@ -1717,14 +1627,13 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
                 cache instance, or an iterable of ``(key, value)`` tuples.
             ttl: An optional time-to-live duration for items.
         """
-        ...
 
     def setdefault(
         self,
         key: KT,
-        default: typing.Optional[DT] = None,
+        default: DT | None = None,
         ttl: float | timedelta | datetime | None = None,
-    ) -> typing.Optional[VT | DT]:
+    ) -> VT | DT | None:
         """
         Get `key`s value, or automatically insert `default` and return it.
         If `key` exists, its current value is returned and `default` is ignored.
@@ -1740,7 +1649,6 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
                 Defaults to ``None``.
             ttl: An optional time-to-live duration for item.
         """
-        ...
 
     def setdefault_with(
         self,
@@ -1765,9 +1673,8 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
             both. If `factory` raises, nothing is inserted and the exception
             propagates.
         """
-        ...
 
-    def popitem(self) -> typing.Tuple[KT, VT]:
+    def popitem(self) -> tuple[KT, VT]:
         """
         Removes and returns the key-value pair that is closest to expiration.
 
@@ -1778,7 +1685,7 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
             KeyError: If the cache is empty.
         """
 
-    def items(self) -> CacheIterator[typing.Tuple[KT, VT]]:
+    def items(self) -> CacheIterator[tuple[KT, VT]]:
         """
         Returns an ordered iterable of the cache's ``(key, value)`` pairs.
 
@@ -1788,7 +1695,6 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         Returns:
             An iterable of ``(key, value)`` tuples in insertion order.
         """
-        ...
 
     def keys(self) -> CacheIterator[KT]:
         """
@@ -1800,7 +1706,6 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         Returns:
             An iterable of keys in insertion order.
         """
-        ...
 
     def values(self) -> CacheIterator[VT]:
         """
@@ -1812,7 +1717,6 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         Returns:
             An iterable of values in insertion order.
         """
-        ...
 
     def expire(self, *, reuse: bool = False) -> None:
         """
@@ -1822,13 +1726,12 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
             reuse: If ``True``, retains the allocated memory for future reuse
                 rather than freeing it. Defaults to ``False``.
         """
-        ...
 
     def get_with_expire(
         self,
         key: KT,
-        default: typing.Optional[DT] = None,
-    ) -> typing.Tuple[typing.Union[VT, DT], float | None]:
+        default: DT | None = None,
+    ) -> tuple[VT | DT, float | None]:
         """
         Retrieves a value along with its remaining TTL.
 
@@ -1841,13 +1744,12 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
             the expiration duration in seconds, or ``0.0`` if the key was not
             found.
         """
-        ...
 
     def pop_with_expire(
         self,
         key: KT,
-        default: typing.Optional[DT] = None,
-    ) -> typing.Tuple[typing.Union[VT, DT], float | None]:
+        default: DT | None = None,
+    ) -> tuple[VT | DT, float | None]:
         """
         Removes a key and returns its value along with its remaining TTL.
 
@@ -1860,9 +1762,8 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
             the expiration duration in seconds, or ``0.0`` if the key was not
             found.
         """
-        ...
 
-    def popitem_with_expire(self) -> typing.Tuple[VT, DT, float | None]:
+    def popitem_with_expire(self) -> tuple[VT, DT, float | None]:
         """
         Removes and returns the oldest item along with its remaining TTL.
 
@@ -1873,9 +1774,8 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
         Raises:
             KeyError: If the cache is empty.
         """
-        ...
 
-    def items_with_expire(self) -> CacheIterator[typing.Tuple[KT, VT, float | None]]:
+    def items_with_expire(self) -> CacheIterator[tuple[KT, VT, float | None]]:
         """
         Returns an ordered iterable of items with their remaining TTL.
 
@@ -1886,4 +1786,3 @@ class VTTLCache(BaseCacheImpl[KT, VT]):
             An iterable of ``(key, value, remaining_ttl)`` tuples in insertion
             order, where ``remaining_ttl`` is in seconds.
         """
-        ...

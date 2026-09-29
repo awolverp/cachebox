@@ -68,6 +68,10 @@ test = [
     "pytest-asyncio == 1.4.0",
     "pytest-xdist == 3.8.0",
 ]
+lint = [
+    "mypy>=2.3.1",
+    "ruff>=0.16.9",
+]
 ci = [
     { include-group = "maturin" },
     { include-group = "test" },
@@ -77,4 +81,5 @@ dev = [
     { include-group = "docs" },
     { include-group = "zizmor" },
     { include-group = "typos" },
+    { include-group = "lint" },
 ]

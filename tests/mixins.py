@@ -86,7 +86,7 @@ class InitializeMixin(BaseMixin):
         assert c.capacity() >= 10
 
     def test_getsizeof_stored(self):
-        sizer = lambda k, v: len(v)  # noqa: E731
+        sizer = lambda k, v: len(v)
 
         c = self.create_cache(maxsize=100, getsizeof=sizer)
         assert c.getsizeof is sizer
@@ -112,6 +112,7 @@ class InsertAndGetMixin(BaseMixin):
                 capture_output=True,
                 text=True,
                 timeout=60,
+                check=False,
             )
         except subprocess.TimeoutExpired:
             pytest.fail(f"{name}.get() with a colliding key never returned")
@@ -341,6 +342,7 @@ class SetDefaultWithMixin(BaseMixin):
                 capture_output=True,
                 text=True,
                 timeout=60,
+                check=False,
             )
         except subprocess.TimeoutExpired:
             pytest.fail(f"{name}.setdefault_with never returned")
@@ -565,9 +567,12 @@ class IterationMixin(BaseMixin):
             capture_output=True,
             text=True,
             timeout=60,
+            check=False,
         )
 
-        assert done.stdout.strip() == "ok", done.stderr or f"exit code {done.returncode}"
+        assert done.stdout.strip() == "ok", (
+            done.stderr or f"exit code {done.returncode}"
+        )
 
     @pytest.mark.skipif(
         platform.python_implementation() == "PyPy",
@@ -711,6 +716,7 @@ class DrainClearShrinkMixin(BaseMixin):
                 capture_output=True,
                 text=True,
                 timeout=60,
+                check=False,
             )
         except subprocess.TimeoutExpired:
             pytest.fail(f"{name}.clear() never returned")
@@ -855,7 +861,7 @@ class Sized:
 class GetSizeOfMixin(BaseMixin):
     def test_current_size_uses_getsizeof(self):
         # Each value is a list; size = len(value)
-        sizer = lambda k, v: len(v)  # noqa: E731
+        sizer = lambda k, v: len(v)
 
         c = self.create_cache(maxsize=10, getsizeof=sizer)
         c.insert("a", [1, 2, 3])  # size 3
@@ -864,7 +870,7 @@ class GetSizeOfMixin(BaseMixin):
 
     def test_overflow_based_on_weighted_size(self):
         # maxsize=5; each entry costs its value
-        sizer = lambda k, v: v  # noqa: E731
+        sizer = lambda k, v: v
 
         c = self.create_cache(maxsize=5, getsizeof=sizer)
         c.insert("a", 3)  # size now 3

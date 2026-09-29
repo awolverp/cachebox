@@ -574,9 +574,12 @@ class TestLRUCachePolicy(mixins.BaseMixin):
             capture_output=True,
             text=True,
             timeout=60,
+            check=False,
         )
 
-        assert done.stdout.strip() == "ok", done.stderr or f"exit code {done.returncode}"
+        assert done.stdout.strip() == "ok", (
+            done.stderr or f"exit code {done.returncode}"
+        )
 
     def test_does_not_evict_recently_read_key(self):
         c = self.create_cache(3)
@@ -1457,7 +1460,7 @@ class TestTTLCachePolicy(mixins.SweepIntervalMixin):
         time.sleep(0.1)
         value, dur = obj.get_with_expire(1)
         assert 1 == value
-        assert 10 > dur > 9, "10 > dur > 9 failed [dur: %f]" % dur
+        assert 10 > dur > 9, f"10 > dur > 9 failed [dur: {dur}]"
 
         value, dur = obj.get_with_expire("no-exists")
         assert value is None
@@ -1474,7 +1477,7 @@ class TestTTLCachePolicy(mixins.SweepIntervalMixin):
         time.sleep(0.1)
         value, dur = obj.pop_with_expire(1)
         assert 1 == value
-        assert 10 > dur > 9, "10 > dur > 9 failed [dur: %f]" % dur
+        assert 10 > dur > 9, f"10 > dur > 9 failed [dur: {dur}]"
 
         value, dur = obj.pop_with_expire("no-exists", None)
         assert value is None
@@ -1492,11 +1495,11 @@ class TestTTLCachePolicy(mixins.SweepIntervalMixin):
         time.sleep(0.1)
         key, value, dur = obj.popitem_with_expire()
         assert (1, 1) == (key, value)
-        assert 10 > dur > 9, "10 > dur > 9 failed [dur: %f]" % dur
+        assert 10 > dur > 9, f"10 > dur > 9 failed [dur: {dur}]"
 
         key, value, dur = obj.popitem_with_expire()
         assert (2, 2) == (key, value)
-        assert 10 > dur > 9, "10 > dur > 9 failed [dur: %f]" % dur
+        assert 10 > dur > 9, f"10 > dur > 9 failed [dur: {dur}]"
 
         with pytest.raises(KeyError):
             obj.popitem_with_expire()
@@ -1845,14 +1848,14 @@ class TestVTTLCachePolicy(mixins.SweepIntervalMixin):
         value, dur = obj.get_with_expire(1)
         assert 1 == value
         assert isinstance(dur, float) and 10 > dur > 9, (
-            "10 > dur > 9 failed [dur: %f]" % dur
+            f"10 > dur > 9 failed [dur: {dur}]"
         )
 
         obj.insert(1, 1, None)
         time.sleep(0.1)
         value, dur = obj.get_with_expire(1)
         assert 1 == value
-        assert dur is None, "dur is None failed [dur: {}]".format(dur)
+        assert dur is None, f"dur is None failed [dur: {dur}]"
 
         value, dur = obj.get_with_expire("no-exists")
         assert value is None
@@ -1870,14 +1873,14 @@ class TestVTTLCachePolicy(mixins.SweepIntervalMixin):
         value, dur = obj.pop_with_expire(1)
         assert 1 == value
         assert isinstance(dur, float) and 10 > dur > 9, (
-            "10 > dur > 9 failed [dur: %f]" % dur
+            f"10 > dur > 9 failed [dur: {dur}]"
         )
 
         obj.insert(1, 1, None)
         time.sleep(0.1)
         value, dur = obj.pop_with_expire(1)
         assert 1 == value
-        assert dur is None, "dur is None failed [dur: {}]".format(dur)
+        assert dur is None, f"dur is None failed [dur: {dur}]"
 
         value, dur = obj.pop_with_expire("no-exists", None)
         assert value is None
@@ -1896,13 +1899,13 @@ class TestVTTLCachePolicy(mixins.SweepIntervalMixin):
         key, value, dur = obj.popitem_with_expire()
         assert (1, 1) == (key, value)
         assert isinstance(dur, float) and 10 > dur > 9, (
-            "10 > dur > 9 failed [dur: %f]" % dur
+            f"10 > dur > 9 failed [dur: {dur}]"
         )
 
         key, value, dur = obj.popitem_with_expire()
         assert (2, 2) == (key, value)
         assert isinstance(dur, float) and 20 > dur > 19, (
-            "20 > dur > 19 failed [dur: %f]" % dur
+            f"20 > dur > 19 failed [dur: {dur}]"
         )
 
         with pytest.raises(KeyError):

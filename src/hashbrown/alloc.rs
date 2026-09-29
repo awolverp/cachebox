@@ -1,8 +1,8 @@
-pub(crate) use self::inner::do_alloc;
 #[cfg(test)]
 pub(crate) use self::inner::AllocError;
 pub(crate) use self::inner::Allocator;
 pub(crate) use self::inner::Global;
+pub(crate) use self::inner::do_alloc;
 
 mod inner {
     #[cfg(test)]

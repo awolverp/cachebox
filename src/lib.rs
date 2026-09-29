@@ -1,3 +1,5 @@
+#![allow(unsafe_op_in_unsafe_fn)]
+
 #[macro_use]
 mod macro_rules;
 mod hashbrown;

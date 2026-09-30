@@ -5,6 +5,7 @@ import pickle
 import platform
 import subprocess
 import sys
+import sysconfig
 import threading
 import time
 import typing
@@ -669,7 +670,10 @@ class IterationMixin(BaseMixin):
             for _ in cache.items():
                 cache.insert("C", 1)
 
-        if not hasattr(sys, "_is_gil_enabled") or sys._is_gil_enabled():
+        if (
+            not isinstance(cache, cachebox.LRUCache)
+            and sysconfig.get_config_var("Py_GIL_DISABLED") == 0
+        ):
             for i in cache:
                 cache.insert(i, "hello")
 

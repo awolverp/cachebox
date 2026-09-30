@@ -669,7 +669,7 @@ class IterationMixin(BaseMixin):
             for _ in cache.items():
                 cache.insert("C", 1)
 
-        if hasattr(sys, "_is_gil_enabled") and sys._is_gil_enabled():
+        if not hasattr(sys, "_is_gil_enabled") or sys._is_gil_enabled():
             for i in cache:
                 cache.insert(i, "hello")
 

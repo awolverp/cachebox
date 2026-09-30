@@ -669,13 +669,14 @@ class IterationMixin(BaseMixin):
             for _ in cache.items():
                 cache.insert("C", 1)
 
-        if isinstance(cache, cachebox.LRUCache):
-            return
+        if hasattr(sys, "_is_gil_enabled") and sys._is_gil_enabled():
+            for i in cache:
+                cache.insert(i, "hello")
 
-        for i in cache:
-            # It should not increment the generation version
-            # in replacing value
-            cache.insert(i, "hello")
+        else:
+            with pytest.raises(RuntimeError):
+                for i in cache:
+                    cache.insert(i, "hello")
 
     def test_generation_version_on_shrink_to_fit(self):
         cache = self.create_cache(10, {i: i for i in range(3)})

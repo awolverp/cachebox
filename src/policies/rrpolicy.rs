@@ -35,6 +35,13 @@ impl traits::OccupiedExt for Occupied<'_> {
 
     #[inline]
     fn replace(self, new: Self::Handle) -> Self::Handle {
+        // The replace operation does not modify memory range here in the normal case,
+        // but when the GIL is disabled, concurrent modification can cause a segfault.
+        // Therefore, in free-threaded versions we have to change the generation version
+        // before manipulating memory.
+        #[cfg(Py_GIL_DISABLED)]
+        self.shared.generation_version().increment();
+
         self.policy.currsize = self.policy.currsize.saturating_add(new.size());
         let old = unsafe { std::mem::replace(self.bucket.as_mut(), new) };
         self.policy.currsize = self.policy.currsize.saturating_sub(old.size());

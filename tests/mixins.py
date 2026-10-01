@@ -670,9 +670,8 @@ class IterationMixin(BaseMixin):
             for _ in cache.items():
                 cache.insert("C", 1)
 
-        if (
-            not isinstance(cache, cachebox.LRUCache)
-            and sysconfig.get_config_var("Py_GIL_DISABLED") == 0
+        if not isinstance(cache, cachebox.LRUCache) and not sysconfig.get_config_var(
+            "Py_GIL_DISABLED"
         ):
             for i in cache:
                 cache.insert(i, "hello")

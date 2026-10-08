@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
-use std::sync::atomic;
 use std::sync::Arc;
+use std::sync::atomic;
 
 use crate::internal::alias;
 
@@ -99,10 +99,10 @@ pub unsafe fn call_getsizeof(
         let size = pyo3::ffi::PyLong_AsSsize_t(result);
         pyo3::ffi::Py_DECREF(result);
 
-        if size == -1 {
-            if let Some(err) = pyo3::PyErr::take(py) {
-                return Err(err);
-            }
+        if size == -1
+            && let Some(err) = pyo3::PyErr::take(py)
+        {
+            return Err(err);
         }
 
         Ok(size as usize)

@@ -1963,3 +1963,14 @@ class TestVTTLCachePolicy(mixins.SweepIntervalMixin):
         assert len(obj) == 3
         time.sleep(3.5)
         assert len(obj) == 0
+
+
+def test_onceinit_doesnt_panic(cache_cls: type[cachebox.BaseCacheImpl]):
+    class Child(cache_cls):
+        def __init__(self) -> None:
+            pass
+
+    c = Child()
+
+    with pytest.raises(RuntimeError, match="not"):
+        c.is_full()

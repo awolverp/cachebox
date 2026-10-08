@@ -122,9 +122,11 @@ dev = [
     { name = "maturin", extra = ["patchelf"], marker = "sys_platform == 'linux'" },
     { name = "mkdocs-material" },
     { name = "mkdocstrings", extra = ["python"] },
+    { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-xdist" },
+    { name = "ruff" },
     { name = "typos" },
     { name = "zizmor" },
 ]
@@ -170,9 +172,11 @@ dev = [
     { name = "maturin", extras = ["patchelf"], marker = "sys_platform == 'linux'", specifier = "==1.14.1" },
     { name = "mkdocs-material", specifier = "==9.7.7" },
     { name = "mkdocstrings", extras = ["python"], specifier = "==1.0.6" },
+    { name = "mypy", specifier = ">=2.3.1" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "pytest-asyncio", specifier = "==1.4.0" },
     { name = "pytest-xdist", specifier = "==3.8.0" },
+    { name = "ruff", specifier = ">=0.16.9" },
     { name = "typos", specifier = "==1.48.0" },
     { name = "zizmor", specifier = "==1.29.0" },
 ]

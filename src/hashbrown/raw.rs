@@ -1,12 +1,12 @@
+use super::TryReserveError;
 use super::control::BitMaskIter;
 use super::control::Group;
 use super::control::Tag;
 use super::control::TagSliceExt;
-use super::scopeguard::guard;
 use super::scopeguard::ScopeGuard;
+use super::scopeguard::guard;
 use super::util::likely;
 use super::util::unlikely;
-use super::TryReserveError;
 use core::array;
 use core::iter::FusedIterator;
 use core::marker::PhantomData;
@@ -14,14 +14,14 @@ use core::mem;
 use core::ptr;
 use core::ptr::NonNull;
 use core::slice;
-use std::alloc::handle_alloc_error;
 use std::alloc::Layout;
+use std::alloc::handle_alloc_error;
 
-use super::alloc::do_alloc;
 #[cfg(test)]
 use super::alloc::AllocError;
 use super::alloc::Allocator;
 use super::alloc::Global;
+use super::alloc::do_alloc;
 
 #[inline]
 unsafe fn offset_from<T>(to: *const T, from: *const T) -> usize {
@@ -193,6 +193,9 @@ fn bucket_mask_to_capacity(bucket_mask: usize) -> usize {
         // Keep in mind that the bucket mask is one less than the bucket count.
         bucket_mask
     } else {
+        // `bucket_mask` is bounded by the maximum allocation size, so it can
+        // never be `usize::MAX` and the `+ 1` below cannot overflow.
+        debug_assert!(bucket_mask != usize::MAX);
         // For larger tables we reserve 12.5% of the slots as empty.
         ((bucket_mask + 1) / 8) * 7
     }
@@ -1466,21 +1469,24 @@ impl<T, A: Allocator> RawTable<T, A> {
     /// should be dropped using a `RawIter` before freeing the allocation.
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn into_allocation(self) -> Option<(NonNull<u8>, Layout, A)> {
-        let alloc = if self.table.is_empty_singleton() {
+        let this = mem::ManuallyDrop::new(self);
+        // SAFETY: `this` is never dropped, so ownership of the allocator is
+        // moved out exactly once. If the table never allocated, the allocator
+        // is dropped here rather than being leaked.
+        let alloc = unsafe { ptr::read(&raw const this.alloc) };
+        if this.table.is_empty_singleton() {
             None
         } else {
             let (layout, ctrl_offset) = {
-                let option = Self::TABLE_LAYOUT.calculate_layout_for(self.table.num_buckets());
+                let option = Self::TABLE_LAYOUT.calculate_layout_for(this.table.num_buckets());
                 unsafe { option.unwrap_unchecked() }
             };
             Some((
-                unsafe { NonNull::new_unchecked(self.table.ctrl.as_ptr().sub(ctrl_offset).cast()) },
+                unsafe { NonNull::new_unchecked(this.table.ctrl.as_ptr().sub(ctrl_offset).cast()) },
                 layout,
-                unsafe { ptr::read(&raw const self.alloc) },
+                alloc,
             ))
-        };
-        mem::forget(self);
-        alloc
+        }
     }
 }
 
@@ -4331,10 +4337,12 @@ mod test_map {
                     Some(i)
                 );
             }
-            assert!(table
-                .find(i + 100, |x| Ok::<_, ()>(*x == i + 100))
-                .unwrap()
-                .is_none());
+            assert!(
+                table
+                    .find(i + 100, |x| Ok::<_, ()>(*x == i + 100))
+                    .unwrap()
+                    .is_none()
+            );
         }
 
         rehash_in_place(&mut table, hasher);
@@ -4349,10 +4357,12 @@ mod test_map {
                     Some(i)
                 );
             }
-            assert!(table
-                .find(i + 100, |x| Ok::<_, ()>(*x == i + 100))
-                .unwrap()
-                .is_none());
+            assert!(
+                table
+                    .find(i + 100, |x| Ok::<_, ()>(*x == i + 100))
+                    .unwrap()
+                    .is_none()
+            );
         }
     }
 

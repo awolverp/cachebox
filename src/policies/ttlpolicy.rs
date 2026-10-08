@@ -151,8 +151,12 @@ impl traits::OccupiedExt for Occupied<'_> {
 
     #[inline]
     fn replace(self, new: Self::Handle) -> Self::Handle {
-        // In update we don't need to increment this; because this does not change the memory address ranges
-        // self.shared.generation_version().increment();
+        // The replace operation does not modify memory range here in the normal case,
+        // but when the GIL is disabled, concurrent modification can cause a segfault.
+        // Therefore, in free-threaded versions we have to change the generation version
+        // before manipulating memory.
+        #[cfg(Py_GIL_DISABLED)]
+        self.shared.generation_version().increment();
 
         let item = unsafe { get_handle!(&mut self.policy, *self.bucket.as_ref()) };
 

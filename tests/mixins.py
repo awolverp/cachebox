@@ -5,6 +5,7 @@ import pickle
 import platform
 import subprocess
 import sys
+import sysconfig
 import threading
 import time
 import typing
@@ -673,13 +674,16 @@ class IterationMixin(BaseMixin):
             for _ in cache.items():
                 cache.insert("C", 1)
 
-        if isinstance(cache, cachebox.LRUCache):
-            return
+        if not isinstance(cache, cachebox.LRUCache) and not sysconfig.get_config_var(
+            "Py_GIL_DISABLED"
+        ):
+            for i in cache:
+                cache.insert(i, "hello")
 
-        for i in cache:
-            # It should not increment the generation version
-            # in replacing value
-            cache.insert(i, "hello")
+        else:
+            with pytest.raises(RuntimeError):
+                for i in cache:
+                    cache.insert(i, "hello")
 
     def test_generation_version_on_shrink_to_fit(self):
         cache = self.create_cache(10, {i: i for i in range(3)})

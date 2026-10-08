@@ -111,60 +111,62 @@ impl PyFIFOCache {
             }
         };
 
-        self.0.set(wrapped);
+        self.0.set(wrapped)?;
         extend_result
     }
 
     #[getter]
     #[inline]
-    fn maxsize(&self) -> usize {
-        let inner = self.0.get();
-        inner.shared().maxsize()
+    fn maxsize(&self) -> pyo3::PyResult<usize> {
+        let inner = self.0.get()?;
+        Ok(inner.shared().maxsize())
     }
 
     #[inline]
-    fn current_size(&self) -> usize {
-        let inner = self.0.get();
-        inner.policy().current_size()
+    fn current_size(&self) -> pyo3::PyResult<usize> {
+        let inner = self.0.get()?;
+        Ok(inner.policy().current_size())
     }
 
     #[inline]
-    fn remaining_size(&self) -> usize {
-        let inner = self.0.get();
-        inner.remaining_size()
+    fn remaining_size(&self) -> pyo3::PyResult<usize> {
+        let inner = self.0.get()?;
+        Ok(inner.remaining_size())
     }
 
     #[getter]
     #[inline]
-    fn getsizeof(&self, py: pyo3::Python) -> Option<alias::PyObject> {
-        let inner = self.0.get();
-        inner.shared().getsizeof().clone_ref(py).into()
+    fn getsizeof(&self, py: pyo3::Python) -> pyo3::PyResult<Option<alias::PyObject>> {
+        let inner = self.0.get()?;
+        Ok(inner.shared().getsizeof().clone_ref(py).into())
     }
 
     /// Returns the number of elements the map can hold without reallocating.
     #[inline]
-    fn capacity(&self) -> usize {
-        let inner = self.0.get();
+    fn capacity(&self) -> pyo3::PyResult<usize> {
+        let inner = self.0.get()?;
         let policy = inner.policy();
 
-        policy.table().capacity().min(policy.entries().capacity())
+        Ok(policy.table().capacity().min(policy.entries().capacity()))
     }
 
     /// Returns the number of entries currently in the cache.
     #[inline]
-    fn __len__(&self) -> usize {
-        let inner = self.0.get();
+    fn __len__(&self) -> pyo3::PyResult<usize> {
+        let inner = self.0.get()?;
         let policy = inner.policy();
 
         debug_assert!(policy.table().len() == policy.entries().len());
-        policy.table().len()
+        Ok(policy.table().len())
     }
 
     #[inline]
     fn __sizeof__(&self) -> usize {
         const FIXED_SIZE: usize = size_of::<Wrapped<fifopolicy::FIFOPolicy>>();
 
-        let inner = self.0.get();
+        let Ok(inner) = self.0.get() else {
+            return FIXED_SIZE;
+        };
         let policy = inner.policy();
 
         let table_cap = policy.table().capacity() * size_of::<usize>();
@@ -174,7 +176,9 @@ impl PyFIFOCache {
 
     #[inline]
     fn __bool__(&self) -> bool {
-        let inner = self.0.get();
+        let Ok(inner) = self.0.get() else {
+            return false;
+        };
         let policy = inner.policy();
 
         !policy.table().is_empty()
@@ -189,27 +193,27 @@ impl PyFIFOCache {
     #[inline]
     fn contains(&self, py: pyo3::Python, key: alias::PyObject) -> pyo3::PyResult<bool> {
         let key = utils::PrecomputedHashObject::new(py, key)?;
-        let inner = self.0.get();
+        let inner = self.0.get()?;
         inner.contains(py, &key)
     }
 
     /// Returns `True` if cache is empty.
     #[inline]
-    fn is_empty(&self) -> bool {
-        let inner = self.0.get();
+    fn is_empty(&self) -> pyo3::PyResult<bool> {
+        let inner = self.0.get()?;
         let policy = inner.policy();
 
-        policy.table().is_empty()
+        Ok(policy.table().is_empty())
     }
 
     /// Returns `True` when the cumulative size has reached the maxsize limit.
     #[inline]
-    fn is_full(&self) -> bool {
-        let inner = self.0.get();
+    fn is_full(&self) -> pyo3::PyResult<bool> {
+        let inner = self.0.get()?;
         let shared = inner.shared();
         let policy = inner.policy();
 
-        policy.current_size() >= shared.maxsize()
+        Ok(policy.current_size() >= shared.maxsize())
     }
 
     /// Equals to `self[key] = value`, but returns a value:
@@ -223,7 +227,7 @@ impl PyFIFOCache {
         key: alias::PyObject,
         value: alias::PyObject,
     ) -> pyo3::PyResult<Option<alias::PyObject>> {
-        let inner = self.0.get();
+        let inner = self.0.get()?;
         let handle = fifopolicy::Handle::new(py, inner.shared().getsizeof(), key, value)?;
 
         let old_handle = inner.insert(py, handle)?.map(|x| x.into_value());
@@ -240,7 +244,7 @@ impl PyFIFOCache {
             return Ok(());
         }
 
-        let inner = slf.0.get();
+        let inner = slf.0.get()?;
         let getsizeof = inner.shared().getsizeof().clone_ref(py);
 
         inner.extend(
@@ -282,7 +286,7 @@ impl PyFIFOCache {
     ) -> pyo3::PyResult<alias::PyObject> {
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
-        let inner = self.0.get();
+        let inner = self.0.get()?;
         let mut policy = inner.policy_py_attached(py);
 
         if let Some(x) = policy.get(py, &key, inner.shared())? {
@@ -305,7 +309,7 @@ impl PyFIFOCache {
     ) -> pyo3::PyResult<alias::PyObject> {
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
-        let inner = self.0.get();
+        let inner = self.0.get()?;
         let mut policy = inner.policy_py_attached(py);
 
         match policy.get(py, &key, inner.shared())? {
@@ -336,7 +340,7 @@ impl PyFIFOCache {
         // 3. Else -> insert default -> return default
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
-        let inner = self.0.get();
+        let inner = self.0.get()?;
         let shared = inner.shared();
         let mut policy = inner.policy_py_attached(py);
 
@@ -383,7 +387,7 @@ impl PyFIFOCache {
         // 3. Else -> call factory -> insert returned value -> return it
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
-        let inner = self.0.get();
+        let inner = self.0.get()?;
         let shared = inner.shared();
 
         {
@@ -425,7 +429,7 @@ impl PyFIFOCache {
     ) -> pyo3::PyResult<alias::PyObject> {
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
-        let inner = self.0.get();
+        let inner = self.0.get()?;
 
         if let Some(x) = inner.remove(py, &key)? {
             return Ok(x.into_value());
@@ -443,7 +447,7 @@ impl PyFIFOCache {
     fn __delitem__(&self, py: pyo3::Python, key: alias::PyObject) -> pyo3::PyResult<()> {
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
-        let inner = self.0.get();
+        let inner = self.0.get()?;
         match inner.remove(py, &key)? {
             Some(_) => Ok(()),
             None => Err(new_py_error!(
@@ -455,7 +459,7 @@ impl PyFIFOCache {
 
     /// Remove and return a (key, value) pair as a 2-tuple.
     fn popitem(&self) -> pyo3::PyResult<(alias::PyObject, alias::PyObject)> {
-        let inner = self.0.get();
+        let inner = self.0.get()?;
         let mut policy = inner.policy();
 
         let handle = policy.evict(inner.shared())?;
@@ -472,22 +476,23 @@ impl PyFIFOCache {
         py: pyo3::Python,
         n: pyo3::ffi::Py_ssize_t,
     ) -> pyo3::PyResult<pyo3::ffi::Py_ssize_t> {
-        let inner = self.0.get();
+        let inner = self.0.get()?;
         inner.drain(py, n)
     }
 
     /// Shrinks the internal allocation as close to the current length as possible.
     #[inline]
-    fn shrink_to_fit(&self) {
-        let inner = self.0.get();
+    fn shrink_to_fit(&self) -> pyo3::PyResult<()> {
+        let inner = self.0.get()?;
         let mut policy = inner.policy();
         policy.shrink_to_fit(inner.shared());
+        Ok(())
     }
 
     /// Removes all entries from the table and resets the cumulative size to zero.
     #[pyo3(signature=(*, reuse=false))]
-    fn clear(&self, reuse: bool) {
-        let inner = self.0.get();
+    fn clear(&self, reuse: bool) -> pyo3::PyResult<()> {
+        let inner = self.0.get()?;
         let shared = inner.shared();
         let mut policy = inner.policy();
 
@@ -496,6 +501,7 @@ impl PyFIFOCache {
         if !reuse {
             policy.shrink_to_fit(shared);
         }
+        Ok(())
     }
 
     fn __eq__(
@@ -507,8 +513,8 @@ impl PyFIFOCache {
             return Ok(true);
         }
 
-        let self_inner = slf.0.get();
-        let other_inner = other.0.get();
+        let self_inner = slf.0.get()?;
+        let other_inner = other.0.get()?;
 
         let self_policy = self_inner.policy_py_attached(py);
         let other_policy = other_inner.policy_py_attached(py);
@@ -530,8 +536,8 @@ impl PyFIFOCache {
             return Ok(false);
         }
 
-        let self_inner = slf.0.get();
-        let other_inner = other.0.get();
+        let self_inner = slf.0.get()?;
+        let other_inner = other.0.get()?;
 
         let self_policy = self_inner.policy_py_attached(py);
         let other_policy = other_inner.policy_py_attached(py);
@@ -547,7 +553,7 @@ impl PyFIFOCache {
     }
 
     fn items(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyFIFOCacheItems>> {
-        let inner = slf.get().0.get();
+        let inner = slf.get().0.get()?;
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
 
@@ -562,7 +568,7 @@ impl PyFIFOCache {
     }
 
     fn values(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyFIFOCacheValues>> {
-        let inner = slf.get().0.get();
+        let inner = slf.get().0.get()?;
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
 
@@ -577,7 +583,7 @@ impl PyFIFOCache {
     }
 
     fn keys(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyFIFOCacheKeys>> {
-        let inner = slf.get().0.get();
+        let inner = slf.get().0.get()?;
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
 
@@ -597,7 +603,7 @@ impl PyFIFOCache {
     }
 
     fn copy(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<Self>> {
-        let inner = self.0.get();
+        let inner = self.0.get()?;
         let cloned = inner.clone_ref(py);
         let result = Self(onceinit::OnceInit::new(cloned));
 
@@ -610,18 +616,18 @@ impl PyFIFOCache {
     }
 
     fn __getstate__(&self, py: pyo3::Python) -> pyo3::PyResult<alias::PyObject> {
-        let inner = self.0.get();
+        let inner = self.0.get()?;
         inner.build_pickle(py).map(|x| x.into())
     }
 
     fn __setstate__(&self, py: pyo3::Python, state: alias::PyObject) -> pyo3::PyResult<()> {
         let wrapped = Wrapped::from_pickle(py, state)?;
-        self.0.set(wrapped);
+        self.0.set(wrapped)?;
         Ok(())
     }
 
     fn __repr__(slf: pyo3::PyRef<'_, Self>) -> String {
-        let inner = slf.0.get();
+        let inner = slf.0.get()?;
         let shared = inner.shared();
         let policy = inner.policy_py_attached(slf.py());
 
@@ -634,12 +640,12 @@ impl PyFIFOCache {
         });
 
         let items = utils::items_to_str(iter, policy.table().len()).unwrap();
-        format!(
+        Ok(format!(
             "{}[maxsize={}]({})",
             unsafe { utils::get_type_name(slf.py(), slf.as_ptr()) },
             shared.maxsize(),
             items
-        )
+        ))
     }
 
     #[pyo3(signature = (n=0))]
@@ -648,7 +654,7 @@ impl PyFIFOCache {
         py: pyo3::Python,
         mut n: pyo3::ffi::Py_ssize_t,
     ) -> pyo3::PyResult<alias::PyObject> {
-        let inner = self.0.get();
+        let inner = self.0.get()?;
         let policy = inner.policy_py_attached(py);
 
         if n < 0 {
@@ -665,7 +671,7 @@ impl PyFIFOCache {
     }
 
     fn last(&self, py: pyo3::Python) -> pyo3::PyResult<alias::PyObject> {
-        let inner = self.0.get();
+        let inner = self.0.get()?;
         let policy = inner.policy_py_attached(py);
         match policy.entries().back() {
             Some(handle) => Ok(handle.key().as_ref().clone_ref(py)),
@@ -674,11 +680,10 @@ impl PyFIFOCache {
     }
 
     fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
-        if !self.0.is_initialized() {
+        let Ok(inner) = self.0.get() else {
+            // object is not initialized, so there's nothing for visit
             return Ok(());
-        }
-
-        let inner = self.0.get();
+        };
         let Some(policy) = inner.try_policy() else {
             return Ok(());
         };
@@ -691,11 +696,10 @@ impl PyFIFOCache {
     }
 
     fn __clear__(&self) {
-        if !self.0.is_initialized() {
+        let Ok(inner) = self.0.get() else {
+            // object is not initialized, so there's nothing to clear
             return;
-        }
-
-        let inner = self.0.get();
+        };
         let mut policy = inner.policy();
         policy.clear(inner.shared());
     }

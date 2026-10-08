@@ -666,7 +666,7 @@ impl PyLFUCache {
         Ok(())
     }
 
-    fn __repr__(slf: pyo3::PyRef<'_, Self>) -> String {
+    fn __repr__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyResult<String> {
         let inner = slf.0.get()?;
         let shared = inner.shared();
         let policy = inner.policy_py_attached(slf.py());

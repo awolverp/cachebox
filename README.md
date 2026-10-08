@@ -97,6 +97,7 @@ The simplest example of **cachebox** could look like this:
 ```python
 import cachebox
 
+
 @cachebox.cached(cachebox.FIFOCache(maxsize=128))
 def factorial(number: int) -> int:
     fact = 1
@@ -104,7 +105,9 @@ def factorial(number: int) -> int:
         fact *= num
     return fact
 
+
 assert factorial(5) == 125
+
 
 # coroutines are also supported
 @cachebox.cached(cachebox.LRUCache(maxsize=128))

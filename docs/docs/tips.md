@@ -36,7 +36,7 @@ import copy
 
 cache = cachebox.LRUCache(100, {i: i for i in range(10)})
 
-shallow = copy.copy(cache)       # or cache.copy()
+shallow = copy.copy(cache)  # or cache.copy()
 deep = copy.deepcopy(cache)
 ```
 
@@ -60,15 +60,17 @@ to size entries by memory, payload length, or any other weight:
 import cachebox
 import sys
 
+
 def memsize(key, value):
     return sys.getsizeof(key) + sys.getsizeof(value)
+
 
 cache = cachebox.LRUCache(maxsize=1_000_000, getsizeof=memsize)
 cache.insert("blob", b"x" * 10_000)
 
-print(cache.current_size())    # weight of stored entries
+print(cache.current_size())  # weight of stored entries
 print(cache.remaining_size())  # maxsize - current_size
-print(len(cache))              # number of keys (not weight)
+print(len(cache))  # number of keys (not weight)
 ```
 
 Eviction runs when inserting an entry would exceed `maxsize` (policy classes) or raises
@@ -101,9 +103,11 @@ attached to the wrapper:
     ```python
     import cachebox
 
+
     @cachebox.cached(cachebox.LFUCache(maxsize=20))
     def add(a: int, b: int) -> int:
         return a + b
+
 
     assert type(add.cache) is cachebox.LFUCache
     ```
@@ -134,9 +138,11 @@ attached to the wrapper:
     ```python
     import cachebox
 
+
     @cachebox.cached(cachebox.LFUCache(maxsize=20))
     def add(a: int, b: int) -> int:
         return a + b
+
 
     info = add.cache_info()
     # CacheInfo(hits=0, misses=0, maxsize=20, current_size=0, length=0, memory=...)
@@ -164,9 +170,11 @@ attached to the wrapper:
     ```python
     def callback(event, key, value): ...
 
+
     @cachebox.cached(cachebox.LFUCache(20), callback=callback)
     def add(a, b):
         return a + b
+
 
     assert add.callback is callback
     assert cachebox.get_cached_callback(add) is callback
@@ -260,6 +268,7 @@ implements `AbstractContextManager` / `AbstractAsyncContextManager`:
     ```python
     import cachebox
 
+
     @cachebox.cached(cachebox.LRUCache(maxsize=256))
     def fetch_user(user_id: int) -> dict:
         return expensive_db_query(user_id)
@@ -269,6 +278,7 @@ implements `AbstractContextManager` / `AbstractAsyncContextManager`:
 
     ```python
     import cachebox
+
 
     @cachebox.cached(cachebox.LRUCache(maxsize=256))
     async def fetch_user(user_id: int) -> dict:
@@ -280,6 +290,7 @@ implements `AbstractContextManager` / `AbstractAsyncContextManager`:
     ```python
     import threading
     import cachebox
+
 
     @cachebox.cached(cachebox.LRUCache(maxsize=256), lock=threading.RLock)
     def fetch_user(user_id: int) -> dict:
@@ -321,7 +332,9 @@ corrupt the cache by mutating the result. If you return other mutable containers
 `bytearray`, nested structures you will mutate in place), set an explicit postprocessor:
 
 ```python
-@cachebox.cached(cachebox.LRUCache(128), postprocess=cachebox.postprocess_deepcopy)
+@cachebox.cached(
+    cachebox.LRUCache(128), postprocess=cachebox.postprocess_deepcopy
+)
 def load_config():
     return {"nested": {"flag": True}}
 ```
@@ -330,8 +343,7 @@ Or disable copying for maximum speed when values are immutable:
 
 ```python
 @cachebox.cached(cachebox.LRUCache(128), postprocess=None)
-def fib(n: int) -> int:
-    ...
+def fib(n: int) -> int: ...
 ```
 
 ## Thread Safety of Cache Objects
@@ -349,7 +361,7 @@ method calls are atomic with respect to the internal map. Compound sequences
 ```python
 cache = cachebox.LRUCache(10, {i: i for i in range(5)})
 it = cache.keys()
-print(len(it))   # items left to yield
+print(len(it))  # items left to yield
 print(bool(it))  # True if anything left
 
 for k in it:

@@ -78,9 +78,9 @@ from cachebox import FIFOCache
 
 cache = FIFOCache(5, {i: i * 2 for i in range(5)})
 cache["new-key"] = "new-value"  # evicts key 0
-print(cache.first())            # oldest key (next popitem target)
-print(cache.last())             # most recently inserted key
-print(cache.popitem())          # (oldest_key, value)
+print(cache.first())  # oldest key (next popitem target)
+print(cache.last())  # most recently inserted key
+print(cache.popitem())  # (oldest_key, value)
 ```
 
 **Use when:** eviction must be deterministic and auditable, or traffic is insert-heavy with
@@ -98,9 +98,9 @@ Random Replacement. When full, a uniformly random entry is evicted.
 from cachebox import RRCache
 
 cache = RRCache(10, {i: i for i in range(10)})
-print(cache.is_full())     # True
+print(cache.is_full())  # True
 print(cache.random_key())  # e.g. 4
-print(cache.popitem())     # random (key, value)
+print(cache.popitem())  # random (key, value)
 ```
 
 **Use when:** access is roughly uniform and you want cheap eviction with almost no bookkeeping.
@@ -119,14 +119,14 @@ from cachebox import LRUCache
 
 cache = LRUCache(0, {i: i * 2 for i in range(10)})  # maxsize=0 → unbounded
 
-print(cache[0])                       # access key 0
-print(cache.least_recently_used())    # 1
-print(cache.most_recently_used())     # 0
-print(cache.popitem())                # (1, 2) — LRU item
+print(cache[0])  # access key 0
+print(cache.least_recently_used())  # 1
+print(cache.most_recently_used())  # 0
+print(cache.popitem())  # (1, 2) — LRU item
 
 # peek: read without promoting
-print(cache.peek(2))                  # 4
-print(cache.least_recently_used())    # still 2 if nothing else was accessed
+print(cache.peek(2))  # 4
+print(cache.least_recently_used())  # still 2 if nothing else was accessed
 ```
 
 **Use when:** temporal locality exists (most application caches). Good default for `@cached`.
@@ -187,7 +187,7 @@ cache.update({i: str(i) for i in range(10)})
 value, remaining = cache.get_with_expire(2)
 print(value, remaining)  # '2'  ~1.99
 
-print(cache.first())     # oldest key
+print(cache.first())  # oldest key
 print(cache.global_ttl)  # 2.0
 
 cache["mykey"] = "value"
@@ -229,14 +229,14 @@ cache = VTTLCache(100, iterable={i: i for i in range(4)}, ttl=3)
 time.sleep(3)
 print(len(cache))  # 0 after interaction/expire
 
-cache.insert("session", "tok", ttl=5)           # lives 5 seconds
-cache.insert("config", {"theme": "dark"})       # never expires
+cache.insert("session", "tok", ttl=5)  # lives 5 seconds
+cache.insert("config", {"theme": "dark"})  # never expires
 cache.insert("short", "x", ttl=timedelta(seconds=2))
 cache.insert("until", "y", ttl=datetime.now(timezone.utc) + timedelta(hours=1))
 
 time.sleep(2)
 print(cache.get("session"))  # tok
-print(cache.get("short"))    # None
+print(cache.get("short"))  # None
 
 value, remaining = cache.get_with_expire("session")
 # remaining is seconds left, or None for non-expiring entries

@@ -58,10 +58,12 @@ existing code with minimal friction.
 ```python
 import cachebox
 
+
 @cachebox.cached(cachebox.LRUCache(maxsize=128))
 def get_user(user_id: int) -> dict:
     # Expensive DB call — cached after the first call
     return db.query("SELECT * FROM users WHERE id = ?", user_id)
+
 
 # First call hits the database
 user = get_user(42)

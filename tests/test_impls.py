@@ -2,7 +2,7 @@ import subprocess
 import sys
 import time
 import typing
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -34,7 +34,9 @@ class TestCache(
         capacity: int = 0,
         getsizeof: typing.Any = None,
     ) -> cachebox.BaseCacheImpl:
-        return cachebox.Cache(maxsize, iterable, capacity=capacity, getsizeof=getsizeof)
+        return cachebox.Cache(
+            maxsize, iterable, capacity=capacity, getsizeof=getsizeof
+        )
 
     def test_popitem_overflow_error(self):
         cache = self.create_cache()
@@ -225,7 +227,9 @@ class TestFIFOCachePolicy(mixins.BaseMixin):
 
     def test_first_with_positive_n_browses_in_insertion_order(self):
         """first(n) must walk forward through insertion order."""
-        cache = self.create_cache(4, [(10, "a"), (20, "b"), (30, "c"), (40, "d")])
+        cache = self.create_cache(
+            4, [(10, "a"), (20, "b"), (30, "c"), (40, "d")]
+        )
         assert cache.first(0) == 10
         assert cache.first(1) == 20
         assert cache.first(2) == 30
@@ -233,7 +237,9 @@ class TestFIFOCachePolicy(mixins.BaseMixin):
 
     def test_first_with_negative_n_browses_from_end(self):
         """first(-1) is an alias for last(); first(-2) is the second newest."""
-        cache = self.create_cache(4, [(10, "a"), (20, "b"), (30, "c"), (40, "d")])
+        cache = self.create_cache(
+            4, [(10, "a"), (20, "b"), (30, "c"), (40, "d")]
+        )
         assert cache.first(-1) == 40
         assert cache.first(-2) == 30
 
@@ -343,7 +349,9 @@ class TestFIFOCachePolicy(mixins.BaseMixin):
             cache.insert(i, i * 10)
 
         # Snapshot what *should* be alive: the last CACHE_SIZE keys inserted
-        expected_keys = set(range(total_insertions - CACHE_SIZE, total_insertions))
+        expected_keys = set(
+            range(total_insertions - CACHE_SIZE, total_insertions)
+        )
 
         # verify the cache is structurally sound after the rebase
         assert len(cache) == CACHE_SIZE
@@ -400,7 +408,9 @@ class TestFIFOCachePolicy(mixins.BaseMixin):
             cache.insert(i, i * 10)
 
         # Snapshot what *should* be alive: the last CACHE_SIZE keys inserted
-        expected_keys = set(range(total_insertions - CACHE_SIZE, total_insertions))
+        expected_keys = set(
+            range(total_insertions - CACHE_SIZE, total_insertions)
+        )
 
         # verify the cache is structurally sound after the rebase
         assert len(cache) == CACHE_SIZE
@@ -1118,14 +1128,18 @@ class TestTTLCachePolicy(mixins.SweepIntervalMixin):
 
     def test_oldest_item_evicted_on_overflow(self):
         """When capacity is exceeded, the first inserted key must be evicted."""
-        cache = self.create_cache(3, [(1, "a"), (2, "b"), (3, "c")], global_ttl=10)
+        cache = self.create_cache(
+            3, [(1, "a"), (2, "b"), (3, "c")], global_ttl=10
+        )
         cache[4] = "d"  # triggers eviction of key 1
         assert 1 not in cache
         assert 4 in cache
 
     def test_eviction_is_strictly_insertion_ordered(self):
         """Keys evict in the exact order they were inserted, not access order."""
-        cache = self.create_cache(3, [(1, "a"), (2, "b"), (3, "c")], global_ttl=10)
+        cache = self.create_cache(
+            3, [(1, "a"), (2, "b"), (3, "c")], global_ttl=10
+        )
 
         cache[4] = "d"  # evicts 1
         cache[5] = "e"  # evicts 2
@@ -1141,7 +1155,9 @@ class TestTTLCachePolicy(mixins.SweepIntervalMixin):
         Unlike LRU, a cache hit must NOT push the key to the back.
         Key 1 is accessed repeatedly but must still be the first evicted.
         """
-        cache = self.create_cache(3, [(1, "a"), (2, "b"), (3, "c")], global_ttl=10)
+        cache = self.create_cache(
+            3, [(1, "a"), (2, "b"), (3, "c")], global_ttl=10
+        )
 
         _ = cache[1]
         _ = cache[1]
@@ -1155,7 +1171,9 @@ class TestTTLCachePolicy(mixins.SweepIntervalMixin):
         Updating the value of an existing key must NOT change its insertion
         position in the eviction queue.
         """
-        cache = self.create_cache(3, [(1, "a"), (2, "b"), (3, "c")], global_ttl=10)
+        cache = self.create_cache(
+            3, [(1, "a"), (2, "b"), (3, "c")], global_ttl=10
+        )
 
         cache[1] = "updated"  # update, not a new insertion
         cache[4] = "d"  # must still evict key 1
@@ -1165,7 +1183,9 @@ class TestTTLCachePolicy(mixins.SweepIntervalMixin):
 
     def test_popitem_removes_oldest(self):
         """popitem() must always remove and return the oldest inserted entry."""
-        cache = self.create_cache(3, [(10, "x"), (20, "y"), (30, "z")], global_ttl=10)
+        cache = self.create_cache(
+            3, [(10, "x"), (20, "y"), (30, "z")], global_ttl=10
+        )
         key, value = cache.popitem()
         assert key == 10
         assert value == "x"
@@ -1179,7 +1199,9 @@ class TestTTLCachePolicy(mixins.SweepIntervalMixin):
 
     def test_drain_removes_n_oldest(self):
         """drain(n) must remove exactly n items, oldest-first."""
-        cache = self.create_cache(5, [(i, str(i)) for i in range(1, 6)], global_ttl=10)
+        cache = self.create_cache(
+            5, [(i, str(i)) for i in range(1, 6)], global_ttl=10
+        )
         removed = cache.drain(3)
         assert removed == 3
         assert 1 not in cache
@@ -1189,11 +1211,15 @@ class TestTTLCachePolicy(mixins.SweepIntervalMixin):
         assert 5 in cache
 
     def test_first_returns_oldest_key(self):
-        cache = self.create_cache(3, [(7, "a"), (8, "b"), (9, "c")], global_ttl=10)
+        cache = self.create_cache(
+            3, [(7, "a"), (8, "b"), (9, "c")], global_ttl=10
+        )
         assert cache.first() == 7
 
     def test_last_returns_newest_key(self):
-        cache = self.create_cache(3, [(7, "a"), (8, "b"), (9, "c")], global_ttl=10)
+        cache = self.create_cache(
+            3, [(7, "a"), (8, "b"), (9, "c")], global_ttl=10
+        )
         assert cache.last() == 9
 
     def test_first_with_positive_n_browses_in_insertion_order(self):
@@ -1216,12 +1242,16 @@ class TestTTLCachePolicy(mixins.SweepIntervalMixin):
 
     def test_first_after_eviction_reflects_new_head(self):
         """After an eviction, first() must return the new oldest key."""
-        cache = self.create_cache(3, [(1, "a"), (2, "b"), (3, "c")], global_ttl=10)
+        cache = self.create_cache(
+            3, [(1, "a"), (2, "b"), (3, "c")], global_ttl=10
+        )
         cache[4] = "d"  # evicts key 1
         assert cache.first() == 2
 
     def test_last_after_insertion_reflects_new_tail(self):
-        cache = self.create_cache(3, [(1, "a"), (2, "b"), (3, "c")], global_ttl=10)
+        cache = self.create_cache(
+            3, [(1, "a"), (2, "b"), (3, "c")], global_ttl=10
+        )
         cache[4] = "d"
         assert cache.last() == 4
 
@@ -1266,7 +1296,9 @@ class TestTTLCachePolicy(mixins.SweepIntervalMixin):
         Re-inserting a previously evicted key must treat it as a brand-new
         entry positioned at the back of the queue.
         """
-        cache = self.create_cache(3, [(1, "a"), (2, "b"), (3, "c")], global_ttl=10)
+        cache = self.create_cache(
+            3, [(1, "a"), (2, "b"), (3, "c")], global_ttl=10
+        )
         cache[4] = "d"  # evicts 1
         cache[1] = "re"  # re-insert 1 — should now be at the tail
         cache[5] = "e"  # must evict 2 (now the oldest), not 1
@@ -1320,7 +1352,9 @@ class TestTTLCachePolicy(mixins.SweepIntervalMixin):
             cache.insert(i, i * 10)
 
         # Snapshot what *should* be alive: the last CACHE_SIZE keys inserted
-        expected_keys = set(range(total_insertions - CACHE_SIZE, total_insertions))
+        expected_keys = set(
+            range(total_insertions - CACHE_SIZE, total_insertions)
+        )
 
         # verify the cache is structurally sound after the rebase
         assert len(cache) == CACHE_SIZE
@@ -1377,7 +1411,9 @@ class TestTTLCachePolicy(mixins.SweepIntervalMixin):
             cache.insert(i, i * 10)
 
         # Snapshot what *should* be alive: the last CACHE_SIZE keys inserted
-        expected_keys = set(range(total_insertions - CACHE_SIZE, total_insertions))
+        expected_keys = set(
+            range(total_insertions - CACHE_SIZE, total_insertions)
+        )
 
         # verify the cache is structurally sound after the rebase
         assert len(cache) == CACHE_SIZE
@@ -1647,7 +1683,7 @@ class TestVTTLCachePolicy(mixins.SweepIntervalMixin):
 
     def test_datetime_in_the_past_expires_immediately(self):
         c = self.create_cache()
-        past = datetime.now() - timedelta(seconds=1)
+        past = datetime.now(tz=timezone.utc) - timedelta(seconds=1)
         c.insert("k", "v", ttl=past)
         assert "k" not in c
 

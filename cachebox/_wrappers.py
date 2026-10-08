@@ -7,7 +7,9 @@ from contextlib import AbstractAsyncContextManager, AbstractContextManager
 from cachebox._core import BaseCacheImpl, Cache
 
 _PostProcess: typing.TypeAlias = Callable[[typing.Any], typing.Any]
-_Callback: typing.TypeAlias = Callable[[int, typing.Any, typing.Any], typing.Any]
+_Callback: typing.TypeAlias = Callable[
+    [int, typing.Any, typing.Any], typing.Any
+]
 
 
 class _Lock:
@@ -47,7 +49,8 @@ class _AsyncLock:
 
 
 CacheInfo = namedtuple(
-    "CacheInfo", ("hits", "misses", "maxsize", "current_size", "length", "memory")
+    "CacheInfo",
+    ("hits", "misses", "maxsize", "current_size", "length", "memory"),
 )
 EVENT_MISS = 1
 EVENT_HIT = 2

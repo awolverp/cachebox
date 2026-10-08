@@ -14,6 +14,7 @@ This page documents breaking changes between major versions.
 def add(a: int, b: int) -> dict:
     return {a: b}
 
+
 # v6
 @cachebox.cached(cachebox.RRCache(10), postprocess=cachebox.postprocess_copy)
 def add(a: int, b: int) -> dict:
@@ -50,8 +51,10 @@ cache = cachebox.LRUCache(maxsize=125, maxmemory=1000)
 # v6
 import sys
 
+
 def getsizeof(key, val):
     return sys.getsizeof(key) + sys.getsizeof(val)
+
 
 cache = cachebox.LRUCache(maxsize=1000, getsizeof=getsizeof)
 ```
@@ -76,6 +79,7 @@ Deprecated in v5.1.0 and removed in v6. Use `cached` with a per-instance cache a
 class Service:
     @cachebox.cachedmethod(cachebox.TTLCache(0, ttl=10))
     def my_method(self, name: str): ...
+
 
 # v6
 class Service:
@@ -125,6 +129,7 @@ class A:
 
     def __eq__(self, other):
         raise NotImplementedError
+
 
 cache = cachebox.FIFOCache(0, {A(): 10})
 

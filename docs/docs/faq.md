@@ -83,9 +83,11 @@ Yes — use a callable cache that returns the right instance, or build keys that
 id in a shared cache:
 
 ```python
-@cachebox.cached(cachebox.LRUCache(10_000), key_maker=lambda tenant, user_id: (tenant, user_id))
-def get_user(tenant: str, user_id: int):
-    ...
+@cachebox.cached(
+    cachebox.LRUCache(10_000),
+    key_maker=lambda tenant, user_id: (tenant, user_id),
+)
+def get_user(tenant: str, user_id: int): ...
 ```
 
 ### Does `cachebox__ignore=True` still update statistics?

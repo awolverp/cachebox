@@ -10,12 +10,14 @@ The simplest way to memoize a function's return value:
 ```python
 import cachebox
 
+
 @cachebox.cached(cachebox.FIFOCache(maxsize=128))
 def factorial(number: int) -> int:
     fact = 1
     for num in range(2, number + 1):
         fact *= num
     return fact
+
 
 assert factorial(5) == 120
 assert factorial(5) == 120  # served from cache
@@ -25,10 +27,11 @@ The first argument is the cache instance used for storage. Pass `None` (or omit 
 unbounded `LRUCache`. A plain `dict` is also accepted and converted to an unbounded `LRUCache`.
 
 ```python
-@cachebox.cached()                       # unbounded LRUCache
+@cachebox.cached()  # unbounded LRUCache
 def f(x): ...
 
-@cachebox.cached(cachebox.LRUCache(128)) # bounded LRUCache
+
+@cachebox.cached(cachebox.LRUCache(128))  # bounded LRUCache
 def g(x): ...
 ```
 
@@ -38,6 +41,7 @@ Coroutines are supported out of the box. Stampede prevention uses `asyncio.Lock`
 
 ```python
 import cachebox
+
 
 @cachebox.cached(cachebox.LRUCache(maxsize=128))
 async def make_request(method: str, url: str) -> dict:
@@ -55,8 +59,10 @@ hashable key from positional and keyword arguments. You can supply your own:
     ```python
     import cachebox
 
+
     def path_key(request):
         return request.path
+
 
     @cachebox.cached(
         cachebox.LRUCache(128),
@@ -70,6 +76,7 @@ hashable key from positional and keyword arguments. You can supply your own:
 
     ```python
     import cachebox
+
 
     @cachebox.cached(
         cachebox.LRUCache(128),
@@ -94,11 +101,13 @@ Pass a `callback` to observe every hit and miss:
 ```python
 import cachebox
 
+
 def on_cache_event(event: int, key, value):
     if event == cachebox.EVENT_MISS:
         print(f"MISS  key={key}")
     elif event == cachebox.EVENT_HIT:
         print(f"HIT   key={key}")
+
 
 @cachebox.cached(
     cachebox.LRUCache(0),
@@ -107,8 +116,9 @@ def on_cache_event(event: int, key, value):
 def add(a, b):
     return a + b
 
-add(1, 2)   # MISS  key=(1, 2)
-add(1, 2)   # HIT   key=(1, 2)
+
+add(1, 2)  # MISS  key=(1, 2)
+add(1, 2)  # HIT   key=(1, 2)
 ```
 
 `EVENT_MISS` is `1` and `EVENT_HIT` is `2`. In async contexts the callback may be a coroutine;
@@ -125,9 +135,11 @@ The default is [`postprocess_copy_mutables`](api/utils.md#cachebox.utils.postpro
 ```python
 import cachebox
 
+
 @cachebox.cached(cachebox.LRUCache(128))
 def make_dict(name: str, age: int) -> dict:
     return {"name": name, "age": age}
+
 
 d = make_dict("cachebox", 10)
 d["new-key"] = "new-value"
@@ -163,10 +175,12 @@ Pass `cachebox__ignore=True` to execute the function without reading or writing 
 ```python
 import cachebox
 
+
 @cachebox.cached(cachebox.LRUCache(128))
 def add(a, b):
     print("computing...")
     return a + b
+
 
 add(1, 2)  # computing...
 add(1, 2)  # from cache
@@ -183,6 +197,7 @@ For instance methods, each object usually needs its own cache. Pass a callable t
 ```python
 import cachebox
 
+
 class MyService:
     def __init__(self, multiplier: int):
         self.multiplier = multiplier
@@ -191,6 +206,7 @@ class MyService:
     @cachebox.cached(lambda self: self._cache)
     def compute(self, char: str):
         return char * self.multiplier
+
 
 svc1 = MyService(2)
 svc2 = MyService(5)
@@ -216,12 +232,14 @@ by all callers:
 ```python
 import cachebox
 
+
 class TextUtils:
     @staticmethod
     @cachebox.cached(cachebox.LRUCache(128))
     def normalize(text: str) -> str:
         print("normalizing...")
         return text.strip().lower()
+
 
 TextUtils.normalize(" Hello ")
 TextUtils.normalize(" Hello ")  # cached
@@ -234,6 +252,7 @@ Class methods receive `cls`. The cache can live on the class and be selected dyn
 ```python
 import cachebox
 
+
 class UserRepository:
     _cache = cachebox.LRUCache(128)
 
@@ -242,6 +261,7 @@ class UserRepository:
     def get_user(cls, user_id: int):
         print("loading user...")
         return {"id": user_id}
+
 
 UserRepository.get_user(1)
 UserRepository.get_user(1)  # cached
@@ -252,6 +272,7 @@ With inheritance, each subclass can own its cache while sharing the method:
 ```python
 import cachebox
 
+
 class BaseRepository:
     _cache = cachebox.LRUCache(128)
 
@@ -260,8 +281,10 @@ class BaseRepository:
     def get_item(cls, item_id):
         return f"{cls.__name__}:{item_id}"
 
+
 class ProductRepository(BaseRepository):
     _cache = cachebox.LRUCache(128)
+
 
 class OrderRepository(BaseRepository):
     _cache = cachebox.LRUCache(128)
@@ -316,14 +339,16 @@ assert cache.remaining_size() == 99
 assert not cache.is_full()
 assert not cache.is_empty()
 
+
 # Weighted: size is computed by getsizeof
 def entry_size(key, value):
     return sys.getsizeof(key) + sys.getsizeof(value)
 
+
 weighted = cachebox.LRUCache(maxsize=10_000, getsizeof=entry_size)
 weighted.insert("user:1", {"name": "Ada"})
-print(weighted.current_size())   # sum of entry sizes
-print(weighted.remaining_size()) # maxsize - current_size
+print(weighted.current_size())  # sum of entry sizes
+print(weighted.remaining_size())  # maxsize - current_size
 ```
 
 When the cache is full, policy-based classes evict items; plain `Cache` raises `OverflowError`.
@@ -354,9 +379,9 @@ cache = cachebox.FIFOCache(10, {i: i for i in range(10)})
 removed = cache.drain(3)
 assert removed == 3
 
-cache.clear()              # free memory
-cache.clear(reuse=True)    # keep allocation for reuse
-cache.shrink_to_fit()      # shrink allocation close to current length
+cache.clear()  # free memory
+cache.clear(reuse=True)  # keep allocation for reuse
+cache.shrink_to_fit()  # shrink allocation close to current length
 ```
 
 ### Inspecting Capacity
@@ -364,8 +389,8 @@ cache.shrink_to_fit()      # shrink allocation close to current length
 ```python
 cache = cachebox.LRUCache(maxsize=1000, capacity=1000)
 print(cache.capacity())  # slots without reallocation
-print(cache.maxsize)     # configured maxsize
-print(len(cache))        # number of entries
+print(cache.maxsize)  # configured maxsize
+print(len(cache))  # number of entries
 ```
 
 ## Immutable (Frozen) Caches

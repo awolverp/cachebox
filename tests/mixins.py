@@ -75,7 +75,9 @@ class InitializeMixin(BaseMixin):
         assert c.get("y") == 20
 
     def test_init_from_other_cache(self):
-        iterable = self.create_cache(maxsize=10, iterable=[("x", 10), ("y", 20)])
+        iterable = self.create_cache(
+            maxsize=10, iterable=[("x", 10), ("y", 20)]
+        )
 
         c = self.create_cache(maxsize=10, iterable=iterable)
         assert c.get("x") == 10
@@ -588,7 +590,9 @@ class IterationMixin(BaseMixin):
 
         cache = self.create_cache()
         cache.insert("canary", canary)
-        cache.insert("self", cache.keys())  # the cycle: cache -> iterator -> cache
+        cache.insert(
+            "self", cache.keys()
+        )  # the cycle: cache -> iterator -> cache
         del cache, canary
         gc.collect()
 
@@ -895,7 +899,9 @@ class GetSizeOfMixin(BaseMixin):
         assert "5" in c
 
     def test_getsizeof_insert_enforced(self):
-        c = self.create_cache(maxsize=100, getsizeof=lambda x, v: x.size + v.size)
+        c = self.create_cache(
+            maxsize=100, getsizeof=lambda x, v: x.size + v.size
+        )
 
         k1 = Sized(10, 1)
         v1 = Sized(80, 101)
@@ -1131,7 +1137,9 @@ class SweepIntervalMixin(BaseMixin):
         """expire() should be invoked by the background thread on schedule."""
         cache = self._create_sweep_cache(maxsize=10, sweep_interval=1)
         try:
-            with patch.object(cache, "expire", wraps=cache.expire) as mock_expire:
+            with patch.object(
+                cache, "expire", wraps=cache.expire
+            ) as mock_expire:
                 time.sleep(2.5)
             assert mock_expire.call_count >= 2
         finally:
@@ -1164,7 +1172,9 @@ class SweepIntervalMixin(BaseMixin):
             except Exception as exc:
                 errors.append(exc)
 
-        threads = [threading.Thread(target=writer, args=(i * 50,)) for i in range(4)]
+        threads = [
+            threading.Thread(target=writer, args=(i * 50,)) for i in range(4)
+        ]
         try:
             for t in threads:
                 t.start()
@@ -1176,7 +1186,9 @@ class SweepIntervalMixin(BaseMixin):
 
     def test_stop_sweeper_while_sleeping(self):
         """stop_sweeper() called mid-sleep should clear the flag without hanging."""
-        cache = self._create_sweep_cache(maxsize=10, sweep_interval=30)  # long interval
+        cache = self._create_sweep_cache(
+            maxsize=10, sweep_interval=30
+        )  # long interval
         thread = cache._thread
         cache.stop_sweeper()
         assert cache._stop_event.is_set() is True
@@ -1268,7 +1280,9 @@ class FuzzyMixin(BaseMixin):
         maxsize=st.integers(min_value=1, max_value=50),
         pairs=st.lists(st.tuples(hashable_keys, any_value), max_size=50),
     )
-    def test_fuzzy_current_size_plus_remaining_equals_maxsize(self, maxsize, pairs):
+    def test_fuzzy_current_size_plus_remaining_equals_maxsize(
+        self, maxsize, pairs
+    ):
         c = self.create_cache(maxsize=maxsize)
         for k, v in pairs:
             if c.is_full():
@@ -1301,7 +1315,9 @@ class FuzzyMixin(BaseMixin):
         )
 
     @given(key=hashable_keys, existing=any_value, default=any_value)
-    def test_fuzzy_setdefault_never_overwrites_existing(self, key, existing, default):
+    def test_fuzzy_setdefault_never_overwrites_existing(
+        self, key, existing, default
+    ):
         c = self.create_cache(maxsize=0)
         c.insert(key, existing)
         c.setdefault(key, default)
@@ -1321,7 +1337,10 @@ class FuzzyMixin(BaseMixin):
         assert c.copy() == c
 
     @given(
-        key=hashable_keys, value=any_value, new_key=hashable_keys, new_value=any_value
+        key=hashable_keys,
+        value=any_value,
+        new_key=hashable_keys,
+        new_value=any_value,
     )
     def test_fuzzy_copy_is_independent_of_original(
         self, key, value, new_key, new_value

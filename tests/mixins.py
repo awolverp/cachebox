@@ -674,9 +674,9 @@ class IterationMixin(BaseMixin):
             for _ in cache.items():
                 cache.insert("C", 1)
 
-        if not isinstance(cache, cachebox.LRUCache) and not sysconfig.get_config_var(
-            "Py_GIL_DISABLED"
-        ):
+        if not isinstance(
+            cache, cachebox.LRUCache
+        ) and not sysconfig.get_config_var("Py_GIL_DISABLED"):
             for i in cache:
                 cache.insert(i, "hello")
 
@@ -1003,6 +1003,42 @@ class EdgeCasesMixin(BaseMixin):
             cache.get(BadHash(val=i))
 
 
+CONCURRENT_FINALIZER_INSERTS = """
+import sys
+import threading
+
+import cachebox
+
+name = sys.argv[1]
+cls = getattr(cachebox, name)
+cache = cls(100, global_ttl=60) if name == "TTLCache" else cls(100)
+
+
+class Value:
+    def __del__(self):
+        self.dropped = True  # any Python-level finalizer
+
+
+def insert(base):
+    for i in range(200_000):
+        cache[base + i % 1000] = Value()
+
+
+threads = [
+    threading.Thread(target=insert, args=(b,), daemon=True)
+    for b in (0, 10_000)
+]
+
+for t in threads:
+    t.start()
+
+for t in threads:
+    t.join()
+
+print("finished")
+"""
+
+
 class IssuesMixin(BaseMixin):
     def test_issue_5(self):
         # https://github.com/awolverp/cachebox/issues/5
@@ -1033,6 +1069,31 @@ class IssuesMixin(BaseMixin):
         for i in range(size):
             cache.insert(EQ(val=i), i)
             cache.get(EQ(val=i))
+
+    def test_concurrent_inserts_with_finalizers(self):
+        # https://github.com/awolverp/cachebox/issues/95
+        #
+        # join() deadlocks instead of raising, and the workers hold the GIL,
+        # so a hang here would stall the whole run. The child is killed when
+        # the timeout expires and this test fails.
+        name = type(self.create_cache()).__name__
+
+        try:
+            done = subprocess.run(
+                [sys.executable, "-c", CONCURRENT_FINALIZER_INSERTS, name],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail(
+                f"{name} concurrent inserts with finalizers never returned"
+            )
+
+        assert done.stdout.strip() == "finished", (
+            done.stderr or f"exit code {done.returncode}"
+        )
 
 
 class SweepIntervalMixin(BaseMixin):

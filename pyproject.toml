@@ -1,3 +1,72 @@
+[project]
+name = "cachebox"
+requires-python = ">=3.10"
+authors = [{ name = "awolverp", email = "awolverp@gmail.com" }]
+keywords = ["cache", "cachebox", "cached", "caching", "in-memory-caching", "memoizing"]
+
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: MacOS",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+  "Programming Language :: Rust",
+  "Topic :: Software Development :: Libraries",
+  "Typing :: Typed",
+]
+
+dynamic = ["description", "license", "readme", "version"]
+
+[project.urls]
+Homepage = "https://github.com/awolverp/cachebox"
+Issues = "https://github.com/awolverp/cachebox/issues"
+Repository = "https://github.com/awolverp/cachebox"
+
+[dependency-groups]
+dev = [
+  { include-group = "ci" },
+  { include-group = "docs" },
+  { include-group = "lint" },
+  { include-group = "typos" },
+  { include-group = "zizmor" },
+]
+ci = [
+  { include-group = "maturin" },
+  { include-group = "test" },
+]
+docs = [
+  "mkdocs-material == 9.7.7",
+  "mkdocstrings[python] == 1.0.6",
+]
+lint = [
+  "mypy>=2.3.1",
+  "ruff>=0.16.9",
+]
+maturin = [
+  "maturin == 1.14.1 ; sys_platform != 'linux'",
+  "maturin[patchelf] == 1.14.1 ; sys_platform == 'linux'",
+]
+test = [
+  "hypothesis == 6.165.0",
+  "pytest-asyncio == 1.4.0",
+  "pytest-xdist == 3.8.0",
+  "pytest == 9.1.1",
+]
+typos = ["typos == 1.48.0"]
+zizmor = ["zizmor == 1.29.0"]
+
 [build-system]
 requires = ["maturin == 1.14.1"]
 build-backend = "maturin"
@@ -5,81 +74,6 @@ build-backend = "maturin"
 [tool.maturin]
 module-name = "cachebox._core"
 
-[project]
-name = "cachebox"
-requires-python = ">=3.10"
-keywords = ["caching", "cached", "cachebox", "cache", "in-memory-caching", "memoizing"]
-authors = [
-    { name = "awolverp", email = "awolverp@gmail.com" }
-]
-
-classifiers = [
-    "Programming Language :: Rust",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
-    "Programming Language :: Python :: 3.15",
-    "Programming Language :: Python :: Implementation :: PyPy",
-    "Programming Language :: Python :: Implementation :: CPython",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: POSIX :: Linux",
-    "Operating System :: Microsoft :: Windows",
-    "Operating System :: MacOS",
-    "Typing :: Typed",
-    "Topic :: Software Development :: Libraries",
-    "Development Status :: 5 - Production/Stable",
-]
-
-dynamic = [
-    "description",
-    "license",
-    "readme",
-    "version"
-]
-
-[project.urls]
-Homepage = "https://github.com/awolverp/cachebox"
-Repository = "https://github.com/awolverp/cachebox"
-Issues = "https://github.com/awolverp/cachebox/issues"
-
 [tool.mypy]
 disable_error_code = "attr-defined, type-arg, no-untyped-def, no-any-return"
-
-[dependency-groups]
-maturin = [
-    "maturin == 1.14.1 ; sys_platform != 'linux'",
-    "maturin[patchelf] == 1.14.1 ; sys_platform == 'linux'",
-]
-typos = ["typos == 1.48.0"]
-zizmor = ["zizmor == 1.29.0"]
-docs = [
-    "mkdocs-material == 9.7.7",
-    "mkdocstrings[python] == 1.0.6",
-]
-test = [
-    "pytest == 9.1.1",
-    "hypothesis == 6.165.0",
-    "pytest-asyncio == 1.4.0",
-    "pytest-xdist == 3.8.0",
-]
-lint = [
-    "mypy>=2.3.1",
-    "ruff>=0.16.9",
-]
-ci = [
-    { include-group = "maturin" },
-    { include-group = "test" },
-]
-dev = [
-    { include-group = "ci" },
-    { include-group = "docs" },
-    { include-group = "zizmor" },
-    { include-group = "typos" },
-    { include-group = "lint" },
-]
+python_version = "3.10"

@@ -1,3 +1,4 @@
+use pyo3::sync::MutexExt;
 use pyo3::types::PyAnyMethods;
 use pyo3::types::PyTupleMethods;
 
@@ -47,11 +48,17 @@ impl<P: PolicyExt> Wrapped<P> {
 
     /// Acquires the mutex and returns a guard over the mutable policy state.
     ///
-    /// # Panics
-    /// Panics if the mutex is poisoned.
+    /// Prefer [`Self::policy_py_attached`] when GIL is attached.
     #[inline(always)]
     pub fn policy(&self) -> parking_lot::MutexGuard<'_, P> {
         self.inner.lock()
+    }
+
+    /// Acquires the mutex and returns a guard over the mutable policy state.
+    // https://github.com/awolverp/cachebox/issues/95
+    #[inline(always)]
+    pub fn policy_py_attached(&self, py: pyo3::Python<'_>) -> parking_lot::MutexGuard<'_, P> {
+        pyo3::sync::MutexExt::lock_py_attached(&self.inner, py)
     }
 
     /// Acquires the mutex only if it is free, returning `None` otherwise.
@@ -120,7 +127,7 @@ impl<P: PolicyExt> Wrapped<P> {
         py: pyo3::Python<'_>,
         key: &<P::Handle as HandleExt>::Key,
     ) -> pyo3::PyResult<bool> {
-        let mut lock = self.inner.lock();
+        let mut lock = self.policy_py_attached(py);
 
         let handle = lock.get(py, key, &self.shared)?;
         Ok(handle.is_some())
@@ -148,7 +155,7 @@ impl<P: PolicyExt> Wrapped<P> {
         py: pyo3::Python<'_>,
         handle: P::Handle,
     ) -> pyo3::PyResult<Option<P::Handle>> {
-        let mut lock = self.inner.lock();
+        let mut lock = self.policy_py_attached(py);
         self.insert_no_lock(&mut lock, py, handle)
     }
 
@@ -160,7 +167,7 @@ impl<P: PolicyExt> Wrapped<P> {
         py: pyo3::Python<'_>,
         key: &<P::Handle as HandleExt>::Key,
     ) -> pyo3::PyResult<Option<P::Handle>> {
-        let mut lock = self.inner.lock();
+        let mut lock = self.policy_py_attached(py);
 
         let entry = lock.entry(py, key, &self.shared)?;
         match entry {
@@ -194,7 +201,7 @@ impl<P: PolicyExt> Wrapped<P> {
         use pyo3::types::PyAnyMethods;
         use pyo3::types::PyDictMethods;
 
-        let mut lock = self.inner.lock();
+        let mut lock = self.policy_py_attached(iterable.py());
 
         // Using [pyo3::ffi::PyObject_TypeCheck] and [Bound::cast_unchecked] is so faster than [Bound::cast]
         let is_dictionary = unsafe {
@@ -246,7 +253,7 @@ impl<P: PolicyExt> Wrapped<P> {
             return Ok(0);
         }
 
-        let mut lock = self.inner.lock();
+        let mut lock = self.policy_py_attached(py);
 
         let mut count: pyo3::ffi::Py_ssize_t = 0;
         while count < n {
@@ -270,7 +277,7 @@ impl<P: PolicyExt> Wrapped<P> {
     #[inline]
     pub fn clone_ref(&self, py: pyo3::Python) -> Self {
         let shared = self.shared.clone_ref(py);
-        let policy = self.inner.lock().clone_ref(py);
+        let policy = self.policy_py_attached(py).clone_ref(py);
 
         Self {
             shared,
@@ -289,7 +296,7 @@ impl<P: PolicyExt> Wrapped<P> {
             .push(self.shared.global_ttl())?;
 
         let mut tuple = builder.begin_tuple(P::PICKLE_SIZE)?;
-        self.inner.lock().build_pickle(&mut tuple)?;
+        self.inner.lock_py_attached(py).build_pickle(&mut tuple)?;
         tuple.end()?;
 
         Ok(builder.finish())

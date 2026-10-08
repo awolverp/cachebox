@@ -277,7 +277,7 @@ impl PyCache {
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
         let inner = self.0.get();
-        let mut policy = inner.policy();
+        let mut policy = inner.policy_py_attached(py);
 
         if let Some(x) = policy.get(py, &key, inner.shared())? {
             return Ok(x.value().clone_ref(py));
@@ -300,7 +300,7 @@ impl PyCache {
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
         let inner = self.0.get();
-        let mut policy = inner.policy();
+        let mut policy = inner.policy_py_attached(py);
 
         match policy.get(py, &key, inner.shared())? {
             Some(x) => Ok(x.value().clone_ref(py)),
@@ -332,7 +332,7 @@ impl PyCache {
 
         let inner = self.0.get();
         let shared = inner.shared();
-        let mut policy = inner.policy();
+        let mut policy = inner.policy_py_attached(py);
 
         if let Some(x) = policy.get(py, &key, inner.shared())? {
             return Ok(x.value().clone_ref(py));
@@ -381,7 +381,7 @@ impl PyCache {
         let shared = inner.shared();
 
         {
-            let mut policy = inner.policy();
+            let mut policy = inner.policy_py_attached(py);
 
             if let Some(x) = policy.get(py, &key, inner.shared())? {
                 return Ok(x.value().clone_ref(py));
@@ -391,7 +391,7 @@ impl PyCache {
         // `factory` is Python code: a GC pass inside it would deadlock on `__traverse__`
         let default_object = factory.call0(py)?;
 
-        let mut policy = inner.policy();
+        let mut policy = inner.policy_py_attached(py);
 
         if let Some(x) = policy.get(py, &key, inner.shared())? {
             return Ok(x.value().clone_ref(py));
@@ -506,8 +506,8 @@ impl PyCache {
         let self_inner = slf.0.get();
         let other_inner = other.0.get();
 
-        let self_policy = self_inner.policy();
-        let other_policy = other_inner.policy();
+        let self_policy = self_inner.policy_py_attached(py);
+        let other_policy = other_inner.policy_py_attached(py);
 
         self_policy.py_eq(
             py,
@@ -529,8 +529,8 @@ impl PyCache {
         let self_inner = slf.0.get();
         let other_inner = other.0.get();
 
-        let self_policy = self_inner.policy();
-        let other_policy = other_inner.policy();
+        let self_policy = self_inner.policy_py_attached(py);
+        let other_policy = other_inner.policy_py_attached(py);
 
         self_policy
             .py_eq(
@@ -550,7 +550,9 @@ impl PyCache {
         let result = PyCacheItems {
             cache: slf.as_any().clone().unbind(),
             // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
-            iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
+            iter: parking_lot::Mutex::new(unsafe {
+                inner.policy_py_attached(slf.py()).table().iter()
+            }),
             gv,
             initial_gv,
         };
@@ -566,7 +568,9 @@ impl PyCache {
         let result = PyCacheValues {
             cache: slf.as_any().clone().unbind(),
             // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
-            iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
+            iter: parking_lot::Mutex::new(unsafe {
+                inner.policy_py_attached(slf.py()).table().iter()
+            }),
             gv,
             initial_gv,
         };
@@ -581,7 +585,9 @@ impl PyCache {
         let result = PyCacheKeys {
             cache: slf.as_any().clone().unbind(),
             // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
-            iter: parking_lot::Mutex::new(unsafe { inner.policy().table().iter() }),
+            iter: parking_lot::Mutex::new(unsafe {
+                inner.policy_py_attached(slf.py()).table().iter()
+            }),
             gv,
             initial_gv,
         };
@@ -617,10 +623,10 @@ impl PyCache {
         Ok(())
     }
 
-    fn __repr__(slf: pyo3::PyRef<'_, Self>, py: pyo3::Python) -> String {
+    fn __repr__(slf: pyo3::PyRef<'_, Self>) -> String {
         let inner = slf.0.get();
         let shared = inner.shared();
-        let policy = inner.policy();
+        let policy = inner.policy_py_attached(slf.py());
 
         let iter = unsafe {
             policy
@@ -630,8 +636,8 @@ impl PyCache {
                 .map(|handle| {
                     (
                         // Without using `.bind` it returns something like `Py(addr)`
-                        handle.key().as_ref().bind(py),
-                        handle.value().bind(py),
+                        handle.key().as_ref().bind(slf.py()),
+                        handle.value().bind(slf.py()),
                     )
                 })
         };
@@ -639,7 +645,7 @@ impl PyCache {
         let items = utils::items_to_str(iter, policy.table().len()).unwrap();
         format!(
             "{}[maxsize={}]({})",
-            unsafe { utils::get_type_name(py, slf.as_ptr()) },
+            unsafe { utils::get_type_name(slf.py(), slf.as_ptr()) },
             shared.maxsize(),
             items
         )

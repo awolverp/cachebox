@@ -283,7 +283,7 @@ impl PyFIFOCache {
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
         let inner = self.0.get();
-        let mut policy = inner.policy();
+        let mut policy = inner.policy_py_attached(py);
 
         if let Some(x) = policy.get(py, &key, inner.shared())? {
             return Ok(x.value().clone_ref(py));
@@ -306,7 +306,7 @@ impl PyFIFOCache {
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
         let inner = self.0.get();
-        let mut policy = inner.policy();
+        let mut policy = inner.policy_py_attached(py);
 
         match policy.get(py, &key, inner.shared())? {
             Some(x) => Ok(x.value().clone_ref(py)),
@@ -338,7 +338,7 @@ impl PyFIFOCache {
 
         let inner = self.0.get();
         let shared = inner.shared();
-        let mut policy = inner.policy();
+        let mut policy = inner.policy_py_attached(py);
 
         if let Some(x) = policy.get(py, &key, inner.shared())? {
             return Ok(x.value().clone_ref(py));
@@ -387,7 +387,7 @@ impl PyFIFOCache {
         let shared = inner.shared();
 
         {
-            let mut policy = inner.policy();
+            let mut policy = inner.policy_py_attached(py);
 
             if let Some(x) = policy.get(py, &key, inner.shared())? {
                 return Ok(x.value().clone_ref(py));
@@ -397,7 +397,7 @@ impl PyFIFOCache {
         // `factory` is Python code: a GC pass inside it would deadlock on `__traverse__`
         let default_object = factory.call0(py)?;
 
-        let mut policy = inner.policy();
+        let mut policy = inner.policy_py_attached(py);
 
         if let Some(x) = policy.get(py, &key, inner.shared())? {
             return Ok(x.value().clone_ref(py));
@@ -510,8 +510,8 @@ impl PyFIFOCache {
         let self_inner = slf.0.get();
         let other_inner = other.0.get();
 
-        let self_policy = self_inner.policy();
-        let other_policy = other_inner.policy();
+        let self_policy = self_inner.policy_py_attached(py);
+        let other_policy = other_inner.policy_py_attached(py);
 
         self_policy.py_eq(
             py,
@@ -533,8 +533,8 @@ impl PyFIFOCache {
         let self_inner = slf.0.get();
         let other_inner = other.0.get();
 
-        let self_policy = self_inner.policy();
-        let other_policy = other_inner.policy();
+        let self_policy = self_inner.policy_py_attached(py);
+        let other_policy = other_inner.policy_py_attached(py);
 
         self_policy
             .py_eq(
@@ -554,7 +554,7 @@ impl PyFIFOCache {
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
         let result = PyFIFOCacheItems {
             cache: slf.as_any().clone().unbind(),
-            iter: parking_lot::Mutex::new(inner.policy().iter()),
+            iter: parking_lot::Mutex::new(inner.policy_py_attached(slf.py()).iter()),
             gv,
             initial_gv,
         };
@@ -569,7 +569,7 @@ impl PyFIFOCache {
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
         let result = PyFIFOCacheValues {
             cache: slf.as_any().clone().unbind(),
-            iter: parking_lot::Mutex::new(inner.policy().iter()),
+            iter: parking_lot::Mutex::new(inner.policy_py_attached(slf.py()).iter()),
             gv,
             initial_gv,
         };
@@ -584,7 +584,7 @@ impl PyFIFOCache {
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
         let result = PyFIFOCacheKeys {
             cache: slf.as_any().clone().unbind(),
-            iter: parking_lot::Mutex::new(inner.policy().iter()),
+            iter: parking_lot::Mutex::new(inner.policy_py_attached(slf.py()).iter()),
             gv,
             initial_gv,
         };
@@ -620,23 +620,23 @@ impl PyFIFOCache {
         Ok(())
     }
 
-    fn __repr__(slf: pyo3::PyRef<'_, Self>, py: pyo3::Python) -> String {
+    fn __repr__(slf: pyo3::PyRef<'_, Self>) -> String {
         let inner = slf.0.get();
         let shared = inner.shared();
-        let policy = inner.policy();
+        let policy = inner.policy_py_attached(slf.py());
 
         let iter = policy.entries().iter().map(|handle| {
             (
                 // Without using `.bind` it returns something like `Py(addr)`
-                handle.key().as_ref().bind(py),
-                handle.value().bind(py),
+                handle.key().as_ref().bind(slf.py()),
+                handle.value().bind(slf.py()),
             )
         });
 
         let items = utils::items_to_str(iter, policy.table().len()).unwrap();
         format!(
             "{}[maxsize={}]({})",
-            unsafe { utils::get_type_name(py, slf.as_ptr()) },
+            unsafe { utils::get_type_name(slf.py(), slf.as_ptr()) },
             shared.maxsize(),
             items
         )
@@ -649,7 +649,7 @@ impl PyFIFOCache {
         mut n: pyo3::ffi::Py_ssize_t,
     ) -> pyo3::PyResult<alias::PyObject> {
         let inner = self.0.get();
-        let policy = inner.policy();
+        let policy = inner.policy_py_attached(py);
 
         if n < 0 {
             n += policy.entries().len() as isize;
@@ -666,7 +666,7 @@ impl PyFIFOCache {
 
     fn last(&self, py: pyo3::Python) -> pyo3::PyResult<alias::PyObject> {
         let inner = self.0.get();
-        let policy = inner.policy();
+        let policy = inner.policy_py_attached(py);
         match policy.entries().back() {
             Some(handle) => Ok(handle.key().as_ref().clone_ref(py)),
             None => Err(new_py_error!(PyIndexError, "`n` out of range")),

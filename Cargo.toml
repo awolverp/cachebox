@@ -4,22 +4,13 @@ version = "6.2.7"
 edition = "2021"
 description = "The fastest memoizing and caching Python library written in Rust"
 readme = "README.md"
-license = "MIT"
 homepage = "https://github.com/awolverp/cachebox"
 repository = "https://github.com/awolverp/cachebox.git"
-authors = ["Ali Pooralijan <awolverp@gmail.com>"]
+license = "MIT"
 
 [lib]
-name = "cachebox"
 crate-type = ["cdylib", "rlib"]
-
-[profile.release]
-codegen-units = 1
-debug = false
-incremental = false
-lto = true
-panic = "abort"
-strip = true
+name = "cachebox"
 
 [dependencies]
 allocator-api2 = "0.4.0"
@@ -27,15 +18,15 @@ cfg-if = "1.0.4"
 chrono = "0.4.45"
 fastrand = "2.5.0"
 parking_lot = { version = "0.12.5", default-features = false }
-pyo3 = { version = "0.29.2", default-features = false, features = ["macros", "chrono"] }
+pyo3 = { version = "0.29.2", default-features = false, features = ["chrono", "macros", "parking_lot"] }
 
 [build-dependencies]
 pyo3-build-config = { version = "0.29.2", default-features = false, features = ["resolve-config"] }
 
 [features]
-default = ["inline-more", "extension-module"]
-inline-more = []
+default = ["extension-module", "inline-more"]
 extension-module = ["pyo3/extension-module"]
+inline-more = []
 
 # testing features
 use-small-offset = []
@@ -43,3 +34,11 @@ use-small-offset = []
 [lints.clippy]
 dbg_macro = "warn"
 print_stdout = "warn"
+
+[profile.release]
+debug = false
+strip = true
+lto = true
+panic = "abort"
+incremental = false
+codegen-units = 1

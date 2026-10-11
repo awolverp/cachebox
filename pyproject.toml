@@ -47,8 +47,8 @@ ci = [
   { include-group = "test" },
 ]
 docs = [
-  "mkdocs-material == 9.7.7",
-  "mkdocstrings[python] == 1.0.6",
+  "mkdocs-material >= 9.7.7",
+  "mkdocstrings[python] >= 1.0.6",
 ]
 lint = [
   "mypy>=2.3.1",
@@ -59,13 +59,13 @@ maturin = [
   "maturin[patchelf] == 1.14.1 ; sys_platform == 'linux'",
 ]
 test = [
-  "hypothesis == 6.165.0",
-  "pytest-asyncio == 1.4.0",
-  "pytest-xdist == 3.8.0",
-  "pytest == 9.1.1",
+  "hypothesis >= 6.165.0",
+  "pytest-asyncio >= 1.4.0",
+  "pytest-xdist >= 3.8.0",
+  "pytest >= 9.1.1",
 ]
-typos = ["typos == 1.48.0"]
-zizmor = ["zizmor == 1.29.0"]
+typos = ["typos >= 1.48.0"]
+zizmor = ["zizmor >= 1.29.0"]
 
 [build-system]
 requires = ["maturin == 1.14.1"]

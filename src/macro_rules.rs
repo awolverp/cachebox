@@ -17,7 +17,6 @@ macro_rules! implement_pyclass {
             module = "cachebox._core",
             name = $python_name,
             immutable_type,
-            skip_from_py_object,
             $($pyclass_args)*
         )]
         $(#[$outer])*

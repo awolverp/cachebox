@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import sysconfig
 import time
 import typing
 from datetime import datetime, timedelta, timezone
@@ -1063,6 +1064,10 @@ class TestLFUCache(
         assert c.least_frequently_used() == "hot"
         assert c.popitem()[0] == "hot"
 
+    @pytest.mark.skipif(
+        bool(sysconfig.get_config_var("Py_GIL_DISABLED")),
+        reason="free-threaded builds invalidate iterators on replace by design",
+    )
     def test_replace_during_iteration_yields_each_key_once(self):
         c = self.create_cache(10, {i: i for i in range(6)})
         self._hit(c, 0, 5)

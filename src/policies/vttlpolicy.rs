@@ -11,18 +11,6 @@ use crate::internal::lazyheap::HeapNode;
 pub use crate::policies::common::Shared;
 use crate::policies::traits::SharedExt;
 
-/// Compares two items by `expires_at`, placing `None` values last.
-macro_rules! compare_fn {
-    () => {
-        |a, b| {
-            a.expires_at
-                .is_none()
-                .cmp(&b.expires_at.is_none())
-                .then_with(|| a.expires_at.cmp(&b.expires_at))
-        }
-    };
-}
-
 /// A key-value pair with a precomputed hash and combined size.
 pub struct ExpiringHandle {
     /// The cache key together with its precomputed hash, avoiding repeated
@@ -216,7 +204,7 @@ impl traits::OccupiedExt for Occupied<'_> {
         self.shared.generation_version().increment();
 
         let (cursor, _) = unsafe { self.policy.table.remove(self.bucket) };
-        let item = self.policy.heap.remove(cursor, compare_fn!());
+        let item = self.policy.heap.remove(cursor);
 
         self.policy.currsize = self.policy.currsize.saturating_sub(item.size());
         item
@@ -295,17 +283,17 @@ impl VTTLPolicy {
 
         // We don't want to intrupt other iterators with no reason
         // so need to manually call sort_by to only intrupt them on changes.
-        if self.heap.sort_by(compare_fn!()) {
+        if self.heap.sort_by() {
             gv.increment();
         }
 
-        self.heap.iter(compare_fn!())
+        self.heap.iter()
     }
 
     pub fn expire(&mut self, gv: &utils::GenerationVersion) {
         let now = std::time::SystemTime::now();
 
-        while let Some(cursor) = self.heap.front(compare_fn!()) {
+        while let Some(cursor) = self.heap.front() {
             let handle = unsafe { cursor.element() };
 
             if !handle.is_expired(now) {
@@ -320,7 +308,7 @@ impl VTTLPolicy {
 
             gv.increment();
 
-            let handle = self.heap.pop_front(compare_fn!()).unwrap();
+            let handle = self.heap.pop_front().unwrap();
             self.currsize = self.currsize.saturating_sub(handle.size);
         }
     }
@@ -406,7 +394,7 @@ impl PolicyExt for VTTLPolicy {
         {
             let front_cursor = self
                 .heap
-                .front(compare_fn!())
+                .front()
                 .ok_or_else(|| new_py_error!(PyKeyError, "cache is empty"))?;
 
             self.table
@@ -418,7 +406,7 @@ impl PolicyExt for VTTLPolicy {
 
         shared.generation_version().increment();
 
-        let handle = self.heap.pop_front(compare_fn!()).unwrap();
+        let handle = self.heap.pop_front().unwrap();
 
         self.currsize = self.currsize.saturating_sub(handle.size);
         Ok(handle)
@@ -502,7 +490,7 @@ impl PolicyExt for VTTLPolicy {
         let mut heap = lazyheap::LazyHeap::new();
 
         unsafe {
-            for cursor in self.heap.iter(compare_fn!()) {
+            for cursor in self.heap.iter() {
                 let cloned_handle = cursor.element().clone_ref(py);
                 let new_cursor = heap.push(cloned_handle);
                 table.insert_no_grow(new_cursor.element().key().hash(), new_cursor);
@@ -587,7 +575,7 @@ impl PolicyExt for VTTLPolicy {
             }
         }
 
-        slf.heap.sort_by(compare_fn!());
+        slf.heap.sort_by();
         Ok((shared, slf))
     }
 }

@@ -11,12 +11,6 @@ use crate::policies::traits::SharedExt;
 
 pub use crate::policies::common::Shared;
 
-macro_rules! compare_fn {
-    () => {
-        |x, y| x.frequency.cmp(&y.frequency)
-    };
-}
-
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct Frequency(u64);
@@ -204,7 +198,7 @@ impl traits::OccupiedExt for Occupied<'_> {
         self.shared.generation_version().increment();
 
         let (cursor, _) = unsafe { self.policy.table.remove(self.bucket) };
-        let item = self.policy.heap.remove(cursor, compare_fn!());
+        let item = self.policy.heap.remove(cursor);
 
         self.policy.currsize = self.policy.currsize.saturating_sub(item.size());
         item
@@ -286,11 +280,11 @@ impl LFUPolicy {
     pub fn iter(&mut self, gv: &utils::GenerationVersion) -> lazyheap::RawIter<FrequencyHandle> {
         // We don't want to intrupt other iterators with no reason
         // so need to manually call sort_by to only intrupt them on changes.
-        if self.heap.sort_by(compare_fn!()) {
+        if self.heap.sort_by() {
             gv.increment();
         }
 
-        self.heap.iter(compare_fn!())
+        self.heap.iter()
     }
 
     #[inline]
@@ -300,7 +294,7 @@ impl LFUPolicy {
         n: usize,
         gv: &utils::GenerationVersion,
     ) -> Option<utils::PrecomputedHashObject> {
-        if self.heap.sort_by(compare_fn!()) {
+        if self.heap.sort_by() {
             gv.increment();
         }
 
@@ -403,7 +397,7 @@ impl PolicyExt for LFUPolicy {
         {
             let front_cursor = self
                 .heap
-                .front(compare_fn!())
+                .front()
                 .ok_or_else(|| new_py_error!(PyKeyError, "cache is empty"))?;
 
             self.table
@@ -415,7 +409,7 @@ impl PolicyExt for LFUPolicy {
 
         shared.generation_version().increment();
 
-        let handle = self.heap.pop_front(compare_fn!()).unwrap();
+        let handle = self.heap.pop_front().unwrap();
 
         self.currsize = self.currsize.saturating_sub(handle.size);
         Ok(handle)
@@ -494,7 +488,7 @@ impl PolicyExt for LFUPolicy {
         let mut heap = lazyheap::LazyHeap::new();
 
         unsafe {
-            for cursor in self.heap.iter(compare_fn!()) {
+            for cursor in self.heap.iter() {
                 let cloned_handle = cursor.element().clone_ref(py);
                 let new_cursor = heap.push(cloned_handle);
                 table.insert_no_grow(new_cursor.element().key().hash(), new_cursor);
@@ -569,7 +563,7 @@ impl PolicyExt for LFUPolicy {
             }
         }
 
-        slf.heap.sort_by(compare_fn!());
+        slf.heap.sort_by();
         Ok((shared, slf))
     }
 }

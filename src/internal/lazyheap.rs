@@ -283,14 +283,12 @@ impl<T: HeapNode> LazyHeap<T> {
 
     /// Sorts the backing buffer if it is not already sorted and then returns `true`.
     ///
-    /// The order is by the live key, ties broken by insertion order. The `compare`
-    /// argument is kept for API compatibility and must agree with
-    /// [`HeapNode::heap_key`].
+    /// The order is by the live key, ties broken by insertion order.
     ///
     /// # Complexity
     /// O(n log n) when unsorted; O(1) when already sorted.
     #[inline]
-    pub fn sort_by(&mut self, _compare: impl Fn(&T, &T) -> std::cmp::Ordering) -> bool {
+    pub fn sort_by(&mut self) -> bool {
         if self.is_sorted {
             return false;
         }
@@ -304,11 +302,14 @@ impl<T: HeapNode> LazyHeap<T> {
                 slot.rec = key;
                 slot.pidx = NOT_PENDING;
             }
+
             self.pending.clear();
+
             self.data.sort_unstable_by(|a, b| {
                 let (sa, sb) = (a.as_ref().heap_slot(), b.as_ref().heap_slot());
                 (sa.rec, sa.seq).cmp(&(sb.rec, sb.seq))
             });
+
             for (i, ptr) in self.data.iter_mut().enumerate() {
                 ptr.as_mut().heap_slot_mut().pos = i as u32;
             }
@@ -323,7 +324,7 @@ impl<T: HeapNode> LazyHeap<T> {
     /// # Complexity
     /// O(1) amortised.
     #[inline]
-    pub fn front(&mut self, _compare: impl Fn(&T, &T) -> std::cmp::Ordering) -> Option<Cursor<T>> {
+    pub fn front(&mut self) -> Option<Cursor<T>> {
         self.apply_pending();
         if self.repair_root() {
             self.is_sorted = false;
@@ -335,8 +336,8 @@ impl<T: HeapNode> LazyHeap<T> {
     ///
     /// Sorts the heap first if necessary (O(n log n)); rarely needed.
     #[inline]
-    pub fn back(&mut self, compare: impl Fn(&T, &T) -> std::cmp::Ordering) -> Option<Cursor<T>> {
-        self.sort_by(compare);
+    pub fn back(&mut self) -> Option<Cursor<T>> {
+        self.sort_by();
         self.data.last().copied().map(Cursor)
     }
 
@@ -375,8 +376,8 @@ impl<T: HeapNode> LazyHeap<T> {
     /// # Complexity
     /// O(log n).
     #[inline]
-    pub fn pop_front(&mut self, compare: impl Fn(&T, &T) -> std::cmp::Ordering) -> Option<T> {
-        self.front(compare)?;
+    pub fn pop_front(&mut self) -> Option<T> {
+        self.front()?;
         Some(unsafe { self.remove_at(0) })
     }
 
@@ -384,8 +385,8 @@ impl<T: HeapNode> LazyHeap<T> {
     ///
     /// Sorts the heap first if necessary.
     #[inline]
-    pub fn pop_back(&mut self, compare: impl Fn(&T, &T) -> std::cmp::Ordering) -> Option<T> {
-        self.sort_by(compare);
+    pub fn pop_back(&mut self) -> Option<T> {
+        self.sort_by();
         let last = self.data.len().checked_sub(1)?;
         Some(unsafe { self.remove_at(last) })
     }
@@ -394,11 +395,7 @@ impl<T: HeapNode> LazyHeap<T> {
     ///
     /// # Complexity
     /// O(log n).
-    pub fn remove(
-        &mut self,
-        cursor: Cursor<T>,
-        _compare: impl Fn(&T, &T) -> std::cmp::Ordering,
-    ) -> T {
+    pub fn remove(&mut self, cursor: Cursor<T>) -> T {
         debug_assert!(!self.data.is_empty());
         // SAFETY: cursor belongs to this heap (caller contract).
         let i = unsafe { cursor.element().heap_slot().pos as usize };
@@ -413,8 +410,8 @@ impl<T: HeapNode> LazyHeap<T> {
     /// pointers into the backing buffer; do not mutate or drop the heap while
     /// it is alive.
     #[inline]
-    pub fn iter(&mut self, compare: impl Fn(&T, &T) -> std::cmp::Ordering) -> RawIter<T> {
-        self.sort_by(compare);
+    pub fn iter(&mut self) -> RawIter<T> {
+        self.sort_by();
         RawIter {
             first: utils::RawSliceIter::new(self.data.as_slice()),
             second: utils::RawSliceIter::new(&[]),

@@ -541,7 +541,6 @@ impl PyVTTLCache {
         let result = PyVTTLCacheItems {
             cache: slf.clone().unbind(),
             iter: parking_lot::Mutex::new(iter),
-            gv: gv.clone(),
             initial_gv: gv.get(),
         };
         pyo3::Py::new(slf.py(), result)
@@ -557,7 +556,6 @@ impl PyVTTLCache {
         let result = PyVTTLCacheValues {
             cache: slf.clone().unbind(),
             iter: parking_lot::Mutex::new(iter),
-            gv: gv.clone(),
             initial_gv: gv.get(),
         };
         pyo3::Py::new(slf.py(), result)
@@ -573,7 +571,6 @@ impl PyVTTLCache {
         let result = PyVTTLCacheKeys {
             cache: slf.clone().unbind(),
             iter: parking_lot::Mutex::new(iter),
-            gv: gv.clone(),
             initial_gv: gv.get(),
         };
         pyo3::Py::new(slf.py(), result)
@@ -771,7 +768,6 @@ impl PyVTTLCache {
         let result = PyVTTLCacheItemsWithExpire {
             cache: slf.clone().unbind(),
             iter: parking_lot::Mutex::new(iter),
-            gv: gv.clone(),
             initial_gv: gv.get(),
         };
         pyo3::Py::new(slf.py(), result)
@@ -818,7 +814,6 @@ macro_rules! implement_iterator {
                 [generic, frozen] $name as $pyname {
                     cache: pyo3::Py<PyVTTLCache>,
                     initial_gv: u32,
-                    gv: utils::GenerationVersion,
                     iter: parking_lot::Mutex<lazyheap::RawIter<vttlpolicy::ExpiringHandle>>,
                 }
             }
@@ -836,14 +831,14 @@ macro_rules! implement_iterator {
                     visit.call(&self.cache)
                 }
 
-                fn __next__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyResult<$rt_type> {
-                    let _policy = slf.lock_and_check(slf.py())?;
+                fn __next__(&self, py: pyo3::Python) -> pyo3::PyResult<$rt_type> {
+                    let _policy = self.lock_and_check(py)?;
 
                     let now = std::time::SystemTime::now();
-                    let mut iter = slf.iter.lock();
-                    let $py = slf.py();
+                    let mut iter = pyo3::sync::MutexExt::lock_py_attached(&self.iter, py);
 
                     while let Some(x) = iter.next() {
+                        let $py = py;
                         let $handle = unsafe { x.element() };
                         if $handle.is_expired(now) {
                             continue;
@@ -856,21 +851,21 @@ macro_rules! implement_iterator {
                 }
 
                 /// Returns how many not-expired items are left to yield.
-                fn __len__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyResult<usize> {
-                    let _policy = slf.lock_and_check(slf.py())?;
+                fn __len__(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
+                    let _policy = self.lock_and_check(py)?;
 
                     let now = std::time::SystemTime::now();
-                    let iter = slf.iter.lock().clone();
+                    let iter = pyo3::sync::MutexExt::lock_py_attached(&self.iter, py).clone();
 
                     Ok(iter.filter(|x| !unsafe { x.element() }.is_expired(now)).count())
                 }
 
                 /// Returns whether any not-expired item is left, without counting them all.
-                fn __bool__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyResult<bool> {
-                    let _policy = slf.lock_and_check(slf.py())?;
+                fn __bool__(&self, py: pyo3::Python) -> pyo3::PyResult<bool> {
+                    let _policy = self.lock_and_check(py)?;
 
                     let now = std::time::SystemTime::now();
-                    let mut iter = slf.iter.lock().clone();
+                    let mut iter = pyo3::sync::MutexExt::lock_py_attached(&self.iter, py).clone();
 
                     Ok(iter.any(|x| !unsafe { x.element() }.is_expired(now)))
                 }

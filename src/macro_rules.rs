@@ -51,9 +51,12 @@ macro_rules! implement_view_guard {
                 &'a self,
                 py: pyo3::Python<'_>,
             ) -> pyo3::PyResult<parking_lot::MutexGuard<'a, $policy>> {
-                let policy = self.cache.get().0.get()?.policy_py_attached(py);
+                let cache = self.cache.get();
+                let inner = cache.0.get()?;
 
-                if self.initial_gv == self.gv.get() {
+                let policy = inner.policy_py_attached(py);
+
+                if self.initial_gv == inner.shared().generation_version().get() {
                     return Ok(policy);
                 }
 

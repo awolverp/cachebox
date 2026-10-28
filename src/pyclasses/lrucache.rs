@@ -581,51 +581,39 @@ impl PyLRUCache {
 
     fn items(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyLRUCacheItems>> {
         let inner = slf.get().0.get()?;
-        let gv = inner.shared().generation_version().clone();
-        let initial_gv = gv.get();
+        let policy = inner.policy_py_attached(slf.py());
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
         let result = PyLRUCacheItems {
             cache: slf.clone().unbind(),
-            iter: parking_lot::Mutex::new(unsafe {
-                inner.policy_py_attached(slf.py()).list().iter()
-            }),
-            gv,
-            initial_gv,
+            iter: parking_lot::Mutex::new(unsafe { policy.list().iter() }),
+            initial_gv: inner.shared().generation_version().get(),
         };
         pyo3::Py::new(slf.py(), result)
     }
 
     fn values(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyLRUCacheValues>> {
         let inner = slf.get().0.get()?;
-        let gv = inner.shared().generation_version().clone();
-        let initial_gv = gv.get();
+        let policy = inner.policy_py_attached(slf.py());
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
         let result = PyLRUCacheValues {
             cache: slf.clone().unbind(),
-            iter: parking_lot::Mutex::new(unsafe {
-                inner.policy_py_attached(slf.py()).list().iter()
-            }),
-            gv,
-            initial_gv,
+            iter: parking_lot::Mutex::new(unsafe { policy.list().iter() }),
+            initial_gv: inner.shared().generation_version().get(),
         };
         pyo3::Py::new(slf.py(), result)
     }
 
     fn keys(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyLRUCacheKeys>> {
         let inner = slf.get().0.get()?;
-        let gv = inner.shared().generation_version().clone();
-        let initial_gv = gv.get();
+        let policy = inner.policy_py_attached(slf.py());
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
         let result = PyLRUCacheKeys {
             cache: slf.clone().unbind(),
-            iter: parking_lot::Mutex::new(unsafe {
-                inner.policy_py_attached(slf.py()).list().iter()
-            }),
-            gv,
-            initial_gv,
+            iter: parking_lot::Mutex::new(unsafe { policy.list().iter() }),
+            initial_gv: inner.shared().generation_version().get(),
         };
         pyo3::Py::new(slf.py(), result)
     }
@@ -772,7 +760,6 @@ macro_rules! implement_iterator {
                 [generic, frozen] $name as $pyname {
                     cache: pyo3::Py<PyLRUCache>,
                     initial_gv: u32,
-                    gv: utils::GenerationVersion,
                     iter: parking_lot::Mutex<linked_list::RawIter<lrupolicy::Handle>>,
                 }
             }
@@ -790,14 +777,14 @@ macro_rules! implement_iterator {
                     visit.call(&self.cache)
                 }
 
-                fn __next__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyResult<$rt_type> {
-                    let _policy = slf.lock_and_check(slf.py())?;
+                fn __next__(&self, py: pyo3::Python) -> pyo3::PyResult<$rt_type> {
+                    let _policy = self.lock_and_check(py)?;
 
-                    let mut iter = slf.iter.lock();
+                    let mut iter = pyo3::sync::MutexExt::lock_py_attached(&self.iter, py);
 
                     match iter.next() {
                         Some(x) => {
-                            let $py = slf.py();
+                            let $py = py;
                             let $handle = unsafe { x.element() };
                             Ok($init)
                         }
@@ -806,10 +793,11 @@ macro_rules! implement_iterator {
                 }
 
                 /// Returns how many items are left to yield.
-                fn __len__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyResult<usize> {
-                    let _policy = slf.lock_and_check(slf.py())?;
+                fn __len__(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
+                    let _policy = self.lock_and_check(py)?;
 
-                    Ok(slf.iter.lock().len())
+                    let iter = pyo3::sync::MutexExt::lock_py_attached(&self.iter, py);
+                    Ok(iter.len())
                 }
             }
         )+

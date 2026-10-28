@@ -1013,6 +1013,78 @@ class TestLFUCache(
         for _ in c:
             c.least_frequently_used()
 
+    def test_popitem_after_reads_only(self):
+        """Reads between two popitem() calls must be taken into account.
+
+        Regression: get() incremented the frequency without invalidating the
+        order established by the previous popitem(), so the second popitem()
+        evicted the most frequently used key.
+        """
+        c = self.create_cache(10)
+        for k in "abcd":
+            c[k] = k
+        assert c.popitem() == ("a", "a")
+        self._hit(c, "b", 10)
+        assert c.popitem() == ("c", "c")
+        assert c.popitem() == ("d", "d")
+        assert c.popitem() == ("b", "b")
+
+    def test_popitem_agrees_with_least_frequently_used(self):
+        c = self.create_cache(10, {i: i for i in range(8)})
+        for step in range(8):
+            for k in list(c.keys())[: step % 3 + 1]:
+                self._hit(c, k, step + 1)
+            expected = c.least_frequently_used()
+            key, _ = c.popitem()
+            assert key == expected
+
+    def test_drain_after_reads_only(self):
+        c = self.create_cache(10)
+        for k in "abcde":
+            c[k] = k
+        c.popitem()  # "a"
+        self._hit(c, "b", 5)
+        self._hit(c, "c", 3)
+        assert c.drain(2) == 2
+        assert sorted(c.keys()) == ["b", "c"]
+
+    def test_replace_lowers_priority_for_eviction(self):
+        # Replacing a value resets the frequency (as before), so a hot key
+        # that was just replaced becomes the eviction candidate again.
+        c = self.create_cache(3)
+        c["hot"] = 0
+        c["warm"] = 0
+        c["cold"] = 0
+        self._hit(c, "hot", 10)
+        self._hit(c, "warm", 3)
+        self._hit(c, "cold", 2)
+        c.popitem()  # "cold" — establishes the order
+        c["hot"] = 1  # frequency reset
+        assert c.least_frequently_used() == "hot"
+        assert c.popitem()[0] == "hot"
+
+    def test_replace_during_iteration_yields_each_key_once(self):
+        c = self.create_cache(10, {i: i for i in range(6)})
+        self._hit(c, 0, 5)
+        self._hit(c, 3, 2)
+        seen = []
+        for k in c:
+            c[k] = "new"  # changes priorities but must not reorder the live iterator
+            seen.append(k)
+        assert sorted(seen) == list(range(6))
+
+    def test_large_cache_evicts_coldest(self):
+        n = 2000
+        c = self.create_cache(n)
+        for i in range(n):
+            c[i] = i
+        for i in range(n):
+            self._hit(c, i, 1 + (i % 7))
+        cold = {i for i in range(n) if i % 7 == 0}
+        assert c.drain(len(cold)) == len(cold)
+        assert not cold & set(c.keys())
+        assert len(c) == n - len(cold)
+
 
 class TestTTLCache(
     mixins.InitializeMixin,
@@ -1809,6 +1881,26 @@ class TestVTTLCachePolicy(mixins.SweepIntervalMixin):
         c = self.create_cache()
         with pytest.raises(KeyError):
             c.popitem()
+
+    def test_popitem_follows_expiry_after_ttl_changes(self):
+        c = cachebox.VTTLCache(10)
+        c.insert("a", 1, ttl=100)
+        c.insert("b", 2, ttl=200)
+        c.insert("c", 3, ttl=300)
+        assert c.popitem()[0] == "a"  # establishes the order
+        c.insert("c", 3, ttl=50)  # moved to the front
+        c.insert("b", 2, ttl=None)  # moved to the back
+        c.insert("d", 4, ttl=150)
+        assert [c.popitem()[0] for _ in range(3)] == ["c", "d", "b"]
+
+    def test_entries_without_ttl_evicted_in_insertion_order(self):
+        c = cachebox.VTTLCache(3)
+        c.insert("x", 1, ttl=None)
+        c.insert("y", 2, ttl=None)
+        c.insert("z", 3, ttl=None)
+        c.insert("w", 4, ttl=None)  # evicts the oldest permanent entry
+        assert sorted(c.keys()) == ["w", "y", "z"]
+        assert [c.popitem()[0] for _ in range(3)] == ["y", "z", "w"]
 
     def test_expire_removes_stale_items(self):
         c = self.create_cache()

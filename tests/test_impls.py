@@ -1550,11 +1550,14 @@ class TestTTLCachePolicy(mixins.SweepIntervalMixin):
             assert isinstance(ttl, float)
 
     def test_sweep_interval(self):
-        obj = cachebox.TTLCache(10, 3, {1: 1, 2: 2, 3: 3}, sweep_interval=3)
+        # Entries expire at t≈1s and the sweeper wakes every second. The sweep at
+        # t≈1s races with expiry (Event.wait() may return a few ms early, notably on
+        # Windows), so assert only after the next sweep at t≈2s has surely run.
+        obj = cachebox.TTLCache(10, 1, {1: 1, 2: 2, 3: 3}, sweep_interval=1)
 
         # __len__ doesn't call expire itself
         assert len(obj) == 3
-        time.sleep(3.5)
+        time.sleep(2.5)
         assert len(obj) == 0
 
 

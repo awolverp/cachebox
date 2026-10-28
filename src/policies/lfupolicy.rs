@@ -1,6 +1,7 @@
 use crate::hashbrown;
 use crate::internal::alias;
 use crate::internal::lazyheap;
+use crate::internal::lazyheap::HeapNode;
 use crate::internal::pickle::Builder;
 use crate::internal::utils;
 use crate::policies::traits;
@@ -16,9 +17,9 @@ macro_rules! compare_fn {
     };
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
-pub struct Frequency(u128);
+pub struct Frequency(u64);
 
 impl Frequency {
     #[inline(always)]
@@ -33,6 +34,26 @@ pub struct FrequencyHandle {
     value: alias::PyObject,
     size: usize,
     frequency: Frequency,
+    slot: lazyheap::HeapSlot<u64>,
+}
+
+impl lazyheap::HeapNode for FrequencyHandle {
+    type Key = u64;
+
+    #[inline(always)]
+    fn heap_key(&self) -> u64 {
+        self.frequency.0
+    }
+
+    #[inline(always)]
+    fn heap_slot(&self) -> &lazyheap::HeapSlot<u64> {
+        &self.slot
+    }
+
+    #[inline(always)]
+    fn heap_slot_mut(&mut self) -> &mut lazyheap::HeapSlot<u64> {
+        &mut self.slot
+    }
 }
 
 impl FrequencyHandle {
@@ -70,14 +91,15 @@ impl FrequencyHandle {
             key,
             value,
             size,
-            frequency: Frequency(frequency),
+            frequency: Frequency(u64::try_from(frequency).unwrap_or(u64::MAX)),
+            slot: Default::default(),
         })
     }
 
     /// Returns the frequency.
     #[inline]
     pub fn frequency(&self) -> u128 {
-        self.frequency.0
+        self.frequency.0 as u128
     }
 
     /// Consumes `self` and returns the [`utils::PrecomputedHashObject`].
@@ -114,6 +136,7 @@ impl FrequencyHandle {
             value: self.value.clone_ref(py),
             size: self.size,
             frequency: self.frequency,
+            slot: Default::default(),
         }
     }
 }
@@ -163,10 +186,14 @@ impl traits::OccupiedExt for Occupied<'_> {
                 .saturating_sub(cursor.element().size())
                 .saturating_add(new.size());
 
+            let mut new = new;
+            *new.heap_slot_mut() = *cursor.element().heap_slot();
             let old = std::mem::replace(cursor.element_mut(), new);
 
             cursor.element_mut().frequency.increment();
-            self.policy.heap.mark_unsorted();
+
+            // The key may move either way; re-position lazily (no layout change now).
+            self.policy.heap.mark_changed(*cursor);
 
             old
         }
@@ -332,8 +359,10 @@ impl PolicyExt for LFUPolicy {
 
         match cursor {
             Some(cursor) => unsafe {
-                // increment frequency
+                // Lazy priority increase: O(1), no buffer movement. The heap repairs
+                // its root on the next eviction; ordered iteration re-sorts.
                 cursor.element_mut().frequency.increment();
+                self.heap.mark_unsorted();
 
                 Ok(Some(cursor.element()))
             },
@@ -494,7 +523,7 @@ impl PolicyExt for LFUPolicy {
             let mut tuple = list.begin_tuple(3)?;
             tuple.push(handle.key.as_ref())?;
             tuple.push(handle.value())?;
-            tuple.push(handle.frequency.0)?;
+            tuple.push(handle.frequency.0 as u128)?;
             tuple.end()?;
         }
 

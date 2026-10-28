@@ -297,7 +297,7 @@ impl PyFIFOCache {
             utils::OptionalArgument::Defined(x) => Ok(x),
             utils::OptionalArgument::Undefined => unsafe {
                 // SAFETY: None is immortal, so reference counting has no meaning
-                Ok(pyo3::Bound::from_owned_ptr(py, pyo3::ffi::Py_None()).unbind())
+                Ok(pyo3::Bound::from_borrowed_ptr(py, pyo3::ffi::Py_None()).unbind())
             },
         }
     }
@@ -352,7 +352,7 @@ impl PyFIFOCache {
             utils::OptionalArgument::Defined(x) => x,
             utils::OptionalArgument::Undefined => unsafe {
                 // SAFETY: None is immortal, so reference counting has no meaning
-                pyo3::Bound::from_owned_ptr(py, pyo3::ffi::Py_None()).unbind()
+                pyo3::Bound::from_borrowed_ptr(py, pyo3::ffi::Py_None()).unbind()
             },
         };
 

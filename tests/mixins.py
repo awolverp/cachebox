@@ -1095,6 +1095,19 @@ class IssuesMixin(BaseMixin):
             done.stderr or f"exit code {done.returncode}"
         )
 
+    def test_none_refcount(self):
+        cache = self.create_cache(1000)
+
+        if isinstance(cache, cachebox.Cache):
+            pytest.skip()
+
+        for i in range(10_000):
+            cache[i] = None
+
+        for i in range(10_000):
+            v = cache.get(i)
+            assert v is None
+
 
 class SweepIntervalMixin(BaseMixin):
     def _create_sweep_cache(

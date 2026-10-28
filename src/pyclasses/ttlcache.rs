@@ -560,14 +560,18 @@ impl PyTTLCache {
     fn items(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyTTLCacheItems>> {
         let inner = slf.get().0.get()?;
 
-        let iter = inner.policy_py_attached(slf.py()).iter(inner.shared());
+        // Create the iterator and read the generation under one lock, or a mutation in
+        // between would make stale positions look current.
+        let mut policy = inner.policy_py_attached(slf.py());
+        let iter = policy.iter(inner.shared());
 
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
+        drop(policy);
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
         let result = PyTTLCacheItems {
-            cache: slf.as_any().clone().unbind(),
+            cache: slf.clone().unbind(),
             iter: parking_lot::Mutex::new(iter),
             gv,
             initial_gv,
@@ -578,14 +582,18 @@ impl PyTTLCache {
     fn values(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyTTLCacheValues>> {
         let inner = slf.get().0.get()?;
 
-        let iter = inner.policy_py_attached(slf.py()).iter(inner.shared());
+        // Create the iterator and read the generation under one lock, or a mutation in
+        // between would make stale positions look current.
+        let mut policy = inner.policy_py_attached(slf.py());
+        let iter = policy.iter(inner.shared());
 
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
+        drop(policy);
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
         let result = PyTTLCacheValues {
-            cache: slf.as_any().clone().unbind(),
+            cache: slf.clone().unbind(),
             iter: parking_lot::Mutex::new(iter),
             gv,
             initial_gv,
@@ -596,14 +604,18 @@ impl PyTTLCache {
     fn keys(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyTTLCacheKeys>> {
         let inner = slf.get().0.get()?;
 
-        let iter = inner.policy_py_attached(slf.py()).iter(inner.shared());
+        // Create the iterator and read the generation under one lock, or a mutation in
+        // between would make stale positions look current.
+        let mut policy = inner.policy_py_attached(slf.py());
+        let iter = policy.iter(inner.shared());
 
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
+        drop(policy);
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
         let result = PyTTLCacheKeys {
-            cache: slf.as_any().clone().unbind(),
+            cache: slf.clone().unbind(),
             iter: parking_lot::Mutex::new(iter),
             gv,
             initial_gv,
@@ -802,14 +814,18 @@ impl PyTTLCache {
     ) -> pyo3::PyResult<pyo3::Py<PyTTLCacheItemsWithExpire>> {
         let inner = slf.get().0.get()?;
 
-        let iter = inner.policy_py_attached(slf.py()).iter(inner.shared());
+        // Create the iterator and read the generation under one lock, or a mutation in
+        // between would make stale positions look current.
+        let mut policy = inner.policy_py_attached(slf.py());
+        let iter = policy.iter(inner.shared());
 
         let gv = inner.shared().generation_version().clone();
         let initial_gv = gv.get();
+        drop(policy);
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
         let result = PyTTLCacheItemsWithExpire {
-            cache: slf.as_any().clone().unbind(),
+            cache: slf.clone().unbind(),
             iter: parking_lot::Mutex::new(iter),
             gv,
             initial_gv,
@@ -854,14 +870,14 @@ macro_rules! implement_iterator {
         $(
             implement_pyclass! {
                 [generic, frozen] $name as $pyname {
-                    cache: pyo3::Py<pyo3::PyAny>,
+                    cache: pyo3::Py<PyTTLCache>,
                     initial_gv: u32,
                     gv: utils::GenerationVersion,
                     iter: parking_lot::Mutex<utils::RawVecDequeIter<ttlpolicy::ExpiringHandle>>,
                 }
             }
 
-            implement_view_guard!($name);
+            implement_view_guard!($name, ttlpolicy::TTLPolicy);
 
             #[pyo3::pymethods]
             impl $name {
@@ -875,7 +891,7 @@ macro_rules! implement_iterator {
                 }
 
                 fn __next__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyResult<$rt_type> {
-                    slf.check_generation()?;
+                    let _policy = slf.lock_and_check(slf.py())?;
 
                     let now = std::time::SystemTime::now();
                     let mut iter = slf.iter.lock();
@@ -895,7 +911,7 @@ macro_rules! implement_iterator {
 
                 /// Returns how many not-expired items are left to yield.
                 fn __len__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyResult<usize> {
-                    slf.check_generation()?;
+                    let _policy = slf.lock_and_check(slf.py())?;
 
                     let now = std::time::SystemTime::now();
                     let iter = slf.iter.lock().clone();
@@ -905,7 +921,7 @@ macro_rules! implement_iterator {
 
                 /// Returns whether any not-expired item is left, without counting them all.
                 fn __bool__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyResult<bool> {
-                    slf.check_generation()?;
+                    let _policy = slf.lock_and_check(slf.py())?;
 
                     let now = std::time::SystemTime::now();
                     let mut iter = slf.iter.lock().clone();

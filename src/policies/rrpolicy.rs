@@ -115,7 +115,37 @@ impl RRPolicy {
     pub fn table(&self) -> &hashbrown::raw::RawTable<Handle> {
         &self.table
     }
+
+    /// Returns a uniformly random occupied bucket, or `None` if the table is empty.
+    ///
+    /// Samples random bucket indices and keeps the first occupied one; conditioned on
+    /// hitting an occupied bucket, every entry is equally likely.
+    ///
+    /// Expected O(1) for a full cache: hashbrown only grows by doubling, so a table
+    /// that grew through insertions stays roughly a quarter occupied or more, even
+    /// after eviction churn (a few probes on average). A table pre-sized via
+    /// `capacity`, thinned by removals, or holding few heavy entries under
+    /// `getsizeof` can be much sparser; it falls back to a uniform O(n) pick after
+    /// [`RANDOM_PROBES`] misses.
+    pub fn random_bucket(&self) -> Option<hashbrown::raw::Bucket<Handle>> {
+        if self.table.is_empty() {
+            return None;
+        }
+
+        let buckets = self.table.num_buckets();
+        for _ in 0..RANDOM_PROBES {
+            if let Some(bucket) = self.table.checked_bucket(fastrand::usize(0..buckets)) {
+                return Some(bucket);
+            }
+        }
+
+        let nth = fastrand::usize(0..self.table.len());
+        unsafe { self.table.iter().nth(nth) }
+    }
 }
+
+/// Random bucket probes in [`RRPolicy::random_bucket`] before the O(n) fallback.
+const RANDOM_PROBES: usize = 32;
 
 impl PolicyExt for RRPolicy {
     type Shared = Shared;
@@ -177,19 +207,15 @@ impl PolicyExt for RRPolicy {
 
     #[inline]
     fn evict(&mut self, shared: &Self::Shared) -> pyo3::PyResult<Self::Handle> {
-        if self.table.is_empty() {
-            Err(new_py_error!(PyKeyError, "cache is empty"))
-        } else {
-            let nth = fastrand::usize(0..self.table.len());
+        let bucket = self
+            .random_bucket()
+            .ok_or_else(|| new_py_error!(PyKeyError, "cache is empty"))?;
 
-            let bucket = unsafe { self.table.iter().nth(nth).unwrap_unchecked() };
+        shared.generation_version().increment();
 
-            shared.generation_version().increment();
-
-            let (handle, _) = unsafe { self.table.remove(bucket) };
-            self.currsize = self.currsize.saturating_sub(handle.size());
-            Ok(handle)
-        }
+        let (handle, _) = unsafe { self.table.remove(bucket) };
+        self.currsize = self.currsize.saturating_sub(handle.size());
+        Ok(handle)
     }
 
     #[inline]

@@ -535,6 +535,83 @@ assert sorted(make().values()) == [1, 2]
 print("ok")
 """
 
+ITERATING_WHILE_OTHER_THREADS_MUTATE = """
+import faulthandler
+import random
+import sys
+import threading
+import time
+
+import cachebox
+
+name = sys.argv[1]
+cls = getattr(cachebox, name)
+if name == "TTLCache":
+    cache = cls(500, global_ttl=60)
+elif name == "Cache":
+    cache = cls(0)
+else:
+    cache = cls(500)
+
+if name == "VTTLCache":
+    def put(key):
+        cache.insert(key, key, 60)
+else:
+    def put(key):
+        cache[key] = key
+
+stop = threading.Event()
+errors = []
+# a hang prints every thread's stack before the parent's timeout
+faulthandler.dump_traceback_later(50, exit=True)
+
+
+def worker(seed):
+    rng = random.Random(seed)
+    while not stop.is_set():
+        key = rng.randrange(2000)
+        op = rng.random()
+        try:
+            if op < 0.25:
+                cache.get(key)
+            elif op < 0.55:
+                put(key)
+            elif op < 0.7:
+                cache.pop(key, None)
+            else:
+                if rng.random() < 0.5:
+                    view = rng.choice((cache.keys, cache.values))()
+                    bool(view), len(view)
+                    for _ in view:
+                        pass
+                else:
+                    # every entry is key -> key: a torn or reused-node read shows up here
+                    view = cache.items()
+                    bool(view), len(view)
+                    seen = set()
+                    for k, v in view:
+                        if k != v or k in seen:
+                            raise AssertionError(f"items() yielded {k!r} -> {v!r}")
+                        seen.add(k)
+        except RuntimeError:
+            pass  # the cache changed during iteration: expected
+        except Exception as e:
+            errors.append(repr(e))
+            return
+
+
+threads = [threading.Thread(target=worker, args=(i,)) for i in range(8)]
+for t in threads:
+    t.start()
+time.sleep(2)
+stop.set()
+for t in threads:
+    t.join()
+
+assert not errors, errors[:3]
+print("ok")
+"""
+
 
 class IterationMixin(BaseMixin):
     def test_keys_returns_all_keys(self):
@@ -572,6 +649,33 @@ class IterationMixin(BaseMixin):
             timeout=60,
             check=False,
         )
+
+        assert done.stdout.strip() == "ok", (
+            done.stderr or f"exit code {done.returncode}"
+        )
+
+    def test_iterating_while_other_threads_mutate(self):
+        # Free-threaded builds: an iterator must not read entries another thread is
+        # changing. Reading freed memory faults instead of failing, hence a child process.
+        name = type(self.create_cache()).__name__
+
+        try:
+            done = subprocess.run(
+                [
+                    sys.executable,
+                    "-c",
+                    ITERATING_WHILE_OTHER_THREADS_MUTATE,
+                    name,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail(
+                f"{name}: iterating while other threads mutate never finished"
+            )
 
         assert done.stdout.strip() == "ok", (
             done.stderr or f"exit code {done.returncode}"

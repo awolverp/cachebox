@@ -20,7 +20,22 @@ pub unsafe fn pyobject_hash(
         return Err(pyo3::PyErr::take(py).unwrap());
     }
 
-    Ok(py_hash as u64)
+    Ok(mix_hash(py_hash as u64))
+}
+
+/// Spreads entropy of a Python hash across all 64 bits.
+///
+/// CPython hashes are frequently low-entropy in the high bits: `hash(n) == n` for
+/// small ints, and many floats/tuples hash to small values. The vendored hashbrown
+/// table takes its 7-bit SIMD control tag from the **top** bits of the hash, so such
+/// keys all get the same tag and every probe degenerates into a chain of Python
+/// `__eq__` calls. A folded 128-bit multiply (as in foldhash/wyhash) fixes the tag
+/// distribution for ~1 ns. The mixed value never leaves the table.
+#[inline(always)]
+pub fn mix_hash(h: u64) -> u64 {
+    const K: u64 = 0x9E37_79B9_7F4A_7C15;
+    let p = (h ^ K) as u128 * K as u128;
+    (p as u64) ^ ((p >> 64) as u64)
 }
 
 /// Pointer-equality fast path, then Python `==`.

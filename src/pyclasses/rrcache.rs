@@ -665,16 +665,12 @@ impl PyRRCache {
         let inner = self.0.get()?;
         let policy = inner.policy_py_attached(py);
 
-        if policy.table().is_empty() {
-            Err(new_py_error!(PyKeyError, "cache is empty"))
-        } else {
-            let nth = fastrand::usize(0..policy.table().len());
+        let bucket = policy
+            .random_bucket()
+            .ok_or_else(|| new_py_error!(PyKeyError, "cache is empty"))?;
 
-            let bucket = unsafe { policy.table().iter().nth(nth).unwrap_unchecked() };
-
-            let handle = unsafe { bucket.as_ref() };
-            Ok(handle.key().clone_ref(py).into())
-        }
+        let handle = unsafe { bucket.as_ref() };
+        Ok(handle.key().clone_ref(py).into())
     }
 
     fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {

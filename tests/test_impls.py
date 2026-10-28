@@ -1,3 +1,4 @@
+import collections
 import subprocess
 import sys
 import sysconfig
@@ -496,6 +497,44 @@ class TestRRCache(
         cache["c"] = 3
         cache["d"] = 4
         assert cache.random_key() in ("a", "b", "c", "d")
+
+    @staticmethod
+    def _assert_roughly_uniform(draws, keys):
+        counts = collections.Counter(draws)
+        assert set(counts) == set(keys)
+        expected = len(draws) / len(keys)
+        # ~10 standard deviations: catches a biased pick, never flakes.
+        assert all(abs(n - expected) < expected * 0.3 for n in counts.values())
+
+    def test_random_key_is_uniform(self):
+        keys = list(range(8))
+        cache = self.create_cache(8, {k: k for k in keys})
+        self._assert_roughly_uniform([cache.random_key() for _ in range(8000)], keys)
+
+    def test_random_key_is_uniform_in_sparse_table(self):
+        # Many removals leave few entries in a large table (the fallback path).
+        cache = self.create_cache(0, {k: k for k in range(10_000)})
+        keys = [3, 1_234, 9_999]
+        for k in range(10_000):
+            if k not in keys:
+                del cache[k]
+        assert cache.capacity() >= 10_000
+        self._assert_roughly_uniform([cache.random_key() for _ in range(3000)], keys)
+
+    def test_popitem_drains_sparse_table(self):
+        cache = self.create_cache(0, {k: k for k in range(5_000)})
+        for k in range(4_990):
+            del cache[k]
+        popped = {cache.popitem()[0] for _ in range(10)}
+        assert popped == set(range(4_990, 5_000))
+        assert len(cache) == 0
+
+    def test_eviction_keeps_cache_full(self):
+        cache = self.create_cache(1_000)
+        for k in range(10_000):
+            cache[k] = k
+            assert len(cache) == min(k + 1, 1_000)
+        assert all(cache[k] == k for k in cache)
 
 
 class TestLRUCache(

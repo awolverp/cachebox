@@ -371,3 +371,8 @@ for k in it:
 
 Do not modify the cache while an iterator is alive — every method on that iterator raises
 `RuntimeError` if the cache changed.
+
+Iterator methods take the cache's lock, so another thread can iterate safely while the cache
+is being modified (it gets the `RuntimeError`). Don't call them from code that runs *inside* a
+cache operation on the same cache, such as a key's `__eq__` or a value's `__del__`: that waits
+for the lock it is already holding and never returns, the same as calling `cache[key]` there.

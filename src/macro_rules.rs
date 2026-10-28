@@ -24,22 +24,37 @@ macro_rules! implement_pyclass {
     };
 }
 
-/// Implements the generation-version guard shared by every cache view type.
+/// Implements the guard shared by every cache view type.
+///
+/// Views hold raw positions into the policy storage. A position is valid only while
+/// the cache is unchanged, and every mutation bumps the generation version while
+/// holding the cache lock. So a view must take the cache lock **first**, then compare
+/// the generation, and keep the lock while it reads through its position. Checking
+/// without the lock races with other threads on free-threaded builds (#94).
+///
+/// Lock order: cache lock, then the view's own iterator mutex.
 ///
 /// # Example
 ///
 /// ```ignore
-/// implement_view_guard!(PyCacheKeys);
+/// implement_view_guard!(PyCacheKeys, nopolicy::NoPolicy);
 /// ```
 #[macro_export]
 macro_rules! implement_view_guard {
-    ($name:ident) => {
+    ($name:ident, $policy:ty) => {
         impl $name {
-            /// Fails if the cache changed after this view was created.
+            /// Locks the cache and fails if it changed after this view was created.
+            ///
+            /// Hold the returned guard for as long as entries are read.
             #[inline]
-            fn check_generation(&self) -> pyo3::PyResult<()> {
+            fn lock_and_check<'a>(
+                &'a self,
+                py: pyo3::Python<'_>,
+            ) -> pyo3::PyResult<parking_lot::MutexGuard<'a, $policy>> {
+                let policy = self.cache.get().0.get()?.policy_py_attached(py);
+
                 if self.initial_gv == self.gv.get() {
-                    return Ok(());
+                    return Ok(policy);
                 }
 
                 Err($crate::new_py_error!(

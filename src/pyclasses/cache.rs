@@ -556,7 +556,7 @@ impl PyCache {
         let initial_gv = gv.get();
 
         let result = PyCacheItems {
-            cache: slf.as_any().clone().unbind(),
+            cache: slf.clone().unbind(),
             // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
             iter: parking_lot::Mutex::new(unsafe {
                 inner.policy_py_attached(slf.py()).table().iter()
@@ -574,7 +574,7 @@ impl PyCache {
         let initial_gv = gv.get();
 
         let result = PyCacheValues {
-            cache: slf.as_any().clone().unbind(),
+            cache: slf.clone().unbind(),
             // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
             iter: parking_lot::Mutex::new(unsafe {
                 inner.policy_py_attached(slf.py()).table().iter()
@@ -591,7 +591,7 @@ impl PyCache {
         let initial_gv = gv.get();
 
         let result = PyCacheKeys {
-            cache: slf.as_any().clone().unbind(),
+            cache: slf.clone().unbind(),
             // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
             iter: parking_lot::Mutex::new(unsafe {
                 inner.policy_py_attached(slf.py()).table().iter()
@@ -698,14 +698,14 @@ macro_rules! implement_iterator {
         $(
             implement_pyclass! {
                 [generic, frozen] $name as $pyname {
-                    cache: pyo3::Py<pyo3::PyAny>,
+                    cache: pyo3::Py<PyCache>,
                     initial_gv: u32,
                     gv: utils::GenerationVersion,
                     iter: parking_lot::Mutex<crate::hashbrown::raw::RawIter<nopolicy::Handle>>,
                 }
             }
 
-            implement_view_guard!($name);
+            implement_view_guard!($name, nopolicy::NoPolicy);
 
             #[pyo3::pymethods]
             impl $name {
@@ -719,7 +719,7 @@ macro_rules! implement_iterator {
                 }
 
                 fn __next__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyResult<$rt_type> {
-                    slf.check_generation()?;
+                    let _policy = slf.lock_and_check(slf.py())?;
 
                     let mut iter = slf.iter.lock();
 
@@ -735,7 +735,7 @@ macro_rules! implement_iterator {
 
                 /// Returns how many items are left to yield.
                 fn __len__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyResult<usize> {
-                    slf.check_generation()?;
+                    let _policy = slf.lock_and_check(slf.py())?;
 
                     Ok(slf.iter.lock().len())
                 }

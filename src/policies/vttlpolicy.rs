@@ -7,6 +7,7 @@ use crate::policies::traits;
 use crate::policies::traits::HandleExt;
 use crate::policies::traits::PolicyExt;
 
+use crate::internal::lazyheap::HeapNode;
 pub use crate::policies::common::Shared;
 use crate::policies::traits::SharedExt;
 
@@ -33,6 +34,36 @@ pub struct ExpiringHandle {
     size: usize,
     /// Configured ttl for handle. `None` means has no ttl.
     expires_at: Option<std::time::SystemTime>,
+    /// Heap bookkeeping (position, insertion order, recorded priority).
+    slot: lazyheap::HeapSlot<u64>,
+}
+
+impl lazyheap::HeapNode for ExpiringHandle {
+    /// Expiry as nanoseconds since the Unix epoch (earliest first); `None` sorts
+    /// last as `u64::MAX`. Representable until year 2554.
+    type Key = u64;
+
+    #[inline(always)]
+    fn heap_key(&self) -> u64 {
+        match self.expires_at {
+            None => u64::MAX,
+            Some(t) => t.duration_since(std::time::UNIX_EPOCH).map_or(0, |d| {
+                u64::try_from(d.as_nanos())
+                    .unwrap_or(u64::MAX - 1)
+                    .min(u64::MAX - 1)
+            }),
+        }
+    }
+
+    #[inline(always)]
+    fn heap_slot(&self) -> &lazyheap::HeapSlot<u64> {
+        &self.slot
+    }
+
+    #[inline(always)]
+    fn heap_slot_mut(&mut self) -> &mut lazyheap::HeapSlot<u64> {
+        &mut self.slot
+    }
 }
 
 impl ExpiringHandle {
@@ -72,6 +103,7 @@ impl ExpiringHandle {
             value,
             size,
             expires_at: expires_at.map(Into::into),
+            slot: Default::default(),
         })
     }
 
@@ -119,6 +151,7 @@ impl ExpiringHandle {
             value: self.value.clone_ref(py),
             size: self.size,
             expires_at: self.expires_at,
+            slot: Default::default(),
         }
     }
 }
@@ -168,9 +201,12 @@ impl traits::OccupiedExt for Occupied<'_> {
                 .saturating_sub(cursor.element().size())
                 .saturating_add(new.size());
 
+            let mut new = new;
+            *new.heap_slot_mut() = *cursor.element().heap_slot();
             let old = std::mem::replace(cursor.element_mut(), new);
 
-            self.policy.heap.mark_unsorted();
+            // The key may move either way; re-position lazily (no layout change now).
+            self.policy.heap.mark_changed(*cursor);
             old
         }
     }

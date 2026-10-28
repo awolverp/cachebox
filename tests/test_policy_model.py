@@ -10,7 +10,12 @@ import time
 
 from hypothesis import assume, settings
 from hypothesis import strategies as st
-from hypothesis.stateful import RuleBasedStateMachine, invariant, precondition, rule
+from hypothesis.stateful import (
+    RuleBasedStateMachine,
+    invariant,
+    precondition,
+    rule,
+)
 
 import cachebox
 
@@ -34,7 +39,9 @@ class LFUModel(RuleBasedStateMachine):
         self.seq = 0
 
     def _order(self):
-        return sorted(self.model, key=lambda k: (self.model[k][0], self.model[k][1]))
+        return sorted(
+            self.model, key=lambda k: (self.model[k][0], self.model[k][1])
+        )
 
     @rule(key=KEYS, value=st.integers())
     def set(self, key, value):
@@ -107,9 +114,14 @@ class VTTLModel(RuleBasedStateMachine):
         self.seq = 0
 
     def _order(self):
-        return sorted(self.model, key=lambda k: (self.model[k][0], self.model[k][1]))
+        return sorted(
+            self.model, key=lambda k: (self.model[k][0], self.model[k][1])
+        )
 
-    @rule(key=KEYS, ttl=st.none() | st.integers(min_value=1_000, max_value=1_000_000))
+    @rule(
+        key=KEYS,
+        ttl=st.none() | st.integers(min_value=1_000, max_value=1_000_000),
+    )
     def insert(self, key, ttl):
         if ttl is not None:
             assume(all(t != ttl for k, t in self.ttls.items() if k != key))

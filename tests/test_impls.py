@@ -509,7 +509,9 @@ class TestRRCache(
     def test_random_key_is_uniform(self):
         keys = list(range(8))
         cache = self.create_cache(8, {k: k for k in keys})
-        self._assert_roughly_uniform([cache.random_key() for _ in range(8000)], keys)
+        self._assert_roughly_uniform(
+            [cache.random_key() for _ in range(8000)], keys
+        )
 
     def test_random_key_is_uniform_in_sparse_table(self):
         # Many removals leave few entries in a large table (the fallback path).
@@ -519,7 +521,9 @@ class TestRRCache(
             if k not in keys:
                 del cache[k]
         assert cache.capacity() >= 10_000
-        self._assert_roughly_uniform([cache.random_key() for _ in range(3000)], keys)
+        self._assert_roughly_uniform(
+            [cache.random_key() for _ in range(3000)], keys
+        )
 
     def test_popitem_drains_sparse_table(self):
         cache = self.create_cache(0, {k: k for k in range(5_000)})
@@ -1113,7 +1117,9 @@ class TestLFUCache(
         self._hit(c, 3, 2)
         seen = []
         for k in c:
-            c[k] = "new"  # changes priorities but must not reorder the live iterator
+            c[k] = (
+                "new"  # changes priorities but must not reorder the live iterator
+            )
             seen.append(k)
         assert sorted(seen) == list(range(6))
 

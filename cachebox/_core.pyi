@@ -266,7 +266,7 @@ class Cache(BaseCacheImpl[_KT, _VT]):
 
     |              | get   | insert  | delete | popitem |
     | ------------ | ----- | ------- | ------ | ------- |
-    | Worse-case   | O(1)  | O(1)    | O(1)   | N/A     |
+    | Worse-case   | O(1)  | O(1)~   | O(1)   | N/A     |
 
     Pros:
         - Minimal overhead: no bookkeeping for eviction means lower CPU and
@@ -313,16 +313,6 @@ class Cache(BaseCacheImpl[_KT, _VT]):
     # OverflowError: The cache has reached the bound.
     ```
     """
-
-    # | Class | get | insert | delete | popitem |
-    # |---|---|---|---|---|
-    # | \`Cache\` | O(1) | O(1) | O(1) | N/A |
-    # | \`FIFOCache\` | O(1) | O(1) | O(min(i, n-i)) | O(1) |
-    # | \`RRCache\` | O(1) | O(1) | O(1) | O(1) |
-    # | \`LRUCache\` | O(1)~ | O(1)~ | O(1)~ | O(1)~ |
-    # | \`LFUCache\` | O(1)~ | O(1)~ | O(min(i, n-i)) | O(1)~ |
-    # | \`TTLCache\` | O(1)~ | O(1)~ | O(min(i, n-i)) | O(n) |
-    # | \`VTTLCache\` | O(1)~ | O(1)~ | O(min(i, n-i)) | O(1)~ |
 
     def insert(self, key: _KT, value: _VT) -> _VT | None:
         """
@@ -475,9 +465,9 @@ class FIFOCache(BaseCacheImpl[_KT, _VT]):
     A ``front_offset`` counter recovers physical positions at read time as
     ``entries[table[key] - front_offset]``.
 
-    |              | get   | insert  | delete           | popitem |
-    | ------------ | ----- | ------- | ---------------- | ------- |
-    | Worse-case   | O(1)  | O(1)    | O(min(i, n-i))   | O(n) - very rare |
+    |              | get   | insert  | delete | popitem |
+    | ------------ | ----- | ------- | ------ | ------- |
+    | Worse-case   | O(1)  | O(1)~   | O(n)   | O(1)~   |
 
     Pros:
         - Insert, lookup, and evict are all O(1) amortized.
@@ -668,9 +658,9 @@ class RRCache(BaseCacheImpl[_KT, _VT]):
     ensuring fair treatment across all cached items regardless of access
     patterns.
 
-    |              | get   | insert  | delete | popitem(i)     |
-    | ------------ | ----- | ------- | ------ | -------------- |
-    | Worse-case   | O(1)  | O(1)    | O(1)   | O(min(i, n-i)) |
+    |              | get   | insert  | delete | popitem |
+    | ------------ | ----- | ------- | ------ | ------- |
+    | Worse-case   | O(1)  | O(1)    | O(1)   | O(1)    |
 
     Pros:
         - Low overhead: computationally cheap compared to tracking access order
@@ -863,9 +853,9 @@ class LRUCache(BaseCacheImpl[_KT, _VT]):
     O(1) lookups. On every access the item is moved to the back. On eviction
     the front item is removed. A running total enables O(1) capacity checks.
 
-    |              | get   | insert  | delete(i) | popitem |
-    | ------------ | ----- | ------- | --------- | ------- |
-    | Worse-case   | O(1)~ | O(1)~   | O(1)~ | O(1)~ |
+    |              | get  | insert  | delete(i) | popitem |
+    | ------------ | ---- | ------- | --------- | ------- |
+    | Worse-case   | O(1) | O(1)~   | O(1)~ | O(1)~ |
 
     Pros:
         - Excellent hit rates on temporal-locality workloads.
@@ -1090,9 +1080,9 @@ class LFUCache(BaseCacheImpl[_KT, _VT]):
     minimum-frequency item is popped in O(n log n) worst-case (amortised
     O(log n) under typical distributions). Lookups are O(1) via the hash map.
 
-    |              | get   | insert  | delete(i)      | popitem |
-    | ------------ | ----- | ------- | -------------- | ------- |
-    | Worse-case   | O(1)~ | O(1)~   | O(min(i, n-i)) | O(1)~   |
+    |              | get   | insert    | delete   | popitem   |
+    | ------------ | ----- | --------- | -------- | --------- |
+    | Worse-case   | O(1)~ | O(log n)~ | O(log n) | O(log n)~ |
 
     Pros:
         - Frequency-aware eviction protects hot items under heavy cache

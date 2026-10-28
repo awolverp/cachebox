@@ -5,27 +5,27 @@ in **when** and **which** entries are removed under pressure (or over time).
 
 ## At a Glance
 
-| Class | Eviction | Best for | Avoid when |
-|-------|----------|----------|------------|
-| [`Cache`](#cache) | None (raises `OverflowError` when full) | Fixed key sets that never go stale | Unbounded or volatile data |
-| [`FIFOCache`](#fifocache) | Oldest insertion first | Predictable, insert-heavy workloads | Strong temporal locality |
-| [`RRCache`](#rrcache) | Random | Uniform access, low overhead | Hit rate is critical |
-| [`LRUCache`](#lrucache) | Least recently used | Temporal locality (most common choice) | Write-only / scan-once traffic |
-| [`LFUCache`](#lfucache) | Least frequently used | Stable hot sets | Rapidly shifting access patterns |
-| [`TTLCache`](#ttlcache) | Global TTL + FIFO among live entries | Uniform freshness windows | Per-key TTLs needed |
-| [`VTTLCache`](#vttlcache) | Per-item TTL (optional non-expiring) | Mixed lifetimes | All items share one TTL |
+| Class                     | Eviction                                | Best for                               | Avoid when                       |
+| ------------------------- | --------------------------------------- | -------------------------------------- | -------------------------------- |
+| [`Cache`](#cache)         | None (raises `OverflowError` when full) | Fixed key sets that never go stale     | Unbounded or volatile data       |
+| [`FIFOCache`](#fifocache) | Oldest insertion first                  | Predictable, insert-heavy workloads    | Strong temporal locality         |
+| [`RRCache`](#rrcache)     | Random                                  | Uniform access, low overhead           | Hit rate is critical             |
+| [`LRUCache`](#lrucache)   | Least recently used                     | Temporal locality (most common choice) | Write-only / scan-once traffic   |
+| [`LFUCache`](#lfucache)   | Least frequently used                   | Stable hot sets                        | Rapidly shifting access patterns |
+| [`TTLCache`](#ttlcache)   | Global TTL + FIFO among live entries    | Uniform freshness windows              | Per-key TTLs needed              |
+| [`VTTLCache`](#vttlcache) | Per-item TTL (optional non-expiring)    | Mixed lifetimes                        | All items share one TTL          |
 
 Complexity (worst-case, amortized where marked with `~`):
 
-| Class | get | insert | delete | popitem |
-|-------|-----|--------|--------|---------|
-| `Cache` | O(1) | O(1) | O(1) | N/A |
-| `FIFOCache` | O(1) | O(1) | O(min(i, n−i)) | O(1)~ |
-| `RRCache` | O(1) | O(1) | O(1) | O(min(i, n−i)) |
-| `LRUCache` | O(1)~ | O(1)~ | O(1)~ | O(1)~ |
-| `LFUCache` | O(1)~ | O(1)~ | O(min(i, n−i)) | O(1)~ |
-| `TTLCache` | O(1) | O(1) | O(min(i, n−i)) | O(n) rare |
-| `VTTLCache` | O(1)~ | O(1)~ | O(min(i, n−i)) | O(1)~ |
+| Class       | get  | insert         | delete         | popitem       |
+| ----------- | ---- | -------------- | -------------- | ------------- |
+| `Cache`     | O(1) | O(1)~          | O(1)           | N/A           |
+| `FIFOCache` | O(1) | O(1)~          | O(n)           | O(1)~         |
+| `RRCache`   | O(1) | O(1)~          | O(1)           | O(1) expected |
+| `LRUCache`  | O(1) | O(1)~          | O(1)           | O(1)          |
+| `LFUCache`  | O(1) | O(log n)~      | O(log n)       | O(log n)~     |
+| `TTLCache`  | O(1) | O(e)~          | O(n)           | O(1)~         |
+| `VTTLCache` | O(1) | O((e+1) log n) | O((e+1) log n) | O(log n)~     |
 
 ## Decision Guide
 
@@ -259,10 +259,10 @@ cache.setdefault_with(key, factory, ttl=None)
 
 `ttl` may be:
 
-- `float` — seconds from now  
-- `timedelta` — duration from now  
-- `datetime` — absolute deadline  
-- `None` — never expires  
+- `float` — seconds from now
+- `timedelta` — duration from now
+- `datetime` — absolute deadline
+- `None` — never expires
 
 ---
 

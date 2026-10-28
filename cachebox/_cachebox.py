@@ -54,9 +54,9 @@ class TTLCache(_CoreTTLCache[KT, VT]):
     ``sweep_interval`` is set, a background thread performs the sweep on that
     interval instead, reclaiming expired entries independent of method calls.
 
-    |              | get   | insert  | delete           | popitem |
-    | ------------ | ----- | ------- | ---------------- | ------- |
-    | Worse-case   | O(1)  | O(1)    | O(min(i, n-i))   | O(n) - very rare |
+    |              | get   | insert  | delete | popitem |
+    | ------------ | ----- | ------- | ------ | ------- |
+    | Worse-case   | O(1)  | O(e)~   | O(n)   | O(1)~   |
 
     Pros:
         - Insert, lookup, and evict are all O(1) amortized: the
@@ -225,9 +225,9 @@ class VTTLCache(_CoreVTTLCache[KT, VT]):
     no TTL are the last resort and are evicted only when all expiring items
     have been exhausted.
 
-    |              | get   | insert  | delete(i)      | popitem |
-    | ------------ | ----- | ------- | -------------- | ------- |
-    | Worse-case   | O(1)~ | O(1)~   | O(min(i, n-i)) | O(1)~   |
+    |              | get   | insert         | delete         | popitem   |
+    | ------------ | ----- | -------------- | -------------- | --------- |
+    | Worse-case   | O(1)~ | O((e+1) log n) | O((e+1) log n) | O(log n)~ |
 
     Pros:
         - Per-item TTL control: each entry can have a different lifetime.

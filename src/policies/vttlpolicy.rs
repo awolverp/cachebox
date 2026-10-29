@@ -391,11 +391,12 @@ impl PolicyExt for VTTLPolicy {
     }
 
     fn evict(&mut self, shared: &Self::Shared) -> pyo3::PyResult<Self::Handle> {
+        self.expire(shared.generation_version());
+
         {
-            let front_cursor = self
-                .heap
-                .front()
-                .ok_or_else(|| new_py_error!(PyKeyError, "cache is empty"))?;
+            let Some(front_cursor) = self.heap.front() else {
+                return Err(new_py_error!(PyKeyError, "cache is empty"));
+            };
 
             self.table
                 .remove_entry(unsafe { front_cursor.element().key.hash() }, |x| {

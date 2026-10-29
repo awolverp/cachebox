@@ -55,8 +55,8 @@ lint = [
   "ruff>=0.16.9",
 ]
 maturin = [
-  "maturin == 1.14.1 ; sys_platform != 'linux'",
-  "maturin[patchelf] == 1.14.1 ; sys_platform == 'linux'",
+  "maturin == 1.15.0 ; sys_platform != 'linux'",
+  "maturin[patchelf] == 1.15.0 ; sys_platform == 'linux'",
 ]
 test = [
   "hypothesis >= 6.165.0",

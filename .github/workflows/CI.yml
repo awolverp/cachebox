@@ -110,7 +110,8 @@ jobs:
         # zizmor: ignore[cache-poisoning]
         with:
           target: ${{ matrix.platform.target }}
-          sccache: ${{ github.ref_type != 'tag' }}
+          # https://github.com/PyO3/maturin-action/issues/249
+          # sccache: ${{ github.ref_type != 'tag' }}
           manylinux: auto
           args: >-
             --release

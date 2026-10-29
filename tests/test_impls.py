@@ -1950,7 +1950,7 @@ class TestVTTLCachePolicy(mixins.SweepIntervalMixin):
             c.popitem()
 
     def test_popitem_expire_keys(self):
-        """popitem() must always expire all expired keys, and return the oldest *alive* inserted entry."""
+        """popitem() must always expire all expired keys, and return the soonest expiring *alive* inserted entry."""
         cache = self.create_cache(5)
 
         cache.insert(1, "a", ttl=0.5)

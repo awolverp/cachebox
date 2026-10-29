@@ -102,21 +102,21 @@ impl PyTTLCache {
     }
 
     #[inline]
-    fn current_size(&self) -> pyo3::PyResult<usize> {
+    fn current_size(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
         let inner = self.0.get()?;
-        let mut policy = inner.policy();
+        let mut policy = inner.policy_py_attached(py);
         policy.expire(inner.shared().generation_version());
         Ok(policy.current_size())
     }
 
     #[inline]
-    fn remaining_size(&self) -> pyo3::PyResult<usize> {
+    fn remaining_size(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
         let inner = self.0.get()?;
         {
-            let mut policy = inner.policy();
+            let mut policy = inner.policy_py_attached(py);
             policy.expire(inner.shared().generation_version());
         }
-        Ok(inner.remaining_size())
+        Ok(inner.remaining_size(py))
     }
 
     #[getter]
@@ -135,31 +135,31 @@ impl PyTTLCache {
 
     /// Returns the number of elements the map can hold without reallocating.
     #[inline]
-    fn capacity(&self) -> pyo3::PyResult<usize> {
+    fn capacity(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
         let inner = self.0.get()?;
-        let policy = inner.policy();
+        let policy = inner.policy_py_attached(py);
 
         Ok(policy.table().capacity().min(policy.entries().capacity()))
     }
 
     /// Returns the number of entries currently in the cache.
     #[inline]
-    fn __len__(&self) -> pyo3::PyResult<usize> {
+    fn __len__(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
         let inner = self.0.get()?;
-        let policy = inner.policy();
+        let policy = inner.policy_py_attached(py);
 
         debug_assert!(policy.table().len() == policy.entries().len());
         Ok(policy.table().len())
     }
 
     #[inline]
-    fn __sizeof__(&self) -> usize {
+    fn __sizeof__(&self, py: pyo3::Python) -> usize {
         const FIXED_SIZE: usize = size_of::<Wrapped<ttlpolicy::TTLPolicy>>();
 
         let Ok(inner) = self.0.get() else {
             return FIXED_SIZE;
         };
-        let policy = inner.policy();
+        let policy = inner.policy_py_attached(py);
 
         let table_cap = policy.table().capacity() * size_of::<usize>();
         let vecdeque_cap = policy.entries().capacity() * size_of::<ttlpolicy::ExpiringHandle>();
@@ -168,11 +168,11 @@ impl PyTTLCache {
     }
 
     #[inline]
-    fn __bool__(&self) -> bool {
+    fn __bool__(&self, py: pyo3::Python) -> bool {
         let Ok(inner) = self.0.get() else {
             return false;
         };
-        let policy = inner.policy();
+        let policy = inner.policy_py_attached(py);
 
         !policy.table().is_empty()
     }
@@ -192,19 +192,19 @@ impl PyTTLCache {
 
     /// Returns `True` if cache is empty.
     #[inline]
-    fn is_empty(&self) -> pyo3::PyResult<bool> {
+    fn is_empty(&self, py: pyo3::Python) -> pyo3::PyResult<bool> {
         let inner = self.0.get()?;
-        let policy = inner.policy();
+        let policy = inner.policy_py_attached(py);
 
         Ok(policy.table().is_empty())
     }
 
     /// Returns `True` when the cumulative size has reached the maxsize limit.
     #[inline]
-    fn is_full(&self) -> pyo3::PyResult<bool> {
+    fn is_full(&self, py: pyo3::Python) -> pyo3::PyResult<bool> {
         let inner = self.0.get()?;
         let shared = inner.shared();
-        let policy = inner.policy();
+        let policy = inner.policy_py_attached(py);
 
         Ok(policy.current_size() >= shared.maxsize())
     }
@@ -463,9 +463,9 @@ impl PyTTLCache {
     }
 
     /// Remove and return a (key, value) pair as a 2-tuple.
-    fn popitem(&self) -> pyo3::PyResult<(alias::PyObject, alias::PyObject)> {
+    fn popitem(&self, py: pyo3::Python) -> pyo3::PyResult<(alias::PyObject, alias::PyObject)> {
         let inner = self.0.get()?;
-        let mut policy = inner.policy();
+        let mut policy = inner.policy_py_attached(py);
 
         let handle = policy.evict(inner.shared())?;
         drop(policy);
@@ -487,19 +487,19 @@ impl PyTTLCache {
 
     /// Shrinks the internal allocation as close to the current length as possible.
     #[inline]
-    fn shrink_to_fit(&self) -> pyo3::PyResult<()> {
+    fn shrink_to_fit(&self, py: pyo3::Python) -> pyo3::PyResult<()> {
         let inner = self.0.get()?;
-        let mut policy = inner.policy();
+        let mut policy = inner.policy_py_attached(py);
         policy.shrink_to_fit(inner.shared());
         Ok(())
     }
 
     /// Removes all entries from the table and resets the cumulative size to zero.
     #[pyo3(signature=(*, reuse=false))]
-    fn clear(&self, reuse: bool) -> pyo3::PyResult<()> {
+    fn clear(&self, py: pyo3::Python, reuse: bool) -> pyo3::PyResult<()> {
         let inner = self.0.get()?;
         let shared = inner.shared();
-        let mut policy = inner.policy();
+        let mut policy = inner.policy_py_attached(py);
 
         policy.clear(shared);
 
@@ -661,10 +661,10 @@ impl PyTTLCache {
 
     #[inline]
     #[pyo3(signature=(*, reuse=false))]
-    fn expire(&self, reuse: bool) -> pyo3::PyResult<()> {
+    fn expire(&self, py: pyo3::Python, reuse: bool) -> pyo3::PyResult<()> {
         let inner = self.0.get()?;
         let shared = inner.shared();
-        let mut policy = inner.policy();
+        let mut policy = inner.policy_py_attached(py);
 
         policy.expire(shared.generation_version());
 
@@ -772,9 +772,12 @@ impl PyTTLCache {
         }
     }
 
-    fn popitem_with_expire(&self) -> pyo3::PyResult<(alias::PyObject, alias::PyObject, f64)> {
+    fn popitem_with_expire(
+        &self,
+        py: pyo3::Python,
+    ) -> pyo3::PyResult<(alias::PyObject, alias::PyObject, f64)> {
         let inner = self.0.get()?;
-        let mut policy = inner.policy();
+        let mut policy = inner.policy_py_attached(py);
 
         let handle = policy.evict(inner.shared())?;
         drop(policy);
@@ -823,12 +826,12 @@ impl PyTTLCache {
         Ok(())
     }
 
-    fn __clear__(&self) {
+    fn __clear__(&self, py: pyo3::Python) {
         let Ok(inner) = self.0.get() else {
             // object is not initialized, so there's nothing to clear
             return;
         };
-        let mut policy = inner.policy();
+        let mut policy = inner.policy_py_attached(py);
         policy.clear(inner.shared());
     }
 }

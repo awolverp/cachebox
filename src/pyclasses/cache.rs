@@ -117,15 +117,15 @@ impl PyCache {
     }
 
     #[inline]
-    fn current_size(&self) -> pyo3::PyResult<usize> {
+    fn current_size(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
         let inner = self.0.get()?;
-        Ok(inner.policy().current_size())
+        Ok(inner.policy_py_attached(py).current_size())
     }
 
     #[inline]
-    fn remaining_size(&self) -> pyo3::PyResult<usize> {
+    fn remaining_size(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
         let inner = self.0.get()?;
-        Ok(inner.remaining_size())
+        Ok(inner.remaining_size(py))
     }
 
     #[getter]
@@ -137,41 +137,41 @@ impl PyCache {
 
     /// Returns the number of elements the map can hold without reallocating.
     #[inline]
-    fn capacity(&self) -> pyo3::PyResult<usize> {
+    fn capacity(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
         let inner = self.0.get()?;
-        let policy = inner.policy();
+        let policy = inner.policy_py_attached(py);
 
         Ok(policy.table().capacity())
     }
 
     /// Returns the number of entries currently in the cache.
     #[inline]
-    fn __len__(&self) -> pyo3::PyResult<usize> {
+    fn __len__(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
         let inner = self.0.get()?;
-        let policy = inner.policy();
+        let policy = inner.policy_py_attached(py);
 
         Ok(policy.table().len())
     }
 
     #[inline]
-    fn __sizeof__(&self) -> usize {
+    fn __sizeof__(&self, py: pyo3::Python) -> usize {
         const FIXED_SIZE: usize = size_of::<Wrapped<nopolicy::NoPolicy>>();
 
         let Ok(inner) = self.0.get() else {
             return FIXED_SIZE;
         };
-        let policy = inner.policy();
+        let policy = inner.policy_py_attached(py);
 
         FIXED_SIZE + (policy.table().capacity() * size_of::<nopolicy::Handle>())
     }
 
     #[inline]
-    fn __bool__(&self) -> bool {
+    fn __bool__(&self, py: pyo3::Python) -> bool {
         let Ok(inner) = self.0.get() else {
             return false;
         };
 
-        let policy = inner.policy();
+        let policy = inner.policy_py_attached(py);
 
         !policy.table().is_empty()
     }
@@ -191,19 +191,19 @@ impl PyCache {
 
     /// Returns `True` if cache is empty.
     #[inline]
-    fn is_empty(&self) -> pyo3::PyResult<bool> {
+    fn is_empty(&self, py: pyo3::Python) -> pyo3::PyResult<bool> {
         let inner = self.0.get()?;
-        let policy = inner.policy();
+        let policy = inner.policy_py_attached(py);
 
         Ok(policy.table().is_empty())
     }
 
     /// Returns `True` when the cumulative size has reached the maxsize limit.
     #[inline]
-    fn is_full(&self) -> pyo3::PyResult<bool> {
+    fn is_full(&self, py: pyo3::Python) -> pyo3::PyResult<bool> {
         let inner = self.0.get()?;
         let shared = inner.shared();
-        let policy = inner.policy();
+        let policy = inner.policy_py_attached(py);
 
         Ok(policy.current_size() >= shared.maxsize())
     }
@@ -455,9 +455,9 @@ impl PyCache {
     /// Remove and return a (key, value) pair as a 2-tuple.
     ///
     /// NOTE: `Cache` always raises `NotImplementedError` because has neither policy nor algorithm to evict items.
-    fn popitem(&self) -> pyo3::PyResult<(alias::PyObject, alias::PyObject)> {
+    fn popitem(&self, py: pyo3::Python) -> pyo3::PyResult<(alias::PyObject, alias::PyObject)> {
         let inner = self.0.get()?;
-        let mut policy = inner.policy();
+        let mut policy = inner.policy_py_attached(py);
 
         let handle = policy.evict(inner.shared())?;
         drop(policy);
@@ -479,19 +479,19 @@ impl PyCache {
 
     /// Shrinks the internal allocation as close to the current length as possible.
     #[inline]
-    fn shrink_to_fit(&self) -> pyo3::PyResult<()> {
+    fn shrink_to_fit(&self, py: pyo3::Python) -> pyo3::PyResult<()> {
         let inner = self.0.get()?;
-        let mut policy = inner.policy();
+        let mut policy = inner.policy_py_attached(py);
         policy.shrink_to_fit(inner.shared());
         Ok(())
     }
 
     /// Removes all entries from the table and resets the cumulative size to zero.
     #[pyo3(signature=(*, reuse=false))]
-    fn clear(&self, reuse: bool) -> pyo3::PyResult<()> {
+    fn clear(&self, py: pyo3::Python, reuse: bool) -> pyo3::PyResult<()> {
         let inner = self.0.get()?;
         let shared = inner.shared();
-        let mut policy = inner.policy();
+        let mut policy = inner.policy_py_attached(py);
 
         policy.clear(shared);
 
@@ -668,9 +668,9 @@ impl PyCache {
         Ok(())
     }
 
-    fn __clear__(&self) {
+    fn __clear__(&self, py: pyo3::Python) {
         if let Ok(inner) = self.0.get() {
-            let mut policy = inner.policy();
+            let mut policy = inner.policy_py_attached(py);
             policy.clear(inner.shared());
         } else {
             // object is not initialized, so there's nothing to clear

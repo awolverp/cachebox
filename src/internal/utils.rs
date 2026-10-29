@@ -16,11 +16,21 @@ pub unsafe fn pyobject_hash(
 ) -> pyo3::PyResult<u64> {
     let py_hash = pyo3::ffi::PyObject_Hash(arg1);
     if crate::hashbrown::util::unlikely(py_hash == -1) {
-        // SAFETY: PyObject_Hash never returns -1 on success.
-        return Err(pyo3::PyErr::take(py).unwrap());
+        // PyObject_Hash never returns -1 on success.
+        return Err(take_error(py));
     }
 
     Ok(mix_hash(py_hash as u64))
+}
+
+/// Takes the exception set by a failed C API call.
+///
+/// A broken C type can report an error without setting one; like CPython, raise
+/// `SystemError` then instead of panicking (release builds abort on panic).
+#[cold]
+fn take_error(py: pyo3::Python<'_>) -> pyo3::PyErr {
+    pyo3::PyErr::take(py)
+        .unwrap_or_else(|| new_py_error!(PySystemError, "error return without exception set"))
 }
 
 /// Spreads entropy of a Python hash across all 64 bits.
@@ -55,7 +65,7 @@ pub unsafe fn pyobject_equal(
     let boolean = pyo3::ffi::PyObject_RichCompareBool(arg1, arg2, pyo3::ffi::Py_EQ);
 
     if boolean < 0 {
-        Err(pyo3::PyErr::take(py).unwrap_unchecked())
+        Err(take_error(py))
     } else {
         Ok(boolean == 1)
     }

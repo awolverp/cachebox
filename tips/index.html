@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -1173,6 +1173,10 @@ method calls are atomic with respect to the internal map. Compound sequences
 </span></code></pre></div>
 <p>Do not modify the cache while an iterator is alive — every method on that iterator raises
 <code>RuntimeError</code> if the cache changed.</p>
+<p>Iterator methods take the cache's lock, so another thread can iterate safely while the cache
+is being modified (it gets the <code>RuntimeError</code>). Don't call them from code that runs <em>inside</em> a
+cache operation on the same cache, such as a key's <code>__eq__</code> or a value's <code>__del__</code>: that waits
+for the lock it is already holding and never returns, the same as calling <code>cache[key]</code> there.</p>
 
 
 
@@ -1264,10 +1268,10 @@ method calls are atomic with respect to the internal map. Compound sequences
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["table", "navigation.instant", "navigation.instant.progress", "navigation.tabs", "navigation.prune", "toc.integrate", "search", "search.suggest", "search.share", "projects", "optimize", "content.code.copy", "content.code.select", "content.code.annotate", "navigation.footer"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["table", "navigation.instant", "navigation.instant.progress", "navigation.tabs", "navigation.prune", "toc.integrate", "search", "search.suggest", "search.share", "projects", "optimize", "content.code.copy", "content.code.select", "content.code.annotate", "navigation.footer"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

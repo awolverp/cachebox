@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -935,51 +935,51 @@ in <strong>when</strong> and <strong>which</strong> entries are removed under pr
 <tr>
 <td><code>Cache</code></td>
 <td>O(1)</td>
-<td>O(1)</td>
+<td>O(1)~</td>
 <td>O(1)</td>
 <td>N/A</td>
 </tr>
 <tr>
 <td><code>FIFOCache</code></td>
 <td>O(1)</td>
-<td>O(1)</td>
-<td>O(min(i, n−i))</td>
+<td>O(1)~</td>
+<td>O(n)</td>
 <td>O(1)~</td>
 </tr>
 <tr>
 <td><code>RRCache</code></td>
 <td>O(1)</td>
+<td>O(1)~</td>
 <td>O(1)</td>
-<td>O(1)</td>
-<td>O(min(i, n−i))</td>
+<td>O(1) expected</td>
 </tr>
 <tr>
 <td><code>LRUCache</code></td>
+<td>O(1)</td>
 <td>O(1)~</td>
-<td>O(1)~</td>
-<td>O(1)~</td>
-<td>O(1)~</td>
+<td>O(1)</td>
+<td>O(1)</td>
 </tr>
 <tr>
 <td><code>LFUCache</code></td>
-<td>O(1)~</td>
-<td>O(1)~</td>
-<td>O(min(i, n−i))</td>
-<td>O(1)~</td>
+<td>O(1)</td>
+<td>O(log n)~</td>
+<td>O(log n)</td>
+<td>O(log n)~</td>
 </tr>
 <tr>
 <td><code>TTLCache</code></td>
 <td>O(1)</td>
-<td>O(1)</td>
-<td>O(min(i, n−i))</td>
-<td>O(n) rare</td>
+<td>O(e)~</td>
+<td>O(n)</td>
+<td>O(1)~</td>
 </tr>
 <tr>
 <td><code>VTTLCache</code></td>
-<td>O(1)~</td>
-<td>O(1)~</td>
-<td>O(min(i, n−i))</td>
-<td>O(1)~</td>
+<td>O(1)</td>
+<td>O((e+1) log n)</td>
+<td>O((e+1) log n)</td>
+<td>O(log n)~</td>
 </tr>
 </tbody>
 </table>
@@ -1158,10 +1158,10 @@ and are only removed under capacity pressure (after all expiring items are gone)
 </span></code></pre></div>
 <p><code>ttl</code> may be:</p>
 <ul>
-<li><code>float</code> — seconds from now  </li>
-<li><code>timedelta</code> — duration from now  </li>
-<li><code>datetime</code> — absolute deadline  </li>
-<li><code>None</code> — never expires  </li>
+<li><code>float</code> — seconds from now</li>
+<li><code>timedelta</code> — duration from now</li>
+<li><code>datetime</code> — absolute deadline</li>
+<li><code>None</code> — never expires</li>
 </ul>
 <hr />
 <h2 id="shared-behaviors">Shared Behaviors<a class="headerlink" href="#shared-behaviors" title="Permanent link">&para;</a></h2>
@@ -1266,10 +1266,10 @@ and are only removed under capacity pressure (after all expiring items are gone)
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["table", "navigation.instant", "navigation.instant.progress", "navigation.tabs", "navigation.prune", "toc.integrate", "search", "search.suggest", "search.share", "projects", "optimize", "content.code.copy", "content.code.select", "content.code.annotate", "navigation.footer"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["table", "navigation.instant", "navigation.instant.progress", "navigation.tabs", "navigation.prune", "toc.integrate", "search", "search.suggest", "search.share", "projects", "optimize", "content.code.copy", "content.code.select", "content.code.annotate", "navigation.footer"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

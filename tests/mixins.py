@@ -8,7 +8,6 @@ import sys
 import sysconfig
 import threading
 import time
-import tracemalloc
 import typing
 import weakref
 from datetime import timedelta
@@ -431,11 +430,8 @@ class UpdateMixin(BaseMixin):
         assert cache.get("a") == 1
         assert cache.get("b") == 2
 
-    @pytest.mark.skipif(
-        platform.python_implementation() == "PyPy",
-        reason="PyPy has no tracemalloc",
-    )
     def test_update_memory_follows_the_cache_not_the_input(self):
+        tracemalloc = pytest.importorskip("tracemalloc")  # not on PyPy
         cache = self.create_cache(10)
         if isinstance(cache, cachebox.Cache):
             pytest.skip("Cache does not evict")

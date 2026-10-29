@@ -53,7 +53,7 @@ impl<P: PolicyExt> Wrapped<P> {
     /// Acquires the mutex and returns a guard over the mutable policy state.
     // https://github.com/awolverp/cachebox/issues/95
     #[inline(always)]
-    pub fn policy_py_attached(&self, py: pyo3::Python<'_>) -> parking_lot::MutexGuard<'_, P> {
+    pub fn policy(&self, py: pyo3::Python<'_>) -> parking_lot::MutexGuard<'_, P> {
         pyo3::sync::MutexExt::lock_py_attached(&self.inner, py)
     }
 
@@ -63,7 +63,7 @@ impl<P: PolicyExt> Wrapped<P> {
     /// The mutexes are always taken in address order, so `a == b` and `b == a`
     /// on two threads cannot each hold one lock and wait for the other.
     // https://github.com/awolverp/cachebox/issues/118
-    pub fn policy_pair_py_attached<'a>(
+    pub fn policy_ordered_pair<'a>(
         &'a self,
         other: &'a Self,
         py: pyo3::Python<'_>,
@@ -74,11 +74,11 @@ impl<P: PolicyExt> Wrapped<P> {
         debug_assert!(!std::ptr::eq(self, other));
 
         if (self as *const Self) < (other as *const Self) {
-            let first = self.policy_py_attached(py);
-            (first, other.policy_py_attached(py))
+            let first = self.policy(py);
+            (first, other.policy(py))
         } else {
-            let first = other.policy_py_attached(py);
-            (self.policy_py_attached(py), first)
+            let first = other.policy(py);
+            (self.policy(py), first)
         }
     }
 
@@ -100,16 +100,14 @@ const EXTEND_CHUNK: usize = 1024;
 /// Built-in containers whose iteration runs no Python code. Exact types only:
 /// a subclass can override `__iter__`.
 fn iterates_without_python(obj: &alias::BoundObject) -> bool {
-    use pyo3::types::PyAnyMethods;
-    use pyo3::types::PyFrozenSet;
-    use pyo3::types::PyList;
-    use pyo3::types::PySet;
-    use pyo3::types::PyTuple;
+    let ptr = obj.as_ptr();
 
-    obj.is_exact_instance_of::<PyList>()
-        || obj.is_exact_instance_of::<PyTuple>()
-        || obj.is_exact_instance_of::<PySet>()
-        || obj.is_exact_instance_of::<PyFrozenSet>()
+    unsafe {
+        pyo3::ffi::Py_TYPE(ptr) == crate::typeref::STD_FROZENSET_TYPE
+            || pyo3::ffi::Py_TYPE(ptr) == crate::typeref::STD_LIST_TYPE
+            || pyo3::ffi::Py_TYPE(ptr) == crate::typeref::STD_SET_TYPE
+            || pyo3::ffi::Py_TYPE(ptr) == crate::typeref::STD_TUPLE_TYPE
+    }
 }
 
 #[inline(always)]
@@ -156,7 +154,7 @@ impl<P: PolicyExt> Wrapped<P> {
     /// Returns the remaining size. Equals to `maxsize - current_size`.
     #[inline]
     pub fn remaining_size(&self, py: pyo3::Python<'_>) -> usize {
-        let policy = self.policy_py_attached(py);
+        let policy = self.policy(py);
         self.shared.maxsize().saturating_sub(policy.current_size())
     }
 
@@ -167,7 +165,7 @@ impl<P: PolicyExt> Wrapped<P> {
         py: pyo3::Python<'_>,
         key: &<P::Handle as HandleExt>::Key,
     ) -> pyo3::PyResult<bool> {
-        let mut lock = self.policy_py_attached(py);
+        let mut lock = self.policy(py);
 
         let handle = lock.get(py, key, &self.shared)?;
         Ok(handle.is_some())
@@ -195,7 +193,7 @@ impl<P: PolicyExt> Wrapped<P> {
         py: pyo3::Python<'_>,
         handle: P::Handle,
     ) -> pyo3::PyResult<Option<P::Handle>> {
-        let mut lock = self.policy_py_attached(py);
+        let mut lock = self.policy(py);
         self.insert_no_lock(&mut lock, py, handle)
     }
 
@@ -207,7 +205,7 @@ impl<P: PolicyExt> Wrapped<P> {
         py: pyo3::Python<'_>,
         key: &<P::Handle as HandleExt>::Key,
     ) -> pyo3::PyResult<Option<P::Handle>> {
-        let mut lock = self.policy_py_attached(py);
+        let mut lock = self.policy(py);
 
         let entry = lock.entry(py, key, &self.shared)?;
         match entry {
@@ -251,13 +249,11 @@ impl<P: PolicyExt> Wrapped<P> {
 
         let py = iterable.py();
 
-        // Using [pyo3::ffi::PyObject_TypeCheck] and [Bound::cast_unchecked] is so faster than [Bound::cast]
-        let is_dictionary = unsafe {
+        if unsafe {
             pyo3::ffi::PyObject_TypeCheck(iterable.as_ptr(), crate::typeref::STD_DICT_TYPE) == 1
-        };
-        if is_dictionary {
+        } {
             let dict = unsafe { iterable.cast_unchecked::<pyo3::types::PyDict>() };
-            let mut lock = self.policy_py_attached(py);
+            let mut lock = self.policy(py);
 
             for pair in dict.items() {
                 let (key, value) = unsafe {
@@ -272,7 +268,7 @@ impl<P: PolicyExt> Wrapped<P> {
         }
 
         if iterates_without_python(&iterable) {
-            let mut lock = self.policy_py_attached(py);
+            let mut lock = self.policy(py);
 
             for pair in iterable.try_iter()? {
                 let pair = pair?;
@@ -324,7 +320,7 @@ impl<P: PolicyExt> Wrapped<P> {
         // Declared before the lock, so after an error the handles not inserted
         // are dropped (and their finalizers run) once the lock is released.
         let mut pending = handles.drain(..);
-        let mut lock = self.policy_py_attached(py);
+        let mut lock = self.policy(py);
 
         pending.try_for_each(|handle| insert_inner(&mut lock, &self.shared, py, handle).map(drop))
     }
@@ -340,7 +336,7 @@ impl<P: PolicyExt> Wrapped<P> {
             return Ok(0);
         }
 
-        let mut lock = self.policy_py_attached(py);
+        let mut lock = self.policy(py);
 
         let mut count: pyo3::ffi::Py_ssize_t = 0;
         while count < n {
@@ -364,7 +360,7 @@ impl<P: PolicyExt> Wrapped<P> {
     #[inline]
     pub fn clone_ref(&self, py: pyo3::Python) -> Self {
         let shared = self.shared.clone_ref(py);
-        let policy = self.policy_py_attached(py).clone_ref(py);
+        let policy = self.policy(py).clone_ref(py);
 
         Self {
             shared,

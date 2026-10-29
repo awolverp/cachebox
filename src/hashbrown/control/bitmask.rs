@@ -1,7 +1,7 @@
-use super::group::BitMaskWord;
-use super::group::NonZeroBitMaskWord;
 use super::group::BITMASK_ITER_MASK;
 use super::group::BITMASK_STRIDE;
+use super::group::BitMaskWord;
+use super::group::NonZeroBitMaskWord;
 
 /// A bit mask which contains the result of a `Match` operation on a `Group` and
 /// allows iterating through them.

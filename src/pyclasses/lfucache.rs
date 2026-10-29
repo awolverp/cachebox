@@ -141,7 +141,7 @@ impl PyLFUCache {
     #[inline]
     fn current_size(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
         let inner = self.0.get()?;
-        Ok(inner.policy_py_attached(py).current_size())
+        Ok(inner.policy(py).current_size())
     }
 
     #[inline]
@@ -161,7 +161,7 @@ impl PyLFUCache {
     #[inline]
     fn capacity(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
         let inner = self.0.get()?;
-        let policy = inner.policy_py_attached(py);
+        let policy = inner.policy(py);
 
         Ok(policy.table().capacity())
     }
@@ -170,7 +170,7 @@ impl PyLFUCache {
     #[inline]
     fn __len__(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
         let inner = self.0.get()?;
-        let policy = inner.policy_py_attached(py);
+        let policy = inner.policy(py);
 
         debug_assert!(policy.table().len() == policy.heap().len());
         Ok(policy.table().len())
@@ -183,7 +183,7 @@ impl PyLFUCache {
         let Ok(inner) = self.0.get() else {
             return FIXED_SIZE;
         };
-        let policy = inner.policy_py_attached(py);
+        let policy = inner.policy(py);
 
         let table_cap = policy.table().capacity() * 8;
         let list_cap = policy.heap().len() * size_of::<lfupolicy::FrequencyHandle>();
@@ -196,7 +196,7 @@ impl PyLFUCache {
         let Ok(inner) = self.0.get() else {
             return false;
         };
-        let policy = inner.policy_py_attached(py);
+        let policy = inner.policy(py);
 
         !policy.table().is_empty()
     }
@@ -218,7 +218,7 @@ impl PyLFUCache {
     #[inline]
     fn is_empty(&self, py: pyo3::Python) -> pyo3::PyResult<bool> {
         let inner = self.0.get()?;
-        let policy = inner.policy_py_attached(py);
+        let policy = inner.policy(py);
 
         Ok(policy.table().is_empty())
     }
@@ -228,7 +228,7 @@ impl PyLFUCache {
     fn is_full(&self, py: pyo3::Python) -> pyo3::PyResult<bool> {
         let inner = self.0.get()?;
         let shared = inner.shared();
-        let policy = inner.policy_py_attached(py);
+        let policy = inner.policy(py);
 
         Ok(policy.current_size() >= shared.maxsize())
     }
@@ -305,7 +305,7 @@ impl PyLFUCache {
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
         let inner = self.0.get()?;
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         if let Some(x) = policy.get(py, &key, inner.shared())? {
             return Ok(x.value().clone_ref(py));
@@ -328,7 +328,7 @@ impl PyLFUCache {
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
         let inner = self.0.get()?;
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         match policy.get(py, &key, inner.shared())? {
             Some(x) => Ok(x.value().clone_ref(py)),
@@ -360,7 +360,7 @@ impl PyLFUCache {
 
         let inner = self.0.get()?;
         let shared = inner.shared();
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         if let Some(x) = policy.get(py, &key, inner.shared())? {
             return Ok(x.value().clone_ref(py));
@@ -410,7 +410,7 @@ impl PyLFUCache {
         let shared = inner.shared();
 
         {
-            let mut policy = inner.policy_py_attached(py);
+            let mut policy = inner.policy(py);
 
             if let Some(x) = policy.get(py, &key, inner.shared())? {
                 return Ok(x.value().clone_ref(py));
@@ -420,7 +420,7 @@ impl PyLFUCache {
         // `factory` is Python code: a GC pass inside it would deadlock on `__traverse__`
         let default_object = factory.call0(py)?;
 
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         if let Some(x) = policy.get(py, &key, inner.shared())? {
             return Ok(x.value().clone_ref(py));
@@ -480,7 +480,7 @@ impl PyLFUCache {
     /// Remove and return a (key, value) pair as a 2-tuple.
     fn popitem(&self, py: pyo3::Python) -> pyo3::PyResult<(alias::PyObject, alias::PyObject)> {
         let inner = self.0.get()?;
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         let handle = policy.evict(inner.shared())?;
         drop(policy);
@@ -503,7 +503,7 @@ impl PyLFUCache {
     #[inline]
     fn shrink_to_fit(&self, py: pyo3::Python) -> pyo3::PyResult<()> {
         let inner = self.0.get()?;
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
         policy.shrink_to_fit(inner.shared());
         Ok(())
     }
@@ -513,7 +513,7 @@ impl PyLFUCache {
     fn clear(&self, py: pyo3::Python, reuse: bool) -> pyo3::PyResult<()> {
         let inner = self.0.get()?;
         let shared = inner.shared();
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         policy.clear(shared);
 
@@ -535,7 +535,7 @@ impl PyLFUCache {
         let self_inner = slf.0.get()?;
         let other_inner = other.0.get()?;
 
-        let (self_policy, other_policy) = self_inner.policy_pair_py_attached(other_inner, py);
+        let (self_policy, other_policy) = self_inner.policy_ordered_pair(other_inner, py);
 
         self_policy.py_eq(
             py,
@@ -557,7 +557,7 @@ impl PyLFUCache {
         let self_inner = slf.0.get()?;
         let other_inner = other.0.get()?;
 
-        let (self_policy, other_policy) = self_inner.policy_pair_py_attached(other_inner, py);
+        let (self_policy, other_policy) = self_inner.policy_ordered_pair(other_inner, py);
 
         self_policy
             .py_eq(
@@ -572,7 +572,7 @@ impl PyLFUCache {
     fn items(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyLFUCacheItems>> {
         let inner = slf.get().0.get()?;
 
-        let mut policy = inner.policy_py_attached(slf.py());
+        let mut policy = inner.policy(slf.py());
 
         let gv = inner.shared().generation_version();
         let iter = policy.iter(gv);
@@ -587,7 +587,7 @@ impl PyLFUCache {
 
     fn values(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyLFUCacheValues>> {
         let inner = slf.get().0.get()?;
-        let mut policy = inner.policy_py_attached(slf.py());
+        let mut policy = inner.policy(slf.py());
 
         let gv = inner.shared().generation_version();
         let iter = policy.iter(gv);
@@ -602,7 +602,7 @@ impl PyLFUCache {
 
     fn keys(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyLFUCacheKeys>> {
         let inner = slf.get().0.get()?;
-        let mut policy = inner.policy_py_attached(slf.py());
+        let mut policy = inner.policy(slf.py());
 
         let gv = inner.shared().generation_version();
         let iter = policy.iter(gv);
@@ -624,7 +624,7 @@ impl PyLFUCache {
         slf: pyo3::Bound<'_, Self>,
     ) -> pyo3::PyResult<pyo3::Py<PyLFUCacheItemsWithFrequency>> {
         let inner = slf.get().0.get()?;
-        let mut policy = inner.policy_py_attached(slf.py());
+        let mut policy = inner.policy(slf.py());
 
         let gv = inner.shared().generation_version();
         let iter = policy.iter(gv);
@@ -664,7 +664,7 @@ impl PyLFUCache {
     fn __repr__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyResult<String> {
         let inner = slf.0.get()?;
         let shared = inner.shared();
-        let policy = inner.policy_py_attached(slf.py());
+        let policy = inner.policy(slf.py());
 
         // We cannot use heap.iter here, because it requires re-sorting
         // and this can lead to intrupt iterators.
@@ -702,7 +702,7 @@ impl PyLFUCache {
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
         let inner = self.0.get()?;
-        let policy = inner.policy_py_attached(py);
+        let policy = inner.policy(py);
 
         if let Some(x) = policy.peek(py, &key)? {
             return Ok(x.value().clone_ref(py));
@@ -724,7 +724,7 @@ impl PyLFUCache {
         mut n: pyo3::ffi::Py_ssize_t,
     ) -> pyo3::PyResult<alias::PyObject> {
         let inner = self.0.get()?;
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         if n < 0 {
             n += policy.table().len() as isize;
@@ -762,7 +762,7 @@ impl PyLFUCache {
             // object is not initialized, so there's nothing to clear
             return;
         };
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
         policy.clear(inner.shared());
     }
 }

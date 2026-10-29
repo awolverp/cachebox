@@ -116,8 +116,8 @@ jobs:
             --release
             --out dist
             --interpreter ${{ matrix.platform.interpreter }}
+            ${{ matrix.platform.args || '' }}
             --compatibility pypi
-            ${{ matrix.platform.args }}
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -287,7 +287,7 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
-    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
+    if: github.ref_type == 'tag'
     needs:
       - build-linux
       - build-musllinux

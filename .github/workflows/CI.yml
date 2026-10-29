@@ -54,7 +54,10 @@ jobs:
         run: ${{ matrix.command }}
 
   build-linux:
-    runs-on: ubuntu-latest
+    # The manylinux2014 i686 container can't resolve vault.centos.org on ubuntu-26.04.
+    #
+    # https://github.com/PyO3/maturin-action/issues/484
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         platform:
@@ -67,7 +70,6 @@ jobs:
               target: i686-unknown-linux-gnu,
               arch: x86,
               interpreter: *interpreters,
-              args: "--zig",
             }
           - {
               target: aarch64-unknown-linux-gnu,
@@ -110,14 +112,12 @@ jobs:
         # zizmor: ignore[cache-poisoning]
         with:
           target: ${{ matrix.platform.target }}
-          # https://github.com/PyO3/maturin-action/issues/249
-          # sccache: ${{ github.ref_type != 'tag' }}
+          sccache: ${{ github.ref_type != 'tag' }}
           manylinux: auto
           args: >-
             --release
             --out dist
             --interpreter ${{ matrix.platform.interpreter }}
-            ${{ matrix.platform.args || '' }}
             --compatibility pypi
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

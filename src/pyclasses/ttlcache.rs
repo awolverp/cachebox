@@ -104,7 +104,7 @@ impl PyTTLCache {
     #[inline]
     fn current_size(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
         let inner = self.0.get()?;
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
         policy.expire(inner.shared().generation_version());
         Ok(policy.current_size())
     }
@@ -113,7 +113,7 @@ impl PyTTLCache {
     fn remaining_size(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
         let inner = self.0.get()?;
         {
-            let mut policy = inner.policy_py_attached(py);
+            let mut policy = inner.policy(py);
             policy.expire(inner.shared().generation_version());
         }
         Ok(inner.remaining_size(py))
@@ -137,7 +137,7 @@ impl PyTTLCache {
     #[inline]
     fn capacity(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
         let inner = self.0.get()?;
-        let policy = inner.policy_py_attached(py);
+        let policy = inner.policy(py);
 
         Ok(policy.table().capacity().min(policy.entries().capacity()))
     }
@@ -146,7 +146,7 @@ impl PyTTLCache {
     #[inline]
     fn __len__(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
         let inner = self.0.get()?;
-        let policy = inner.policy_py_attached(py);
+        let policy = inner.policy(py);
 
         debug_assert!(policy.table().len() == policy.entries().len());
         Ok(policy.table().len())
@@ -159,7 +159,7 @@ impl PyTTLCache {
         let Ok(inner) = self.0.get() else {
             return FIXED_SIZE;
         };
-        let policy = inner.policy_py_attached(py);
+        let policy = inner.policy(py);
 
         let table_cap = policy.table().capacity() * size_of::<usize>();
         let vecdeque_cap = policy.entries().capacity() * size_of::<ttlpolicy::ExpiringHandle>();
@@ -172,7 +172,7 @@ impl PyTTLCache {
         let Ok(inner) = self.0.get() else {
             return false;
         };
-        let policy = inner.policy_py_attached(py);
+        let policy = inner.policy(py);
 
         !policy.table().is_empty()
     }
@@ -194,7 +194,7 @@ impl PyTTLCache {
     #[inline]
     fn is_empty(&self, py: pyo3::Python) -> pyo3::PyResult<bool> {
         let inner = self.0.get()?;
-        let policy = inner.policy_py_attached(py);
+        let policy = inner.policy(py);
 
         Ok(policy.table().is_empty())
     }
@@ -204,7 +204,7 @@ impl PyTTLCache {
     fn is_full(&self, py: pyo3::Python) -> pyo3::PyResult<bool> {
         let inner = self.0.get()?;
         let shared = inner.shared();
-        let policy = inner.policy_py_attached(py);
+        let policy = inner.policy(py);
 
         Ok(policy.current_size() >= shared.maxsize())
     }
@@ -290,7 +290,7 @@ impl PyTTLCache {
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
         let inner = self.0.get()?;
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         if let Some(x) = policy.get(py, &key, inner.shared())? {
             return Ok(x.value().clone_ref(py));
@@ -313,7 +313,7 @@ impl PyTTLCache {
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
         let inner = self.0.get()?;
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         match policy.get(py, &key, inner.shared())? {
             Some(x) => Ok(x.value().clone_ref(py)),
@@ -345,7 +345,7 @@ impl PyTTLCache {
 
         let inner = self.0.get()?;
         let shared = inner.shared();
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         if let Some(x) = policy.get(py, &key, inner.shared())? {
             return Ok(x.value().clone_ref(py));
@@ -395,7 +395,7 @@ impl PyTTLCache {
         let shared = inner.shared();
 
         {
-            let mut policy = inner.policy_py_attached(py);
+            let mut policy = inner.policy(py);
 
             if let Some(x) = policy.get(py, &key, inner.shared())? {
                 return Ok(x.value().clone_ref(py));
@@ -405,7 +405,7 @@ impl PyTTLCache {
         // `factory` is Python code: a GC pass inside it would deadlock on `__traverse__`
         let default_object = factory.call0(py)?;
 
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         if let Some(x) = policy.get(py, &key, inner.shared())? {
             return Ok(x.value().clone_ref(py));
@@ -465,7 +465,7 @@ impl PyTTLCache {
     /// Remove and return a (key, value) pair as a 2-tuple.
     fn popitem(&self, py: pyo3::Python) -> pyo3::PyResult<(alias::PyObject, alias::PyObject)> {
         let inner = self.0.get()?;
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         let handle = policy.evict(inner.shared())?;
         drop(policy);
@@ -489,7 +489,7 @@ impl PyTTLCache {
     #[inline]
     fn shrink_to_fit(&self, py: pyo3::Python) -> pyo3::PyResult<()> {
         let inner = self.0.get()?;
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
         policy.shrink_to_fit(inner.shared());
         Ok(())
     }
@@ -499,7 +499,7 @@ impl PyTTLCache {
     fn clear(&self, py: pyo3::Python, reuse: bool) -> pyo3::PyResult<()> {
         let inner = self.0.get()?;
         let shared = inner.shared();
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         policy.clear(shared);
 
@@ -521,7 +521,7 @@ impl PyTTLCache {
         let self_inner = slf.0.get()?;
         let other_inner = other.0.get()?;
 
-        let (self_policy, other_policy) = self_inner.policy_pair_py_attached(other_inner, py);
+        let (self_policy, other_policy) = self_inner.policy_ordered_pair(other_inner, py);
 
         self_policy.py_eq(
             py,
@@ -543,7 +543,7 @@ impl PyTTLCache {
         let self_inner = slf.0.get()?;
         let other_inner = other.0.get()?;
 
-        let (self_policy, other_policy) = self_inner.policy_pair_py_attached(other_inner, py);
+        let (self_policy, other_policy) = self_inner.policy_ordered_pair(other_inner, py);
 
         self_policy
             .py_eq(
@@ -558,7 +558,7 @@ impl PyTTLCache {
     fn items(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyTTLCacheItems>> {
         let inner = slf.get().0.get()?;
 
-        let mut policy = inner.policy_py_attached(slf.py());
+        let mut policy = inner.policy(slf.py());
         let iter = policy.iter(inner.shared());
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
@@ -573,7 +573,7 @@ impl PyTTLCache {
     fn values(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyTTLCacheValues>> {
         let inner = slf.get().0.get()?;
 
-        let mut policy = inner.policy_py_attached(slf.py());
+        let mut policy = inner.policy(slf.py());
         let iter = policy.iter(inner.shared());
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
@@ -588,7 +588,7 @@ impl PyTTLCache {
     fn keys(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyTTLCacheKeys>> {
         let inner = slf.get().0.get()?;
 
-        let mut policy = inner.policy_py_attached(slf.py());
+        let mut policy = inner.policy(slf.py());
         let iter = policy.iter(inner.shared());
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
@@ -633,7 +633,7 @@ impl PyTTLCache {
     fn __repr__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyResult<String> {
         let inner = slf.0.get()?;
         let shared = inner.shared();
-        let policy = inner.policy_py_attached(slf.py());
+        let policy = inner.policy(slf.py());
 
         let now = std::time::SystemTime::now();
         let iter = policy
@@ -662,7 +662,7 @@ impl PyTTLCache {
     fn expire(&self, py: pyo3::Python, reuse: bool) -> pyo3::PyResult<()> {
         let inner = self.0.get()?;
         let shared = inner.shared();
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         policy.expire(shared.generation_version());
 
@@ -679,7 +679,7 @@ impl PyTTLCache {
         mut n: pyo3::ffi::Py_ssize_t,
     ) -> pyo3::PyResult<alias::PyObject> {
         let inner = self.0.get()?;
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         policy.expire(inner.shared().generation_version());
 
@@ -698,7 +698,7 @@ impl PyTTLCache {
 
     fn last(&self, py: pyo3::Python) -> pyo3::PyResult<alias::PyObject> {
         let inner = self.0.get()?;
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         policy.expire(inner.shared().generation_version());
 
@@ -718,7 +718,7 @@ impl PyTTLCache {
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
         let inner = self.0.get()?;
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         if let Some(x) = policy.get(py, &key, inner.shared())? {
             let dur = x
@@ -775,7 +775,7 @@ impl PyTTLCache {
         py: pyo3::Python,
     ) -> pyo3::PyResult<(alias::PyObject, alias::PyObject, f64)> {
         let inner = self.0.get()?;
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         let handle = policy.evict(inner.shared())?;
         drop(policy);
@@ -796,7 +796,7 @@ impl PyTTLCache {
 
         // Create the iterator and read the generation under one lock, or a mutation in
         // between would make stale positions look current.
-        let mut policy = inner.policy_py_attached(slf.py());
+        let mut policy = inner.policy(slf.py());
         let iter = policy.iter(inner.shared());
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
@@ -829,7 +829,7 @@ impl PyTTLCache {
             // object is not initialized, so there's nothing to clear
             return;
         };
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
         policy.clear(inner.shared());
     }
 }

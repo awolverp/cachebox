@@ -443,6 +443,7 @@ class UpdateMixin(BaseMixin):
 
         with pytest.raises(ValueError, match="stop"):
             cache.update(pairs())
+
         assert cache.get("a") == 1
         assert cache.get("b") == 2
 

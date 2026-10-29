@@ -54,7 +54,7 @@ macro_rules! implement_view_guard {
                 let cache = self.cache.get();
                 let inner = cache.0.get()?;
 
-                let policy = inner.policy_py_attached(py);
+                let policy = inner.policy(py);
 
                 if self.initial_gv == inner.shared().generation_version().get() {
                     return Ok(policy);

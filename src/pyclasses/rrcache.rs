@@ -123,7 +123,7 @@ impl PyRRCache {
     #[inline]
     fn current_size(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
         let inner = self.0.get()?;
-        Ok(inner.policy_py_attached(py).current_size())
+        Ok(inner.policy(py).current_size())
     }
 
     #[inline]
@@ -143,7 +143,7 @@ impl PyRRCache {
     #[inline]
     fn capacity(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
         let inner = self.0.get()?;
-        let policy = inner.policy_py_attached(py);
+        let policy = inner.policy(py);
 
         Ok(policy.table().capacity())
     }
@@ -152,7 +152,7 @@ impl PyRRCache {
     #[inline]
     fn __len__(&self, py: pyo3::Python) -> pyo3::PyResult<usize> {
         let inner = self.0.get()?;
-        let policy = inner.policy_py_attached(py);
+        let policy = inner.policy(py);
 
         Ok(policy.table().len())
     }
@@ -164,7 +164,7 @@ impl PyRRCache {
         let Ok(inner) = self.0.get() else {
             return FIXED_SIZE;
         };
-        let policy = inner.policy_py_attached(py);
+        let policy = inner.policy(py);
 
         FIXED_SIZE + policy.table().capacity() * size_of::<rrpolicy::Handle>()
     }
@@ -174,7 +174,7 @@ impl PyRRCache {
         let Ok(inner) = self.0.get() else {
             return false;
         };
-        let policy = inner.policy_py_attached(py);
+        let policy = inner.policy(py);
 
         !policy.table().is_empty()
     }
@@ -196,7 +196,7 @@ impl PyRRCache {
     #[inline]
     fn is_empty(&self, py: pyo3::Python) -> pyo3::PyResult<bool> {
         let inner = self.0.get()?;
-        let policy = inner.policy_py_attached(py);
+        let policy = inner.policy(py);
 
         Ok(policy.table().is_empty())
     }
@@ -206,7 +206,7 @@ impl PyRRCache {
     fn is_full(&self, py: pyo3::Python) -> pyo3::PyResult<bool> {
         let inner = self.0.get()?;
         let shared = inner.shared();
-        let policy = inner.policy_py_attached(py);
+        let policy = inner.policy(py);
 
         Ok(policy.current_size() >= shared.maxsize())
     }
@@ -285,7 +285,7 @@ impl PyRRCache {
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
         let inner = self.0.get()?;
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         if let Some(x) = policy.get(py, &key, inner.shared())? {
             return Ok(x.value().clone_ref(py));
@@ -308,7 +308,7 @@ impl PyRRCache {
         let key = utils::PrecomputedHashObject::new(py, key)?;
 
         let inner = self.0.get()?;
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         match policy.get(py, &key, inner.shared())? {
             Some(x) => Ok(x.value().clone_ref(py)),
@@ -340,7 +340,7 @@ impl PyRRCache {
 
         let inner = self.0.get()?;
         let shared = inner.shared();
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         if let Some(x) = policy.get(py, &key, inner.shared())? {
             return Ok(x.value().clone_ref(py));
@@ -389,7 +389,7 @@ impl PyRRCache {
         let shared = inner.shared();
 
         {
-            let mut policy = inner.policy_py_attached(py);
+            let mut policy = inner.policy(py);
 
             if let Some(x) = policy.get(py, &key, inner.shared())? {
                 return Ok(x.value().clone_ref(py));
@@ -399,7 +399,7 @@ impl PyRRCache {
         // `factory` is Python code: a GC pass inside it would deadlock on `__traverse__`
         let default_object = factory.call0(py)?;
 
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         if let Some(x) = policy.get(py, &key, inner.shared())? {
             return Ok(x.value().clone_ref(py));
@@ -460,7 +460,7 @@ impl PyRRCache {
     /// NOTE: `Cache` always raises `NotImplementedError` because has neither policy nor algorithm to evict items.
     fn popitem(&self, py: pyo3::Python) -> pyo3::PyResult<(alias::PyObject, alias::PyObject)> {
         let inner = self.0.get()?;
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         let handle = policy.evict(inner.shared())?;
         drop(policy);
@@ -484,7 +484,7 @@ impl PyRRCache {
     #[inline]
     fn shrink_to_fit(&self, py: pyo3::Python) -> pyo3::PyResult<()> {
         let inner = self.0.get()?;
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
         policy.shrink_to_fit(inner.shared());
         Ok(())
     }
@@ -494,7 +494,7 @@ impl PyRRCache {
     fn clear(&self, py: pyo3::Python, reuse: bool) -> pyo3::PyResult<()> {
         let inner = self.0.get()?;
         let shared = inner.shared();
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
 
         policy.clear(shared);
 
@@ -516,7 +516,7 @@ impl PyRRCache {
         let self_inner = slf.0.get()?;
         let other_inner = other.0.get()?;
 
-        let (self_policy, other_policy) = self_inner.policy_pair_py_attached(other_inner, py);
+        let (self_policy, other_policy) = self_inner.policy_ordered_pair(other_inner, py);
 
         self_policy.py_eq(
             py,
@@ -538,7 +538,7 @@ impl PyRRCache {
         let self_inner = slf.0.get()?;
         let other_inner = other.0.get()?;
 
-        let (self_policy, other_policy) = self_inner.policy_pair_py_attached(other_inner, py);
+        let (self_policy, other_policy) = self_inner.policy_ordered_pair(other_inner, py);
 
         self_policy
             .py_eq(
@@ -553,7 +553,7 @@ impl PyRRCache {
     fn items(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyRRCacheItems>> {
         let inner = slf.get().0.get()?;
 
-        let policy = inner.policy_py_attached(slf.py());
+        let policy = inner.policy(slf.py());
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
         let result = PyRRCacheItems {
@@ -567,7 +567,7 @@ impl PyRRCache {
     fn values(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyRRCacheValues>> {
         let inner = slf.get().0.get()?;
 
-        let policy = inner.policy_py_attached(slf.py());
+        let policy = inner.policy(slf.py());
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
         let result = PyRRCacheValues {
@@ -581,7 +581,7 @@ impl PyRRCache {
     fn keys(slf: pyo3::Bound<'_, Self>) -> pyo3::PyResult<pyo3::Py<PyRRCacheKeys>> {
         let inner = slf.get().0.get()?;
 
-        let policy = inner.policy_py_attached(slf.py());
+        let policy = inner.policy(slf.py());
 
         // SAFETY: We cannot use lifetimes here, but we're tracking changes using [`GenerationVersion`]
         let result = PyRRCacheKeys {
@@ -624,7 +624,7 @@ impl PyRRCache {
     fn __repr__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyResult<String> {
         let inner = slf.0.get()?;
         let shared = inner.shared();
-        let policy = inner.policy_py_attached(slf.py());
+        let policy = inner.policy(slf.py());
 
         let iter = unsafe {
             policy
@@ -652,7 +652,7 @@ impl PyRRCache {
     #[inline]
     fn random_key(&self, py: pyo3::Python) -> pyo3::PyResult<alias::PyObject> {
         let inner = self.0.get()?;
-        let policy = inner.policy_py_attached(py);
+        let policy = inner.policy(py);
 
         let bucket = policy
             .random_bucket()
@@ -685,7 +685,7 @@ impl PyRRCache {
             // object is not initialized, so there's nothing to clear
             return;
         };
-        let mut policy = inner.policy_py_attached(py);
+        let mut policy = inner.policy(py);
         policy.clear(inner.shared());
     }
 }

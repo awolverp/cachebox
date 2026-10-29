@@ -920,7 +920,8 @@ in <strong>when</strong> and <strong>which</strong> entries are removed under pr
 </tr>
 </tbody>
 </table>
-<p>Complexity (worst-case, amortized where marked with <code>~</code>):</p>
+<p>Complexity (expected, as for any hash table; amortized where marked with <code>~</code>; <code>e</code> is the number of
+expired entries the call removes):</p>
 <table>
 <thead>
 <tr>
@@ -970,7 +971,7 @@ in <strong>when</strong> and <strong>which</strong> entries are removed under pr
 <tr>
 <td><code>TTLCache</code></td>
 <td>O(1)</td>
-<td>O(e)~</td>
+<td>O(e+1)~</td>
 <td>O(n)</td>
 <td>O(1)~</td>
 </tr>
@@ -983,6 +984,9 @@ in <strong>when</strong> and <strong>which</strong> entries are removed under pr
 </tr>
 </tbody>
 </table>
+<p><code>LFUCache.get</code> only bumps a counter; the heap is repaired on the next eviction, so a <code>popitem</code>
+after <code>k</code> reads takes O(k log n), which amortizes to O(log n) per read. Iterating an <code>LFUCache</code> or
+a <code>VTTLCache</code> re-sorts all entries, O(n log n), when anything changed since the last iteration.</p>
 <h2 id="decision-guide">Decision Guide<a class="headerlink" href="#decision-guide" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Do entries need to expire by time?
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── Yes — same TTL for all → TTLCache
@@ -1005,7 +1009,7 @@ in <strong>when</strong> and <strong>which</strong> entries are removed under pr
 </span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
 </span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># Overflow when full</span>
 </span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="n">cache</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">i</span><span class="p">:</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">200</span><span class="p">)})</span>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="c1"># OverflowError: The cache has reached the bound.</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="c1"># OverflowError: The cache has no algorithm to evict items</span>
 </span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
 </span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="c1"># popitem always fails — there is no eviction order</span>
 </span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="n">cache</span><span class="o">.</span><span class="n">popitem</span><span class="p">()</span>  <span class="c1"># OverflowError</span>
@@ -1061,7 +1065,7 @@ touched for the longest time is removed.</p>
 <hr />
 <h2 id="lfucache">LFUCache<a class="headerlink" href="#lfucache" title="Permanent link">&para;</a></h2>
 <p>Least-Frequently-Used. The key with the lowest access count is evicted first. Ties are broken by
-recency (older first).</p>
+insertion order (inserted earlier first).</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">cachebox</span><span class="w"> </span><span class="kn">import</span> <span class="n">LFUCache</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">LFUCache</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
@@ -1118,9 +1122,10 @@ Expired items are treated as misses and cleaned up lazily (or by a background sw
 <p><strong>Avoid when:</strong> different keys need different lifetimes — use <code>VTTLCache</code>.</p>
 <div class="admonition note">
 <p class="admonition-title">Lazy expiry</p>
-<p>Without <code>sweep_interval</code>, expired entries linger until the next interaction
-(<code>insert</code>, <code>get</code>, iteration, <code>current_size</code>, …). See
-<a href="../tips/#ttlcachevttlcache-background-thread">TTL sweepers</a>.</p>
+<p>Without <code>sweep_interval</code>, expired entries are misses for <code>get</code> and <code>[]</code> but stay in the
+cache, and <code>len()</code> / <code>bool()</code> still count them, until an insert, iteration, <code>current_size()</code>
+or <code>expire()</code> removes them. See
+<a href="../tips/#ttlcache-vttlcache-background-thread">TTL sweepers</a>.</p>
 </div>
 <hr />
 <h2 id="vttlcache">VTTLCache<a class="headerlink" href="#vttlcache" title="Permanent link">&para;</a></h2>
@@ -1133,19 +1138,20 @@ and are only removed under capacity pressure (after all expiring items are gone)
 </span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="c1"># ttl= here applies only to the initial iterable, not as a global default</span>
 </span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="n">cache</span> <span class="o">=</span> <span class="n">VTTLCache</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">iterable</span><span class="o">=</span><span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)},</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
 </span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
-</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">cache</span><span class="p">))</span>  <span class="c1"># 0 after interaction/expire</span>
-</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>
-</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="n">cache</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="s2">"session"</span><span class="p">,</span> <span class="s2">"tok"</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>  <span class="c1"># lives 5 seconds</span>
-</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="n">cache</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="s2">"config"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"theme"</span><span class="p">:</span> <span class="s2">"dark"</span><span class="p">})</span>  <span class="c1"># never expires</span>
-</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="n">cache</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="s2">"short"</span><span class="p">,</span> <span class="s2">"x"</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
-</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="n">cache</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="s2">"until"</span><span class="p">,</span> <span class="s2">"y"</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
-</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>
-</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
-</span><span id="__span-7-16"><a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="nb">print</span><span class="p">(</span><span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"session"</span><span class="p">))</span>  <span class="c1"># tok</span>
-</span><span id="__span-7-17"><a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="nb">print</span><span class="p">(</span><span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"short"</span><span class="p">))</span>  <span class="c1"># None</span>
-</span><span id="__span-7-18"><a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>
-</span><span id="__span-7-19"><a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a><span class="n">value</span><span class="p">,</span> <span class="n">remaining</span> <span class="o">=</span> <span class="n">cache</span><span class="o">.</span><span class="n">get_with_expire</span><span class="p">(</span><span class="s2">"session"</span><span class="p">)</span>
-</span><span id="__span-7-20"><a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a><span class="c1"># remaining is seconds left, or None for non-expiring entries</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="n">cache</span><span class="o">.</span><span class="n">expire</span><span class="p">()</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">cache</span><span class="p">))</span>  <span class="c1"># 0</span>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="n">cache</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="s2">"session"</span><span class="p">,</span> <span class="s2">"tok"</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>  <span class="c1"># lives 5 seconds</span>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="n">cache</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="s2">"config"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"theme"</span><span class="p">:</span> <span class="s2">"dark"</span><span class="p">})</span>  <span class="c1"># never expires</span>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="n">cache</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="s2">"short"</span><span class="p">,</span> <span class="s2">"x"</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="n">cache</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="s2">"until"</span><span class="p">,</span> <span class="s2">"y"</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>
+</span><span id="__span-7-16"><a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+</span><span id="__span-7-17"><a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="nb">print</span><span class="p">(</span><span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"session"</span><span class="p">))</span>  <span class="c1"># tok</span>
+</span><span id="__span-7-18"><a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a><span class="nb">print</span><span class="p">(</span><span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"short"</span><span class="p">))</span>  <span class="c1"># None</span>
+</span><span id="__span-7-19"><a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>
+</span><span id="__span-7-20"><a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a><span class="n">value</span><span class="p">,</span> <span class="n">remaining</span> <span class="o">=</span> <span class="n">cache</span><span class="o">.</span><span class="n">get_with_expire</span><span class="p">(</span><span class="s2">"session"</span><span class="p">)</span>
+</span><span id="__span-7-21"><a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a><span class="c1"># remaining is seconds left, or None for non-expiring entries</span>
 </span></code></pre></div>
 <p><strong>Use when:</strong> sessions, multi-tier data, or mixed freshness requirements live in one cache.</p>
 <p><strong>Avoid when:</strong> every item should share one TTL — <code>TTLCache</code> is simpler and slightly cheaper.</p>
@@ -1172,7 +1178,8 @@ and are only removed under capacity pressure (after all expiring items are gone)
 <li><strong><code>getsizeof</code></strong> — optional weighted capacity (see <a href="../getting-started/#capacity-size-and-weighted-entries">Getting Started</a>).</li>
 <li><strong><code>insert</code> preferred over <code>[]=</code></strong> when you need the previous value or cross-policy consistency.</li>
 <li><strong>Iterators are one-shot</strong> — not live dict views; modifying the cache while iterating raises
-  <code>RuntimeError</code>.</li>
+  <code>RuntimeError</code>. In an <code>LRUCache</code>, <code>get</code> and <code>[]</code> count as modifications (they reorder entries);
+  in an <code>LFUCache</code>, starting a new iteration after a read invalidates iterators already open.</li>
 </ul>
 <p>Full method lists: <a href="../api/impls/">API Reference — Classes</a>.</p>
 

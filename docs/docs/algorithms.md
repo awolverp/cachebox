@@ -15,7 +15,8 @@ in **when** and **which** entries are removed under pressure (or over time).
 | [`TTLCache`](#ttlcache)   | Global TTL + FIFO among live entries    | Uniform freshness windows              | Per-key TTLs needed              |
 | [`VTTLCache`](#vttlcache) | Per-item TTL (optional non-expiring)    | Mixed lifetimes                        | All items share one TTL          |
 
-Complexity (worst-case, amortized where marked with `~`):
+Complexity (expected, as for any hash table; amortized where marked with `~`; `e` is the number of
+expired entries the call removes):
 
 | Class       | get  | insert         | delete         | popitem       |
 | ----------- | ---- | -------------- | -------------- | ------------- |
@@ -24,8 +25,12 @@ Complexity (worst-case, amortized where marked with `~`):
 | `RRCache`   | O(1) | O(1)~          | O(1)           | O(1) expected |
 | `LRUCache`  | O(1) | O(1)~          | O(1)           | O(1)          |
 | `LFUCache`  | O(1) | O(log n)~      | O(log n)       | O(log n)~     |
-| `TTLCache`  | O(1) | O(e)~          | O(n)           | O(1)~         |
+| `TTLCache`  | O(1) | O(e+1)~        | O(n)           | O(1)~         |
 | `VTTLCache` | O(1) | O((e+1) log n) | O((e+1) log n) | O(log n)~     |
+
+`LFUCache.get` only bumps a counter; the heap is repaired on the next eviction, so a `popitem`
+after `k` reads takes O(k log n), which amortizes to O(log n) per read. Iterating an `LFUCache` or
+a `VTTLCache` re-sorts all entries, O(n log n), when anything changed since the last iteration.
 
 ## Decision Guide
 
@@ -56,7 +61,7 @@ print(cache["key"])  # value
 
 # Overflow when full
 cache.update({i: i for i in range(200)})
-# OverflowError: The cache has reached the bound.
+# OverflowError: The cache has no algorithm to evict items
 
 # popitem always fails — there is no eviction order
 cache.popitem()  # OverflowError
@@ -138,7 +143,7 @@ print(cache.least_recently_used())  # still 2 if nothing else was accessed
 ## LFUCache
 
 Least-Frequently-Used. The key with the lowest access count is evicted first. Ties are broken by
-recency (older first).
+insertion order (inserted earlier first).
 
 ```python
 from cachebox import LFUCache
@@ -208,9 +213,10 @@ cache3.stop_sweeper()  # stop the daemon thread when done
 
 !!! note "Lazy expiry"
 
-    Without `sweep_interval`, expired entries linger until the next interaction
-    (`insert`, `get`, iteration, `current_size`, …). See
-    [TTL sweepers](tips.md#ttlcachevttlcache-background-thread).
+    Without `sweep_interval`, expired entries are misses for `get` and `[]` but stay in the
+    cache, and `len()` / `bool()` still count them, until an insert, iteration, `current_size()`
+    or `expire()` removes them. See
+    [TTL sweepers](tips.md#ttlcache-vttlcache-background-thread).
 
 ---
 
@@ -227,7 +233,8 @@ import time
 # ttl= here applies only to the initial iterable, not as a global default
 cache = VTTLCache(100, iterable={i: i for i in range(4)}, ttl=3)
 time.sleep(3)
-print(len(cache))  # 0 after interaction/expire
+cache.expire()
+print(len(cache))  # 0
 
 cache.insert("session", "tok", ttl=5)  # lives 5 seconds
 cache.insert("config", {"theme": "dark"})  # never expires
@@ -275,6 +282,7 @@ Regardless of policy:
 - **`getsizeof`** — optional weighted capacity (see [Getting Started](getting-started.md#capacity-size-and-weighted-entries)).
 - **`insert` preferred over `[]=`** when you need the previous value or cross-policy consistency.
 - **Iterators are one-shot** — not live dict views; modifying the cache while iterating raises
-  `RuntimeError`.
+  `RuntimeError`. In an `LRUCache`, `get` and `[]` count as modifications (they reorder entries);
+  in an `LFUCache`, starting a new iteration after a read invalidates iterators already open.
 
 Full method lists: [API Reference — Classes](api/impls.md).

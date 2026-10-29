@@ -214,6 +214,12 @@ impl<P: PolicyExt> Wrapped<P> {
     ///   other dict-like types; `.items()` is called and the result is iterated.
     /// - **Any other iterable** — iterated directly, with each element expected to
     ///   unpack as a `(key, value)` pair.
+    ///
+    /// Iterating `iterable` and building handles runs Python code (`__iter__`,
+    /// `__hash__`, `getsizeof`) that may use this cache or lock another one, so it
+    /// all happens before the lock is taken, as in [`Self::insert`]. Entries read
+    /// before an error are still inserted, like `dict.update`.
+    // https://github.com/awolverp/cachebox/issues/118
     #[inline]
     pub fn extend<F>(&self, iterable: alias::BoundObject, mut transform: F) -> pyo3::PyResult<()>
     where
@@ -222,45 +228,56 @@ impl<P: PolicyExt> Wrapped<P> {
         use pyo3::types::PyAnyMethods;
         use pyo3::types::PyDictMethods;
 
-        let mut lock = self.policy_py_attached(iterable.py());
+        let py = iterable.py();
+        let mut handles = Vec::new();
 
-        // Using [pyo3::ffi::PyObject_TypeCheck] and [Bound::cast_unchecked] is so faster than [Bound::cast]
-        let is_dictionary = unsafe {
-            pyo3::ffi::PyObject_TypeCheck(iterable.as_ptr(), crate::typeref::STD_DICT_TYPE) == 1
-        };
-        if is_dictionary {
-            let dict = unsafe { iterable.cast_unchecked::<pyo3::types::PyDict>() };
+        let collected = (|| {
+            // Using [pyo3::ffi::PyObject_TypeCheck] and [Bound::cast_unchecked] is so faster than [Bound::cast]
+            let is_dictionary = unsafe {
+                pyo3::ffi::PyObject_TypeCheck(iterable.as_ptr(), crate::typeref::STD_DICT_TYPE) == 1
+            };
+            if is_dictionary {
+                let dict = unsafe { iterable.cast_unchecked::<pyo3::types::PyDict>() };
+                handles.reserve(dict.len());
 
-            for pair in dict.items() {
-                let (key, value) = unsafe {
-                    pair.extract::<(alias::PyObject, alias::PyObject)>()
-                        .unwrap_unchecked()
-                };
+                for pair in dict.items() {
+                    let (key, value) = unsafe {
+                        pair.extract::<(alias::PyObject, alias::PyObject)>()
+                            .unwrap_unchecked()
+                    };
 
-                insert_inner(&mut lock, &self.shared, pair.py(), transform(key, value)?)?;
+                    handles.push(transform(key, value)?);
+                }
+
+                return Ok(());
             }
 
-            return Ok(());
-        }
+            // By this we will support everything has `.items()` attribute,
+            // including our cache classes
+            let items_iterable = {
+                if let Some(items_attribute) = iterable.getattr_opt(c"items")? {
+                    items_attribute.call0()?
+                } else {
+                    iterable
+                }
+            };
 
-        // By this we will support everything has `.items()` attribute,
-        // including our cache classes
-        let items_iterable = {
-            if let Some(items_attribute) = iterable.getattr_opt(c"items")? {
-                items_attribute.call0()?
-            } else {
-                iterable
+            for pair in items_iterable.try_iter()? {
+                let pair = pair?;
+                let (key, value) = pair.extract::<(alias::PyObject, alias::PyObject)>()?;
+
+                handles.push(transform(key, value)?);
             }
-        };
 
-        for pair in items_iterable.try_iter()? {
-            let pair = pair?;
-            let (key, value) = pair.extract::<(alias::PyObject, alias::PyObject)>()?;
+            Ok(())
+        })();
 
-            insert_inner(&mut lock, &self.shared, pair.py(), transform(key, value)?)?;
+        let mut lock = self.policy_py_attached(py);
+        for handle in handles {
+            insert_inner(&mut lock, &self.shared, py, handle)?;
         }
 
-        Ok(())
+        collected
     }
 
     /// Calls the `evict()` `n` times and returns count of removed items.

@@ -97,6 +97,21 @@ impl<P: PolicyExt> Wrapped<P> {
 /// bounds its memory when the input is much larger than the cache.
 const EXTEND_CHUNK: usize = 1024;
 
+/// Built-in containers whose iteration runs no Python code. Exact types only:
+/// a subclass can override `__iter__`.
+fn iterates_without_python(obj: &alias::BoundObject) -> bool {
+    use pyo3::types::PyAnyMethods;
+    use pyo3::types::PyFrozenSet;
+    use pyo3::types::PyList;
+    use pyo3::types::PySet;
+    use pyo3::types::PyTuple;
+
+    obj.is_exact_instance_of::<PyList>()
+        || obj.is_exact_instance_of::<PyTuple>()
+        || obj.is_exact_instance_of::<PySet>()
+        || obj.is_exact_instance_of::<PyFrozenSet>()
+}
+
 #[inline(always)]
 fn insert_inner<P: PolicyExt>(
     lock: &mut parking_lot::MutexGuard<'_, P>,
@@ -256,13 +271,7 @@ impl<P: PolicyExt> Wrapped<P> {
             return Ok(());
         }
 
-        // Iterating these built-in containers runs no Python code either (a
-        // subclass could override `__iter__`, hence the exact check).
-        if iterable.is_exact_instance_of::<pyo3::types::PyList>()
-            || iterable.is_exact_instance_of::<pyo3::types::PyTuple>()
-            || iterable.is_exact_instance_of::<pyo3::types::PySet>()
-            || iterable.is_exact_instance_of::<pyo3::types::PyFrozenSet>()
-        {
+        if iterates_without_python(&iterable) {
             let mut lock = self.policy_py_attached(py);
 
             for pair in iterable.try_iter()? {

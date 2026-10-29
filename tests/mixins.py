@@ -417,6 +417,19 @@ class UpdateMixin(BaseMixin):
         cache.update({"a": 99})
         assert cache.get("a") == 99
 
+    def test_update_keeps_entries_read_before_an_error(self):
+        cache = self.create_cache()
+
+        def pairs():
+            yield "a", 1
+            yield "b", 2
+            raise ValueError("stop")
+
+        with pytest.raises(ValueError, match="stop"):
+            cache.update(pairs())
+        assert cache.get("a") == 1
+        assert cache.get("b") == 2
+
     def test_update_invalid_argument(self):
         cache = self.create_cache()
 
@@ -1142,6 +1155,64 @@ for t in threads:
 print("finished")
 """
 
+UPDATE_RUNNING_PYTHON_CODE = """
+import faulthandler
+import sys
+import threading
+
+import cachebox
+
+name = sys.argv[1]
+cls = getattr(cachebox, name)
+# a hang prints every thread's stack before the parent's timeout
+faulthandler.dump_traceback_later(50, exit=True)
+# switch threads as often as possible, also inside Key.__eq__
+sys.setswitchinterval(1e-6)
+
+
+def make(n):
+    cache = cls(0, global_ttl=60) if name == "TTLCache" else cls(0)
+    for i in range(n):
+        cache[Key(i)] = i
+    return cache
+
+
+class Key:
+    def __init__(self, v):
+        self.v = v
+
+    def __hash__(self):
+        return self.v
+
+    def __eq__(self, other):
+        return self.v == other.v
+
+
+# the iterable reads the cache that is being updated
+a = make(10)
+a.update((Key(i), a.get(Key(i), 0) + 1) for i in range(20))
+assert a.get(Key(19)) == 1, a.get(Key(19))
+
+# two caches updated from each other
+a, b = make(200), make(200)
+
+
+def update(x, y):
+    for _ in range(100):
+        x.update(y)
+
+
+threads = [
+    threading.Thread(target=update, args=(a, b)),
+    threading.Thread(target=update, args=(b, a)),
+]
+for t in threads:
+    t.start()
+for t in threads:
+    t.join()
+print("ok")
+"""
+
 LOCK_WAITERS_WITH_FINALIZERS = """
 import faulthandler
 import random
@@ -1328,6 +1399,29 @@ class IssuesMixin(BaseMixin):
             )
 
         assert done.stdout.strip() == "finished", (
+            done.stderr or f"exit code {done.returncode}"
+        )
+
+    def test_update_running_python_code(self):
+        # https://github.com/awolverp/cachebox/issues/118
+        #
+        # update() iterated its argument while holding the cache lock, so an
+        # iterable that used the same cache hung, and so did a.update(b) with
+        # b.update(a) on another thread.
+        name = type(self.create_cache()).__name__
+
+        try:
+            done = subprocess.run(
+                [sys.executable, "-c", UPDATE_RUNNING_PYTHON_CODE, name],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail(f"{name}: update() never returned")
+
+        assert done.stdout.strip() == "ok", (
             done.stderr or f"exit code {done.returncode}"
         )
 

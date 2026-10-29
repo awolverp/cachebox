@@ -93,6 +93,25 @@ impl<P: PolicyExt> Wrapped<P> {
     }
 }
 
+/// How many handles [`Wrapped::extend`] builds before inserting them, which
+/// bounds its memory when the input is much larger than the cache.
+const EXTEND_CHUNK: usize = 1024;
+
+/// Built-in containers whose iteration runs no Python code. Exact types only:
+/// a subclass can override `__iter__`.
+fn iterates_without_python(obj: &alias::BoundObject) -> bool {
+    use pyo3::types::PyAnyMethods;
+    use pyo3::types::PyFrozenSet;
+    use pyo3::types::PyList;
+    use pyo3::types::PySet;
+    use pyo3::types::PyTuple;
+
+    obj.is_exact_instance_of::<PyList>()
+        || obj.is_exact_instance_of::<PyTuple>()
+        || obj.is_exact_instance_of::<PySet>()
+        || obj.is_exact_instance_of::<PyFrozenSet>()
+}
+
 #[inline(always)]
 fn insert_inner<P: PolicyExt>(
     lock: &mut parking_lot::MutexGuard<'_, P>,
@@ -214,6 +233,14 @@ impl<P: PolicyExt> Wrapped<P> {
     ///   other dict-like types; `.items()` is called and the result is iterated.
     /// - **Any other iterable** — iterated directly, with each element expected to
     ///   unpack as a `(key, value)` pair.
+    ///
+    /// A `dict`, `list`, `tuple`, `set` or `frozenset` is inserted in one pass under
+    /// one lock: iterating it runs no Python code. Any other iterable may run Python
+    /// code that uses this cache or locks another one (a generator, another
+    /// cache's `.items()`), so it is never iterated under the lock: handles are
+    /// built in chunks of [`EXTEND_CHUNK`] and each chunk is inserted under one
+    /// lock. Entries read before an error are still inserted, like `dict.update`.
+    // https://github.com/awolverp/cachebox/issues/118
     #[inline]
     pub fn extend<F>(&self, iterable: alias::BoundObject, mut transform: F) -> pyo3::PyResult<()>
     where
@@ -222,7 +249,7 @@ impl<P: PolicyExt> Wrapped<P> {
         use pyo3::types::PyAnyMethods;
         use pyo3::types::PyDictMethods;
 
-        let mut lock = self.policy_py_attached(iterable.py());
+        let py = iterable.py();
 
         // Using [pyo3::ffi::PyObject_TypeCheck] and [Bound::cast_unchecked] is so faster than [Bound::cast]
         let is_dictionary = unsafe {
@@ -230,6 +257,7 @@ impl<P: PolicyExt> Wrapped<P> {
         };
         if is_dictionary {
             let dict = unsafe { iterable.cast_unchecked::<pyo3::types::PyDict>() };
+            let mut lock = self.policy_py_attached(py);
 
             for pair in dict.items() {
                 let (key, value) = unsafe {
@@ -237,30 +265,68 @@ impl<P: PolicyExt> Wrapped<P> {
                         .unwrap_unchecked()
                 };
 
-                insert_inner(&mut lock, &self.shared, pair.py(), transform(key, value)?)?;
+                insert_inner(&mut lock, &self.shared, py, transform(key, value)?)?;
             }
 
             return Ok(());
         }
 
-        // By this we will support everything has `.items()` attribute,
-        // including our cache classes
-        let items_iterable = {
-            if let Some(items_attribute) = iterable.getattr_opt(c"items")? {
-                items_attribute.call0()?
-            } else {
-                iterable
+        if iterates_without_python(&iterable) {
+            let mut lock = self.policy_py_attached(py);
+
+            for pair in iterable.try_iter()? {
+                let pair = pair?;
+                let (key, value) = pair.extract::<(alias::PyObject, alias::PyObject)>()?;
+
+                insert_inner(&mut lock, &self.shared, py, transform(key, value)?)?;
             }
-        };
 
-        for pair in items_iterable.try_iter()? {
-            let pair = pair?;
-            let (key, value) = pair.extract::<(alias::PyObject, alias::PyObject)>()?;
-
-            insert_inner(&mut lock, &self.shared, pair.py(), transform(key, value)?)?;
+            return Ok(());
         }
 
-        Ok(())
+        let mut handles = Vec::new();
+
+        let collected = (|| {
+            // By this we will support everything has `.items()` attribute,
+            // including our cache classes
+            let items_iterable = {
+                if let Some(items_attribute) = iterable.getattr_opt(c"items")? {
+                    items_attribute.call0()?
+                } else {
+                    iterable
+                }
+            };
+
+            // Only a hint: a generator has no len() (its TypeError is dropped here).
+            handles.reserve(items_iterable.len().unwrap_or(0).min(EXTEND_CHUNK));
+
+            for pair in items_iterable.try_iter()? {
+                let pair = pair?;
+                let (key, value) = pair.extract::<(alias::PyObject, alias::PyObject)>()?;
+
+                handles.push(transform(key, value)?);
+                if handles.len() == EXTEND_CHUNK {
+                    self.insert_all(py, &mut handles)?;
+                }
+            }
+
+            Ok(())
+        })();
+
+        if !handles.is_empty() {
+            self.insert_all(py, &mut handles)?;
+        }
+        collected
+    }
+
+    /// Inserts `handles` under one lock, leaving `handles` empty.
+    fn insert_all(&self, py: pyo3::Python<'_>, handles: &mut Vec<P::Handle>) -> pyo3::PyResult<()> {
+        // Declared before the lock, so after an error the handles not inserted
+        // are dropped (and their finalizers run) once the lock is released.
+        let mut pending = handles.drain(..);
+        let mut lock = self.policy_py_attached(py);
+
+        pending.try_for_each(|handle| insert_inner(&mut lock, &self.shared, py, handle).map(drop))
     }
 
     /// Calls the `evict()` `n` times and returns count of removed items.

@@ -516,8 +516,7 @@ impl PyRRCache {
         let self_inner = slf.0.get()?;
         let other_inner = other.0.get()?;
 
-        let self_policy = self_inner.policy_py_attached(py);
-        let other_policy = other_inner.policy_py_attached(py);
+        let (self_policy, other_policy) = self_inner.policy_pair_py_attached(other_inner, py);
 
         self_policy.py_eq(
             py,
@@ -539,8 +538,7 @@ impl PyRRCache {
         let self_inner = slf.0.get()?;
         let other_inner = other.0.get()?;
 
-        let self_policy = self_inner.policy_py_attached(py);
-        let other_policy = other_inner.policy_py_attached(py);
+        let (self_policy, other_policy) = self_inner.policy_pair_py_attached(other_inner, py);
 
         self_policy
             .py_eq(

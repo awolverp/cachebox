@@ -1221,6 +1221,59 @@ assert not errors, errors[:3]
 print("ok")
 """
 
+COMPARE_WITH_ARGUMENTS_SWAPPED = """
+import faulthandler
+import sys
+import threading
+
+import cachebox
+
+name = sys.argv[1]
+cls = getattr(cachebox, name)
+# a hang prints every thread's stack before the parent's timeout
+faulthandler.dump_traceback_later(50, exit=True)
+# switch threads as often as possible, also inside Key.__eq__
+sys.setswitchinterval(1e-6)
+
+
+class Key:
+    def __init__(self, v):
+        self.v = v
+
+    def __hash__(self):
+        return self.v
+
+    def __eq__(self, other):
+        return self.v == other.v
+
+
+def make():
+    cache = cls(0, global_ttl=60) if name == "TTLCache" else cls(0)
+    for i in range(200):
+        cache[Key(i)] = i
+    return cache
+
+
+a, b = make(), make()
+
+
+def compare(x, y):
+    for _ in range(300):
+        assert x == y
+        assert not x != y
+
+
+threads = [
+    threading.Thread(target=compare, args=(a, b)),
+    threading.Thread(target=compare, args=(b, a)),
+]
+for t in threads:
+    t.start()
+for t in threads:
+    t.join()
+print("ok")
+"""
+
 
 class IssuesMixin(BaseMixin):
     def test_issue_5(self):
@@ -1296,6 +1349,30 @@ class IssuesMixin(BaseMixin):
         except subprocess.TimeoutExpired:
             pytest.fail(
                 f"{name}: threads waiting for the cache lock never returned"
+            )
+
+        assert done.stdout.strip() == "ok", (
+            done.stderr or f"exit code {done.returncode}"
+        )
+
+    def test_compare_with_arguments_swapped(self):
+        # https://github.com/awolverp/cachebox/issues/118
+        #
+        # `a == b` locks both caches; with `b == a` running on another thread
+        # the locks were taken in opposite orders and both threads hung.
+        name = type(self.create_cache()).__name__
+
+        try:
+            done = subprocess.run(
+                [sys.executable, "-c", COMPARE_WITH_ARGUMENTS_SWAPPED, name],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail(
+                f"{name}: a == b and b == a on two threads never returned"
             )
 
         assert done.stdout.strip() == "ok", (

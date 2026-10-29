@@ -430,6 +430,19 @@ class UpdateMixin(BaseMixin):
         assert cache.get("a") == 1
         assert cache.get("b") == 2
 
+    def test_update_ignores_a_wrong_len(self):
+        class Lying:
+            def __len__(self):
+                return 2**62
+
+            def __iter__(self):
+                return iter([("a", 1)])
+
+        cache = self.create_cache()
+
+        cache.update(Lying())
+        assert cache.get("a") == 1
+
     def test_update_invalid_argument(self):
         cache = self.create_cache()
 

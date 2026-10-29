@@ -262,6 +262,10 @@ impl<P: PolicyExt> Wrapped<P> {
                 }
             };
 
+            // Only a hint: a generator has no len() (its TypeError is dropped here),
+            // and a wrong __len__ must not make the reservation abort.
+            let _ = handles.try_reserve(items_iterable.len().unwrap_or(0));
+
             for pair in items_iterable.try_iter()? {
                 let pair = pair?;
                 let (key, value) = pair.extract::<(alias::PyObject, alias::PyObject)>()?;

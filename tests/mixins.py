@@ -417,6 +417,22 @@ class UpdateMixin(BaseMixin):
         cache.update({"a": 99})
         assert cache.get("a") == 99
 
+    def test_update_from_tuple_set_and_list_subclass(self):
+        cache = self.create_cache()
+
+        cache.update((("t", 1),))
+        cache.update({("s", 2)})
+        cache.update(frozenset({("f", 3)}))
+
+        class Pairs(list):
+            # a subclass may run Python code (even this cache) while iterated
+            def __iter__(self):
+                assert len(cache) >= 0
+                return super().__iter__()
+
+        cache.update(Pairs([("l", 4)]))
+        assert [cache.get(k) for k in "tsfl"] == [1, 2, 3, 4]
+
     def test_update_keeps_entries_read_before_an_error(self):
         cache = self.create_cache()
 

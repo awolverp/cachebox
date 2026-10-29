@@ -219,11 +219,12 @@ impl<P: PolicyExt> Wrapped<P> {
     /// - **Any other iterable** — iterated directly, with each element expected to
     ///   unpack as a `(key, value)` pair.
     ///
-    /// Iterating `iterable` and building handles runs Python code (`__iter__`,
-    /// `__hash__`, `getsizeof`) that may use this cache or lock another one, so it
-    /// never runs under the lock, as in [`Self::insert`]: handles are built in
-    /// chunks of [`EXTEND_CHUNK`] and each chunk is inserted under one lock.
-    /// Entries read before an error are still inserted, like `dict.update`.
+    /// A `dict`, `list`, `tuple`, `set` or `frozenset` is inserted in one pass under
+    /// one lock: iterating it runs no Python code. Any other iterable may run Python
+    /// code that uses this cache or locks another one (a generator, another
+    /// cache's `.items()`), so it is never iterated under the lock: handles are
+    /// built in chunks of [`EXTEND_CHUNK`] and each chunk is inserted under one
+    /// lock. Entries read before an error are still inserted, like `dict.update`.
     // https://github.com/awolverp/cachebox/issues/118
     #[inline]
     pub fn extend<F>(&self, iterable: alias::BoundObject, mut transform: F) -> pyo3::PyResult<()>
@@ -234,32 +235,49 @@ impl<P: PolicyExt> Wrapped<P> {
         use pyo3::types::PyDictMethods;
 
         let py = iterable.py();
+
+        // Using [pyo3::ffi::PyObject_TypeCheck] and [Bound::cast_unchecked] is so faster than [Bound::cast]
+        let is_dictionary = unsafe {
+            pyo3::ffi::PyObject_TypeCheck(iterable.as_ptr(), crate::typeref::STD_DICT_TYPE) == 1
+        };
+        if is_dictionary {
+            let dict = unsafe { iterable.cast_unchecked::<pyo3::types::PyDict>() };
+            let mut lock = self.policy_py_attached(py);
+
+            for pair in dict.items() {
+                let (key, value) = unsafe {
+                    pair.extract::<(alias::PyObject, alias::PyObject)>()
+                        .unwrap_unchecked()
+                };
+
+                insert_inner(&mut lock, &self.shared, py, transform(key, value)?)?;
+            }
+
+            return Ok(());
+        }
+
+        // Iterating these built-in containers runs no Python code either (a
+        // subclass could override `__iter__`, hence the exact check).
+        if iterable.is_exact_instance_of::<pyo3::types::PyList>()
+            || iterable.is_exact_instance_of::<pyo3::types::PyTuple>()
+            || iterable.is_exact_instance_of::<pyo3::types::PySet>()
+            || iterable.is_exact_instance_of::<pyo3::types::PyFrozenSet>()
+        {
+            let mut lock = self.policy_py_attached(py);
+
+            for pair in iterable.try_iter()? {
+                let pair = pair?;
+                let (key, value) = pair.extract::<(alias::PyObject, alias::PyObject)>()?;
+
+                insert_inner(&mut lock, &self.shared, py, transform(key, value)?)?;
+            }
+
+            return Ok(());
+        }
+
         let mut handles = Vec::new();
 
         let collected = (|| {
-            // Using [pyo3::ffi::PyObject_TypeCheck] and [Bound::cast_unchecked] is so faster than [Bound::cast]
-            let is_dictionary = unsafe {
-                pyo3::ffi::PyObject_TypeCheck(iterable.as_ptr(), crate::typeref::STD_DICT_TYPE) == 1
-            };
-            if is_dictionary {
-                let dict = unsafe { iterable.cast_unchecked::<pyo3::types::PyDict>() };
-                handles.reserve(dict.len().min(EXTEND_CHUNK));
-
-                for pair in dict.items() {
-                    let (key, value) = unsafe {
-                        pair.extract::<(alias::PyObject, alias::PyObject)>()
-                            .unwrap_unchecked()
-                    };
-
-                    handles.push(transform(key, value)?);
-                    if handles.len() == EXTEND_CHUNK {
-                        self.insert_all(py, &mut handles)?;
-                    }
-                }
-
-                return Ok(());
-            }
-
             // By this we will support everything has `.items()` attribute,
             // including our cache classes
             let items_iterable = {

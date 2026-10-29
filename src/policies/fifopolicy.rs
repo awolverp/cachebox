@@ -166,10 +166,11 @@ impl FIFOPolicy {
 
     #[inline]
     fn decrement_indexes(&mut self, start: usize, end: usize) {
-        const MAX_FRONT_OFFSET: usize = cfg_select! {
-            feature = "use-small-offset" => u8::MAX as usize,
-            not(feature = "use-small-offset") => usize::MAX - isize::MAX as usize,
-        };
+        const MAX_FRONT_OFFSET: usize =
+            cfg_select! {
+                feature = "use-small-offset" => u8::MAX as usize,
+                not(feature = "use-small-offset") => usize::MAX - isize::MAX as usize,
+            };
 
         // Fast path: shifting the entire front is a single counter increment.
         // Guard against overflow; the full-normalization path below handles that case.

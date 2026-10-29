@@ -1312,6 +1312,23 @@ class TestTTLCachePolicy(mixins.SweepIntervalMixin):
         assert key == 10
         assert value == "x"
 
+    def test_popitem_expire_keys(self):
+        """popitem() must always expire all expired keys, and return the oldest *alive* inserted entry."""
+        cache = self.create_cache(5, global_ttl=0.5)
+
+        cache.insert(1, "a")
+        cache.insert(2, "b")
+
+        time.sleep(0.5)
+
+        cache.insert(3, "c")
+        cache.insert(4, "d")
+        cache.insert(5, "e")
+
+        key, value = cache.popitem()
+        assert key == 3
+        assert value == "c"
+
     def test_popitem_successive_calls_follow_fifo(self):
         """Successive popitem() calls must yield keys in insertion order."""
         insertion_order = [(1, "a"), (2, "b"), (3, "c"), (4, "d")]
@@ -1931,6 +1948,22 @@ class TestVTTLCachePolicy(mixins.SweepIntervalMixin):
         c = self.create_cache()
         with pytest.raises(KeyError):
             c.popitem()
+
+    def test_popitem_expire_keys(self):
+        """popitem() must always expire all expired keys, and return the oldest *alive* inserted entry."""
+        cache = self.create_cache(5)
+
+        cache.insert(1, "a", ttl=0.5)
+        cache.insert(2, "b", ttl=2)
+        cache.insert(3, "c", ttl=None)
+        cache.insert(4, "d", ttl=0.1)
+        cache.insert(5, "e", ttl=3)
+
+        time.sleep(0.5)
+
+        key, value = cache.popitem()
+        assert key == 2
+        assert value == "b"
 
     def test_popitem_follows_expiry_after_ttl_changes(self):
         c = cachebox.VTTLCache(10)

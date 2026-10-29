@@ -57,6 +57,31 @@ impl<P: PolicyExt> Wrapped<P> {
         pyo3::sync::MutexExt::lock_py_attached(&self.inner, py)
     }
 
+    /// Acquires the mutexes of two different caches and returns the guards as
+    /// `(self, other)`.
+    ///
+    /// The mutexes are always taken in address order, so `a == b` and `b == a`
+    /// on two threads cannot each hold one lock and wait for the other.
+    // https://github.com/awolverp/cachebox/issues/118
+    pub fn policy_pair_py_attached<'a>(
+        &'a self,
+        other: &'a Self,
+        py: pyo3::Python<'_>,
+    ) -> (
+        parking_lot::MutexGuard<'a, P>,
+        parking_lot::MutexGuard<'a, P>,
+    ) {
+        debug_assert!(!std::ptr::eq(self, other));
+
+        if (self as *const Self) < (other as *const Self) {
+            let first = self.policy_py_attached(py);
+            (first, other.policy_py_attached(py))
+        } else {
+            let first = other.policy_py_attached(py);
+            (self.policy_py_attached(py), first)
+        }
+    }
+
     /// Acquires the mutex only if it is free, returning `None` otherwise.
     ///
     /// For callers that must never wait for the lock, such as `__traverse__`:

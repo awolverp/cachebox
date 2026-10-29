@@ -8,6 +8,7 @@ import sys
 import sysconfig
 import threading
 import time
+import tracemalloc
 import typing
 import weakref
 from datetime import timedelta
@@ -429,6 +430,25 @@ class UpdateMixin(BaseMixin):
             cache.update(pairs())
         assert cache.get("a") == 1
         assert cache.get("b") == 2
+
+    @pytest.mark.skipif(
+        platform.python_implementation() == "PyPy",
+        reason="PyPy has no tracemalloc",
+    )
+    def test_update_memory_follows_the_cache_not_the_input(self):
+        cache = self.create_cache(10)
+        if isinstance(cache, cachebox.Cache):
+            pytest.skip("Cache does not evict")
+
+        tracemalloc.start()
+        try:
+            cache.update((i, bytes(1000)) for i in range(20_000))
+            _, peak = tracemalloc.get_traced_memory()
+        finally:
+            tracemalloc.stop()
+
+        # all 20k values alive at once would be about 20 MB
+        assert peak < 5_000_000, peak
 
     def test_update_ignores_a_wrong_len(self):
         class Lying:

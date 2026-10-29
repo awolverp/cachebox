@@ -93,6 +93,10 @@ impl<P: PolicyExt> Wrapped<P> {
     }
 }
 
+/// How many handles [`Wrapped::extend`] builds before inserting them, which
+/// bounds its memory when the input is much larger than the cache.
+const EXTEND_CHUNK: usize = 1024;
+
 #[inline(always)]
 fn insert_inner<P: PolicyExt>(
     lock: &mut parking_lot::MutexGuard<'_, P>,
@@ -217,8 +221,9 @@ impl<P: PolicyExt> Wrapped<P> {
     ///
     /// Iterating `iterable` and building handles runs Python code (`__iter__`,
     /// `__hash__`, `getsizeof`) that may use this cache or lock another one, so it
-    /// all happens before the lock is taken, as in [`Self::insert`]. Entries read
-    /// before an error are still inserted, like `dict.update`.
+    /// never runs under the lock, as in [`Self::insert`]: handles are built in
+    /// chunks of [`EXTEND_CHUNK`] and each chunk is inserted under one lock.
+    /// Entries read before an error are still inserted, like `dict.update`.
     // https://github.com/awolverp/cachebox/issues/118
     #[inline]
     pub fn extend<F>(&self, iterable: alias::BoundObject, mut transform: F) -> pyo3::PyResult<()>
@@ -238,7 +243,7 @@ impl<P: PolicyExt> Wrapped<P> {
             };
             if is_dictionary {
                 let dict = unsafe { iterable.cast_unchecked::<pyo3::types::PyDict>() };
-                handles.reserve(dict.len());
+                handles.reserve(dict.len().min(EXTEND_CHUNK));
 
                 for pair in dict.items() {
                     let (key, value) = unsafe {
@@ -247,6 +252,9 @@ impl<P: PolicyExt> Wrapped<P> {
                     };
 
                     handles.push(transform(key, value)?);
+                    if handles.len() == EXTEND_CHUNK {
+                        self.insert_all(py, &mut handles)?;
+                    }
                 }
 
                 return Ok(());
@@ -262,26 +270,36 @@ impl<P: PolicyExt> Wrapped<P> {
                 }
             };
 
-            // Only a hint: a generator has no len() (its TypeError is dropped here),
-            // and a wrong __len__ must not make the reservation abort.
-            let _ = handles.try_reserve(items_iterable.len().unwrap_or(0));
+            // Only a hint: a generator has no len() (its TypeError is dropped here).
+            handles.reserve(items_iterable.len().unwrap_or(0).min(EXTEND_CHUNK));
 
             for pair in items_iterable.try_iter()? {
                 let pair = pair?;
                 let (key, value) = pair.extract::<(alias::PyObject, alias::PyObject)>()?;
 
                 handles.push(transform(key, value)?);
+                if handles.len() == EXTEND_CHUNK {
+                    self.insert_all(py, &mut handles)?;
+                }
             }
 
             Ok(())
         })();
 
-        let mut lock = self.policy_py_attached(py);
-        for handle in handles {
-            insert_inner(&mut lock, &self.shared, py, handle)?;
+        if !handles.is_empty() {
+            self.insert_all(py, &mut handles)?;
         }
-
         collected
+    }
+
+    /// Inserts `handles` under one lock, leaving `handles` empty.
+    fn insert_all(&self, py: pyo3::Python<'_>, handles: &mut Vec<P::Handle>) -> pyo3::PyResult<()> {
+        // Declared before the lock, so after an error the handles not inserted
+        // are dropped (and their finalizers run) once the lock is released.
+        let mut pending = handles.drain(..);
+        let mut lock = self.policy_py_attached(py);
+
+        pending.try_for_each(|handle| insert_inner(&mut lock, &self.shared, py, handle).map(drop))
     }
 
     /// Calls the `evict()` `n` times and returns count of removed items.

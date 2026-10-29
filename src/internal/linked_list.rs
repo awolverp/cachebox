@@ -659,3 +659,36 @@ unsafe impl<T: Send + Send> Send for RawIter<T> {}
 unsafe impl<T: Sync + Sync> Sync for RawIter<T> {}
 unsafe impl<T: Send + Send> Send for Cursor<T> {}
 unsafe impl<T: Sync + Sync> Sync for Cursor<T> {}
+
+#[cfg(test)]
+mod tests {
+    use super::LinkedList;
+
+    #[test]
+    fn a_panicking_element_drop_still_frees_every_node() {
+        struct Bomb {
+            panics: bool,
+            _label: String,
+        }
+        impl Drop for Bomb {
+            fn drop(&mut self) {
+                if self.panics {
+                    panic!("boom");
+                }
+            }
+        }
+
+        let mut list = LinkedList::new();
+        for i in 0..6 {
+            list.push_back(Bomb {
+                panics: i == 2,
+                _label: i.to_string(),
+            });
+        }
+        list.pop_back(); // leave a node on the free list too
+        let dropped = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || drop(list)));
+        assert!(dropped.is_err());
+        // the other elements, the free list and the sentinel are freed; under
+        // Miri this also checks that nothing leaks
+    }
+}

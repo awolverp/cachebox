@@ -1142,6 +1142,85 @@ for t in threads:
 print("finished")
 """
 
+LOCK_WAITERS_WITH_FINALIZERS = """
+import faulthandler
+import random
+import sys
+import threading
+import time
+
+import cachebox
+
+name = sys.argv[1]
+cls = getattr(cachebox, name)
+if name == "TTLCache":
+    cache = cls(500, global_ttl=60)
+elif name == "Cache":
+    cache = cls(0)
+else:
+    cache = cls(500)
+
+# a hang prints every thread's stack before the parent's timeout
+faulthandler.dump_traceback_later(50, exit=True)
+# switch threads as often as possible, also in the middle of a finalizer
+sys.setswitchinterval(1e-6)
+
+errors = []
+threading.excepthook = lambda args: errors.append(repr(args.exc_value))
+
+
+class Value:
+    def __del__(self):
+        # runs while clear() or an eviction holds the cache lock
+        self.dropped = True
+
+
+# every method that waits for the cache lock without an argument
+methods = [
+    getattr(cache, m)
+    for m in (
+        "__len__", "__bool__", "__sizeof__", "capacity", "current_size",
+        "is_empty", "is_full", "shrink_to_fit", "popitem", "clear",
+    )
+]
+methods += [
+    getattr(cache, m)
+    for m in ("remaining_size", "expire", "popitem_with_expire")
+    if hasattr(cache, m)
+]
+stop = threading.Event()
+
+
+def worker(seed):
+    rng = random.Random(seed)
+    while not stop.is_set():
+        if rng.random() < 0.6:
+            cache[rng.randrange(2000)] = Value()
+        else:
+            try:
+                rng.choice(methods)()
+            except (KeyError, OverflowError):
+                pass  # empty cache, or Cache has nothing to pop
+
+
+deadline = time.monotonic() + 3
+started = 0
+while time.monotonic() < deadline:
+    # starting threads stops the world on free-threaded builds
+    batch = [threading.Thread(target=worker, args=(started + i,)) for i in range(8)]
+    for t in batch:
+        t.start()
+    started += len(batch)
+    time.sleep(0.1)
+    stop.set()
+    for t in batch:
+        t.join()
+    stop.clear()
+
+assert not errors, errors[:3]
+print("ok")
+"""
+
 
 class IssuesMixin(BaseMixin):
     def test_issue_5(self):
@@ -1196,6 +1275,30 @@ class IssuesMixin(BaseMixin):
             )
 
         assert done.stdout.strip() == "finished", (
+            done.stderr or f"exit code {done.returncode}"
+        )
+
+    def test_lock_waiters_with_finalizers(self):
+        # Follow-up to #95: methods such as len() and clear() waited for the
+        # cache lock without detaching. With the GIL, a finalizer running under
+        # clear() hands the GIL to a thread blocked there; on free-threaded
+        # builds the blocked thread holds up a stop-the-world.
+        name = type(self.create_cache()).__name__
+
+        try:
+            done = subprocess.run(
+                [sys.executable, "-c", LOCK_WAITERS_WITH_FINALIZERS, name],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail(
+                f"{name}: threads waiting for the cache lock never returned"
+            )
+
+        assert done.stdout.strip() == "ok", (
             done.stderr or f"exit code {done.returncode}"
         )
 

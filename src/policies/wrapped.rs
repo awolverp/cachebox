@@ -22,12 +22,16 @@ use crate::policies::traits::VacantExt;
 ///
 /// The shared (lock-free) fields of the policy are accessible directly via
 /// [`Wrapped::shared`], while mutable state is accessed through the inner
-/// [`std::sync::Mutex`].
+/// [`parking_lot::Mutex`].
 pub struct Wrapped<P: PolicyExt> {
     /// Read-only fields after initialization — no lock required.
     /// Accessible directly without acquiring the mutex.
     shared: P::Shared,
-    /// Mutable policy state — protected by a [`std::sync::Mutex`].
+    /// Mutable policy state — protected by a [`parking_lot::Mutex`].
+    ///
+    /// Wait for it with [`Self::policy_py_attached`] (or [`Self::try_policy`]), never
+    /// with a plain `lock()`: a thread blocked while attached deadlocks with a lock
+    /// holder that needs the interpreter (#95).
     inner: parking_lot::Mutex<P>,
 }
 
@@ -44,14 +48,6 @@ impl<P: PolicyExt> Wrapped<P> {
     #[inline(always)]
     pub fn shared(&self) -> &P::Shared {
         &self.shared
-    }
-
-    /// Acquires the mutex and returns a guard over the mutable policy state.
-    ///
-    /// Prefer [`Self::policy_py_attached`] when GIL is attached.
-    #[inline(always)]
-    pub fn policy(&self) -> parking_lot::MutexGuard<'_, P> {
-        self.inner.lock()
     }
 
     /// Acquires the mutex and returns a guard over the mutable policy state.
@@ -115,8 +111,8 @@ fn insert_inner<P: PolicyExt>(
 impl<P: PolicyExt> Wrapped<P> {
     /// Returns the remaining size. Equals to `maxsize - current_size`.
     #[inline]
-    pub fn remaining_size(&self) -> usize {
-        let policy = self.inner.lock();
+    pub fn remaining_size(&self, py: pyo3::Python<'_>) -> usize {
+        let policy = self.policy_py_attached(py);
         self.shared.maxsize().saturating_sub(policy.current_size())
     }
 

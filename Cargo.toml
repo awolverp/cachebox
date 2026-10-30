@@ -2,6 +2,7 @@
 name = "cachebox"
 version = "6.2.10"
 edition = "2024"
+rust-version = "1.95"
 description = "The fastest memoizing and caching Python library written in Rust"
 readme = "README.md"
 homepage = "https://github.com/awolverp/cachebox"

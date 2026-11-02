@@ -5,7 +5,6 @@
 _The fastest caching Python library written in Rust_
 
 [![badge](https://shieldcn.dev/badge/Documentation-ff6e42.svg?logo=materialformkdocs)](https://awolverp.github.io/cachebox/) [![badge](https://shieldcn.dev/badge/Benchmarks-ff6e42.svg?logo=ri%3ATbBrandSpeedtest)](https://github.com/awolverp/cachebox-benchmark)
-[![XERJ Corpus Hub contributor](https://hub.xerj.org/contributors/awolverp/badge.svg)](https://hub.xerj.org/contributors/awolverp)
 
 [![PyPi](https://shieldcn.dev/pypi/cachebox.svg?variant=branded&font=geist-mono&size=xs)](https://pypi.org/project/cachebox)
 [![Monthly Downloads](https://shieldcn.dev/pypi/dm/cachebox.svg?variant=branded&font=geist-mono&size=xs)](https://pypi.org/project/cachebox)

@@ -563,3 +563,259 @@ unsafe impl<T: Send> Send for RawIter<T> {}
 unsafe impl<T: Sync> Sync for RawIter<T> {}
 unsafe impl<T: Send> Send for Cursor<T> {}
 unsafe impl<T: Sync> Sync for Cursor<T> {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `label` owns heap memory, so Miri reports a leak or double free.
+    struct Item {
+        key: u32,
+        label: String,
+        slot: HeapSlot<u32>,
+    }
+
+    impl HeapNode for Item {
+        type Key = u32;
+        fn heap_key(&self) -> u32 {
+            self.key
+        }
+        fn heap_slot(&self) -> &HeapSlot<u32> {
+            &self.slot
+        }
+        fn heap_slot_mut(&mut self) -> &mut HeapSlot<u32> {
+            &mut self.slot
+        }
+    }
+
+    fn item(key: u32, label: &str) -> Item {
+        Item {
+            key,
+            label: label.to_string(),
+            slot: HeapSlot::default(),
+        }
+    }
+
+    /// Positions match the buffer, the heap property holds on `(rec, seq)`,
+    /// pending entries point back at their slot, and every element that is not
+    /// pending has a recorded key no greater than its live key.
+    fn check(heap: &LazyHeap<Item>) {
+        for (i, ptr) in heap.data.iter().enumerate() {
+            let node = unsafe { ptr.as_ref() };
+            let slot = node.heap_slot();
+            assert_eq!(slot.pos as usize, i, "pos of {}", node.label);
+            if i > 0 {
+                assert!(unsafe { !heap.less(i, (i - 1) / 2) }, "heap order at {i}");
+            }
+            if slot.pidx == NOT_PENDING {
+                assert!(slot.rec <= node.key, "lazy key of {} decreased", node.label);
+            } else {
+                assert_eq!(heap.pending[slot.pidx as usize], *ptr);
+            }
+        }
+        for ptr in &heap.pending {
+            assert!(heap.data.contains(ptr), "pending element not in the heap");
+        }
+    }
+
+    fn labels(heap: &mut LazyHeap<Item>) -> Vec<String> {
+        heap.iter()
+            .map(|c| unsafe { c.element() }.label.clone())
+            .collect()
+    }
+
+    #[test]
+    fn pop_front_orders_by_key_then_insertion() {
+        let mut heap = LazyHeap::new();
+        for (key, label) in [(5, "a"), (3, "b"), (8, "c"), (3, "d"), (1, "e")] {
+            heap.push(item(key, label));
+            check(&heap);
+        }
+        let mut popped = Vec::new();
+        while let Some(it) = heap.pop_front() {
+            popped.push(it.label);
+            check(&heap);
+        }
+        assert_eq!(popped, ["e", "b", "d", "a", "c"]);
+        assert!(heap.is_empty());
+    }
+
+    #[test]
+    fn lazy_increase_is_repaired_at_the_front() {
+        let mut heap = LazyHeap::new();
+        let mut a = heap.push(item(1, "a"));
+        heap.push(item(2, "b"));
+        heap.push(item(3, "c"));
+
+        unsafe { a.element_mut().key = 10 };
+        heap.mark_unsorted();
+        check(&heap);
+
+        let front = heap.front().unwrap();
+        assert_eq!(unsafe { front.element() }.label, "b");
+        check(&heap);
+        let order: Vec<_> = std::iter::from_fn(|| heap.pop_front().map(|it| it.label)).collect();
+        assert_eq!(order, ["b", "c", "a"]);
+    }
+
+    #[test]
+    fn mark_changed_handles_decrease_and_duplicates() {
+        let mut heap = LazyHeap::new();
+        heap.push(item(1, "a"));
+        heap.push(item(2, "b"));
+        let mut c = heap.push(item(9, "c"));
+
+        unsafe { c.element_mut().key = 0 };
+        heap.mark_changed(c);
+        heap.mark_changed(c); // already pending: no second entry
+        assert_eq!(heap.pending.len(), 1);
+        check(&heap);
+
+        let front = heap.front().unwrap();
+        assert_eq!(unsafe { front.element() }.label, "c");
+        assert!(heap.pending.is_empty());
+        check(&heap);
+    }
+
+    #[test]
+    fn remove_pending_elements_keeps_pending_indexes() {
+        let mut heap = LazyHeap::new();
+        let cursors: Vec<_> = (0..6)
+            .map(|i| heap.push(item(i, &format!("n{i}"))))
+            .collect();
+        for &c in &cursors[1..4] {
+            heap.mark_changed(c);
+        }
+        // removing the first pending entry moves the last one into its index
+        assert_eq!(heap.remove(cursors[1]).label, "n1");
+        check(&heap);
+        assert_eq!(heap.data.last().unwrap().as_ptr(), cursors[4].as_ptr());
+        assert_eq!(heap.remove(cursors[4]).label, "n4"); // last in the buffer
+        check(&heap);
+        assert_eq!(heap.remove(cursors[0]).label, "n0"); // the root
+        check(&heap);
+        assert_eq!(heap.len(), 3);
+        assert_eq!(labels(&mut heap), ["n2", "n3", "n5"]);
+    }
+
+    #[test]
+    fn iter_back_pop_back_and_get_follow_sorted_order() {
+        let mut heap = LazyHeap::new();
+        for (key, label) in [(4, "a"), (2, "b"), (4, "c"), (1, "d")] {
+            heap.push(item(key, label));
+        }
+        assert_eq!(labels(&mut heap), ["d", "b", "a", "c"]);
+        check(&heap);
+        let second = heap.get(1).unwrap();
+        assert_eq!(unsafe { second.element() }.label, "b");
+        let back = heap.back().unwrap();
+        assert_eq!(unsafe { back.element() }.label, "c");
+        assert_eq!(heap.pop_back().unwrap().label, "c");
+        check(&heap);
+        assert!(heap.get(3).is_none());
+    }
+
+    #[test]
+    fn clear_drop_and_shrink_free_everything() {
+        let mut heap = LazyHeap::new();
+        let cursors: Vec<_> = (0..5)
+            .map(|i| heap.push(item(i, &format!("n{i}"))))
+            .collect();
+        heap.mark_changed(cursors[2]);
+        heap.clear();
+        assert!(heap.is_empty() && heap.pending.is_empty());
+        heap.shrink_to_fit();
+
+        heap.push(item(7, "x"));
+        heap.push(item(3, "y"));
+        check(&heap);
+        // dropped with elements inside: Miri reports a leak or double free
+    }
+
+    /// Random operations against a plain model; after every pop the element must
+    /// be the minimum (or maximum) by `(live key, insertion order)`.
+    #[test]
+    fn random_operations_match_a_model() {
+        let mut rng = fastrand::Rng::with_seed(0x5eed);
+        let mut heap = LazyHeap::new();
+        // (cursor, seq) of live elements; the key is read through the cursor
+        let mut live: Vec<(Cursor<Item>, u64)> = Vec::new();
+        let mut next_seq = 0u64;
+
+        let key_of = |c: &Cursor<Item>| unsafe { c.element() }.key;
+        let extreme = |live: &[(Cursor<Item>, u64)], max: bool| {
+            let it = live.iter().map(|(c, s)| (key_of(c), *s));
+            if max { it.max() } else { it.min() }
+        };
+
+        for step in 0..400 {
+            match rng.u8(0..9) {
+                0..=2 => {
+                    let c = heap.push(item(rng.u32(0..20), &format!("s{next_seq}")));
+                    live.push((c, next_seq));
+                    next_seq += 1;
+                }
+                3 if !live.is_empty() => {
+                    let want = extreme(&live, false).unwrap();
+                    let it = heap.pop_front().unwrap();
+                    let got = (it.key, it.label);
+                    assert_eq!(
+                        got,
+                        (want.0, format!("s{}", want.1)),
+                        "pop_front at step {step}"
+                    );
+                    let pos = live.iter().position(|(_, s)| *s == want.1).unwrap();
+                    live.swap_remove(pos);
+                }
+                4 if !live.is_empty() => {
+                    let want = extreme(&live, true).unwrap();
+                    let it = heap.pop_back().unwrap();
+                    let got = (it.key, it.label);
+                    assert_eq!(
+                        got,
+                        (want.0, format!("s{}", want.1)),
+                        "pop_back at step {step}"
+                    );
+                    let pos = live.iter().position(|(_, s)| *s == want.1).unwrap();
+                    live.swap_remove(pos);
+                }
+                5 if !live.is_empty() => {
+                    let (c, _) = live.swap_remove(rng.usize(0..live.len()));
+                    let key = key_of(&c);
+                    assert_eq!(heap.remove(c).key, key);
+                }
+                6 if !live.is_empty() => {
+                    // lazy increase only
+                    let (mut c, _) = live[rng.usize(0..live.len())];
+                    unsafe { c.element_mut().key += rng.u32(0..5) };
+                    heap.mark_unsorted();
+                }
+                7 if !live.is_empty() => {
+                    // arbitrary change, possibly a decrease
+                    let (mut c, _) = live[rng.usize(0..live.len())];
+                    unsafe { c.element_mut().key = rng.u32(0..20) };
+                    heap.mark_changed(c);
+                }
+                _ => {
+                    let mut sorted: Vec<_> = live.iter().map(|(c, s)| (key_of(c), *s)).collect();
+                    sorted.sort();
+                    let got: Vec<_> = heap
+                        .iter()
+                        .map(|c| {
+                            (
+                                key_of(&c),
+                                live.iter()
+                                    .find(|(l, _)| l.as_ptr() == c.as_ptr())
+                                    .unwrap()
+                                    .1,
+                            )
+                        })
+                        .collect();
+                    assert_eq!(got, sorted, "iter at step {step}");
+                }
+            }
+            assert_eq!(heap.len(), live.len());
+            check(&heap);
+        }
+    }
+}

@@ -659,7 +659,9 @@ unsafe impl<T: Sync + Sync> Sync for Cursor<T> {}
 
 #[cfg(test)]
 mod tests {
-    use super::LinkedList;
+    use std::collections::VecDeque;
+
+    use super::*;
 
     #[test]
     fn a_panicking_element_drop_still_frees_every_node() {
@@ -687,5 +689,164 @@ mod tests {
         assert!(dropped.is_err());
         // the other elements, the free list and the sentinel are freed; under
         // Miri this also checks that nothing leaks
+    }
+
+    fn values(list: &LinkedList<String>) -> Vec<String> {
+        unsafe { list.iter().map(|c| c.element().clone()).collect() }
+    }
+
+    #[test]
+    fn push_pop_move_unlink_iter() {
+        let mut list = LinkedList::new();
+        let a = list.push_back("a".to_string());
+        let b = list.push_back("b".to_string());
+        let _c = list.push_front("c".to_string());
+        assert_eq!(values(&list), ["c", "a", "b"]);
+        check(&list);
+
+        unsafe {
+            b.move_to_front(&mut list);
+            a.move_to_back(&mut list);
+            assert!(a.is_back(&list));
+        }
+        assert_eq!(values(&list), ["b", "c", "a"]);
+        check(&list);
+
+        assert_eq!(unsafe { b.unlink(&mut list) }, "b");
+        assert_eq!(list.pop_front().as_deref(), Some("c"));
+        // freed nodes are reused
+        list.push_front("d".to_string());
+        list.push_back("e".to_string());
+        assert_eq!(values(&list), ["d", "a", "e"]);
+        assert_eq!(list.pop_back().as_deref(), Some("e"));
+        assert_eq!(list.len(), 2);
+        check(&list);
+
+        list.clear();
+        assert!(list.is_empty());
+        check(&list);
+        list.push_back("f".to_string());
+        // dropped with one element and a free list: no leak, no double free
+    }
+
+    /// Both directions walk exactly `len` nodes with consistent back links, the
+    /// free list holds `free_len` nodes (at most the cap), and no node is both
+    /// linked and free.
+    fn check<T>(list: &LinkedList<T>) {
+        let s = list.sentinel.as_ptr();
+        let mut linked = Vec::new();
+        let mut node = unsafe { (*s).next };
+        while node != s {
+            assert_eq!(unsafe { (*(*node).next).prev }, node, "broken back link");
+            linked.push(node);
+            node = unsafe { (*node).next };
+        }
+        assert_eq!(linked.len(), list.len, "forward walk length");
+
+        let mut back = 0;
+        let mut node = unsafe { (*s).prev };
+        while node != s {
+            back += 1;
+            node = unsafe { (*node).prev };
+        }
+        assert_eq!(back, list.len, "backward walk length");
+
+        let mut free = 0;
+        let mut node = list.free_head;
+        while !node.is_null() {
+            assert!(!linked.contains(&node), "node both linked and free");
+            free += 1;
+            node = unsafe { (*node).next };
+        }
+        assert_eq!(free, list.free_len);
+        assert!(list.free_len <= FREE_LIST_CAPACITY);
+    }
+
+    #[test]
+    fn empty_and_single_element_edges() {
+        let mut list: LinkedList<String> = LinkedList::new();
+        assert!(list.cursor_front().is_none() && list.cursor_back().is_none());
+        assert!(list.pop_front().is_none() && list.pop_back().is_none());
+        assert_eq!(unsafe { list.iter() }.count(), 0);
+        check(&list);
+
+        let a = list.push_back("a".to_string());
+        assert!(list.cursor_front() == Some(a) && list.cursor_back() == Some(a));
+        unsafe {
+            assert!(a.is_back(&list));
+            a.move_to_front(&mut list); // already the front
+            a.move_to_back(&mut list); // already the back
+        }
+        check(&list);
+        assert_eq!(values(&list), ["a"]);
+        assert_eq!(unsafe { a.unlink(&mut list) }, "a");
+        assert!(list.is_empty());
+        check(&list);
+    }
+
+    #[test]
+    fn free_list_is_capped_and_reused() {
+        let mut list = LinkedList::new();
+        for i in 0..FREE_LIST_CAPACITY + 50 {
+            list.push_back(i.to_string());
+        }
+        list.clear();
+        check(&list);
+        assert_eq!(list.free_len, FREE_LIST_CAPACITY, "extra nodes are freed");
+
+        for i in 0..10 {
+            list.push_front(i.to_string());
+        }
+        assert_eq!(list.free_len, FREE_LIST_CAPACITY - 10, "free nodes reused");
+        check(&list);
+        // dropped with linked and free nodes: Miri reports any leak
+    }
+
+    /// Random operations against a `VecDeque` model of the element order.
+    #[test]
+    fn random_operations_match_a_model() {
+        let mut rng = fastrand::Rng::with_seed(0x1157);
+        let mut list = LinkedList::new();
+        let mut model: VecDeque<(Cursor<String>, String)> = VecDeque::new();
+
+        for step in 0..400 {
+            let label = format!("s{step}");
+            match rng.u8(0..9) {
+                0 | 1 => model.push_back((list.push_back(label.clone()), label)),
+                2 | 3 => model.push_front((list.push_front(label.clone()), label)),
+                4 => assert_eq!(list.pop_front(), model.pop_front().map(|(_, l)| l)),
+                5 => assert_eq!(list.pop_back(), model.pop_back().map(|(_, l)| l)),
+                6 if !model.is_empty() => {
+                    let (c, l) = model.remove(rng.usize(0..model.len())).unwrap();
+                    assert_eq!(unsafe { c.unlink(&mut list) }, l);
+                }
+                7 if !model.is_empty() => {
+                    let entry = model.remove(rng.usize(0..model.len())).unwrap();
+                    if rng.bool() {
+                        unsafe { entry.0.move_to_front(&mut list) };
+                        model.push_front(entry);
+                    } else {
+                        unsafe { entry.0.move_to_back(&mut list) };
+                        model.push_back(entry);
+                    }
+                }
+                8 if rng.u8(0..20) == 0 => {
+                    list.clear();
+                    model.clear();
+                }
+                _ => {}
+            }
+            let want: Vec<_> = model.iter().map(|(_, l)| l.clone()).collect();
+            assert_eq!(values(&list), want, "order at step {step}");
+            assert!(
+                list.cursor_front() == model.front().map(|(c, _)| *c),
+                "front at step {step}"
+            );
+            assert!(
+                list.cursor_back() == model.back().map(|(c, _)| *c),
+                "back at step {step}"
+            );
+            check(&list);
+        }
     }
 }

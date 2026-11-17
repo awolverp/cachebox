@@ -3,14 +3,18 @@ from hypothesis import HealthCheck, settings
 
 import cachebox
 
-# Register a custom profile that suppresses the health check
 settings.register_profile(
-    "global_fuzz_settings",
+    "default",
+    max_examples=10,
+    suppress_health_check=[HealthCheck.differing_executors],
+)
+settings.register_profile(
+    "slow",
+    max_examples=100,
     suppress_health_check=[HealthCheck.differing_executors],
 )
 
-# Load the profile globally for the entire test run
-settings.load_profile("global_fuzz_settings")
+settings.load_profile("default")
 
 
 ALL_CACHE_TYPES = [

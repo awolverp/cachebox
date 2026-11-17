@@ -182,23 +182,81 @@ class BaseCacheImpl(typing.Generic[_KT, _VT]):
         *args: typing.Any,
         **kwargs: typing.Any,
     ) -> None: ...
-    def get(self, key: _KT, default: _DT | None = None) -> _VT | _DT: ...
+    @typing.overload
+    def get(self, key: _KT, default: None = None) -> _VT | None: ...
+    @typing.overload
+    def get(self, key: _KT, default: _VT) -> _VT: ...
+    @typing.overload
+    def get(self, key: _KT, default: _DT) -> _VT | _DT: ...
+    def get(  # type: ignore[misc]  # pyright: ignore[reportInconsistentOverload]
+        self, key: _KT, default: _DT | None = None
+    ) -> _VT | _DT | None:
+        """
+        Retrieves the value for a given key from the cache.
+
+        Args:
+            key: The key to look up.
+            default: Value to return if the key is not found.
+
+        Returns:
+            The value associated with ``key``, or ``default`` if not found.
+        """
+
     def __getitem__(self, key: _KT) -> _VT: ...
+    @typing.overload
     def setdefault(
         self,
         key: _KT,
-        default: _DT | None = None,
+        default: None = None,
         *args: typing.Any,
         **kwargs: typing.Any,
-    ) -> _VT | _DT | None: ...
+    ) -> _VT | None: ...
+    @typing.overload
+    def setdefault(
+        self,
+        key: _KT,
+        default: _VT,
+        *args: typing.Any,
+        **kwargs: typing.Any,
+    ) -> _VT: ...
+    def setdefault(  # type: ignore[misc]  # pyright: ignore[reportInconsistentOverload]
+        self,
+        key: _KT,
+        default: _VT | None = None,
+        *args: typing.Any,
+        **kwargs: typing.Any,
+    ) -> _VT | None:
+        """
+        Get ``key``'s value, or automatically insert ``default`` and return it.
+        If ``key`` exists, its current value is returned and ``default`` is ignored.
+        Otherwise ``default`` is inserted for ``key`` and returned.
+
+        Args:
+            key: The key to look up or insert.
+            default: The value to insert if ``key`` is not in the cache.
+                Defaults to ``None``.
+
+        Note:
+            Use ``setdefault_with`` if computing the value is expensive or has
+            side effects.
+        """
+
     def setdefault_with(
         self,
         key: _KT,
-        factory: typing.Callable[[], _DT],
+        factory: typing.Callable[[], _VT],
         *args: typing.Any,
         **kwargs: typing.Any,
-    ) -> _VT | _DT: ...
-    def pop(self, key: _KT, default: _DT = ...) -> _VT | _DT:
+    ) -> _VT: ...
+    @typing.overload
+    def pop(self, key: _KT) -> _VT: ...
+    @typing.overload
+    def pop(self, key: _KT, default: _VT) -> _VT: ...
+    @typing.overload
+    def pop(self, key: _KT, default: _DT) -> _VT | _DT: ...
+    def pop(  # type: ignore[misc]  # pyright: ignore[reportInconsistentOverload]
+        self, key: _KT, default: _DT = ...
+    ) -> _VT | _DT:
         """
         Removes the specified key and returns the corresponding value.
 
@@ -210,7 +268,7 @@ class BaseCacheImpl(typing.Generic[_KT, _VT]):
             The value associated with ``key``, or ``default`` if not found.
 
         Raises:
-            KeyError: If the key is not found and no ``default`` is provided.
+            KeyError: If the key is not found and no ``default`` is given.
         """
 
     def __delitem__(self, key: _KT) -> None: ...
@@ -344,31 +402,17 @@ class Cache(BaseCacheImpl[_KT, _VT]):
                 cache instance, or an iterable of ``(key, value)`` tuples.
         """
 
-    def get(
-        self,
-        key: _KT,
-        default: _DT | None = ...,
-    ) -> _VT | _DT:
+    @typing.overload
+    def setdefault(self, key: _KT, default: None = None) -> _VT | None: ...
+    @typing.overload
+    def setdefault(self, key: _KT, default: _VT) -> _VT: ...
+    def setdefault(  # type: ignore[misc]  # pyright: ignore[reportInconsistentOverload]
+        self, key: _KT, default: _VT | None = None
+    ) -> _VT | None:
         """
-        Retrieves the value for a given key from the cache.
-
-        Args:
-            key: The key to look up.
-            default: Value to return if the key is not found.
-
-        Returns:
-            The value associated with ``key``, or ``default`` if not found.
-        """
-
-    def setdefault(
-        self,
-        key: _KT,
-        default: _DT | None = None,
-    ) -> _VT | _DT | None:
-        """
-        Get `key`s value, or automatically insert `default` and return it.
-        If `key` exists, its current value is returned and `default` is ignored.
-        Otherwise `default` is inserted for `key` and returned.
+        Get ``key``'s value, or automatically insert ``default`` and return it.
+        If ``key`` exists, its current value is returned and ``default`` is ignored.
+        Otherwise ``default`` is inserted for ``key`` and returned.
 
         Args:
             key: The key to look up or insert.
@@ -376,19 +420,19 @@ class Cache(BaseCacheImpl[_KT, _VT]):
                 Defaults to ``None``.
 
         Note:
-            Use `setdefault_with`, if computing the value is expensive or has side
-            effectes.
+            Use ``setdefault_with`` if computing the value is expensive or has
+            side effects.
         """
 
     def setdefault_with(
         self,
         key: _KT,
-        factory: typing.Callable[[], _DT],
-    ) -> _VT | _DT:
+        factory: typing.Callable[[], _VT],
+    ) -> _VT:
         """
-        Get `key`s value, or automatically create and insert one via `factory`.
-        If `key` exists, its current value is returned and `factory` is not called.
-        Otherwise `factory` is called with the internal lock released, its
+        Get ``key``'s value, or automatically create and insert one via ``factory``.
+        If ``key`` exists, its current value is returned and ``factory`` is not called.
+        Otherwise ``factory`` is called with the internal lock released, its
         result is inserted and returned.
 
         Args:
@@ -396,9 +440,9 @@ class Cache(BaseCacheImpl[_KT, _VT]):
             factory: The factory to call and get default value from if ``key`` is not in the cache.
 
         Warning:
-            if two threads miss the same key at once, `factory` can run
+            If two threads miss the same key at once, ``factory`` can run
             more than once; the value inserted first wins and is returned to
-            both. If `factory` raises, nothing is inserted and the exception
+            both. If ``factory`` raises, nothing is inserted and the exception
             propagates.
         """
 
@@ -534,15 +578,17 @@ class FIFOCache(BaseCacheImpl[_KT, _VT]):
                 cache instance, or an iterable of ``(key, value)`` tuples.
         """
 
-    def setdefault(
-        self,
-        key: _KT,
-        default: _DT | None = None,
-    ) -> _VT | _DT | None:
+    @typing.overload
+    def setdefault(self, key: _KT, default: None = None) -> _VT | None: ...
+    @typing.overload
+    def setdefault(self, key: _KT, default: _VT) -> _VT: ...
+    def setdefault(  # type: ignore[misc]  # pyright: ignore[reportInconsistentOverload]
+        self, key: _KT, default: _VT | None = None
+    ) -> _VT | None:
         """
-        Get `key`s value, or automatically insert `default` and return it.
-        If `key` exists, its current value is returned and `default` is ignored.
-        Otherwise `default` is inserted for `key` and returned.
+        Get ``key``'s value, or automatically insert ``default`` and return it.
+        If ``key`` exists, its current value is returned and ``default`` is ignored.
+        Otherwise ``default`` is inserted for ``key`` and returned.
 
         Args:
             key: The key to look up or insert.
@@ -550,19 +596,19 @@ class FIFOCache(BaseCacheImpl[_KT, _VT]):
                 Defaults to ``None``.
 
         Note:
-            Use `setdefault_with`, if computing the value is expensive or has side
-            effectes.
+            Use ``setdefault_with`` if computing the value is expensive or has
+            side effects.
         """
 
     def setdefault_with(
         self,
         key: _KT,
-        factory: typing.Callable[[], _DT],
-    ) -> _VT | _DT:
+        factory: typing.Callable[[], _VT],
+    ) -> _VT:
         """
-        Get `key`s value, or automatically create and insert one via `factory`.
-        If `key` exists, its current value is returned and `factory` is not called.
-        Otherwise `factory` is called with the internal lock released, its
+        Get ``key``'s value, or automatically create and insert one via ``factory``.
+        If ``key`` exists, its current value is returned and ``factory`` is not called.
+        Otherwise ``factory`` is called with the internal lock released, its
         result is inserted and returned.
 
         Args:
@@ -570,9 +616,9 @@ class FIFOCache(BaseCacheImpl[_KT, _VT]):
             factory: The factory to call and get default value from if ``key`` is not in the cache.
 
         Warning:
-            if two threads miss the same key at once, `factory` can run
+            If two threads miss the same key at once, ``factory`` can run
             more than once; the value inserted first wins and is returned to
-            both. If `factory` raises, nothing is inserted and the exception
+            both. If ``factory`` raises, nothing is inserted and the exception
             propagates.
         """
 
@@ -648,7 +694,8 @@ class FIFOCache(BaseCacheImpl[_KT, _VT]):
         """
 
 class RRCache(BaseCacheImpl[_KT, _VT]):
-    """A thread-safe, memory-efficient cache with a Random Replacement eviction policy.
+    """
+    A thread-safe, memory-efficient cache with a Random Replacement eviction policy.
 
     When the cache reaches its maximum size, a randomly selected item is
     evicted to make room for new entries.
@@ -722,31 +769,17 @@ class RRCache(BaseCacheImpl[_KT, _VT]):
                 cache instance, or an iterable of ``(key, value)`` tuples.
         """
 
-    def get(
-        self,
-        key: _KT,
-        default: _DT | None = ...,
-    ) -> _VT | _DT:
+    @typing.overload
+    def setdefault(self, key: _KT, default: None = None) -> _VT | None: ...
+    @typing.overload
+    def setdefault(self, key: _KT, default: _VT) -> _VT: ...
+    def setdefault(  # type: ignore[misc]  # pyright: ignore[reportInconsistentOverload]
+        self, key: _KT, default: _VT | None = None
+    ) -> _VT | None:
         """
-        Retrieves the value for a given key from the cache.
-
-        Args:
-            key: The key to look up.
-            default: Value to return if the key is not found.
-
-        Returns:
-            The value associated with ``key``, or ``default`` if not found.
-        """
-
-    def setdefault(
-        self,
-        key: _KT,
-        default: _DT | None = None,
-    ) -> _VT | _DT | None:
-        """
-        Get `key`s value, or automatically insert `default` and return it.
-        If `key` exists, its current value is returned and `default` is ignored.
-        Otherwise `default` is inserted for `key` and returned.
+        Get ``key``'s value, or automatically insert ``default`` and return it.
+        If ``key`` exists, its current value is returned and ``default`` is ignored.
+        Otherwise ``default`` is inserted for ``key`` and returned.
 
         Args:
             key: The key to look up or insert.
@@ -754,19 +787,19 @@ class RRCache(BaseCacheImpl[_KT, _VT]):
                 Defaults to ``None``.
 
         Note:
-            Use `setdefault_with`, if computing the value is expensive or has side
-            effectes.
+            Use ``setdefault_with`` if computing the value is expensive or has
+            side effects.
         """
 
     def setdefault_with(
         self,
         key: _KT,
-        factory: typing.Callable[[], _DT],
-    ) -> _VT | _DT:
+        factory: typing.Callable[[], _VT],
+    ) -> _VT:
         """
-        Get `key`s value, or automatically create and insert one via `factory`.
-        If `key` exists, its current value is returned and `factory` is not called.
-        Otherwise `factory` is called with the internal lock released, its
+        Get ``key``'s value, or automatically create and insert one via ``factory``.
+        If ``key`` exists, its current value is returned and ``factory`` is not called.
+        Otherwise ``factory`` is called with the internal lock released, its
         result is inserted and returned.
 
         Args:
@@ -774,9 +807,9 @@ class RRCache(BaseCacheImpl[_KT, _VT]):
             factory: The factory to call and get default value from if ``key`` is not in the cache.
 
         Warning:
-            if two threads miss the same key at once, `factory` can run
+            If two threads miss the same key at once, ``factory`` can run
             more than once; the value inserted first wins and is returned to
-            both. If `factory` raises, nothing is inserted and the exception
+            both. If ``factory`` raises, nothing is inserted and the exception
             propagates.
         """
 
@@ -855,7 +888,7 @@ class LRUCache(BaseCacheImpl[_KT, _VT]):
 
     |              | get  | insert  | delete(i) | popitem |
     | ------------ | ---- | ------- | --------- | ------- |
-    | Worse-case   | O(1) | O(1)~   | O(1)~ | O(1)~ |
+    | Worse-case   | O(1) | O(1)~   | O(1)~     | O(1)~   |
 
     Pros:
         - Excellent hit rates on temporal-locality workloads.
@@ -920,31 +953,17 @@ class LRUCache(BaseCacheImpl[_KT, _VT]):
                 cache instance, or an iterable of ``(key, value)`` tuples.
         """
 
-    def get(
-        self,
-        key: _KT,
-        default: _DT | None = ...,
-    ) -> _VT | _DT:
+    @typing.overload
+    def setdefault(self, key: _KT, default: None = None) -> _VT | None: ...
+    @typing.overload
+    def setdefault(self, key: _KT, default: _VT) -> _VT: ...
+    def setdefault(  # type: ignore[misc]  # pyright: ignore[reportInconsistentOverload]
+        self, key: _KT, default: _VT | None = None
+    ) -> _VT | None:
         """
-        Retrieves the value for a given key from the cache.
-
-        Args:
-            key: The key to look up.
-            default: Value to return if the key is not found.
-
-        Returns:
-            The value associated with ``key``, or ``default`` if not found.
-        """
-
-    def setdefault(
-        self,
-        key: _KT,
-        default: _DT | None = None,
-    ) -> _VT | _DT | None:
-        """
-        Get `key`s value, or automatically insert `default` and return it.
-        If `key` exists, its current value is returned and `default` is ignored.
-        Otherwise `default` is inserted for `key` and returned.
+        Get ``key``'s value, or automatically insert ``default`` and return it.
+        If ``key`` exists, its current value is returned and ``default`` is ignored.
+        Otherwise ``default`` is inserted for ``key`` and returned.
 
         Args:
             key: The key to look up or insert.
@@ -952,19 +971,19 @@ class LRUCache(BaseCacheImpl[_KT, _VT]):
                 Defaults to ``None``.
 
         Note:
-            Use `setdefault_with`, if computing the value is expensive or has side
-            effectes.
+            Use ``setdefault_with`` if computing the value is expensive or has
+            side effects.
         """
 
     def setdefault_with(
         self,
         key: _KT,
-        factory: typing.Callable[[], _DT],
-    ) -> _VT | _DT:
+        factory: typing.Callable[[], _VT],
+    ) -> _VT:
         """
-        Get `key`s value, or automatically create and insert one via `factory`.
-        If `key` exists, its current value is returned and `factory` is not called.
-        Otherwise `factory` is called with the internal lock released, its
+        Get ``key``'s value, or automatically create and insert one via ``factory``.
+        If ``key`` exists, its current value is returned and ``factory`` is not called.
+        Otherwise ``factory`` is called with the internal lock released, its
         result is inserted and returned.
 
         Args:
@@ -972,9 +991,9 @@ class LRUCache(BaseCacheImpl[_KT, _VT]):
             factory: The factory to call and get default value from if ``key`` is not in the cache.
 
         Warning:
-            if two threads miss the same key at once, `factory` can run
+            If two threads miss the same key at once, ``factory`` can run
             more than once; the value inserted first wins and is returned to
-            both. If `factory` raises, nothing is inserted and the exception
+            both. If ``factory`` raises, nothing is inserted and the exception
             propagates.
         """
 
@@ -1110,7 +1129,7 @@ class LFUCache(BaseCacheImpl[_KT, _VT]):
     ```python
     from cachebox import LFUCache
 
-    cache = cachebox.LFUCache(5)
+    cache = LFUCache(5)
     cache.insert('first', 'A')
     cache.insert('second', 'B')
 
@@ -1157,31 +1176,17 @@ class LFUCache(BaseCacheImpl[_KT, _VT]):
                 cache instance, or an iterable of ``(key, value)`` tuples.
         """
 
-    def get(
-        self,
-        key: _KT,
-        default: _DT | None = ...,
-    ) -> _VT | _DT:
+    @typing.overload
+    def setdefault(self, key: _KT, default: None = None) -> _VT | None: ...
+    @typing.overload
+    def setdefault(self, key: _KT, default: _VT) -> _VT: ...
+    def setdefault(  # type: ignore[misc]  # pyright: ignore[reportInconsistentOverload]
+        self, key: _KT, default: _VT | None = None
+    ) -> _VT | None:
         """
-        Retrieves the value for a given key from the cache.
-
-        Args:
-            key: The key to look up.
-            default: Value to return if the key is not found.
-
-        Returns:
-            The value associated with ``key``, or ``default`` if not found.
-        """
-
-    def setdefault(
-        self,
-        key: _KT,
-        default: _DT | None = None,
-    ) -> _VT | _DT | None:
-        """
-        Get `key`s value, or automatically insert `default` and return it.
-        If `key` exists, its current value is returned and `default` is ignored.
-        Otherwise `default` is inserted for `key` and returned.
+        Get ``key``'s value, or automatically insert ``default`` and return it.
+        If ``key`` exists, its current value is returned and ``default`` is ignored.
+        Otherwise ``default`` is inserted for ``key`` and returned.
 
         Args:
             key: The key to look up or insert.
@@ -1189,19 +1194,19 @@ class LFUCache(BaseCacheImpl[_KT, _VT]):
                 Defaults to ``None``.
 
         Note:
-            Use `setdefault_with`, if computing the value is expensive or has side
-            effectes.
+            Use ``setdefault_with`` if computing the value is expensive or has
+            side effects.
         """
 
     def setdefault_with(
         self,
         key: _KT,
-        factory: typing.Callable[[], _DT],
-    ) -> _VT | _DT:
+        factory: typing.Callable[[], _VT],
+    ) -> _VT:
         """
-        Get `key`s value, or automatically create and insert one via `factory`.
-        If `key` exists, its current value is returned and `factory` is not called.
-        Otherwise `factory` is called with the internal lock released, its
+        Get ``key``'s value, or automatically create and insert one via ``factory``.
+        If ``key`` exists, its current value is returned and ``factory`` is not called.
+        Otherwise ``factory`` is called with the internal lock released, its
         result is inserted and returned.
 
         Args:
@@ -1209,9 +1214,9 @@ class LFUCache(BaseCacheImpl[_KT, _VT]):
             factory: The factory to call and get default value from if ``key`` is not in the cache.
 
         Warning:
-            if two threads miss the same key at once, `factory` can run
+            If two threads miss the same key at once, ``factory`` can run
             more than once; the value inserted first wins and is returned to
-            both. If `factory` raises, nothing is inserted and the exception
+            both. If ``factory`` raises, nothing is inserted and the exception
             propagates.
         """
 
@@ -1261,14 +1266,14 @@ class LFUCache(BaseCacheImpl[_KT, _VT]):
 
     def items_with_frequency(self) -> CacheIterator[tuple[_KT, _VT, int]]:
         """
-        Returns an ordered iterable of the cache's ``(key, value)`` pairs with their
-        frequency counter.
+        Returns an ordered iterable of the cache's ``(key, value, frequency)``
+        tuples.
 
         Warning:
             Do not modify the cache while iterating.
 
         Returns:
-            An iterable of ``(key, value)`` tuples in frequency order.
+            An iterable of ``(key, value, frequency)`` tuples in frequency order.
         """
 
     def peek(
@@ -1368,15 +1373,17 @@ class TTLCache(BaseCacheImpl[_KT, _VT]):
                 cache instance, or an iterable of ``(key, value)`` tuples.
         """
 
-    def setdefault(
-        self,
-        key: _KT,
-        default: _DT | None = None,
-    ) -> _VT | _DT | None:
+    @typing.overload
+    def setdefault(self, key: _KT, default: None = None) -> _VT | None: ...
+    @typing.overload
+    def setdefault(self, key: _KT, default: _VT) -> _VT: ...
+    def setdefault(  # type: ignore[misc]  # pyright: ignore[reportInconsistentOverload]
+        self, key: _KT, default: _VT | None = None
+    ) -> _VT | None:
         """
-        Get `key`s value, or automatically insert `default` and return it.
-        If `key` exists, its current value is returned and `default` is ignored.
-        Otherwise `default` is inserted for `key` and returned.
+        Get ``key``'s value, or automatically insert ``default`` and return it.
+        If ``key`` exists, its current value is returned and ``default`` is ignored.
+        Otherwise ``default`` is inserted for ``key`` and returned.
 
         Args:
             key: The key to look up or insert.
@@ -1384,19 +1391,19 @@ class TTLCache(BaseCacheImpl[_KT, _VT]):
                 Defaults to ``None``.
 
         Note:
-            Use `setdefault_with`, if computing the value is expensive or has side
-            effectes.
+            Use ``setdefault_with`` if computing the value is expensive or has
+            side effects.
         """
 
     def setdefault_with(
         self,
         key: _KT,
-        factory: typing.Callable[[], _DT],
-    ) -> _VT | _DT:
+        factory: typing.Callable[[], _VT],
+    ) -> _VT:
         """
-        Get `key`s value, or automatically create and insert one via `factory`.
-        If `key` exists, its current value is returned and `factory` is not called.
-        Otherwise `factory` is called with the internal lock released, its
+        Get ``key``'s value, or automatically create and insert one via ``factory``.
+        If ``key`` exists, its current value is returned and ``factory`` is not called.
+        Otherwise ``factory`` is called with the internal lock released, its
         result is inserted and returned.
 
         Args:
@@ -1404,9 +1411,9 @@ class TTLCache(BaseCacheImpl[_KT, _VT]):
             factory: The factory to call and get default value from if ``key`` is not in the cache.
 
         Warning:
-            if two threads miss the same key at once, `factory` can run
+            If two threads miss the same key at once, ``factory`` can run
             more than once; the value inserted first wins and is returned to
-            both. If `factory` raises, nothing is inserted and the exception
+            both. If ``factory`` raises, nothing is inserted and the exception
             propagates.
         """
 
@@ -1490,11 +1497,17 @@ class TTLCache(BaseCacheImpl[_KT, _VT]):
                 rather than freeing it. Defaults to ``False``.
         """
 
+    @typing.overload
     def get_with_expire(
-        self,
-        key: _KT,
-        default: _DT | None = None,
-    ) -> tuple[_VT | _DT, float]:
+        self, key: _KT, default: None = None
+    ) -> tuple[_VT | None, float]: ...
+    @typing.overload
+    def get_with_expire(
+        self, key: _KT, default: _DT
+    ) -> tuple[_VT | _DT, float]: ...
+    def get_with_expire(  # type: ignore[misc]  # pyright: ignore[reportInconsistentOverload]
+        self, key: _KT, default: _DT | None = None
+    ) -> tuple[_VT | _DT | None, float]:
         """
         Retrieves a value along with its remaining TTL.
 
@@ -1503,15 +1516,20 @@ class TTLCache(BaseCacheImpl[_KT, _VT]):
             default: Value to return if the key is not found.
 
         Returns:
-            A tuple of ``(value, remaining_ttl)`` where ``remaining_ttl`` is
-            the expiration duration in seconds, or ``0.0`` if the key was not
-            found.
+            A tuple of ``(value, remaining_ttl)``, where ``remaining_ttl`` is
+            in seconds, or ``0.0`` if the key was not found.
         """
 
+    @typing.overload
+    def pop_with_expire(self, key: _KT) -> tuple[_VT, float]: ...
+    @typing.overload
+    def pop_with_expire(self, key: _KT, default: _VT) -> tuple[_VT, float]: ...
+    @typing.overload
     def pop_with_expire(
-        self,
-        key: _KT,
-        default: _DT | None = None,
+        self, key: _KT, default: _DT
+    ) -> tuple[_VT | _DT, float]: ...
+    def pop_with_expire(  # type: ignore[misc]  # pyright: ignore[reportInconsistentOverload]
+        self, key: _KT, default: _DT = ...
     ) -> tuple[_VT | _DT, float]:
         """
         Removes a key and returns its value along with its remaining TTL.
@@ -1521,12 +1539,15 @@ class TTLCache(BaseCacheImpl[_KT, _VT]):
             default: Value to return if the key is not found.
 
         Returns:
-            A tuple of ``(value, remaining_ttl)`` where ``remaining_ttl`` is
-            the expiration duration in seconds, or ``0.0`` if the key was not
-            found.
+            A tuple of ``(value, remaining_ttl)``, where ``remaining_ttl`` is
+            in seconds, or ``0.0`` if the key was not found and ``default``
+            was returned.
+
+        Raises:
+            KeyError: If the key is not found and no ``default`` is given.
         """
 
-    def popitem_with_expire(self) -> tuple[_VT, _DT, float]:
+    def popitem_with_expire(self) -> tuple[_KT, _VT, float]:
         """
         Removes and returns the oldest item along with its remaining TTL.
 
@@ -1570,7 +1591,7 @@ class VTTLCache(BaseCacheImpl[_KT, _VT]):
         getsizeof: typing.Callable[[_KT, _VT], int] | None = None,
     ) -> None:
         """
-        Initializes a new TTLCache instance.
+        Initializes a new VTTLCache instance.
 
         Args:
             maxsize: Maximum number of elements the cache can hold. If zero,
@@ -1617,49 +1638,63 @@ class VTTLCache(BaseCacheImpl[_KT, _VT]):
             ttl: An optional time-to-live duration for items.
         """
 
+    @typing.overload
     def setdefault(
         self,
         key: _KT,
-        default: _DT | None = None,
+        default: None = None,
         ttl: float | timedelta | datetime | None = None,
-    ) -> _VT | _DT | None:
+    ) -> _VT | None: ...
+    @typing.overload
+    def setdefault(  # pyright: ignore[reportIncompatibleMethodOverride]
+        self,
+        key: _KT,
+        default: _VT,
+        ttl: float | timedelta | datetime | None = None,
+    ) -> _VT: ...
+    def setdefault(  # type: ignore[misc]  # pyright: ignore[reportInconsistentOverload, reportIncompatibleMethodOverride]
+        self,
+        key: _KT,
+        default: _VT | None = None,
+        ttl: float | timedelta | datetime | None = None,
+    ) -> _VT | None:
         """
-        Get `key`s value, or automatically insert `default` and return it.
-        If `key` exists, its current value is returned and `default` is ignored.
-        Otherwise `default` is inserted for `key` and returned.
-
-        Note:
-            Use `setdefault_with`, if computing the value is expensive or has side
-            effectes.
+        Get ``key``'s value, or automatically insert ``default`` and return it.
+        If ``key`` exists, its current value is returned and ``default`` is ignored.
+        Otherwise ``default`` is inserted for ``key`` and returned.
 
         Args:
             key: The key to look up or insert.
             default: The value to insert if ``key`` is not in the cache.
                 Defaults to ``None``.
-            ttl: An optional time-to-live duration for item.
+            ttl: An optional time-to-live duration for the item.
+
+        Note:
+            Use ``setdefault_with`` if computing the value is expensive or has
+            side effects.
         """
 
     def setdefault_with(
         self,
         key: _KT,
-        factory: typing.Callable[[], _DT],
+        factory: typing.Callable[[], _VT],
         ttl: float | timedelta | datetime | None = None,
-    ) -> _VT | _DT:
+    ) -> _VT:
         """
-        Get `key`s value, or automatically create and insert one via `factory`.
-        If `key` exists, its current value is returned and `factory` is not called.
-        Otherwise `factory` is called with the internal lock released, its
+        Get ``key``'s value, or automatically create and insert one via ``factory``.
+        If ``key`` exists, its current value is returned and ``factory`` is not called.
+        Otherwise ``factory`` is called with the internal lock released, its
         result is inserted and returned.
 
         Args:
             key: The key to look up or insert.
             factory: The factory to call and get default value from if ``key`` is not in the cache.
-            ttl: An optional time-to-live duration for item.
+            ttl: An optional time-to-live duration for the item.
 
         Warning:
-            if two threads miss the same key at once, `factory` can run
+            If two threads miss the same key at once, ``factory`` can run
             more than once; the value inserted first wins and is returned to
-            both. If `factory` raises, nothing is inserted and the exception
+            both. If ``factory`` raises, nothing is inserted and the exception
             propagates.
         """
 
@@ -1716,11 +1751,17 @@ class VTTLCache(BaseCacheImpl[_KT, _VT]):
                 rather than freeing it. Defaults to ``False``.
         """
 
+    @typing.overload
     def get_with_expire(
-        self,
-        key: _KT,
-        default: _DT | None = None,
-    ) -> tuple[_VT | _DT, float | None]:
+        self, key: _KT, default: None = None
+    ) -> tuple[_VT | None, float]: ...
+    @typing.overload
+    def get_with_expire(
+        self, key: _KT, default: _DT
+    ) -> tuple[_VT | _DT, float]: ...
+    def get_with_expire(  # type: ignore[misc]  # pyright: ignore[reportInconsistentOverload]
+        self, key: _KT, default: _DT | None = None
+    ) -> tuple[_VT | _DT | None, float]:
         """
         Retrieves a value along with its remaining TTL.
 
@@ -1729,15 +1770,22 @@ class VTTLCache(BaseCacheImpl[_KT, _VT]):
             default: Value to return if the key is not found.
 
         Returns:
-            A tuple of ``(value, remaining_ttl)`` where ``remaining_ttl`` is
-            the expiration duration in seconds, or ``0.0`` if the key was not
-            found.
+            A tuple of ``(value, remaining_ttl)``, where ``remaining_ttl`` is
+            in seconds, or ``0.0`` if the key was not found.
         """
 
+    @typing.overload
+    def pop_with_expire(self, key: _KT) -> tuple[_VT, float]: ...
+    @typing.overload
     def pop_with_expire(
-        self,
-        key: _KT,
-        default: _DT | None = None,
+        self, key: _KT, default: _VT
+    ) -> tuple[_VT, float | None]: ...
+    @typing.overload
+    def pop_with_expire(
+        self, key: _KT, default: _DT
+    ) -> tuple[_VT | _DT, float | None]: ...
+    def pop_with_expire(  # type: ignore[misc]  # pyright: ignore[reportInconsistentOverload]
+        self, key: _KT, default: _DT = ...
     ) -> tuple[_VT | _DT, float | None]:
         """
         Removes a key and returns its value along with its remaining TTL.
@@ -1747,18 +1795,22 @@ class VTTLCache(BaseCacheImpl[_KT, _VT]):
             default: Value to return if the key is not found.
 
         Returns:
-            A tuple of ``(value, remaining_ttl)`` where ``remaining_ttl`` is
-            the expiration duration in seconds, or ``0.0`` if the key was not
-            found.
+            A tuple of ``(value, remaining_ttl)``, where ``remaining_ttl`` is
+            in seconds, or ``None`` if the key was not found and ``default``
+            was returned.
+
+        Raises:
+            KeyError: If the key is not found and no ``default`` is given.
         """
 
-    def popitem_with_expire(self) -> tuple[_VT, _DT, float | None]:
+    def popitem_with_expire(self) -> tuple[_KT, _VT, float | None]:
         """
         Removes and returns the oldest item along with its remaining TTL.
 
         Returns:
             A tuple of ``(key, value, remaining_ttl)`` where ``remaining_ttl``
-            is the expiration duration in seconds.
+            is the expiration duration in seconds, or ``None`` if the item has
+            no TTL.
 
         Raises:
             KeyError: If the cache is empty.
@@ -1773,5 +1825,6 @@ class VTTLCache(BaseCacheImpl[_KT, _VT]):
 
         Returns:
             An iterable of ``(key, value, remaining_ttl)`` tuples in insertion
-            order, where ``remaining_ttl`` is in seconds.
+            order, where ``remaining_ttl`` is in seconds, or ``None`` if the
+            item has no TTL.
         """

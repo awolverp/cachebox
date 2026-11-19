@@ -292,6 +292,15 @@ class Frozen(BaseCacheImpl[KT, VT]):  # pragma: no cover
     ) -> None:
         return self._guard()  # type: ignore[func-returns-value]
 
+    @typing.overload
+    def get(self, key: KT, default: None = None) -> VT | None: ...
+
+    @typing.overload
+    def get(self, key: KT, default: VT) -> VT: ...
+
+    @typing.overload
+    def get(self, key: KT, default: DT) -> VT | DT: ...
+
     def get(self, key: KT, default: DT | None = None) -> VT | DT:
         return self.__cache.get(key, default)
 
